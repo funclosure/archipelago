@@ -75,6 +75,7 @@ export function createSimulation() {
       b.vy -= fy / b.mass;
     }
     let movement = 0;
+    let free = 0;
     for (const n of nodes) {
       n.vx += (center.x - n.x) * CENTER * alpha;
       n.vy += (center.y - n.y) * CENTER * alpha;
@@ -83,6 +84,7 @@ export function createSimulation() {
         n.vy = 0;
         continue;
       }
+      free++;
       n.vx *= DAMPING;
       n.vy *= DAMPING;
       n.x += n.vx;
@@ -93,8 +95,10 @@ export function createSimulation() {
       if (n.y > WORLD - n.radius) { n.y = WORLD - n.radius; n.vy = 0; }
       movement += Math.abs(n.vx) + Math.abs(n.vy);
     }
+    // alpha decays by 0.99 per tick, so left to run out on its own a simulation would
+    // take roughly 600 ticks (0.99^600 ~= 0.002) to reach the alpha<=0.002 floor above.
     alpha *= 0.99;
-    if (nodes.length && movement / nodes.length < 0.03) alpha = 0;
+    if (free > 0 && movement / free < 0.03) alpha = 0;
     return true;
   }
 

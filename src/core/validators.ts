@@ -26,15 +26,17 @@ export const islandInputSchema = z.object({
   order: numberInput.pipe(z.number().int()).optional(),
 });
 
-export const islandUpdateSchema = z.object({
-  domain: slugSchema,
-  slug: slugSchema,
-  name: z.string().min(1).optional(),
-  summary: z.string().optional(),
-  order: numberInput.pipe(z.number().int()).optional(),
-  x: coordinate.optional(),
-  y: coordinate.optional(),
-});
+export const islandUpdateSchema = z
+  .object({
+    domain: slugSchema,
+    slug: slugSchema,
+    name: z.string().min(1).optional(),
+    summary: z.string().optional(),
+    order: numberInput.pipe(z.number().int()).optional(),
+    x: coordinate.optional(),
+    y: coordinate.optional(),
+  })
+  .refine((v) => (v.x === undefined) === (v.y === undefined), { message: "pass both --x and --y, or neither" });
 
 export const straitInputSchema = z.object({
   domain: slugSchema,
@@ -69,7 +71,7 @@ export const focusInputSchema = z.object({
 
 export const positionsInputSchema = z.object({
   domain: slugSchema,
-  positions: z.array(z.object({ island: slugSchema, x: coordinate, y: coordinate })).min(1),
+  positions: z.array(z.object({ island: slugSchema, x: coordinate, y: coordinate })).min(1).max(1000),
 });
 
 export const sessionEndInputSchema = z.object({

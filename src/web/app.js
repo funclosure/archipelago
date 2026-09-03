@@ -1,4 +1,4 @@
-import { buildNodes, buildLinks, WORLD, clampWorld } from "./view-model.js";
+import { buildNodes, buildLinks, WORLD } from "./view-model.js";
 import { createSimulation } from "./layout.js";
 import { createCamera } from "./camera.js";
 import { clear, drawIsland, drawStrait } from "./draw.js";
@@ -25,6 +25,7 @@ export const app = {
   listeners: new Set(), // called with each new snapshot (Task 13 subscribes the card)
   placing: new Set(),        // slugs awaiting their first persisted position
   placementInFlight: false,  // a positions post is in progress (or backing off after a failure)
+  placementGen: 0,           // bumped on a scale change so a stale post cannot clear the new scale's placing set
 };
 
 export async function api(path, init) {
@@ -77,7 +78,12 @@ function applySnapshot(snapshot) {
   app.links = buildLinks(snapshot, app.nodes);
   // The simulation exists only to place islands that have no stored position; placed ones are pinned.
   app.sim.setGraph(app.nodes, app.links, unplaced().length ? (sameScale ? 0.5 : 1) : 0);
-  if (!app.placementInFlight) app.placing = new Set(unplaced().map((n) => n.slug));
+  if (!sameScale) {
+    app.placementGen += 1;          // a post that resolves for the old scale must not touch this set
+    app.placing = new Set(unplaced().map((n) => n.slug));
+  } else if (!app.placementInFlight) {
+    app.placing = new Set(unplaced().map((n) => n.slug));
+  }
   if (!sameScale) app.camera.animateTo(app.camera.home, 400);
   // A reload should still show the terminal's focus, without posting a fresh selection.
   if (isFirstSnapshot) app.selected = snapshot.focus;
@@ -119,8 +125,8 @@ export function unplaced() {
 /** Persists positions for the given nodes; coordinates are clamped to the world so the server accepts them. */
 export async function postPositions(nodes) {
   const positions = nodes.map((n) => {
-    n.x = clampWorld(n.x);
-    n.y = clampWorld(n.y);
+    n.x = Math.min(WORLD - n.radius, Math.max(n.radius, n.x));
+    n.y = Math.min(WORLD - n.radius, Math.max(n.radius, n.y));
     return { island: n.slug, x: n.x, y: n.y };
   });
   return api("/api/positions", {
@@ -132,11 +138,16 @@ export async function postPositions(nodes) {
 
 /** Called once the simulation has settled while islands still await placement. */
 async function persistPlacement() {
-  app.placementInFlight = true;
   const nodes = app.nodes.filter((n) => app.placing.has(n.slug));
+  if (nodes.length === 0) {
+    app.placing.clear();
+    return;
+  }
+  const gen = app.placementGen;
+  app.placementInFlight = true;
   try {
     await postPositions(nodes);
-    app.placing.clear();
+    if (gen === app.placementGen) for (const n of nodes) app.placing.delete(n.slug);
     app.placementInFlight = false;
   } catch (error) {
     console.error("placement not saved, retrying in 5s", error);

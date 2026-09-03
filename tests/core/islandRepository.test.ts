@@ -86,6 +86,21 @@ test("islands start unplaced and positions persist through upsert", () => {
   expect(getIsland(db, domainId, "caching")!.name).toBe("Caching renamed");
 });
 
+test("reparenting nulls the stored position; a same-parent re-add keeps it", () => {
+  const a = upsertIsland(db, { domainId, slug: "a", name: "A" });
+  const b = upsertIsland(db, { domainId, slug: "b", name: "B" });
+  updateIsland(db, domainId, "a", { x: 900, y: 900 });
+  const moved = upsertIsland(db, { domainId, slug: "a", name: "A", parentId: b.id });
+  expect(moved.parentId).toBe(b.id);
+  expect(moved.x).toBeNull();
+  expect(moved.y).toBeNull();
+
+  updateIsland(db, domainId, "b", { x: 500, y: 500 });
+  const same = upsertIsland(db, { domainId, slug: "b", name: "B" });
+  expect(same.x).toBe(500);
+  expect(same.y).toBe(500);
+});
+
 test("setIslandPositions writes all rows or none and bumps the version once per island", () => {
   upsertIsland(db, { domainId, slug: "caching", name: "Caching" });
   upsertIsland(db, { domainId, slug: "databases", name: "Databases" });

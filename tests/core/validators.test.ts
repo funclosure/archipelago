@@ -43,6 +43,17 @@ test("positions are 0..1000 numbers and never empty", () => {
   expect(positionsInputSchema.safeParse({ domain: "sd", positions: [{ island: "caching", x: -1, y: 0 }] }).success).toBe(false);
   expect(positionsInputSchema.safeParse({ domain: "sd", positions: [{ island: "caching", x: "", y: 0 }] }).success).toBe(false);
   expect(positionsInputSchema.safeParse({ domain: "sd", positions: [{ island: "Caching", x: 1, y: 0 }] }).success).toBe(false);
-  expect(islandUpdateSchema.safeParse({ domain: "sd", slug: "caching", x: "40" }).success).toBe(true);
+  expect(islandUpdateSchema.safeParse({ domain: "sd", slug: "caching", x: "40", y: "10" }).success).toBe(true);
   expect(islandUpdateSchema.safeParse({ domain: "sd", slug: "caching", y: 2000 }).success).toBe(false);
+  expect(positionsInputSchema.safeParse({
+    domain: "sd",
+    positions: Array.from({ length: 1001 }, (_, i) => ({ island: `island-${i}`, x: 0, y: 0 })),
+  }).success).toBe(false);
+});
+
+test("island update needs both --x and --y, or neither", () => {
+  expect(islandUpdateSchema.safeParse({ domain: "sd", slug: "caching", x: 10 }).success).toBe(false);
+  expect(islandUpdateSchema.safeParse({ domain: "sd", slug: "caching", y: 10 }).success).toBe(false);
+  expect(islandUpdateSchema.safeParse({ domain: "sd", slug: "caching", x: 10, y: 20 }).success).toBe(true);
+  expect(islandUpdateSchema.safeParse({ domain: "sd", slug: "caching" }).success).toBe(true);
 });

@@ -43,7 +43,7 @@ CLI: `island update` gains `--x <n> --y <n>`; `island show` and `island list` in
 
 **Nodes.** `view-model.js`: a node's `x`, `y` come from the island when present; `placed` is true. Unplaced nodes start near the centroid of their strait neighbours that are placed, else the world centre, with a small seeded offset so two unplaced islands do not coincide. Radius is a function of the number of islands at the scale (`clamp(48, 220 / sqrt(n), 88)` world units), the same for every island at that scale, never of the verdict. Mass stays 1 for all.
 
-**Placement.** `app.js`: after `applySnapshot`, if any node is unplaced, run the simulation with placed nodes pinned until it settles (alpha reaches 0 or 600 ticks), then post every previously unplaced node's position to `/api/positions` once. While the post is in flight, and if it fails, the nodes stay at their provisional spots; the next poll that still shows them unplaced triggers another attempt. The simulation never runs when every node is placed. Hover no longer reheats anything.
+**Placement.** `app.js`: after `applySnapshot`, if any node is unplaced, run the simulation with placed nodes pinned until it settles (alpha reaches 0 or 600 ticks), then post every previously unplaced node's position to `/api/positions` once. While the post is in flight, and if it fails, the nodes stay at their provisional spots; the post is retried after five seconds while islands remain unplaced. The simulation never runs when every node is placed. Hover no longer reheats anything.
 
 **Drag.** On pointerup after a real drag (beyond the click slop), post that island's new position. The node is not pinned by a flag any more; placed nodes never move unless dragged.
 
@@ -54,7 +54,7 @@ CLI: `island update` gains `--x <n> --y <n>`; `island show` and `island list` in
 ## 5. Errors
 
 - A positions post fails as a whole on any unknown slug (404 with valid slugs) or bad number (400); no partial writes.
-- A failed placement post is logged and retried on the next poll that still shows unplaced islands.
+- A failed placement post is logged and retried after five seconds while islands remain unplaced.
 - The page ignores positions outside 0..1000 in a snapshot only by clamping when drawing; the server never stores them.
 
 ## 6. Tests

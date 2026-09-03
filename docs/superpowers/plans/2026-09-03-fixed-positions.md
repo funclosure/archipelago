@@ -240,8 +240,15 @@ test("positions are 0..1000 numbers and never empty", () => {
   expect(positionsInputSchema.safeParse({ domain: "sd", positions: [{ island: "caching", x: -1, y: 0 }] }).success).toBe(false);
   expect(positionsInputSchema.safeParse({ domain: "sd", positions: [{ island: "caching", x: "", y: 0 }] }).success).toBe(false);
   expect(positionsInputSchema.safeParse({ domain: "sd", positions: [{ island: "Caching", x: 1, y: 0 }] }).success).toBe(false);
-  expect(islandUpdateSchema.safeParse({ domain: "sd", slug: "caching", x: "40" }).success).toBe(true);
+  expect(islandUpdateSchema.safeParse({ domain: "sd", slug: "caching", x: "40", y: "10" }).success).toBe(true);
   expect(islandUpdateSchema.safeParse({ domain: "sd", slug: "caching", y: 2000 }).success).toBe(false);
+});
+
+test("island update needs both --x and --y, or neither", () => {
+  expect(islandUpdateSchema.safeParse({ domain: "sd", slug: "caching", x: 10 }).success).toBe(false);
+  expect(islandUpdateSchema.safeParse({ domain: "sd", slug: "caching", y: 10 }).success).toBe(false);
+  expect(islandUpdateSchema.safeParse({ domain: "sd", slug: "caching", x: 10, y: 20 }).success).toBe(true);
+  expect(islandUpdateSchema.safeParse({ domain: "sd", slug: "caching" }).success).toBe(true);
 });
 ```
 
@@ -288,15 +295,17 @@ const coordinate = numberInput.pipe(z.number().min(0).max(1000));
 Replace `islandUpdateSchema` with:
 
 ```ts
-export const islandUpdateSchema = z.object({
-  domain: slugSchema,
-  slug: slugSchema,
-  name: z.string().min(1).optional(),
-  summary: z.string().optional(),
-  order: numberInput.pipe(z.number().int()).optional(),
-  x: coordinate.optional(),
-  y: coordinate.optional(),
-});
+export const islandUpdateSchema = z
+  .object({
+    domain: slugSchema,
+    slug: slugSchema,
+    name: z.string().min(1).optional(),
+    summary: z.string().optional(),
+    order: numberInput.pipe(z.number().int()).optional(),
+    x: coordinate.optional(),
+    y: coordinate.optional(),
+  })
+  .refine((v) => (v.x === undefined) === (v.y === undefined), { message: "pass both --x and --y, or neither" });
 ```
 
 Add after `focusInputSchema`:
@@ -304,7 +313,7 @@ Add after `focusInputSchema`:
 ```ts
 export const positionsInputSchema = z.object({
   domain: slugSchema,
-  positions: z.array(z.object({ island: slugSchema, x: coordinate, y: coordinate })).min(1),
+  positions: z.array(z.object({ island: slugSchema, x: coordinate, y: coordinate })).min(1).max(1000),
 });
 ```
 
@@ -816,18 +825,17 @@ In `src/web/app.js`, add to the `app` object after `listeners`:
 ```js
   placing: new Set(),        // slugs awaiting their first persisted position
   placementInFlight: false,  // a positions post is in progress (or backing off after a failure)
+  placementGen: 0,           // bumped on a scale change so a stale post cannot clear the new scale's placing set
 ```
 
 Add after `unplaced()`:
 
 ```js
-const clampWorld = (v) => Math.min(WORLD, Math.max(0, v));
-
-/** Persists positions for the given nodes; coordinates are clamped to the world so the server accepts them. */
+/** Persists positions for the given nodes; coordinates are clamped to the world (inset by each node's radius) so the server accepts them. */
 export async function postPositions(nodes) {
   const positions = nodes.map((n) => {
-    n.x = clampWorld(n.x);
-    n.y = clampWorld(n.y);
+    n.x = Math.min(WORLD - n.radius, Math.max(n.radius, n.x));
+    n.y = Math.min(WORLD - n.radius, Math.max(n.radius, n.y));
     return { island: n.slug, x: n.x, y: n.y };
   });
   return api("/api/positions", {
@@ -839,11 +847,16 @@ export async function postPositions(nodes) {
 
 /** Called once the simulation has settled while islands still await placement. */
 async function persistPlacement() {
-  app.placementInFlight = true;
   const nodes = app.nodes.filter((n) => app.placing.has(n.slug));
+  if (nodes.length === 0) {
+    app.placing.clear();
+    return;
+  }
+  const gen = app.placementGen;
+  app.placementInFlight = true;
   try {
     await postPositions(nodes);
-    app.placing.clear();
+    if (gen === app.placementGen) for (const n of nodes) app.placing.delete(n.slug);
     app.placementInFlight = false;
   } catch (error) {
     console.error("placement not saved, retrying in 5s", error);
@@ -854,10 +867,15 @@ async function persistPlacement() {
 }
 ```
 
-In `applySnapshot`, after the `app.sim.setGraph(...)` line add:
+In `applySnapshot`, after the `app.sim.setGraph(...)` line add — a scale change bumps `placementGen` so a post still in flight for the old scale cannot clear the new scale's placing set:
 
 ```js
-  if (!app.placementInFlight) app.placing = new Set(unplaced().map((n) => n.slug));
+  if (!sameScale) {
+    app.placementGen += 1;
+    app.placing = new Set(unplaced().map((n) => n.slug));
+  } else if (!app.placementInFlight) {
+    app.placing = new Set(unplaced().map((n) => n.slug));
+  }
 ```
 
 In `frame`, replace `app.sim.tick();` with:
@@ -979,4 +997,4 @@ git commit -m "docs: fixed island positions"
 
 - **Spec coverage.** §2 data → Task 1 (migration, type, repository) and Task 2 (snapshot fields). §3 API and CLI → Tasks 2 and 3. §4 page → Task 4 (world camera, fixed footprint, placed nodes pinned, provisional spots) and Task 5 (placement post, retry, drag persistence, no idle simulation). §5 errors → Task 3 (batch semantics, 400/404) and Task 5 (retry after failure). §6 tests → each task; the browser check is the controller's after Task 5. §7 out of scope respected.
 - **Type consistency.** `setIslandPositions(db, domainId, { slug, x, y }[])` (Task 1) is what Task 3 calls with `positions.map(p => ({ slug: p.island, ... }))`; `buildNodes(snapshot, previous)` (Task 4) is what Task 4's `applySnapshot` calls; `unplaced()` and `postPositions(nodes)` are exported from `app.js` and imported by `interactions.js` (Task 5); `camera.fit/home/snapHome` (Task 4) are used by `resize` and `applySnapshot`.
-- **Judgement calls.** Resize snaps the camera home (a pan does not survive a window resize). Zoom limits are relative to the home scale. A dragged island stays pinned in memory even before its post lands. Drawing sizes were scaled up roughly 1.5× because the home scale is about 0.6 on a laptop window; the browser check may tune them.
+- **Judgement calls.** Resize snaps the camera home (a pan does not survive a window resize). Zoom limits are relative to the home scale. A dragged island stays pinned in memory even before its post lands. Drawing sizes were scaled up roughly 1.5× because the home scale is about 0.6 on a laptop window; the browser check may tune them. Reparenting nulls the stored position; a scale change bumps `placementGen` so a late post cannot clear the new scale's placing set.
