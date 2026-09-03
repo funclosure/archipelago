@@ -91,12 +91,19 @@ async function handleApi(req: Request, url: URL, ctx: ServerContext): Promise<Re
 }
 
 async function serveStatic(pathname: string, staticRoot: string): Promise<Response> {
+  const notFound = () => new Response("Not found", { status: 404 });
   const rootPath = resolve(staticRoot);
-  const requested = pathname === "/" ? "index.html" : decodeURIComponent(pathname.slice(1));
+  let requested: string;
+  try {
+    requested = pathname === "/" ? "index.html" : decodeURIComponent(pathname.slice(1));
+  } catch {
+    return notFound(); // malformed percent-encoding
+  }
+  if (requested.includes("\0")) return notFound();
   const filePath = resolve(rootPath, normalize(requested));
-  if (!filePath.startsWith(rootPath + sep)) return new Response("Not found", { status: 404 });
+  if (!filePath.startsWith(rootPath + sep)) return notFound();
   const file = Bun.file(filePath);
-  if (!(await file.exists())) return new Response("Not found", { status: 404 });
+  if (!(await file.exists())) return notFound();
   return new Response(file, { headers: { "Cache-Control": "no-cache" } });
 }
 

@@ -88,4 +88,6 @@ test("static files are served fresh and traversal is blocked", async () => {
   expect(await res.text()).toContain("map");
   expect((await fetch(base + "/../package.json")).status).toBe(404);
   expect((await fetch(base + "/missing.js")).status).toBe(404);
+  expect((await fetch(base + "/%E0%A4%A")).status).toBe(404);
+  expect((await fetch(base + "/%00")).status).toBe(404);
 });
