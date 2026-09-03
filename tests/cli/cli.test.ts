@@ -151,3 +151,14 @@ test("--stdin merges a JSON object under the flags", () => {
   expect(result.code).toBe(0);
   expect(result.json).toMatchObject({ slug: "queues", summary: "Async work." });
 });
+
+test("island update --x --y round-trips", () => {
+  cli(["domain", "add", "--slug", "sd", "--name", "System Design"]);
+  cli(["island", "add", "--domain", "sd", "--slug", "caching", "--name", "Caching"]);
+  expect(cli(["island", "show", "--domain", "sd", "--slug", "caching"]).json).toMatchObject({ x: null, y: null });
+  const updated = cli(["island", "update", "--domain", "sd", "--slug", "caching", "--x", "250", "--y", "750.5"]);
+  expect(updated.code).toBe(0);
+  expect(updated.json).toMatchObject({ x: 250, y: 750.5 });
+  expect(cli(["island", "list", "--domain", "sd"]).json.islands[0]).toMatchObject({ x: 250, y: 750.5 });
+  expect(cli(["island", "update", "--domain", "sd", "--slug", "caching", "--x", "1200"]).code).toBe(1);
+});

@@ -16,6 +16,8 @@ export type IslandView = {
   hasChildren: boolean;
   verdict: VerdictView | null;
   children: { total: number; byState: RollupState };
+  x: number | null;
+  y: number | null;
 };
 export type StraitView = { from: string; to: string; name: string | null; verdict: VerdictView | null };
 export type Snapshot = {
@@ -65,6 +67,8 @@ export function buildSnapshot(db: Database, domainSlug: string, scaleSlug: strin
       hasChildren: children.length > 0,
       verdict: toView(islandVerdicts.get(island.id)),
       children: { total: children.length, byState },
+      x: island.x,
+      y: island.y,
     };
   });
 

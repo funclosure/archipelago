@@ -2,7 +2,7 @@ import { test, expect, beforeEach } from "bun:test";
 import type { Database } from "bun:sqlite";
 import { openDatabase } from "../../src/core/db.ts";
 import { upsertDomain } from "../../src/core/repositories/domainRepository.ts";
-import { upsertIsland } from "../../src/core/repositories/islandRepository.ts";
+import { upsertIsland, updateIsland } from "../../src/core/repositories/islandRepository.ts";
 import { upsertStrait } from "../../src/core/repositories/straitRepository.ts";
 import { addVerdict } from "../../src/core/repositories/verdictRepository.ts";
 import { addComment } from "../../src/core/repositories/commentRepository.ts";
@@ -86,4 +86,11 @@ test("focus, unread count, version, and target formatting", () => {
 test("unknown domain or scale throws NotFoundError", () => {
   expect(() => buildSnapshot(db, "nope", null)).toThrow(NotFoundError);
   expect(() => buildSnapshot(db, "sd", "nope")).toThrow(NotFoundError);
+});
+
+test("snapshot islands carry their positions", () => {
+  updateIsland(db, domainId, "caching", { x: 100, y: 200 });
+  const snap = buildSnapshot(db, "sd", null);
+  expect(snap.islands.find((i) => i.slug === "caching")).toMatchObject({ x: 100, y: 200 });
+  expect(snap.islands.find((i) => i.slug === "queues")).toMatchObject({ x: null, y: null });
 });

@@ -1,5 +1,5 @@
 import { test, expect } from "bun:test";
-import { parseTarget, verdictInputSchema, islandInputSchema } from "../../src/core/validators.ts";
+import { parseTarget, verdictInputSchema, islandInputSchema, positionsInputSchema, islandUpdateSchema } from "../../src/core/validators.ts";
 import { ArchipelagoError, NotFoundError } from "../../src/core/errors.ts";
 
 test("parseTarget reads island and strait targets", () => {
@@ -32,4 +32,17 @@ test("island slugs are lowercase kebab", () => {
 test("errors serialise to { error, valid }", () => {
   expect(new NotFoundError("no island x", ["a", "b"]).toJSON()).toEqual({ error: "no island x", valid: ["a", "b"] });
   expect(new ArchipelagoError("plain").toJSON()).toEqual({ error: "plain" });
+});
+
+test("positions are 0..1000 numbers and never empty", () => {
+  const ok = positionsInputSchema.safeParse({ domain: "sd", positions: [{ island: "caching", x: "12.5", y: 999 }] });
+  expect(ok.success).toBe(true);
+  expect(ok.data!.positions[0]).toEqual({ island: "caching", x: 12.5, y: 999 });
+  expect(positionsInputSchema.safeParse({ domain: "sd", positions: [] }).success).toBe(false);
+  expect(positionsInputSchema.safeParse({ domain: "sd", positions: [{ island: "caching", x: 1001, y: 0 }] }).success).toBe(false);
+  expect(positionsInputSchema.safeParse({ domain: "sd", positions: [{ island: "caching", x: -1, y: 0 }] }).success).toBe(false);
+  expect(positionsInputSchema.safeParse({ domain: "sd", positions: [{ island: "caching", x: "", y: 0 }] }).success).toBe(false);
+  expect(positionsInputSchema.safeParse({ domain: "sd", positions: [{ island: "Caching", x: 1, y: 0 }] }).success).toBe(false);
+  expect(islandUpdateSchema.safeParse({ domain: "sd", slug: "caching", x: "40" }).success).toBe(true);
+  expect(islandUpdateSchema.safeParse({ domain: "sd", slug: "caching", y: 2000 }).success).toBe(false);
 });

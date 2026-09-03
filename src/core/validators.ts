@@ -9,6 +9,9 @@ export const slugSchema = z
 /** A number, or a non-empty string coerced to one; "" is rejected instead of becoming 0. */
 const numberInput = z.union([z.number(), z.string().trim().min(1, "expected a number")]).pipe(z.coerce.number());
 
+/** A map coordinate in the 1000-unit world. */
+const coordinate = numberInput.pipe(z.number().min(0).max(1000));
+
 export const domainInputSchema = z.object({
   slug: slugSchema,
   name: z.string().min(1),
@@ -29,6 +32,8 @@ export const islandUpdateSchema = z.object({
   name: z.string().min(1).optional(),
   summary: z.string().optional(),
   order: numberInput.pipe(z.number().int()).optional(),
+  x: coordinate.optional(),
+  y: coordinate.optional(),
 });
 
 export const straitInputSchema = z.object({
@@ -60,6 +65,11 @@ export const commentInputSchema = z.object({
 export const focusInputSchema = z.object({
   domain: slugSchema,
   island: slugSchema.nullable(),
+});
+
+export const positionsInputSchema = z.object({
+  domain: slugSchema,
+  positions: z.array(z.object({ island: slugSchema, x: coordinate, y: coordinate })).min(1),
 });
 
 export const sessionEndInputSchema = z.object({

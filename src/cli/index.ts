@@ -101,13 +101,17 @@ common(
   ),
 );
 common(
-  island.command("update").option("--domain <slug>").option("--slug <slug>").option("--name <name>").option("--summary <text>").option("--order <n>"),
+  island.command("update")
+    .option("--domain <slug>").option("--slug <slug>").option("--name <name>").option("--summary <text>").option("--order <n>")
+    .option("--x <n>", "map position, 0..1000").option("--y <n>", "map position, 0..1000"),
 ).action(
   run((o) =>
     withDb((db) => {
       const input = islandUpdateSchema.parse(o);
       const d = requireDomain(db, input.domain);
-      return updateIsland(db, d.id, input.slug, { name: input.name, summary: input.summary, sortOrder: input.order });
+      return updateIsland(db, d.id, input.slug, {
+        name: input.name, summary: input.summary, sortOrder: input.order, x: input.x, y: input.y,
+      });
     }),
   ),
 );
