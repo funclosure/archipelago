@@ -659,7 +659,7 @@ Replace `src/web/camera.js` with:
 
 import { WORLD } from "./view-model.js";
 
-const MARGIN = 0.12; // of the shorter viewport side, each edge
+const MARGIN = 0.06; // of the shorter viewport side, each edge
 
 export function createCamera() {
   const cam = { x: 0, y: 0, scale: 1 };
@@ -725,7 +725,7 @@ The home scale is about 0.6 on a laptop window, so pixel sizes written for a 1:1
 - In `drawIsland`, the contour rings: `ctx.lineWidth = 1.2;` → `ctx.lineWidth = 1.8;`.
 - In `drawReef`: `ctx.lineWidth = 3;` → `ctx.lineWidth = 4.5;`; the glyph triangle `gy - 8`, `gx + 7, gy + 5`, `gx - 7, gy + 5` → `gy - 12`, `gx + 10, gy + 7`, `gx - 10, gy + 7`; the "!" font `"bold 9px system-ui, sans-serif"` → `"bold 13px system-ui, sans-serif"` and its `gy + 1` → `gy + 2`.
 - In `drawRollup`: `const r = node.radius * grow + 9;` → `const r = node.radius * grow + 13;` and the dot `ctx.arc(..., 3, ...)` → `ctx.arc(..., 4.5, ...)`.
-- In `drawLabel`: `ctx.font = "13px Georgia, 'Times New Roman', serif";` → `ctx.font = "19px Georgia, 'Times New Roman', serif";` and `const offset = ... ? 18 : 8;` → `const offset = ... ? 26 : 12;`.
+- In `drawLabel`: `ctx.font = "13px Georgia, 'Times New Roman', serif";` → `ctx.font = "24px Georgia, 'Times New Roman', serif";` and `const offset = ... ? 18 : 8;` → `const offset = ... ? 30 : 14;`.
 - In `drawStrait`: open `ctx.lineWidth = 1.2;` → `1.8`; sandbar `1.2` → `1.8`; settled `2` → `3`; mountainous (the final else) `3.5` → `5`; reef `ctx.lineWidth = 2;` → `3` and its zigzag offset `(i % 2 ? 1 : -1) * 4` → `* 6`.
 
 - [ ] **Step 7: app.js uses the world camera and only simulates unplaced islands**
