@@ -1,4 +1,4 @@
-import { buildNodes, buildLinks } from "./view-model.js";
+import { buildNodes, buildLinks, WORLD } from "./view-model.js";
 import { createSimulation } from "./layout.js";
 import { createCamera } from "./camera.js";
 import { clear, drawIsland, drawStrait } from "./draw.js";
@@ -39,8 +39,8 @@ function resize() {
   canvas.height = Math.round(app.size.h * dpr);
   canvas.style.width = app.size.w + "px";
   canvas.style.height = app.size.h + "px";
-  app.sim.setCenter(app.size.w / 2, app.size.h / 2);
-  app.sim.reheat(0.3);
+  app.camera.fit(app.size.w, app.size.h);
+  app.camera.snapHome();
 }
 
 /** Change scale (null = top level), update the URL, and refetch. */
@@ -71,10 +71,11 @@ function applySnapshot(snapshot) {
   const isFirstSnapshot = app.snapshot === null;
   app.snapshot = snapshot;
   app.version = snapshot.version;
-  app.nodes = buildNodes(snapshot, app.size.w, app.size.h, previous);
+  app.nodes = buildNodes(snapshot, previous);
   app.links = buildLinks(snapshot, app.nodes);
-  app.sim.setGraph(app.nodes, app.links, sameScale ? 0.25 : 1);
-  if (!sameScale) app.camera.animateTo({ x: 0, y: 0, scale: 1 }, 400);
+  // The simulation exists only to place islands that have no stored position; placed ones are pinned.
+  app.sim.setGraph(app.nodes, app.links, unplaced().length ? (sameScale ? 0.5 : 1) : 0);
+  if (!sameScale) app.camera.animateTo(app.camera.home, 400);
   // A reload should still show the terminal's focus, without posting a fresh selection.
   if (isFirstSnapshot) app.selected = snapshot.focus;
   renderChrome();
@@ -105,6 +106,11 @@ export function hitTest(px, py) {
     }
   }
   return best;
+}
+
+/** Nodes the page still has to place (no stored coordinates). */
+export function unplaced() {
+  return app.nodes.filter((n) => !n.placed);
 }
 
 function renderChrome() {
@@ -205,6 +211,7 @@ async function boot() {
     url.searchParams.set("domain", app.domain);
     history.replaceState(null, "", url);
   }
+  app.sim.setCenter(WORLD / 2, WORLD / 2);
   resize();
   window.addEventListener("resize", resize);
   installInteractions(canvas);

@@ -1,6 +1,7 @@
 // Pure helpers: snapshot → drawable nodes and links. No DOM.
+// Coordinates are world units: a fixed 1000 × 1000 square per scale, origin top-left.
 
-export const STATE_MASS = { open: 1, sandbar: 1.5, settled: 2.5, mountainous: 4, reef: 2.5 };
+export const WORLD = 1000;
 
 export function hashSeed(text) {
   let h = 2166136261;
@@ -23,37 +24,67 @@ export function islandState(island) {
   return island.verdict ? island.verdict.state : "open";
 }
 
-/** Own verdict wins; a parent with none takes the heaviest child state; otherwise open. */
-export function rollupMass(island) {
-  if (island.verdict) return STATE_MASS[island.verdict.state];
-  let mass = STATE_MASS.open;
-  for (const s of ["sandbar", "settled", "mountainous", "reef"]) {
-    if (island.children.byState[s] > 0) mass = Math.max(mass, STATE_MASS[s]);
-  }
-  return mass;
+/** Fixed footprint: every island at a scale shares one radius, set by how many islands share the scale. */
+export function islandRadius(count) {
+  return Math.min(64, Math.max(38, 140 / Math.sqrt(Math.max(1, count))));
 }
 
+const clampWorld = (v) => Math.min(WORLD, Math.max(0, v));
 const now = () => (typeof performance !== "undefined" ? performance.now() : Date.now());
 
-export function buildNodes(snapshot, width, height, previous = new Map()) {
+/**
+ * A starting spot for an island the page has not placed yet: near the centroid of its placed
+ * strait neighbours, else near the world centre, offset by a seeded angle so siblings never coincide.
+ */
+function provisionalPosition(snapshot, island, placedBySlug, radius) {
+  const rnd = seededRandom(hashSeed(snapshot.domain.slug + "/" + island.slug));
+  const angle = rnd() * Math.PI * 2;
+  const offset = radius * (1.5 + rnd());
+  const neighbours = snapshot.straits
+    .filter((s) => s.from === island.slug || s.to === island.slug)
+    .map((s) => placedBySlug.get(s.from === island.slug ? s.to : s.from))
+    .filter(Boolean);
+  let cx = WORLD / 2;
+  let cy = WORLD / 2;
+  if (neighbours.length) {
+    cx = neighbours.reduce((sum, n) => sum + n.x, 0) / neighbours.length;
+    cy = neighbours.reduce((sum, n) => sum + n.y, 0) / neighbours.length;
+  }
+  return { x: clampWorld(cx + Math.cos(angle) * offset), y: clampWorld(cy + Math.sin(angle) * offset) };
+}
+
+export function buildNodes(snapshot, previous = new Map()) {
+  const radius = islandRadius(snapshot.islands.length);
+  const placedBySlug = new Map(snapshot.islands.filter((i) => i.x !== null && i.y !== null).map((i) => [i.slug, i]));
   return snapshot.islands.map((island) => {
     const prev = previous.get(island.slug);
-    const rnd = seededRandom(hashSeed(snapshot.domain.slug + "/" + island.slug));
-    const mass = rollupMass(island);
     const state = islandState(island);
+    const placed = island.x !== null && island.y !== null;
+    let x;
+    let y;
+    if (placed) {
+      x = island.x;
+      y = island.y;
+    } else if (prev) {
+      x = prev.x;
+      y = prev.y;
+    } else {
+      ({ x, y } = provisionalPosition(snapshot, island, placedBySlug, radius));
+    }
     return {
       slug: island.slug,
       name: island.name,
       island,
       state,
-      mass,
-      radius: 22 + 9 * mass,
+      mass: 1,
+      radius,
       seed: hashSeed(island.slug),
-      x: prev ? prev.x : width * (0.25 + 0.5 * rnd()),
-      y: prev ? prev.y : height * (0.25 + 0.5 * rnd()),
-      vx: prev ? prev.vx : 0,
-      vy: prev ? prev.vy : 0,
-      pinned: prev ? prev.pinned : false,
+      placed,
+      x,
+      y,
+      vx: prev && !placed ? prev.vx : 0,
+      vy: prev && !placed ? prev.vy : 0,
+      pinned: placed,
       changedAt: prev ? (prev.state !== state ? now() : prev.changedAt) : now(),
     };
   });

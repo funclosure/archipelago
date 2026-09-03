@@ -1,8 +1,8 @@
 import { test, expect } from "bun:test";
-import { hashSeed, seededRandom, rollupMass, buildNodes, buildLinks, STATE_MASS } from "../../src/web/view-model.js";
+import { hashSeed, seededRandom, islandRadius, buildNodes, buildLinks, WORLD } from "../../src/web/view-model.js";
 
-const island = (slug, verdict = null, byState = { sandbar: 0, settled: 0, mountainous: 0, reef: 0, open: 0 }) => ({
-  slug, name: slug, summary: null, hasChildren: Object.values(byState).some(Boolean), verdict,
+const island = (slug, verdict = null, pos = { x: null, y: null }, byState = { sandbar: 0, settled: 0, mountainous: 0, reef: 0, open: 0 }) => ({
+  slug, name: slug, summary: null, hasChildren: Object.values(byState).some(Boolean), verdict, x: pos.x, y: pos.y,
   children: { total: Object.values(byState).reduce((a, b) => a + b, 0), byState },
 });
 const snapshot = (islands, straits = []) => ({
@@ -16,26 +16,50 @@ test("hashSeed and seededRandom are deterministic", () => {
   expect([a(), a(), a()]).toEqual([b(), b(), b()]);
 });
 
-test("rollupMass uses own verdict, else the heaviest child state, else open", () => {
-  expect(rollupMass(island("a", { state: "mountainous" }))).toBe(STATE_MASS.mountainous);
-  expect(rollupMass(island("a", null, { sandbar: 1, settled: 2, mountainous: 0, reef: 0, open: 3 }))).toBe(STATE_MASS.settled);
-  expect(rollupMass(island("a"))).toBe(STATE_MASS.open);
+test("radius depends on the island count at a scale, never on the verdict", () => {
+  expect(islandRadius(1)).toBe(64);
+  expect(islandRadius(9)).toBeCloseTo(140 / 3, 5);
+  expect(islandRadius(100)).toBe(38);
+  const nodes = buildNodes(snapshot([island("a", { state: "mountainous" }), island("b"), island("c", { state: "reef" })]));
+  expect(new Set(nodes.map((n) => n.radius)).size).toBe(1);
+  expect(nodes[0].radius).toBe(islandRadius(3));
+  expect(nodes.every((n) => n.mass === 1)).toBe(true);
 });
 
-test("buildNodes seeds positions stably and keeps previous positions", () => {
-  const first = buildNodes(snapshot([island("caching"), island("queues")]), 1000, 800);
-  const again = buildNodes(snapshot([island("caching"), island("queues")]), 1000, 800);
-  expect(first.map((n) => [n.x, n.y])).toEqual(again.map((n) => [n.x, n.y]));
-  const previous = new Map(first.map((n) => [n.slug, { ...n, x: 5, y: 6, state: "open" }]));
-  const next = buildNodes(snapshot([island("caching", { state: "settled" }), island("queues")]), 1000, 800, previous);
-  expect(next[0].x).toBe(5);
-  expect(next[0].state).toBe("settled");
+test("placed islands sit exactly at their stored coordinates, pinned, across rebuilds and verdict changes", () => {
+  const first = buildNodes(snapshot([island("caching", null, { x: 120, y: 640 })]));
+  expect(first[0]).toMatchObject({ x: 120, y: 640, placed: true, pinned: true });
+  const previous = new Map(first.map((n) => [n.slug, { ...n, x: 5, y: 6 }]));
+  const next = buildNodes(snapshot([island("caching", { state: "settled" }, { x: 120, y: 640 })]), previous);
+  expect(next[0]).toMatchObject({ x: 120, y: 640, placed: true, state: "settled" });
   expect(next[0].changedAt).toBeGreaterThan(0);
-  expect(next[1].changedAt).toBe(previous.get("queues").changedAt);
+});
+
+test("unplaced islands start near their placed strait neighbours, else near the centre, and keep provisional spots", () => {
+  const snap = snapshot(
+    [island("a", null, { x: 100, y: 100 }), island("b", null, { x: 300, y: 100 }), island("c"), island("d")],
+    [{ from: "a", to: "c", name: null, verdict: null }, { from: "b", to: "c", name: null, verdict: null }],
+  );
+  const nodes = buildNodes(snap);
+  const c = nodes.find((n) => n.slug === "c");
+  const d = nodes.find((n) => n.slug === "d");
+  expect(c.placed).toBe(false);
+  expect(Math.hypot(c.x - 200, c.y - 100)).toBeLessThan(200);
+  expect(Math.hypot(d.x - WORLD / 2, d.y - WORLD / 2)).toBeLessThan(200);
+  expect(Math.hypot(c.x - d.x, c.y - d.y)).toBeGreaterThan(1);
+  for (const n of nodes) {
+    expect(n.x).toBeGreaterThanOrEqual(0);
+    expect(n.x).toBeLessThanOrEqual(WORLD);
+    expect(n.y).toBeGreaterThanOrEqual(0);
+    expect(n.y).toBeLessThanOrEqual(WORLD);
+  }
+  const previous = new Map(nodes.map((n) => [n.slug, { ...n, x: 777, y: 888 }]));
+  const again = buildNodes(snap, previous);
+  expect(again.find((n) => n.slug === "c")).toMatchObject({ x: 777, y: 888, placed: false, pinned: false });
 });
 
 test("buildLinks joins nodes by slug and skips unknown ends", () => {
-  const nodes = buildNodes(snapshot([island("a"), island("b")]), 800, 600);
+  const nodes = buildNodes(snapshot([island("a"), island("b")]));
   const links = buildLinks(snapshot([], [{ from: "a", to: "b", name: null, verdict: { state: "reef" } }, { from: "a", to: "zzz", name: null, verdict: null }]), nodes);
   expect(links).toHaveLength(1);
   expect(links[0].source.slug).toBe("a");

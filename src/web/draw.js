@@ -63,7 +63,7 @@ export function drawIsland(ctx, node, { dim = false, spotlight = false, now = 0 
   if (state === "open") {
     tracePath(ctx, outline(node, grow));
     ctx.setLineDash([6, 6]);
-    ctx.lineWidth = 1.2;
+    ctx.lineWidth = 1.8;
     ctx.strokeStyle = PALETTE.muted;
     ctx.stroke();
     ctx.setLineDash([]);
@@ -83,7 +83,7 @@ export function drawIsland(ctx, node, { dim = false, spotlight = false, now = 0 
       for (const s of [0.66, 0.4]) {
         tracePath(ctx, outline(node, grow * s));
         ctx.strokeStyle = PALETTE.ridge;
-        ctx.lineWidth = 1.2;
+        ctx.lineWidth = 1.8;
         ctx.stroke();
       }
       tracePath(ctx, outline(node, grow * 0.22));
@@ -111,24 +111,24 @@ function drawReef(ctx, node, grow) {
     else ctx.lineTo(x, y);
   }
   ctx.strokeStyle = PALETTE.reef;
-  ctx.lineWidth = 3;
+  ctx.lineWidth = 4.5;
   ctx.lineJoin = "round";
   ctx.stroke();
 
   const gx = node.x + r * 0.85;
   const gy = node.y - r * 0.85;
   ctx.beginPath();
-  ctx.moveTo(gx, gy - 8);
-  ctx.lineTo(gx + 7, gy + 5);
-  ctx.lineTo(gx - 7, gy + 5);
+  ctx.moveTo(gx, gy - 12);
+  ctx.lineTo(gx + 10, gy + 7);
+  ctx.lineTo(gx - 10, gy + 7);
   ctx.closePath();
   ctx.fillStyle = PALETTE.reef;
   ctx.fill();
   ctx.fillStyle = PALETTE.water;
-  ctx.font = "bold 9px system-ui, sans-serif";
+  ctx.font = "bold 13px system-ui, sans-serif";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  ctx.fillText("!", gx, gy + 1);
+  ctx.fillText("!", gx, gy + 2);
 }
 
 /** Ring of dots around a parent with no verdict of its own: one dot per islet, coloured by state. */
@@ -136,12 +136,12 @@ function drawRollup(ctx, node, grow) {
   const by = node.island.children.byState;
   const dots = [];
   for (const s of ["mountainous", "settled", "sandbar", "reef", "open"]) for (let i = 0; i < by[s]; i++) dots.push(s);
-  const r = node.radius * grow + 9;
+  const r = node.radius * grow + 13;
   const fill = { reef: PALETTE.reef, sandbar: PALETTE.sand, mountainous: PALETTE.ridge, settled: PALETTE.land };
   dots.forEach((s, i) => {
     const a = -Math.PI / 2 + (i / dots.length) * Math.PI * 2;
     ctx.beginPath();
-    ctx.arc(node.x + Math.cos(a) * r, node.y + Math.sin(a) * r, 3, 0, Math.PI * 2);
+    ctx.arc(node.x + Math.cos(a) * r, node.y + Math.sin(a) * r, 4.5, 0, Math.PI * 2);
     if (s === "open") {
       ctx.strokeStyle = PALETTE.muted;
       ctx.lineWidth = 1;
@@ -154,11 +154,11 @@ function drawRollup(ctx, node, grow) {
 }
 
 function drawLabel(ctx, node, grow, hasOwnVerdict) {
-  ctx.font = "13px Georgia, 'Times New Roman', serif";
+  ctx.font = "19px Georgia, 'Times New Roman', serif";
   ctx.textAlign = "center";
   ctx.textBaseline = "top";
   ctx.fillStyle = node.state === "open" ? PALETTE.muted : PALETTE.text;
-  const offset = !hasOwnVerdict && node.island.children.total > 0 ? 18 : 8;
+  const offset = !hasOwnVerdict && node.island.children.total > 0 ? 26 : 12;
   ctx.fillText(node.name, node.x, node.y + node.radius * grow + offset);
 }
 
@@ -185,14 +185,14 @@ export function drawStrait(ctx, link, { dim = false } = {}) {
     ctx.beginPath();
     for (let i = 0; i <= steps; i++) {
       const t = i / steps;
-      const off = (i % 2 ? 1 : -1) * 4;
+      const off = (i % 2 ? 1 : -1) * 6;
       const x = x1 + (x2 - x1) * t + nx * off;
       const y = y1 + (y2 - y1) * t + ny * off;
       if (i === 0) ctx.moveTo(x, y);
       else ctx.lineTo(x, y);
     }
     ctx.strokeStyle = PALETTE.reef;
-    ctx.lineWidth = 2;
+    ctx.lineWidth = 3;
     ctx.stroke();
   } else {
     ctx.beginPath();
@@ -201,16 +201,16 @@ export function drawStrait(ctx, link, { dim = false } = {}) {
     if (link.state === "open") {
       ctx.setLineDash([4, 8]);
       ctx.strokeStyle = PALETTE.channel;
-      ctx.lineWidth = 1.2;
+      ctx.lineWidth = 1.8;
     } else if (link.state === "sandbar") {
       ctx.strokeStyle = PALETTE.sand;
-      ctx.lineWidth = 1.2;
+      ctx.lineWidth = 1.8;
     } else if (link.state === "settled") {
       ctx.strokeStyle = PALETTE.land;
-      ctx.lineWidth = 2;
+      ctx.lineWidth = 3;
     } else {
       ctx.strokeStyle = PALETTE.land;
-      ctx.lineWidth = 3.5;
+      ctx.lineWidth = 5;
     }
     ctx.stroke();
     ctx.setLineDash([]);

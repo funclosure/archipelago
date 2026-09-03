@@ -1,11 +1,30 @@
-// Pan/zoom camera with a short eased animation. World → screen is (x * scale + cam.x).
+// Pan/zoom camera over the 1000-unit world. World → screen is (x * scale + cam.x).
+// `fit` computes the home framing for a viewport; pan and wheel adjust the camera on top of it.
+
+import { WORLD } from "./view-model.js";
+
+const MARGIN = 0.12; // of the shorter viewport side, each edge
 
 export function createCamera() {
   const cam = { x: 0, y: 0, scale: 1 };
+  let home = { x: 0, y: 0, scale: 1 };
   let anim = null;
 
   return {
     state: cam,
+    get home() {
+      return home;
+    },
+    /** The framing that fits the whole world into a w × h viewport, centred, with a margin. */
+    fit(w, h) {
+      const scale = (Math.min(w, h) * (1 - 2 * MARGIN)) / WORLD;
+      home = { x: (w - WORLD * scale) / 2, y: (h - WORLD * scale) / 2, scale };
+      return home;
+    },
+    snapHome() {
+      Object.assign(cam, home);
+      anim = null;
+    },
     apply(ctx, dpr) {
       ctx.setTransform(cam.scale * dpr, 0, 0, cam.scale * dpr, cam.x * dpr, cam.y * dpr);
     },
@@ -18,7 +37,7 @@ export function createCamera() {
       anim = null;
     },
     zoomAt(px, py, factor) {
-      const next = Math.min(4, Math.max(0.3, cam.scale * factor));
+      const next = Math.min(home.scale * 6, Math.max(home.scale * 0.5, cam.scale * factor));
       const k = next / cam.scale;
       cam.x = px - (px - cam.x) * k;
       cam.y = py - (py - cam.y) * k;
@@ -37,10 +56,6 @@ export function createCamera() {
       cam.scale = anim.from.scale + (anim.to.scale - anim.from.scale) * e;
       if (t >= 1) anim = null;
       return true;
-    },
-    /** The camera state that centres world point (wx, wy) in a (w × h) viewport at `scale`. */
-    framing(wx, wy, w, h, scale) {
-      return { x: w / 2 - wx * scale, y: h / 2 - wy * scale, scale };
     },
   };
 }
