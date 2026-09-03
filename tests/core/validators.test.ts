@@ -21,6 +21,7 @@ test("verdict input rejects unknown states and out-of-range confidence", () => {
   expect(verdictInputSchema.safeParse({ ...base, state: "open", confidence: 0.8 }).success).toBe(false);
   expect(verdictInputSchema.safeParse({ ...base, state: "reef", confidence: 1.2 }).success).toBe(false);
   expect(verdictInputSchema.safeParse({ ...base, state: "reef", confidence: "0.7" }).success).toBe(true);
+  expect(verdictInputSchema.safeParse({ ...base, state: "reef", confidence: "" }).success).toBe(false);
 });
 
 test("island slugs are lowercase kebab", () => {

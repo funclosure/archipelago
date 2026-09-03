@@ -16,34 +16,36 @@ export type IslandUpsert = {
 };
 
 export function upsertIsland(db: Database, input: IslandUpsert): Island {
-  const existing = getIsland(db, input.domainId, input.slug);
-  if (existing && input.parentId != null) {
-    assertNotDescendant(db, existing, input.parentId);
-    if (input.parentId !== existing.parentId) {
-      // A moved island has new siblings; its old straits would join non-siblings, so they go.
-      db.run("delete from straits where from_island_id = ? or to_island_id = ?", [existing.id, existing.id]);
+  return db.transaction(() => {
+    const existing = getIsland(db, input.domainId, input.slug);
+    if (existing && input.parentId != null) {
+      assertNotDescendant(db, existing, input.parentId);
+      if (input.parentId !== existing.parentId) {
+        // A moved island has new siblings; its old straits would join non-siblings, so they go.
+        db.run("delete from straits where from_island_id = ? or to_island_id = ?", [existing.id, existing.id]);
+      }
     }
-  }
-  return db
-    .query<Island, Record<string, string | number | null>>(
-      `insert into islands (domain_id, slug, name, summary, parent_id, sort_order)
-       values ($domainId, $slug, $name, $summary, $parentId, coalesce($sortOrder, 0))
-       on conflict(domain_id, slug) do update set
-         name = excluded.name,
-         summary = coalesce(excluded.summary, islands.summary),
-         parent_id = coalesce(excluded.parent_id, islands.parent_id),
-         sort_order = coalesce($sortOrder, islands.sort_order),
-         updated_at = ${NOW}
-       returning ${COLS}`,
-    )
-    .get({
-      $domainId: input.domainId,
-      $slug: input.slug,
-      $name: input.name,
-      $summary: input.summary ?? null,
-      $parentId: input.parentId ?? null,
-      $sortOrder: input.sortOrder ?? null,
-    })!;
+    return db
+      .query<Island, Record<string, string | number | null>>(
+        `insert into islands (domain_id, slug, name, summary, parent_id, sort_order)
+         values ($domainId, $slug, $name, $summary, $parentId, coalesce($sortOrder, 0))
+         on conflict(domain_id, slug) do update set
+           name = excluded.name,
+           summary = coalesce(excluded.summary, islands.summary),
+           parent_id = coalesce(excluded.parent_id, islands.parent_id),
+           sort_order = coalesce($sortOrder, islands.sort_order),
+           updated_at = ${NOW}
+         returning ${COLS}`,
+      )
+      .get({
+        $domainId: input.domainId,
+        $slug: input.slug,
+        $name: input.name,
+        $summary: input.summary ?? null,
+        $parentId: input.parentId ?? null,
+        $sortOrder: input.sortOrder ?? null,
+      })!;
+  })();
 }
 
 export function updateIsland(

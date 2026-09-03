@@ -74,6 +74,9 @@ create table view_state (
 create trigger domains_ai after insert on domains begin
   insert into view_state (domain_id) values (new.id);
 end;
+create trigger domains_au after update on domains begin
+  update view_state set version = version + 1 where domain_id = new.id;
+end;
 
 create trigger islands_ai after insert on islands begin
   update view_state set version = version + 1 where domain_id = new.domain_id;
@@ -87,6 +90,9 @@ create trigger straits_ai after insert on straits begin
 end;
 create trigger straits_au after update on straits begin
   update view_state set version = version + 1 where domain_id = new.domain_id;
+end;
+create trigger straits_ad after delete on straits begin
+  update view_state set version = version + 1 where domain_id = old.domain_id;
 end;
 
 create trigger verdicts_ai after insert on verdicts begin

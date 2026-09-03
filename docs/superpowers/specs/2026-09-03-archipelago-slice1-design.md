@@ -112,7 +112,7 @@ Rules: latest verdict wins; a parent with no verdict of its own shows `children.
 
 `confidence < 0.6` → ask one more question instead of writing. `evidence` = a verbatim quote from the user's answer. `rationale` = one sentence naming which test decided it.
 
-**Reef rule.** A reef is written only when Claude can state (a) the specific false claim and (b) a concrete consequence. Otherwise record a sandbar and a `note` comment. False reefs are worse than missed ones because the map treats a reef as a hazard.
+**Reef rule.** A reef is written only when Claude can state (a) the specific false claim and (b) a concrete consequence. Otherwise record a sandbar and say in the rationale what was unclear. False reefs are worse than missed ones because the map treats a reef as a hazard.
 
 **Straits.** When two neighbouring islands both have verdicts, ask one question about how they relate, then `verdict set --target strait:<a>~<b>`.
 
@@ -174,7 +174,7 @@ POST bodies carry slugs (`domain`, `island`, `targetId` as an island slug or `a~
 
 Rule: unknown must never look like beginner; reef must never look like open water.
 
-**Scale.** Breadcrumb top-left (`System Design › Caching`). Clicking an island with islets sails in: camera zooms, siblings fade, children rise. A breadcrumb click sails out. An island without islets shows a "closer" hint on hover; the action itself lives in the card's **Sail closer** button, which posts `sail_closer`.
+**Scale.** Breadcrumb top-left (`System Design › Caching`). Double-clicking an island that has islets, or its card's **Sail in** button, sails in (camera zooms, siblings fade, children rise); a single click selects. A breadcrumb click sails out. An island without islets shows a "closer" hint on hover; the action itself lives in the card's **Sail closer** button, which posts `sail_closer`.
 
 **Focus.** Hover spotlights and dims the rest. Click selects: posts `/api/focus` and opens a right-side card with state, evidence quote, rationale, verdict history, two buttons (**Probe this** → `probe_me`, **Sail closer** → `sail_closer`), and a one-line note box (`note` or `dispute`).
 

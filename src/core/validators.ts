@@ -6,6 +6,9 @@ export const slugSchema = z
   .string()
   .regex(/^[a-z0-9][a-z0-9-]*$/, "slug must be lowercase letters, digits and hyphens");
 
+/** A number, or a non-empty string coerced to one; "" is rejected instead of becoming 0. */
+const numberInput = z.union([z.number(), z.string().trim().min(1, "expected a number")]).pipe(z.coerce.number());
+
 export const domainInputSchema = z.object({
   slug: slugSchema,
   name: z.string().min(1),
@@ -17,7 +20,7 @@ export const islandInputSchema = z.object({
   name: z.string().min(1),
   summary: z.string().optional(),
   parent: slugSchema.optional(),
-  order: z.coerce.number().int().optional(),
+  order: numberInput.pipe(z.number().int()).optional(),
 });
 
 export const islandUpdateSchema = z.object({
@@ -25,7 +28,7 @@ export const islandUpdateSchema = z.object({
   slug: slugSchema,
   name: z.string().min(1).optional(),
   summary: z.string().optional(),
-  order: z.coerce.number().int().optional(),
+  order: numberInput.pipe(z.number().int()).optional(),
 });
 
 export const straitInputSchema = z.object({
@@ -40,7 +43,7 @@ export const verdictInputSchema = z.object({
   domain: slugSchema,
   target: z.string().min(1),
   state: z.enum(verdictStates),
-  confidence: z.coerce.number().min(0).max(1),
+  confidence: numberInput.pipe(z.number().min(0).max(1)),
   evidence: z.string().min(1),
   rationale: z.string().optional(),
 });

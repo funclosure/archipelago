@@ -48,3 +48,19 @@ test("a write in one domain does not bump another", () => {
   upsertIsland(db, { domainId: other, slug: "swiftui", name: "SwiftUI" });
   expect(version()).toBe(0);
 });
+
+test("renaming a domain bumps its version by 1", () => {
+  const before = version();
+  upsertDomain(db, { slug: "sd", name: "Systems Design" });
+  expect(version()).toBe(before + 1);
+});
+
+test("reparenting an island with one strait bumps the version by exactly 2", () => {
+  const a = upsertIsland(db, { domainId, slug: "caching", name: "Caching" });
+  const b = upsertIsland(db, { domainId, slug: "databases", name: "Databases" });
+  const c = upsertIsland(db, { domainId, slug: "queues", name: "Queues" });
+  upsertStrait(db, { domainId, fromIslandId: a.id, toIslandId: b.id });
+  const before = version();
+  upsertIsland(db, { domainId, slug: "caching", name: "Caching", parentId: c.id });
+  expect(version() - before).toBe(2);
+});

@@ -17,12 +17,46 @@ export type ServerContext = { dbPath?: string; staticRoot: string };
 export async function handleRequest(req: Request, ctx: ServerContext): Promise<Response> {
   const url = new URL(req.url);
   try {
-    if (url.pathname.startsWith("/api/")) return await handleApi(req, url, ctx);
+    if (url.pathname.startsWith("/api/")) {
+      if (req.method === "POST") {
+        const guard = crossSitePostGuard(req, url);
+        if (guard) return guard;
+      }
+      return await handleApi(req, url, ctx);
+    }
     if (req.method !== "GET") return json({ error: "method not allowed" }, 405);
     return await serveStatic(url.pathname, ctx.staticRoot);
   } catch (error) {
     return errorResponse(error);
   }
+}
+
+/**
+ * Blocks cross-site writes: a POST must carry an `application/json` body, and if it names an
+ * Origin or Host, that must point at this server (127.0.0.1/localhost on the request's own port).
+ */
+function crossSitePostGuard(req: Request, url: URL): Response | null {
+  const contentType = req.headers.get("content-type") ?? "";
+  if (!contentType.startsWith("application/json")) {
+    return json({ error: "expected application/json" }, 415);
+  }
+  const denied = () => json({ error: "cross-origin writes are not allowed" }, 403);
+  const origin = req.headers.get("origin");
+  if (origin !== null) {
+    const allowed = new Set([`http://127.0.0.1:${url.port}`, `http://localhost:${url.port}`]);
+    if (!allowed.has(origin)) return denied();
+  }
+  const host = req.headers.get("host");
+  if (host !== null) {
+    let hostname: string;
+    try {
+      hostname = new URL(`http://${host}`).hostname;
+    } catch {
+      return denied();
+    }
+    if (hostname !== "127.0.0.1" && hostname !== "localhost") return denied();
+  }
+  return null;
 }
 
 function withDb<T>(ctx: ServerContext, fn: (db: Database) => T): T {

@@ -126,6 +126,25 @@ test("errors carry valid slugs and exit 1", () => {
   expect(unknownCmd.json.error).not.toContain("\n");
 });
 
+test("reparenting an island drops its straits, visibly and atomically", () => {
+  cli(["domain", "add", "--slug", "sd", "--name", "System Design"]);
+  cli(["island", "add", "--domain", "sd", "--slug", "caching", "--name", "Caching"]);
+  cli(["island", "add", "--domain", "sd", "--slug", "databases", "--name", "Databases"]);
+  cli(["strait", "add", "--domain", "sd", "--from", "caching", "--to", "databases"]);
+
+  const moved = cli(["island", "add", "--domain", "sd", "--slug", "caching", "--name", "Caching", "--parent", "databases"]);
+  expect(moved.code).toBe(0);
+  expect(moved.json.moved).toEqual({ fromParentId: null, straitsDropped: 1 });
+  expect(cli(["strait", "list", "--domain", "sd"]).json.straits).toEqual([]);
+});
+
+test("comment mark-read requires --id or --all", () => {
+  cli(["domain", "add", "--slug", "sd", "--name", "System Design"]);
+  const result = cli(["comment", "mark-read", "--domain", "sd"]);
+  expect(result.code).toBe(1);
+  expect(result.json.error).toContain("--all");
+});
+
 test("--stdin merges a JSON object under the flags", () => {
   cli(["domain", "add", "--slug", "sd", "--name", "System Design"]);
   const result = cli(["island", "add", "--domain", "sd", "--stdin"], { slug: "queues", name: "Queues", summary: "Async work." });

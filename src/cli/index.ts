@@ -9,9 +9,9 @@ import {
 } from "../core/validators.ts";
 import { listDomains, requireDomain, upsertDomain } from "../core/repositories/domainRepository.ts";
 import {
-  getIslandById, islandPath, listIslands, requireIsland, updateIsland, upsertIsland,
+  getIsland, getIslandById, islandPath, listIslands, requireIsland, updateIsland, upsertIsland,
 } from "../core/repositories/islandRepository.ts";
-import { listStraits, upsertStrait } from "../core/repositories/straitRepository.ts";
+import { countStraitsTouching, listStraits, upsertStrait } from "../core/repositories/straitRepository.ts";
 import { addVerdict, latestVerdict, latestVerdicts, verdictHistory } from "../core/repositories/verdictRepository.ts";
 import { activeSession, endSession, listSessions, startSession } from "../core/repositories/sessionRepository.ts";
 import { markCommentsRead } from "../core/repositories/commentRepository.ts";
@@ -88,10 +88,15 @@ common(
       const input = islandInputSchema.parse(o);
       const d = requireDomain(db, input.domain);
       const parent = input.parent ? requireIsland(db, d.id, input.parent) : null;
-      return upsertIsland(db, {
+      const parentId = parent ? parent.id : null;
+      const existing = getIsland(db, d.id, input.slug);
+      const isMove = Boolean(existing) && parentId !== null && parentId !== existing!.parentId;
+      const straitsDropped = isMove ? countStraitsTouching(db, existing!.id) : 0;
+      const island = upsertIsland(db, {
         domainId: d.id, slug: input.slug, name: input.name, summary: input.summary ?? null,
-        parentId: parent ? parent.id : null, sortOrder: input.order ?? null,
+        parentId, sortOrder: input.order ?? null,
       });
+      return isMove ? { ...island, moved: { fromParentId: existing!.parentId, straitsDropped } } : island;
     }),
   ),
 );
@@ -265,6 +270,7 @@ common(
     withDb((db) => {
       const d = requireDomain(db, slugSchema.parse(o.domain));
       const ids = o.all ? ("all" as const) : (o.id as string[] | undefined)?.map(Number) ?? [];
+      if (!o.all && ids.length === 0) throw new ArchipelagoError("pass --id <n> ... or --all");
       return { marked: markCommentsRead(db, d.id, ids) };
     }),
   ),

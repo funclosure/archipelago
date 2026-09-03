@@ -81,6 +81,28 @@ test("errors map to status codes with { error }", async () => {
   expect((await get("/api/nothing")).status).toBe(404);
 });
 
+test("cross-site POSTs are rejected", async () => {
+  const evil = await fetch(base + "/api/comment", {
+    method: "POST",
+    headers: { "content-type": "application/json", origin: "https://evil.example" },
+    body: JSON.stringify({ domain: "sd", targetType: "island", targetId: "caching", body: "hi", kind: "note" }),
+  });
+  expect(evil.status).toBe(403);
+  expect(await evil.json()).toEqual({ error: "cross-origin writes are not allowed" });
+
+  const wrongType = await fetch(base + "/api/comment", {
+    method: "POST",
+    headers: { "content-type": "text/plain" },
+    body: JSON.stringify({ domain: "sd", targetType: "island", targetId: "caching", body: "hi", kind: "note" }),
+  });
+  expect(wrongType.status).toBe(415);
+  expect(await wrongType.json()).toEqual({ error: "expected application/json" });
+
+  const ok = await post("/api/comment", { domain: "sd", targetType: "island", targetId: "caching", body: "hello", kind: "note" });
+  expect(ok.status).toBe(200);
+  expect(ok.json.comment.kind).toBe("note");
+});
+
 test("static files are served fresh and traversal is blocked", async () => {
   const res = await fetch(base + "/");
   expect(res.status).toBe(200);

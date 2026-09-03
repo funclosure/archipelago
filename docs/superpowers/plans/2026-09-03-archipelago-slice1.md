@@ -255,6 +255,9 @@ create table view_state (
 create trigger domains_ai after insert on domains begin
   insert into view_state (domain_id) values (new.id);
 end;
+create trigger domains_au after update on domains begin
+  update view_state set version = version + 1 where domain_id = new.id;
+end;
 
 create trigger islands_ai after insert on islands begin
   update view_state set version = version + 1 where domain_id = new.domain_id;
@@ -268,6 +271,9 @@ create trigger straits_ai after insert on straits begin
 end;
 create trigger straits_au after update on straits begin
   update view_state set version = version + 1 where domain_id = new.domain_id;
+end;
+create trigger straits_ad after delete on straits begin
+  update view_state set version = version + 1 where domain_id = old.domain_id;
 end;
 
 create trigger verdicts_ai after insert on verdicts begin
@@ -412,6 +418,7 @@ test("verdict input rejects unknown states and out-of-range confidence", () => {
   expect(verdictInputSchema.safeParse({ ...base, state: "open", confidence: 0.8 }).success).toBe(false);
   expect(verdictInputSchema.safeParse({ ...base, state: "reef", confidence: 1.2 }).success).toBe(false);
   expect(verdictInputSchema.safeParse({ ...base, state: "reef", confidence: "0.7" }).success).toBe(true);
+  expect(verdictInputSchema.safeParse({ ...base, state: "reef", confidence: "" }).success).toBe(false);
 });
 
 test("island slugs are lowercase kebab", () => {
@@ -538,6 +545,9 @@ export const slugSchema = z
   .string()
   .regex(/^[a-z0-9][a-z0-9-]*$/, "slug must be lowercase letters, digits and hyphens");
 
+/** A number, or a non-empty string coerced to one; "" is rejected instead of becoming 0. */
+const numberInput = z.union([z.number(), z.string().trim().min(1, "expected a number")]).pipe(z.coerce.number());
+
 export const domainInputSchema = z.object({
   slug: slugSchema,
   name: z.string().min(1),
@@ -549,7 +559,7 @@ export const islandInputSchema = z.object({
   name: z.string().min(1),
   summary: z.string().optional(),
   parent: slugSchema.optional(),
-  order: z.coerce.number().int().optional(),
+  order: numberInput.pipe(z.number().int()).optional(),
 });
 
 export const islandUpdateSchema = z.object({
@@ -557,7 +567,7 @@ export const islandUpdateSchema = z.object({
   slug: slugSchema,
   name: z.string().min(1).optional(),
   summary: z.string().optional(),
-  order: z.coerce.number().int().optional(),
+  order: numberInput.pipe(z.number().int()).optional(),
 });
 
 export const straitInputSchema = z.object({
@@ -572,7 +582,7 @@ export const verdictInputSchema = z.object({
   domain: slugSchema,
   target: z.string().min(1),
   state: z.enum(verdictStates),
-  confidence: z.coerce.number().min(0).max(1),
+  confidence: numberInput.pipe(z.number().min(0).max(1)),
   evidence: z.string().min(1),
   rationale: z.string().optional(),
 });
@@ -2078,6 +2088,25 @@ test("errors carry valid slugs and exit 1", () => {
   expect(unknownCmd.json.error).not.toContain("\n");
 });
 
+test("reparenting an island drops its straits, visibly and atomically", () => {
+  cli(["domain", "add", "--slug", "sd", "--name", "System Design"]);
+  cli(["island", "add", "--domain", "sd", "--slug", "caching", "--name", "Caching"]);
+  cli(["island", "add", "--domain", "sd", "--slug", "databases", "--name", "Databases"]);
+  cli(["strait", "add", "--domain", "sd", "--from", "caching", "--to", "databases"]);
+
+  const moved = cli(["island", "add", "--domain", "sd", "--slug", "caching", "--name", "Caching", "--parent", "databases"]);
+  expect(moved.code).toBe(0);
+  expect(moved.json.moved).toEqual({ fromParentId: null, straitsDropped: 1 });
+  expect(cli(["strait", "list", "--domain", "sd"]).json.straits).toEqual([]);
+});
+
+test("comment mark-read requires --id or --all", () => {
+  cli(["domain", "add", "--slug", "sd", "--name", "System Design"]);
+  const result = cli(["comment", "mark-read", "--domain", "sd"]);
+  expect(result.code).toBe(1);
+  expect(result.json.error).toContain("--all");
+});
+
 test("--stdin merges a JSON object under the flags", () => {
   cli(["domain", "add", "--slug", "sd", "--name", "System Design"]);
   const result = cli(["island", "add", "--domain", "sd", "--stdin"], { slug: "queues", name: "Queues", summary: "Async work." });
@@ -2098,7 +2127,7 @@ Expected: FAIL (the spawned CLI does not exist; `json` is null).
 ```ts
 import type { Database } from "bun:sqlite";
 import { ArchipelagoError } from "./errors.ts";
-import { requireIsland } from "./repositories/islandRepository.ts";
+import { getIslandById, requireIsland } from "./repositories/islandRepository.ts";
 import { requireStrait } from "./repositories/straitRepository.ts";
 import type { CommentTargetType, Domain, VerdictTargetType } from "./types.ts";
 import { parseTarget } from "./validators.ts";
@@ -2115,7 +2144,10 @@ export function resolveVerdictTarget(db: Database, domainId: number, target: str
   const a = requireIsland(db, domainId, parsed.from);
   const b = requireIsland(db, domainId, parsed.to);
   const strait = requireStrait(db, a, b);
-  return { targetType: "strait", targetId: strait.id, label: `strait:${a.slug}~${b.slug}` };
+  // Label from the stored (from, to) order, not the caller's, so it matches formatTarget.
+  const from = getIslandById(db, strait.fromIslandId)!;
+  const to = getIslandById(db, strait.toIslandId)!;
+  return { targetType: "strait", targetId: strait.id, label: `strait:${from.slug}~${to.slug}` };
 }
 
 /** Comment targets arrive as slugs from the page: island slug, `a~b`, or the domain slug. */
@@ -2127,8 +2159,11 @@ export function resolveCommentTarget(
 ): { targetType: CommentTargetType; targetId: number } {
   if (targetType === "domain") return { targetType, targetId: domain.id };
   if (targetType === "island") return { targetType, targetId: requireIsland(db, domain.id, targetId).id };
-  const [from, to] = targetId.split("~");
-  if (!from || !to) throw new ArchipelagoError(`strait targetId must be "<a>~<b>", got "${targetId}"`);
+  const parts = targetId.split("~");
+  if (parts.length !== 2 || !parts[0] || !parts[1]) {
+    throw new ArchipelagoError(`strait targetId must be "<a>~<b>", got "${targetId}"`);
+  }
+  const [from, to] = parts;
   const a = requireIsland(db, domain.id, from);
   const b = requireIsland(db, domain.id, to);
   return { targetType, targetId: requireStrait(db, a, b).id };
@@ -2184,9 +2219,9 @@ import {
 } from "../core/validators.ts";
 import { listDomains, requireDomain, upsertDomain } from "../core/repositories/domainRepository.ts";
 import {
-  getIslandById, islandPath, listIslands, requireIsland, updateIsland, upsertIsland,
+  getIsland, getIslandById, islandPath, listIslands, requireIsland, updateIsland, upsertIsland,
 } from "../core/repositories/islandRepository.ts";
-import { listStraits, upsertStrait } from "../core/repositories/straitRepository.ts";
+import { countStraitsTouching, listStraits, upsertStrait } from "../core/repositories/straitRepository.ts";
 import { addVerdict, latestVerdict, latestVerdicts, verdictHistory } from "../core/repositories/verdictRepository.ts";
 import { activeSession, endSession, listSessions, startSession } from "../core/repositories/sessionRepository.ts";
 import { markCommentsRead } from "../core/repositories/commentRepository.ts";
@@ -2263,10 +2298,15 @@ common(
       const input = islandInputSchema.parse(o);
       const d = requireDomain(db, input.domain);
       const parent = input.parent ? requireIsland(db, d.id, input.parent) : null;
-      return upsertIsland(db, {
+      const parentId = parent ? parent.id : null;
+      const existing = getIsland(db, d.id, input.slug);
+      const isMove = Boolean(existing) && parentId !== null && parentId !== existing!.parentId;
+      const straitsDropped = isMove ? countStraitsTouching(db, existing!.id) : 0;
+      const island = upsertIsland(db, {
         domainId: d.id, slug: input.slug, name: input.name, summary: input.summary ?? null,
-        parentId: parent ? parent.id : null, sortOrder: input.order ?? null,
+        parentId, sortOrder: input.order ?? null,
       });
+      return isMove ? { ...island, moved: { fromParentId: existing!.parentId, straitsDropped } } : island;
     }),
   ),
 );
@@ -2440,6 +2480,7 @@ common(
     withDb((db) => {
       const d = requireDomain(db, slugSchema.parse(o.domain));
       const ids = o.all ? ("all" as const) : (o.id as string[] | undefined)?.map(Number) ?? [];
+      if (!o.all && ids.length === 0) throw new ArchipelagoError("pass --id <n> ... or --all");
       return { marked: markCommentsRead(db, d.id, ids) };
     }),
   ),
@@ -2626,6 +2667,28 @@ test("errors map to status codes with { error }", async () => {
   expect((await get("/api/nothing")).status).toBe(404);
 });
 
+test("cross-site POSTs are rejected", async () => {
+  const evil = await fetch(base + "/api/comment", {
+    method: "POST",
+    headers: { "content-type": "application/json", origin: "https://evil.example" },
+    body: JSON.stringify({ domain: "sd", targetType: "island", targetId: "caching", body: "hi", kind: "note" }),
+  });
+  expect(evil.status).toBe(403);
+  expect(await evil.json()).toEqual({ error: "cross-origin writes are not allowed" });
+
+  const wrongType = await fetch(base + "/api/comment", {
+    method: "POST",
+    headers: { "content-type": "text/plain" },
+    body: JSON.stringify({ domain: "sd", targetType: "island", targetId: "caching", body: "hi", kind: "note" }),
+  });
+  expect(wrongType.status).toBe(415);
+  expect(await wrongType.json()).toEqual({ error: "expected application/json" });
+
+  const ok = await post("/api/comment", { domain: "sd", targetType: "island", targetId: "caching", body: "hello", kind: "note" });
+  expect(ok.status).toBe(200);
+  expect(ok.json.comment.kind).toBe("note");
+});
+
 test("static files are served fresh and traversal is blocked", async () => {
   const res = await fetch(base + "/");
   expect(res.status).toBe(200);
@@ -2667,12 +2730,46 @@ export type ServerContext = { dbPath?: string; staticRoot: string };
 export async function handleRequest(req: Request, ctx: ServerContext): Promise<Response> {
   const url = new URL(req.url);
   try {
-    if (url.pathname.startsWith("/api/")) return await handleApi(req, url, ctx);
+    if (url.pathname.startsWith("/api/")) {
+      if (req.method === "POST") {
+        const guard = crossSitePostGuard(req, url);
+        if (guard) return guard;
+      }
+      return await handleApi(req, url, ctx);
+    }
     if (req.method !== "GET") return json({ error: "method not allowed" }, 405);
     return await serveStatic(url.pathname, ctx.staticRoot);
   } catch (error) {
     return errorResponse(error);
   }
+}
+
+/**
+ * Blocks cross-site writes: a POST must carry an `application/json` body, and if it names an
+ * Origin or Host, that must point at this server (127.0.0.1/localhost on the request's own port).
+ */
+function crossSitePostGuard(req: Request, url: URL): Response | null {
+  const contentType = req.headers.get("content-type") ?? "";
+  if (!contentType.startsWith("application/json")) {
+    return json({ error: "expected application/json" }, 415);
+  }
+  const denied = () => json({ error: "cross-origin writes are not allowed" }, 403);
+  const origin = req.headers.get("origin");
+  if (origin !== null) {
+    const allowed = new Set([`http://127.0.0.1:${url.port}`, `http://localhost:${url.port}`]);
+    if (!allowed.has(origin)) return denied();
+  }
+  const host = req.headers.get("host");
+  if (host !== null) {
+    let hostname: string;
+    try {
+      hostname = new URL(`http://${host}`).hostname;
+    } catch {
+      return denied();
+    }
+    if (hostname !== "127.0.0.1" && hostname !== "localhost") return denied();
+  }
+  return null;
 }
 
 function withDb<T>(ctx: ServerContext, fn: (db: Database) => T): T {
@@ -3531,12 +3628,15 @@ function samePath(a, b) {
 function applySnapshot(snapshot) {
   const sameScale = app.snapshot !== null && samePath(app.snapshot, snapshot);
   const previous = sameScale ? new Map(app.nodes.map((n) => [n.slug, n])) : new Map();
+  const isFirstSnapshot = app.snapshot === null;
   app.snapshot = snapshot;
   app.version = snapshot.version;
   app.nodes = buildNodes(snapshot, app.size.w, app.size.h, previous);
   app.links = buildLinks(snapshot, app.nodes);
   app.sim.setGraph(app.nodes, app.links, sameScale ? 0.25 : 1);
   if (!sameScale) app.camera.animateTo({ x: 0, y: 0, scale: 1 }, 400);
+  // A reload should still show the terminal's focus, without posting a fresh selection.
+  if (isFirstSnapshot) app.selected = snapshot.focus;
   renderChrome();
   for (const fn of app.listeners) fn(snapshot);
 }
@@ -3854,7 +3954,11 @@ export function installInteractions(canvas) {
   );
 
   window.addEventListener("keydown", (e) => {
-    if (e.key === "Escape") void select(null);
+    if (e.key !== "Escape") return;
+    const t = e.target;
+    const typing = t && (t.tagName === "INPUT" || t.tagName === "SELECT" || t.tagName === "TEXTAREA" || t.isContentEditable);
+    if (typing) return;
+    void select(null);
   });
 }
 ```
@@ -4322,4 +4426,4 @@ git commit -m "docs: charting skill, README and CLAUDE.md"
 
 - **Spec coverage.** §2 architecture → Tasks 1, 10, 11, 12. §3 data model → Tasks 1–9 (triggers in Task 1, roll-up and open-water-as-absence in Task 9). §4 protocol → Task 14. §5 CLI → Task 10 (+ `serve` in 10/11). §6 server → Task 11 (plus `/api/history` for the card). §7 map → Tasks 12–13. §8 errors → Tasks 2, 10, 11, 12 (disconnected mark). §9 tests → every task; `bun test` per the verified decision. §10 out of scope respected.
 - **Type consistency.** `resolveCommentTarget` → `{ targetType, targetId }` spread into `addComment`; `formatTarget(db, targetType, targetId)`; `buildSnapshot(db, domainSlug, scaleSlug)`; `setGraph(nodes, links, heat)`; `app.listeners` is a `Set` of `(snapshot) => void`; `hitTest(px, py)`; `select(slug | null)`.
-- **Known judgement calls.** Same-scale refreshes reheat the layout at 0.25 so a focus write from the page does not jiggle the map. `serve` lives in the CLI instead of a separate `cli.ts`. `/api/history` was added beyond spec §6 because the card shows verdict history. No domain switcher on the page: `GET /api/domains` only supplies a default when the URL has no `domain`, and switching means changing the URL or running `serve --domain`. The spec §7 hover "closer" hint is not drawn; the action lives in the card's **Sail closer** button only.
+- **Known judgement calls.** Same-scale refreshes reheat the layout at 0.25 so a focus write from the page does not jiggle the map. `serve` lives in the CLI instead of a separate `cli.ts`. `/api/history` was added beyond spec §6 because the card shows verdict history. No domain switcher on the page: `GET /api/domains` only supplies a default when the URL has no `domain`, and switching means changing the URL or running `serve --domain`. The spec §7 hover "closer" hint is not drawn; the action lives in the card's **Sail closer** button only. Single click selects; double-click or the card's Sail in button changes scale. POSTs require `application/json` and a local Origin/Host.

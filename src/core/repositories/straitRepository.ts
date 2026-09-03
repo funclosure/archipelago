@@ -61,6 +61,15 @@ export function requireStrait(db: Database, a: Island, b: Island): Strait {
   return strait;
 }
 
+/** How many straits touch this island, on either end. */
+export function countStraitsTouching(db: Database, islandId: number): number {
+  return db
+    .query<{ n: number }, [number, number]>(
+      "select count(*) as n from straits where from_island_id = ? or to_island_id = ?",
+    )
+    .get(islandId, islandId)!.n;
+}
+
 /** Straits between islands that share the given parent (null = top level). */
 export function listStraits(db: Database, domainId: number, parentId: number | null): Strait[] {
   if (parentId === null) {

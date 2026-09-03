@@ -1,6 +1,6 @@
 import type { Database } from "bun:sqlite";
 import { ArchipelagoError } from "./errors.ts";
-import { requireIsland } from "./repositories/islandRepository.ts";
+import { getIslandById, requireIsland } from "./repositories/islandRepository.ts";
 import { requireStrait } from "./repositories/straitRepository.ts";
 import type { CommentTargetType, Domain, VerdictTargetType } from "./types.ts";
 import { parseTarget } from "./validators.ts";
@@ -17,7 +17,10 @@ export function resolveVerdictTarget(db: Database, domainId: number, target: str
   const a = requireIsland(db, domainId, parsed.from);
   const b = requireIsland(db, domainId, parsed.to);
   const strait = requireStrait(db, a, b);
-  return { targetType: "strait", targetId: strait.id, label: `strait:${a.slug}~${b.slug}` };
+  // Label from the stored (from, to) order, not the caller's, so it matches formatTarget.
+  const from = getIslandById(db, strait.fromIslandId)!;
+  const to = getIslandById(db, strait.toIslandId)!;
+  return { targetType: "strait", targetId: strait.id, label: `strait:${from.slug}~${to.slug}` };
 }
 
 /** Comment targets arrive as slugs from the page: island slug, `a~b`, or the domain slug. */
@@ -29,8 +32,11 @@ export function resolveCommentTarget(
 ): { targetType: CommentTargetType; targetId: number } {
   if (targetType === "domain") return { targetType, targetId: domain.id };
   if (targetType === "island") return { targetType, targetId: requireIsland(db, domain.id, targetId).id };
-  const [from, to] = targetId.split("~");
-  if (!from || !to) throw new ArchipelagoError(`strait targetId must be "<a>~<b>", got "${targetId}"`);
+  const parts = targetId.split("~");
+  if (parts.length !== 2 || !parts[0] || !parts[1]) {
+    throw new ArchipelagoError(`strait targetId must be "<a>~<b>", got "${targetId}"`);
+  }
+  const [from, to] = parts;
   const a = requireIsland(db, domain.id, from);
   const b = requireIsland(db, domain.id, to);
   return { targetType, targetId: requireStrait(db, a, b).id };

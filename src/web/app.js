@@ -68,12 +68,15 @@ function samePath(a, b) {
 function applySnapshot(snapshot) {
   const sameScale = app.snapshot !== null && samePath(app.snapshot, snapshot);
   const previous = sameScale ? new Map(app.nodes.map((n) => [n.slug, n])) : new Map();
+  const isFirstSnapshot = app.snapshot === null;
   app.snapshot = snapshot;
   app.version = snapshot.version;
   app.nodes = buildNodes(snapshot, app.size.w, app.size.h, previous);
   app.links = buildLinks(snapshot, app.nodes);
   app.sim.setGraph(app.nodes, app.links, sameScale ? 0.25 : 1);
   if (!sameScale) app.camera.animateTo({ x: 0, y: 0, scale: 1 }, 400);
+  // A reload should still show the terminal's focus, without posting a fresh selection.
+  if (isFirstSnapshot) app.selected = snapshot.focus;
   renderChrome();
   for (const fn of app.listeners) fn(snapshot);
 }

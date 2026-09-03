@@ -16,6 +16,8 @@ bun link                        # once: puts `archipelago` on your PATH
 archipelago serve               # starts the map at http://127.0.0.1:4480 and opens it
 ```
 
+Data lives in `.archipelago/` under the **current working directory**, so run `archipelago serve` and the Claude Code session from the same directory (or set `ARCHIPELAGO_DB_PATH` for both).
+
 Then in Claude Code, inside this directory:
 
 > /archipelago-chart — I want to chart System Design.
@@ -55,4 +57,4 @@ bun test              # bun's test runner (Vitest cannot load bun:sqlite)
 bunx tsc --noEmit     # typecheck
 ```
 
-Data lives in `.archipelago/archipelago.sqlite` (gitignored). `ARCHIPELAGO_DB_PATH` overrides it.
+Data lives in `.archipelago/archipelago.sqlite` (gitignored, per working directory).
