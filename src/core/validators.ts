@@ -68,14 +68,16 @@ export type ParsedTarget = { type: "island"; slug: string } | { type: "strait"; 
 
 /** `island:<slug>` or `strait:<a>~<b>`. */
 export function parseTarget(target: string): ParsedTarget {
-  const [type, rest] = target.split(":", 2);
-  if (type === "island" && rest && slugSchema.safeParse(rest).success) {
+  const colon = target.indexOf(":");
+  const type = colon === -1 ? target : target.slice(0, colon);
+  const rest = colon === -1 ? "" : target.slice(colon + 1);
+  if (type === "island" && slugSchema.safeParse(rest).success) {
     return { type: "island", slug: rest };
   }
-  if (type === "strait" && rest) {
-    const [from, to] = rest.split("~");
-    if (from && to && slugSchema.safeParse(from).success && slugSchema.safeParse(to).success) {
-      return { type: "strait", from, to };
+  if (type === "strait") {
+    const parts = rest.split("~");
+    if (parts.length === 2 && parts.every((p) => slugSchema.safeParse(p).success)) {
+      return { type: "strait", from: parts[0]!, to: parts[1]! };
     }
   }
   throw new ArchipelagoError(`target must be island:<slug> or strait:<a>~<b>, got "${target}"`);

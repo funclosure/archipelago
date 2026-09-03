@@ -11,6 +11,8 @@ test("parseTarget rejects malformed targets", () => {
   expect(() => parseTarget("caching")).toThrow(ArchipelagoError);
   expect(() => parseTarget("strait:caching")).toThrow(ArchipelagoError);
   expect(() => parseTarget("reef:caching")).toThrow(ArchipelagoError);
+  expect(() => parseTarget("island:foo:bar")).toThrow(ArchipelagoError);
+  expect(() => parseTarget("strait:a~b~c")).toThrow(ArchipelagoError);
 });
 
 test("verdict input rejects unknown states and out-of-range confidence", () => {
