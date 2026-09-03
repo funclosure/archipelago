@@ -18,7 +18,7 @@ export type IslandUpsert = {
 export function upsertIsland(db: Database, input: IslandUpsert): Island {
   if (input.parentId != null) {
     const existing = getIsland(db, input.domainId, input.slug);
-    if (existing && existing.id === input.parentId) throw new ConflictError(`"${input.slug}" cannot be its own parent`);
+    if (existing) assertNotDescendant(db, existing, input.parentId);
   }
   return db
     .query<Island, Record<string, string | number | null>>(
@@ -100,10 +100,26 @@ export function listIslands(db: Database, domainId: number, parentId: number | n
 /** Ancestors first, the island itself last. */
 export function islandPath(db: Database, islandId: number): Island[] {
   const path: Island[] = [];
+  const seen = new Set<number>();
   let current = getIslandById(db, islandId);
-  while (current) {
+  while (current && !seen.has(current.id)) {
     path.unshift(current);
+    seen.add(current.id);
     current = current.parentId === null ? null : getIslandById(db, current.parentId);
   }
   return path;
+}
+
+/** Throws if `candidateParentId` is `island` itself or any descendant of it: a parent link there would form a cycle. */
+function assertNotDescendant(db: Database, island: Island, candidateParentId: number): void {
+  if (candidateParentId === island.id) throw new ConflictError(`"${island.slug}" cannot be its own parent`);
+  const seen = new Set<number>();
+  let current = getIslandById(db, candidateParentId);
+  while (current && !seen.has(current.id)) {
+    if (current.id === island.id) {
+      throw new ConflictError(`"${island.slug}" cannot be moved under its own islet`);
+    }
+    seen.add(current.id);
+    current = current.parentId === null ? null : getIslandById(db, current.parentId);
+  }
 }

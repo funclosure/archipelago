@@ -39,6 +39,10 @@ test("slug is unique per domain across depths; an island cannot parent itself", 
   expect(moved.parentId).toBe(databases.id);
   expect(listIslandSlugs(db, domainId)).toEqual(["caching", "databases"]);
   expect(() => upsertIsland(db, { domainId, slug: "caching", name: "Caching", parentId: caching.id })).toThrow(ConflictError);
+  const islet = upsertIsland(db, { domainId, slug: "cache-eviction", name: "Eviction", parentId: caching.id });
+  const deeper = upsertIsland(db, { domainId, slug: "lru", name: "LRU", parentId: islet.id });
+  expect(() => upsertIsland(db, { domainId, slug: "caching", name: "Caching", parentId: deeper.id })).toThrow(ConflictError);
+  expect(islandPath(db, deeper.id).map((i) => i.slug)).toEqual(["databases", "caching", "cache-eviction", "lru"]);
 });
 
 test("islandPath walks root to self", () => {
