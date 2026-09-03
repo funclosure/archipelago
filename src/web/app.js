@@ -2,6 +2,8 @@ import { buildNodes, buildLinks } from "./view-model.js";
 import { createSimulation } from "./layout.js";
 import { createCamera } from "./camera.js";
 import { clear, drawIsland, drawStrait } from "./draw.js";
+import { installInteractions } from "./interactions.js";
+import { installCard } from "./card.js";
 
 const canvas = document.getElementById("map");
 const ctx = canvas.getContext("2d");
@@ -202,6 +204,8 @@ async function boot() {
   }
   resize();
   window.addEventListener("resize", resize);
+  installInteractions(canvas);
+  installCard();
   try {
     await refresh();
   } catch (error) {
