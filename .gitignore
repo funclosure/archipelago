@@ -1,0 +1,5 @@
+node_modules/
+.archipelago/
+dist/
+.DS_Store
+*.log
