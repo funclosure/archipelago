@@ -110,6 +110,30 @@ test("cross-site POSTs are rejected", async () => {
   }
 });
 
+test("positions persist as a batch and reject unknown slugs whole", async () => {
+  const v1 = (await get("/api/version?domain=sd")).json.version;
+  const ok = await post("/api/positions", { domain: "sd", positions: [{ island: "caching", x: 100, y: 200 }, { island: "databases", x: 300, y: 400 }] });
+  expect(ok.status).toBe(200);
+  expect(ok.json).toEqual({ written: 2, version: v1 + 2 });
+  const snap = (await get("/api/snapshot?domain=sd")).json;
+  expect(snap.islands.find((i: any) => i.slug === "databases")).toMatchObject({ x: 300, y: 400 });
+
+  const bad = await post("/api/positions", { domain: "sd", positions: [{ island: "caching", x: 1, y: 1 }, { island: "nope", x: 2, y: 2 }] });
+  expect(bad.status).toBe(404);
+  expect(bad.json).toEqual({ error: 'no island "nope" in this domain', valid: ["caching", "databases"] });
+  expect((await get("/api/snapshot?domain=sd")).json.islands.find((i: any) => i.slug === "caching")).toMatchObject({ x: 100, y: 200 });
+  expect((await get("/api/version?domain=sd")).json.version).toBe(v1 + 2);
+
+  expect((await post("/api/positions", { domain: "sd", positions: [{ island: "caching", x: 5000, y: 1 }] })).status).toBe(400);
+  expect((await post("/api/positions", { domain: "sd", positions: [] })).status).toBe(400);
+  const foreign = await fetch(base + "/api/positions", {
+    method: "POST",
+    headers: { "content-type": "application/json", origin: "https://evil.example" },
+    body: JSON.stringify({ domain: "sd", positions: [{ island: "caching", x: 1, y: 1 }] }),
+  });
+  expect(foreign.status).toBe(403);
+});
+
 test("static files are served fresh and traversal is blocked", async () => {
   const res = await fetch(base + "/");
   expect(res.status).toBe(200);

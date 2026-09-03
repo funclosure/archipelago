@@ -3,9 +3,9 @@ import { normalize, resolve, sep } from "node:path";
 import { z } from "zod";
 import { openDatabase } from "../core/db.ts";
 import { ArchipelagoError, NotFoundError } from "../core/errors.ts";
-import { commentInputSchema, focusInputSchema, slugSchema } from "../core/validators.ts";
+import { commentInputSchema, focusInputSchema, positionsInputSchema, slugSchema } from "../core/validators.ts";
 import { listDomains, requireDomain } from "../core/repositories/domainRepository.ts";
-import { requireIsland } from "../core/repositories/islandRepository.ts";
+import { requireIsland, setIslandPositions } from "../core/repositories/islandRepository.ts";
 import { verdictHistory } from "../core/repositories/verdictRepository.ts";
 import { addComment } from "../core/repositories/commentRepository.ts";
 import { getViewState, setFocus } from "../core/repositories/viewStateRepository.ts";
@@ -117,6 +117,21 @@ async function handleApi(req: Request, url: URL, ctx: ServerContext): Promise<Re
         const target = resolveCommentTarget(db, d, input.targetType, input.targetId);
         const comment = addComment(db, { domainId: d.id, ...target, body: input.body, kind: input.kind });
         return { comment, version: getViewState(db, d.id).version };
+      }),
+    );
+  }
+
+  if (route === "POST /api/positions") {
+    const input = positionsInputSchema.parse(await req.json());
+    return json(
+      withDb(ctx, (db) => {
+        const d = requireDomain(db, input.domain);
+        const written = setIslandPositions(
+          db,
+          d.id,
+          input.positions.map((p) => ({ slug: p.island, x: p.x, y: p.y })),
+        );
+        return { written, version: getViewState(db, d.id).version };
       }),
     );
   }
