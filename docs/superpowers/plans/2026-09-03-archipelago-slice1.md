@@ -1033,6 +1033,9 @@ import { getIslandById } from "./islandRepository.ts";
 
 const COLS =
   "s.id, s.domain_id as domainId, s.from_island_id as fromIslandId, s.to_island_id as toIslandId, s.name, s.summary, s.created_at as createdAt";
+/** RETURNING does not see the table alias (verified: "no such column: s.id"); use unprefixed names there. */
+const RETURNING_COLS =
+  "id, domain_id as domainId, from_island_id as fromIslandId, to_island_id as toIslandId, name, summary, created_at as createdAt";
 
 export type StraitUpsert = {
   domainId: number;
@@ -1062,7 +1065,7 @@ export function upsertStrait(db: Database, input: StraitUpsert): Strait {
        on conflict(from_island_id, to_island_id) do update set
          name = coalesce(excluded.name, s.name),
          summary = coalesce(excluded.summary, s.summary)
-       returning ${COLS}`,
+       returning ${RETURNING_COLS}`,
     )
     .get({ $domainId: input.domainId, $lo: lo, $hi: hi, $name: input.name ?? null, $summary: input.summary ?? null })!;
 }
@@ -2414,6 +2417,7 @@ Expected: all pass, no type errors.
 - [ ] **Step 7: Commit**
 
 ```bash
+chmod +x src/cli/index.ts          # bun link execs this file directly; the shebang needs the exec bit
 git add src/core/targets.ts src/cli src/server/index.ts tests/cli
 git commit -m "feat(cli): archipelago command surface"
 ```
@@ -3602,7 +3606,7 @@ $A serve --domain sd
 ```
 
 Expected in the browser:
-- Five islands at the top scale. Databases is a large landmass with contour rings. Queues shows the jagged reef line and hazard glyph. Caching has no fill of its own but a ring of three dots (one land, two open) and is labelled below. Load balancing and Consensus are dashed outlines.
+- Five islands at the top scale. Databases is a large landmass with contour rings. Queues shows the jagged reef line and hazard glyph. Caching has no fill of its own but a ring of two dots (one land for Eviction, one open outline for Invalidation) and is labelled below. Load balancing and Consensus are dashed outlines.
 - The caching–databases strait is a thin pale line; the two other straits are dashed.
 - Breadcrumb reads "System Design". Strip reads "Nearest open water: Caching · Load balancing · Consensus" (caching neighbours the mountainous databases so it comes first) and "Reefs: Queues".
 - In another terminal run `$A verdict set --domain sd --target island:consensus --state sandbar --confidence 0.6 --evidence "raft has a leader"`; within two seconds Consensus fills as sand and rises.
@@ -3746,6 +3750,7 @@ import { app, api, setScale } from "./app.js";
 const card = document.getElementById("card");
 let draft = "";                 // note text survives re-renders
 let lastSent = null;            // { slug, text } shown under the note box
+let renderId = 0;               // guards the async history append against stale renders
 
 export function installCard() {
   app.listeners.add(() => render());
@@ -3849,13 +3854,13 @@ function render() {
 
   if (lastSent && lastSent.slug === island.slug) card.append(el("div", "sent", lastSent.text));
 
-  void renderHistory(island);
+  void renderHistory(island, ++renderId);
 }
 
-async function renderHistory(island) {
+async function renderHistory(island, id) {
   try {
     const { history } = await api(`/api/history?domain=${encodeURIComponent(app.domain)}&target=island:${encodeURIComponent(island.slug)}`);
-    if (app.selected !== island.slug || history.length < 2) return;
+    if (id !== renderId || app.selected !== island.slug || history.length < 2) return;
     const list = el("ul", "history");
     for (const v of history.slice(1)) {
       list.append(el("li", null, `earlier: ${v.state} · ${v.createdAt.slice(0, 10)} · “${v.evidence}”`));
@@ -4198,4 +4203,4 @@ git commit -m "docs: charting skill, README and CLAUDE.md"
 
 - **Spec coverage.** §2 architecture → Tasks 1, 10, 11, 12. §3 data model → Tasks 1–9 (triggers in Task 1, roll-up and open-water-as-absence in Task 9). §4 protocol → Task 14. §5 CLI → Task 10 (+ `serve` in 10/11). §6 server → Task 11 (plus `/api/history` for the card). §7 map → Tasks 12–13. §8 errors → Tasks 2, 10, 11, 12 (disconnected mark). §9 tests → every task; `bun test` per the verified decision. §10 out of scope respected.
 - **Type consistency.** `resolveCommentTarget` → `{ targetType, targetId }` spread into `addComment`; `formatTarget(db, targetType, targetId)`; `buildSnapshot(db, domainSlug, scaleSlug)`; `setGraph(nodes, links, heat)`; `app.listeners` is a `Set` of `(snapshot) => void`; `hitTest(px, py)`; `select(slug | null)`.
-- **Known judgement calls.** Same-scale refreshes reheat the layout at 0.25 so a focus write from the page does not jiggle the map. `serve` lives in the CLI instead of a separate `cli.ts`. `/api/history` was added beyond spec §6 because the card shows verdict history.
+- **Known judgement calls.** Same-scale refreshes reheat the layout at 0.25 so a focus write from the page does not jiggle the map. `serve` lives in the CLI instead of a separate `cli.ts`. `/api/history` was added beyond spec §6 because the card shows verdict history. No domain switcher on the page: `GET /api/domains` only supplies a default when the URL has no `domain`, and switching means changing the URL or running `serve --domain`. The spec §7 hover "closer" hint is not drawn; the action lives in the card's **Sail closer** button only.
