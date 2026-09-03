@@ -1,4 +1,4 @@
-import { buildNodes, buildLinks, WORLD } from "./view-model.js";
+import { buildNodes, buildLinks, WORLD, clampWorld } from "./view-model.js";
 import { createSimulation } from "./layout.js";
 import { createCamera } from "./camera.js";
 import { clear, drawIsland, drawStrait } from "./draw.js";
@@ -115,8 +115,6 @@ export function hitTest(px, py) {
 export function unplaced() {
   return app.nodes.filter((n) => !n.placed);
 }
-
-const clampWorld = (v) => Math.min(WORLD, Math.max(0, v));
 
 /** Persists positions for the given nodes; coordinates are clamped to the world so the server accepts them. */
 export async function postPositions(nodes) {

@@ -39,9 +39,9 @@ CLI: `island update` gains `--x <n> --y <n>`; `island show` and `island list` in
 
 ## 4. Page
 
-**World and camera.** `camera.js` gains a fit transform: the 1000-unit world fills the shorter window side with a 12% margin, centred. Pan and wheel adjust the camera on top of the fit; resize recomputes the fit. `hitTest`, `toWorld` and drawing all work in world units.
+**World and camera.** `camera.js` gains a fit transform: the 1000-unit world fills the shorter window side with a 6% margin, centred. Pan and wheel adjust the camera on top of the fit; resize recomputes the fit. `hitTest`, `toWorld` and drawing all work in world units.
 
-**Nodes.** `view-model.js`: a node's `x`, `y` come from the island when present; `placed` is true. Unplaced nodes start near the centroid of their strait neighbours that are placed, else the world centre, with a small seeded offset so two unplaced islands do not coincide. Radius is a function of the number of islands at the scale (`clamp(38, 140 / sqrt(n), 64)` world units), the same for every island at that scale, never of the verdict. Mass stays 1 for all.
+**Nodes.** `view-model.js`: a node's `x`, `y` come from the island when present; `placed` is true. Unplaced nodes start near the centroid of their strait neighbours that are placed, else the world centre, with a small seeded offset so two unplaced islands do not coincide. Radius is a function of the number of islands at the scale (`clamp(48, 220 / sqrt(n), 88)` world units), the same for every island at that scale, never of the verdict. Mass stays 1 for all.
 
 **Placement.** `app.js`: after `applySnapshot`, if any node is unplaced, run the simulation with placed nodes pinned until it settles (alpha reaches 0 or 600 ticks), then post every previously unplaced node's position to `/api/positions` once. While the post is in flight, and if it fails, the nodes stay at their provisional spots; the next poll that still shows them unplaced triggers another attempt. The simulation never runs when every node is placed. Hover no longer reheats anything.
 

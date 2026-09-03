@@ -3,7 +3,7 @@
 
 import { WORLD } from "./view-model.js";
 
-const MARGIN = 0.12; // of the shorter viewport side, each edge
+const MARGIN = 0.06; // of the shorter viewport side, each edge
 
 export function createCamera() {
   const cam = { x: 0, y: 0, scale: 1 };

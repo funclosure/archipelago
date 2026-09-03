@@ -14,7 +14,7 @@ Spec: `docs/superpowers/specs/2026-09-03-fixed-positions-design.md`. Slice 1 pla
 
 - Coordinates are in a fixed world of 1000 × 1000 units per scale, origin top-left; null means unplaced. The server stores only values in 0..1000.
 - Placed islands never move on their own: no simulation runs when every island at a scale is placed; verdicts, straits added later, hover and resize move nothing.
-- Fixed footprint: at a scale every island has the same radius, `clamp(38, 140 / sqrt(count), 64)` world units, never a function of the verdict.
+- Fixed footprint: at a scale every island has the same radius, `clamp(48, 220 / sqrt(count), 88)` world units, never a function of the verdict.
 - `POST /api/positions` sits behind the same content-type and Origin/Host guard as `/api/comment`; an unknown slug fails the whole batch with 404 and `valid`; nothing partial is written.
 - Every position write goes through `islands_au`, so `view_state.version` bumps once per island written.
 - Schema changes go in `src/core/migrations/0002_positions.sql`; never edit `0001_initial.sql`.
@@ -484,9 +484,9 @@ test("hashSeed and seededRandom are deterministic", () => {
 });
 
 test("radius depends on the island count at a scale, never on the verdict", () => {
-  expect(islandRadius(1)).toBe(64);
-  expect(islandRadius(9)).toBeCloseTo(140 / 3, 5);
-  expect(islandRadius(100)).toBe(38);
+  expect(islandRadius(1)).toBe(88);
+  expect(islandRadius(9)).toBeCloseTo(220 / 3, 5);
+  expect(islandRadius(100)).toBe(48);
   const nodes = buildNodes(snapshot([island("a", { state: "mountainous" }), island("b"), island("c", { state: "reef" })]));
   expect(new Set(nodes.map((n) => n.radius)).size).toBe(1);
   expect(nodes[0].radius).toBe(islandRadius(3));
@@ -572,7 +572,7 @@ export function islandState(island) {
 
 /** Fixed footprint: every island at a scale shares one radius, set by how many islands share the scale. */
 export function islandRadius(count) {
-  return Math.min(64, Math.max(38, 140 / Math.sqrt(Math.max(1, count))));
+  return Math.min(88, Math.max(48, 220 / Math.sqrt(Math.max(1, count))));
 }
 
 const clampWorld = (v) => Math.min(WORLD, Math.max(0, v));

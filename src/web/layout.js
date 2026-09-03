@@ -1,12 +1,14 @@
 // Force layout in the spirit of mindgraph's gravity-field model:
 // mass-scaled repulsion, strait springs, soft centre gravity. Runs while alpha > 0.
 
-const REPULSION = 2600;
+import { WORLD } from "./view-model.js";
+
+const REPULSION = 10000;
 const SPRING = 0.03;
-const CENTER = 0.005;
+const CENTER = 0.0008;
 const DAMPING = 0.8;
-const MIN_GAP = 48;
-const REST_GAP = 110;
+const MIN_GAP = 60;
+const REST_GAP = 150;
 
 export function createSimulation() {
   let nodes = [];
@@ -85,6 +87,10 @@ export function createSimulation() {
       n.vy *= DAMPING;
       n.x += n.vx;
       n.y += n.vy;
+      if (n.x < n.radius) { n.x = n.radius; n.vx = 0; }
+      if (n.x > WORLD - n.radius) { n.x = WORLD - n.radius; n.vx = 0; }
+      if (n.y < n.radius) { n.y = n.radius; n.vy = 0; }
+      if (n.y > WORLD - n.radius) { n.y = WORLD - n.radius; n.vy = 0; }
       movement += Math.abs(n.vx) + Math.abs(n.vy);
     }
     alpha *= 0.99;

@@ -154,11 +154,11 @@ function drawRollup(ctx, node, grow) {
 }
 
 function drawLabel(ctx, node, grow, hasOwnVerdict) {
-  ctx.font = "19px Georgia, 'Times New Roman', serif";
+  ctx.font = "24px Georgia, 'Times New Roman', serif";
   ctx.textAlign = "center";
   ctx.textBaseline = "top";
   ctx.fillStyle = node.state === "open" ? PALETTE.muted : PALETTE.text;
-  const offset = !hasOwnVerdict && node.island.children.total > 0 ? 26 : 12;
+  const offset = !hasOwnVerdict && node.island.children.total > 0 ? 30 : 14;
   ctx.fillText(node.name, node.x, node.y + node.radius * grow + offset);
 }
 

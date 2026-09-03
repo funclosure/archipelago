@@ -17,9 +17,9 @@ test("hashSeed and seededRandom are deterministic", () => {
 });
 
 test("radius depends on the island count at a scale, never on the verdict", () => {
-  expect(islandRadius(1)).toBe(64);
-  expect(islandRadius(9)).toBeCloseTo(140 / 3, 5);
-  expect(islandRadius(100)).toBe(38);
+  expect(islandRadius(1)).toBe(88);
+  expect(islandRadius(9)).toBeCloseTo(220 / 3, 5);
+  expect(islandRadius(100)).toBe(48);
   const nodes = buildNodes(snapshot([island("a", { state: "mountainous" }), island("b"), island("c", { state: "reef" })]));
   expect(new Set(nodes.map((n) => n.radius)).size).toBe(1);
   expect(nodes[0].radius).toBe(islandRadius(3));

@@ -26,10 +26,10 @@ export function islandState(island) {
 
 /** Fixed footprint: every island at a scale shares one radius, set by how many islands share the scale. */
 export function islandRadius(count) {
-  return Math.min(64, Math.max(38, 140 / Math.sqrt(Math.max(1, count))));
+  return Math.min(88, Math.max(48, 220 / Math.sqrt(Math.max(1, count))));
 }
 
-const clampWorld = (v) => Math.min(WORLD, Math.max(0, v));
+export const clampWorld = (v) => Math.min(WORLD, Math.max(0, v));
 const now = () => (typeof performance !== "undefined" ? performance.now() : Date.now());
 
 /**
