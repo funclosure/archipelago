@@ -1,1 +1,32 @@
-<!doctype html><title>Archipelago</title><p>map goes here</p>
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Archipelago</title>
+<link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+<canvas id="map"></canvas>
+
+<header class="chrome top">
+  <nav id="breadcrumb" class="breadcrumb" aria-label="Scale"></nav>
+  <div id="status" class="status"></div>
+</header>
+
+<aside id="card" class="card" hidden></aside>
+
+<footer class="chrome bottom">
+  <div class="legend">
+    <span class="open">open water</span>
+    <span class="sandbar">sandbar</span>
+    <span class="settled">settled</span>
+    <span class="mountainous">mountainous</span>
+    <span class="reef">reef</span>
+  </div>
+  <div id="strip" class="strip"></div>
+</footer>
+
+<script type="module" src="/app.js"></script>
+</body>
+</html>
