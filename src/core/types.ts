@@ -1,0 +1,68 @@
+export const verdictStates = ["sandbar", "settled", "mountainous", "reef"] as const;
+export type VerdictState = (typeof verdictStates)[number];
+
+export const verdictTargetTypes = ["island", "strait"] as const;
+export type VerdictTargetType = (typeof verdictTargetTypes)[number];
+
+export const commentTargetTypes = ["island", "strait", "domain"] as const;
+export type CommentTargetType = (typeof commentTargetTypes)[number];
+
+export const commentKinds = ["note", "probe_me", "sail_closer", "dispute"] as const;
+export type CommentKind = (typeof commentKinds)[number];
+
+export type Domain = { id: number; slug: string; name: string; createdAt: string };
+
+export type Island = {
+  id: number;
+  domainId: number;
+  parentId: number | null;
+  slug: string;
+  name: string;
+  summary: string | null;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type Strait = {
+  id: number;
+  domainId: number;
+  fromIslandId: number;
+  toIslandId: number;
+  name: string | null;
+  summary: string | null;
+  createdAt: string;
+};
+
+export type Verdict = {
+  id: number;
+  targetType: VerdictTargetType;
+  targetId: number;
+  state: VerdictState;
+  confidence: number;
+  evidence: string;
+  rationale: string | null;
+  sessionId: number | null;
+  createdAt: string;
+};
+
+export type Session = {
+  id: number;
+  domainId: number;
+  startedAt: string;
+  endedAt: string | null;
+  summary: string | null;
+};
+
+export type Comment = {
+  id: number;
+  domainId: number;
+  targetType: CommentTargetType;
+  targetId: number;
+  body: string;
+  kind: CommentKind;
+  readAt: string | null;
+  createdAt: string;
+};
+
+export type ViewState = { domainId: number; focusIslandId: number | null; version: number };
