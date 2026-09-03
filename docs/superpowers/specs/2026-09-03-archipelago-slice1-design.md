@@ -14,7 +14,7 @@ The project brief (`docs/BRIEF.md`) is the source for vocabulary and principles;
 | Data home | Local SQLite at `.archipelago/archipelago.sqlite`. No hosted artifact, no Agent SDK, no API key. |
 | Zoom scope | Two scales work end to end. The schema is a tree, so deeper levels are more rows, not new tables. |
 | Approach | Locus-shaped (CLI + skill write path, static page over a JSON API), mindgraph-faced (single canvas, force layout, spotlight). |
-| Runtime | Bun, `bun:sqlite`, plain ES modules for the page, no bundler, no framework. Vitest for tests. |
+| Runtime | Bun, `bun:sqlite`, plain ES modules for the page, no bundler, no framework. `bun test` for tests (see §9). |
 
 References: `../locus` (CLI + skill + browse UI pattern), `../mindgraph` (canvas map, `ui/layout.js`, `docs/graph-system.md`), `../loupe` (launcher `cli.ts`, warm-ink palette).
 
@@ -49,7 +49,7 @@ SQLite, `pragma foreign_keys = on`, numbered migrations in `src/core/migrations/
 
 ### islands
 `id, domain_id → domains, parent_id → islands (nullable), slug, name, summary, sort_order, created_at, updated_at`.
-Unique `(domain_id, parent_id, slug)`. Depth 0 rows are top-level islands; rows with a parent are that island's islets. **Scale is depth**, not a stored column.
+Unique `(domain_id, slug)`: a slug names exactly one island anywhere in a domain's tree, so every CLI flag, focus row, and comment can address an island by bare slug. The skill keeps islet slugs distinct from their ancestors and cousins (prefix with the parent when a clash is likely, e.g. `caching-invalidation`). Depth 0 rows are top-level islands; rows with a parent are that island's islets. **Scale is depth**, not a stored column.
 
 ### straits
 `id, domain_id, from_island_id → islands, to_island_id → islands, name (nullable), summary (nullable), created_at`.
@@ -60,8 +60,8 @@ Both ends must be siblings (same `parent_id`); enforced in the repository. Uniqu
 **Append-only.** The view reads the latest per target. **Open water is the absence of a verdict**, never a stored state. `evidence` is the user's own words, verbatim.
 
 ### comments
-`id, domain_id, target_type check in ('island','strait','domain'), target_id, body text (may be empty), kind check in ('note','probe_me','dispute'), read_at (nullable), created_at`.
-Written by the page. A bare click on an island with the "closer" or "probe" affordance posts `probe_me` with an empty body.
+`id, domain_id, target_type check in ('island','strait','domain'), target_id, body text (may be empty), kind check in ('note','probe_me','sail_closer','dispute'), read_at (nullable), created_at`.
+Written by the page. A bare click only selects and sets focus (no comment). The selected island's card has two buttons: **Probe this** posts `probe_me` (chart this island next, at its current depth) and **Sail closer** posts `sail_closer` (sketch its islets). The note box posts `note` or `dispute` with a body.
 
 ### sessions
 `id, domain_id, started_at, ended_at (nullable), summary (nullable)`. One row per sitting.
@@ -95,8 +95,9 @@ Rules: latest verdict wins; a parent with no verdict of its own shows `children.
 **Setup.** On a new domain: Claude proposes 6–10 top-level islands (name + one-line summary) and the straits between neighbours, prints the sketch, and writes it with `domain add`, `island add`, `strait add` only after the user approves. The sketch is then stable: later sessions read it from the database.
 
 **Turn opening.** Every turn:
-1. `archipelago comment list --unread --domain <slug>`. `probe_me` → the next probe goes to that target. `dispute` → reopen that verdict: ask one question, then record a new verdict (history keeps the old one). `note` → read and acknowledge. Then `comment mark-read`.
-2. `archipelago focus show --domain <slug>` → "this one" in conversation resolves to the focused island.
+1. `archipelago session show --domain <slug>`; if no session is open, `archipelago session start --domain <slug>`. All verdicts this turn carry that session id.
+2. `archipelago comment list --unread --domain <slug>`. `probe_me` → the next probe goes to that target at its current depth. `sail_closer` → sketch that island's islets (see Sailing closer). `dispute` → reopen that verdict: ask one question, then record a new verdict (history keeps the old one). `note` → read and acknowledge. Then `comment mark-read`.
+3. `archipelago focus show --domain <slug>` → "this one" in conversation resolves to the focused island.
 
 **Probe, don't quiz.** One island per probe. Ask for an explanation, an application to a concrete scenario, or a prediction. Never ask for a definition. At most two follow-ups per island before moving on.
 
@@ -115,7 +116,7 @@ Rules: latest verdict wins; a parent with no verdict of its own shows `children.
 
 **Straits.** When two neighbouring islands both have verdicts, ask one question about how they relate, then `verdict set --target strait:<a>~<b>`.
 
-**Sailing closer.** When an island is settled or mountainous and the user asks to go closer (or a `probe_me` arrives on an island with no islets), sketch its islets and straits with `--parent <slug>`, get approval, write them. Verdicts on islets are tagged by depth automatically. A verdict on a parent says nothing about its islets; the skill says so explicitly.
+**Sailing closer.** When the user asks to go closer, or a `sail_closer` comment arrives, sketch the island's islets and straits with `--parent <slug>`, get approval, write them. Islet slugs must not collide with any slug already in the domain. Going closer on an island with no verdict yet is allowed but the skill suggests charting it first. Verdicts on islets are tagged by depth automatically. A verdict on a parent says nothing about its islets; the skill says so explicitly.
 
 **Stop.** `archipelago session end --summary "<one paragraph>"`, then print an orientation: charted islands, sandbars, reefs, nearest open water at the current scale.
 
@@ -173,13 +174,13 @@ POST bodies carry slugs (`domain`, `island`, `targetId` as an island slug or `a~
 
 Rule: unknown must never look like beginner; reef must never look like open water.
 
-**Scale.** Breadcrumb top-left (`System Design › Caching`). Clicking an island with islets sails in: camera zooms, siblings fade, children rise. A breadcrumb click sails out. An island without islets shows a "closer" affordance on hover that posts `probe_me`.
+**Scale.** Breadcrumb top-left (`System Design › Caching`). Clicking an island with islets sails in: camera zooms, siblings fade, children rise. A breadcrumb click sails out. An island without islets shows a "closer" hint on hover; the action itself lives in the card's **Sail closer** button, which posts `sail_closer`.
 
-**Focus.** Hover spotlights and dims the rest. Click selects: posts `/api/focus` and opens a right-side card with state, evidence quote, rationale, verdict history, and a one-line note box (`note` or `dispute`).
+**Focus.** Hover spotlights and dims the rest. Click selects: posts `/api/focus` and opens a right-side card with state, evidence quote, rationale, verdict history, two buttons (**Probe this** → `probe_me`, **Sail closer** → `sail_closer`), and a one-line note box (`note` or `dispute`).
 
 **Live.** Poll `/api/version`; on change fetch `/api/snapshot`, diff by slug, animate state transitions (new verdict rises out of the water over ~600ms).
 
-**Orientation.** Legend bottom-left. Bottom strip lists nearest open water and reefs at this scale.
+**Orientation.** Legend bottom-left. Bottom strip lists nearest open water and reefs at this scale. *Nearest open water* = islands with no verdict that share a strait with a charted island, ordered by the charted neighbour's elevation, then all remaining open-water islands.
 
 **Palette.** Warm ink (loupe/grip): `#1a1816` water, `#ede8e3` text, sand `#d9c7a3`, land `#c9a87c`, ridge `#8a6e4b`, reef `#a3452e`.
 
@@ -193,7 +194,9 @@ Rule: unknown must never look like beginner; reef must never look like open wate
 
 ## 9. Testing
 
-Vitest, `bunx vitest run`. Temp database per test via `ARCHIPELAGO_DB_PATH`.
+`bun test`, Bun's built-in runner. Temp database per test via `ARCHIPELAGO_DB_PATH`.
+
+**Verified 2026-09-03.** A one-file spike showed `bunx vitest run` fails to resolve `bun:sqlite` ("Failed to load url bun:sqlite") because Vitest runs tests through Vite's transform pipeline, while the same test passes under `bun test`. Decision: use `bun:sqlite` with `bun test`. This departs from loupe's Vitest convention; the alternative, Vitest plus `better-sqlite3`, was not chosen because it adds a native build for no gain. Bun's `expect` API matches Vitest's closely enough that test style is unchanged.
 
 - Repositories: upsert by slug, sibling check on straits, append-only verdicts, comment read lifecycle, version bump on every write.
 - View-model: open water is absence (never a state), latest verdict wins, parent roll-up when no own verdict, breadcrumb path, unread count.
