@@ -33,24 +33,22 @@ export function listComments(db: Database, domainId: number, options: { unreadOn
   return db.query<Comment, [number]>(`select ${COLS} from comments where ${where} order by id`).all(domainId);
 }
 
-/** Marks the given comments (or every unread one) as read. Returns the number of rows changed. */
+/**
+ * Marks the given comments (or every unread one) as read. Returns the number of rows changed.
+ * Counts via RETURNING rather than `.changes`, because `.changes` also counts the rows the
+ * `comments_au` trigger updates in `view_state`.
+ */
 export function markCommentsRead(db: Database, domainId: number, ids: number[] | "all"): number {
   if (ids === "all") {
-    const count = db
-      .query<{ count: number }, [number]>(`select count(*) as count from comments where domain_id = ? and read_at is null`)
-      .get(domainId)!.count;
-    db.run(`update comments set read_at = ${NOW} where domain_id = ? and read_at is null`, [domainId]);
-    return count;
+    return db
+      .query<{ id: number }, [number]>(`update comments set read_at = ${NOW} where domain_id = ? and read_at is null returning id`)
+      .all(domainId).length;
   }
-  let changed = 0;
-  for (const id of ids) {
-    const exists = db
-      .query<{ count: number }, [number, number]>(`select count(*) as count from comments where domain_id = ? and id = ? and read_at is null`)
-      .get(domainId, id)!.count;
-    if (exists > 0) {
-      db.run(`update comments set read_at = ${NOW} where domain_id = ? and id = ? and read_at is null`, [domainId, id]);
-      changed += 1;
-    }
-  }
-  return changed;
+  if (ids.length === 0) return 0;
+  const placeholders = ids.map(() => "?").join(", ");
+  return db
+    .query<{ id: number }, (number | string)[]>(
+      `update comments set read_at = ${NOW} where domain_id = ? and read_at is null and id in (${placeholders}) returning id`,
+    )
+    .all(domainId, ...ids).length;
 }
