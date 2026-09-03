@@ -16,7 +16,7 @@ beforeEach(() => {
 });
 afterEach(() => rmSync(dir, { recursive: true, force: true }));
 
-type Result = { code: number; json: any; stderr: string };
+type Result = { code: number; json: any; stdout: string; stderr: string };
 function cli(args: string[], stdin?: object): Result {
   const proc = Bun.spawnSync(["bun", "src/cli/index.ts", ...args], {
     cwd: ROOT,
@@ -24,7 +24,13 @@ function cli(args: string[], stdin?: object): Result {
     stdin: stdin ? new TextEncoder().encode(JSON.stringify(stdin)) : "ignore",
   });
   const out = proc.stdout.toString().trim();
-  return { code: proc.exitCode, json: out ? JSON.parse(out) : null, stderr: proc.stderr.toString() };
+  let json: any = null;
+  try {
+    json = out ? JSON.parse(out) : null;
+  } catch {
+    json = null;
+  }
+  return { code: proc.exitCode, json, stdout: out, stderr: proc.stderr.toString() };
 }
 
 test("round trip: domain → islands → strait → session → verdict → snapshot", () => {
@@ -111,6 +117,13 @@ test("errors carry valid slugs and exit 1", () => {
   const unknownCmd = cli(["sail"]);
   expect(unknownCmd.code).toBe(1);
   expect(unknownCmd.json.error).toContain("unknown command");
+  const bare = cli([]);
+  expect(bare.code).toBe(1);
+  expect(bare.stdout).toContain("Usage:");
+  const noSub = cli(["domain"]);
+  expect(noSub.code).toBe(1);
+  expect(noSub.stdout).toContain("Usage:");
+  expect(unknownCmd.json.error).not.toContain("\n");
 });
 
 test("--stdin merges a JSON object under the flags", () => {

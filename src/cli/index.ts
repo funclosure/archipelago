@@ -52,8 +52,9 @@ const program = new Command();
 program.name("archipelago").description("Chart what you understand about a domain, as islands in open water.").version("0.1.0");
 
 // Commander's own errors (unknown option, missing argument) go through the same JSON path as ours.
+let commanderOutput = "";
 program.exitOverride();
-program.configureOutput({ writeErr: () => {} });
+program.configureOutput({ writeErr: (text) => { commanderOutput += text; } });
 
 // ---- domain ----
 const domain = program.command("domain").description("Domains (one per archipelago)");
@@ -297,7 +298,13 @@ try {
 } catch (error) {
   if (error instanceof CommanderError) {
     if (error.exitCode === 0) process.exit(0); // --help / --version already printed
-    fail(new ArchipelagoError(error.message.replace(/^error: /, "")), process.argv.includes("--json"));
+    if (error.code === "commander.help") {
+      // Bare invocation or a command with no subcommand: show the usage commander prepared.
+      process.stdout.write(commanderOutput);
+      process.exit(error.exitCode);
+    }
+    const message = error.message.replace(/^error: /, "").replace(/\s*\n\s*/g, " ");
+    fail(new ArchipelagoError(message), process.argv.includes("--json"));
   }
   throw error;
 }
