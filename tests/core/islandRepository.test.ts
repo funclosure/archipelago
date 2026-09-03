@@ -3,9 +3,10 @@ import type { Database } from "bun:sqlite";
 import { openDatabase } from "../../src/core/db.ts";
 import { upsertDomain } from "../../src/core/repositories/domainRepository.ts";
 import {
-  upsertIsland, updateIsland, getIsland, requireIsland, listIslands, listIslandSlugs, islandPath,
+  upsertIsland, updateIsland, getIsland, requireIsland, listIslands, listIslandSlugs, islandPath, setIslandPositions,
 } from "../../src/core/repositories/islandRepository.ts";
 import { upsertStrait, listStraits } from "../../src/core/repositories/straitRepository.ts";
+import { getViewState } from "../../src/core/repositories/viewStateRepository.ts";
 import { ConflictError, NotFoundError } from "../../src/core/errors.ts";
 
 let db: Database;
@@ -72,4 +73,33 @@ test("reparenting an island drops its straits, which joined its old siblings", (
   upsertIsland(db, { domainId, slug: "caching", name: "Caching", parentId: c.id });
   expect(listStraits(db, domainId, null).map((s) => [s.fromIslandId, s.toIslandId])).toEqual([[b.id, c.id]]);
   expect(listStraits(db, domainId, c.id)).toEqual([]);
+});
+
+test("islands start unplaced and positions persist through upsert", () => {
+  const a = upsertIsland(db, { domainId, slug: "caching", name: "Caching" });
+  expect(a.x).toBeNull();
+  expect(a.y).toBeNull();
+  updateIsland(db, domainId, "caching", { x: 120.5, y: 640 });
+  const again = upsertIsland(db, { domainId, slug: "caching", name: "Caching renamed" });
+  expect(again.x).toBe(120.5);
+  expect(again.y).toBe(640);
+  expect(getIsland(db, domainId, "caching")!.name).toBe("Caching renamed");
+});
+
+test("setIslandPositions writes all rows or none and bumps the version once per island", () => {
+  upsertIsland(db, { domainId, slug: "caching", name: "Caching" });
+  upsertIsland(db, { domainId, slug: "databases", name: "Databases" });
+  const before = getViewState(db, domainId).version;
+  expect(setIslandPositions(db, domainId, [{ slug: "caching", x: 100, y: 200 }, { slug: "databases", x: 300, y: 400 }])).toBe(2);
+  expect(getViewState(db, domainId).version).toBe(before + 2);
+  expect(getIsland(db, domainId, "databases")).toMatchObject({ x: 300, y: 400 });
+  try {
+    setIslandPositions(db, domainId, [{ slug: "caching", x: 1, y: 1 }, { slug: "nope", x: 2, y: 2 }]);
+    throw new Error("expected throw");
+  } catch (e) {
+    expect(e).toBeInstanceOf(NotFoundError);
+    expect((e as NotFoundError).valid).toEqual(["caching", "databases"]);
+  }
+  expect(getIsland(db, domainId, "caching")).toMatchObject({ x: 100, y: 200 });
+  expect(getViewState(db, domainId).version).toBe(before + 2);
 });

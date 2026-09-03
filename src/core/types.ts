@@ -20,6 +20,8 @@ export type Island = {
   name: string;
   summary: string | null;
   sortOrder: number;
+  x: number | null;
+  y: number | null;
   createdAt: string;
   updatedAt: string;
 };

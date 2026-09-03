@@ -3,7 +3,7 @@ import { ConflictError, NotFoundError } from "../errors.ts";
 import type { Island } from "../types.ts";
 
 const COLS =
-  "id, domain_id as domainId, parent_id as parentId, slug, name, summary, sort_order as sortOrder, created_at as createdAt, updated_at as updatedAt";
+  "id, domain_id as domainId, parent_id as parentId, slug, name, summary, sort_order as sortOrder, x, y, created_at as createdAt, updated_at as updatedAt";
 const NOW = "strftime('%Y-%m-%dT%H:%M:%fZ','now')";
 
 export type IslandUpsert = {
@@ -52,12 +52,12 @@ export function updateIsland(
   db: Database,
   domainId: number,
   slug: string,
-  patch: { name?: string; summary?: string; sortOrder?: number },
+  patch: { name?: string; summary?: string; sortOrder?: number; x?: number; y?: number },
 ): Island {
   const current = requireIsland(db, domainId, slug);
   return db
     .query<Island, Record<string, string | number | null>>(
-      `update islands set name = $name, summary = $summary, sort_order = $sortOrder, updated_at = ${NOW}
+      `update islands set name = $name, summary = $summary, sort_order = $sortOrder, x = $x, y = $y, updated_at = ${NOW}
        where id = $id returning ${COLS}`,
     )
     .get({
@@ -65,7 +65,24 @@ export function updateIsland(
       $name: patch.name ?? current.name,
       $summary: patch.summary ?? current.summary,
       $sortOrder: patch.sortOrder ?? current.sortOrder,
+      $x: patch.x ?? current.x,
+      $y: patch.y ?? current.y,
     })!;
+}
+
+export type IslandPosition = { slug: string; x: number; y: number };
+
+/**
+ * Writes every position or none: all slugs are resolved first, so an unknown one fails the batch
+ * before any row changes. Each row update fires `islands_au`, bumping the version once per island.
+ */
+export function setIslandPositions(db: Database, domainId: number, positions: IslandPosition[]): number {
+  return db.transaction(() => {
+    const rows = positions.map((p) => ({ id: requireIsland(db, domainId, p.slug).id, x: p.x, y: p.y }));
+    const update = db.prepare(`update islands set x = ?, y = ?, updated_at = ${NOW} where id = ?`);
+    for (const row of rows) update.run(row.x, row.y, row.id);
+    return rows.length;
+  })();
 }
 
 export function getIsland(db: Database, domainId: number, slug: string): Island | null {

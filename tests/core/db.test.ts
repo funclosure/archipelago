@@ -29,3 +29,15 @@ test("foreign keys are enforced", () => {
   const db = openDatabase(":memory:");
   expect(() => db.run("insert into islands (domain_id, slug, name) values (99, 'x', 'X')")).toThrow();
 });
+
+test("0002 adds nullable island positions", () => {
+  const db = openDatabase(":memory:");
+  const cols = db
+    .query<{ name: string }, []>("select name from pragma_table_info('islands')")
+    .all()
+    .map((r) => r.name);
+  expect(cols).toContain("x");
+  expect(cols).toContain("y");
+  const versions = db.query<{ version: string }, []>("select version from schema_migrations order by version").all().map((r) => r.version);
+  expect(versions).toEqual(["0001_initial", "0002_positions"]);
+});
