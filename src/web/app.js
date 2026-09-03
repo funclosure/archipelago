@@ -23,6 +23,8 @@ export const app = {
   camera: createCamera(),
   size: { w: 0, h: 0, dpr: 1 },
   listeners: new Set(), // called with each new snapshot (Task 13 subscribes the card)
+  placing: new Set(),        // slugs awaiting their first persisted position
+  placementInFlight: false,  // a positions post is in progress (or backing off after a failure)
 };
 
 export async function api(path, init) {
@@ -75,6 +77,7 @@ function applySnapshot(snapshot) {
   app.links = buildLinks(snapshot, app.nodes);
   // The simulation exists only to place islands that have no stored position; placed ones are pinned.
   app.sim.setGraph(app.nodes, app.links, unplaced().length ? (sameScale ? 0.5 : 1) : 0);
+  if (!app.placementInFlight) app.placing = new Set(unplaced().map((n) => n.slug));
   if (!sameScale) app.camera.animateTo(app.camera.home, 400);
   // A reload should still show the terminal's focus, without posting a fresh selection.
   if (isFirstSnapshot) app.selected = snapshot.focus;
@@ -111,6 +114,38 @@ export function hitTest(px, py) {
 /** Nodes the page still has to place (no stored coordinates). */
 export function unplaced() {
   return app.nodes.filter((n) => !n.placed);
+}
+
+const clampWorld = (v) => Math.min(WORLD, Math.max(0, v));
+
+/** Persists positions for the given nodes; coordinates are clamped to the world so the server accepts them. */
+export async function postPositions(nodes) {
+  const positions = nodes.map((n) => {
+    n.x = clampWorld(n.x);
+    n.y = clampWorld(n.y);
+    return { island: n.slug, x: n.x, y: n.y };
+  });
+  return api("/api/positions", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ domain: app.domain, positions }),
+  });
+}
+
+/** Called once the simulation has settled while islands still await placement. */
+async function persistPlacement() {
+  app.placementInFlight = true;
+  const nodes = app.nodes.filter((n) => app.placing.has(n.slug));
+  try {
+    await postPositions(nodes);
+    app.placing.clear();
+    app.placementInFlight = false;
+  } catch (error) {
+    console.error("placement not saved, retrying in 5s", error);
+    setTimeout(() => {
+      app.placementInFlight = false;
+    }, 5000);
+  }
 }
 
 function renderChrome() {
@@ -174,7 +209,8 @@ function renderStatus() {
 }
 
 function frame(now) {
-  app.sim.tick();
+  const moving = app.sim.tick();
+  if (!moving && app.placing.size > 0 && !app.placementInFlight) void persistPlacement();
   app.camera.tick(now);
   const { w, h, dpr } = app.size;
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);

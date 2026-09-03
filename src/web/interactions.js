@@ -1,4 +1,4 @@
-import { app, api, hitTest, setScale } from "./app.js";
+import { app, api, hitTest, setScale, postPositions } from "./app.js";
 
 const CLICK_SLOP = 4; // px of pointer travel before a press counts as a drag
 
@@ -43,8 +43,7 @@ export function installInteractions(canvas) {
         const w = app.camera.toWorld(e.clientX, e.clientY);
         node.x = w.x;
         node.y = w.y;
-        node.pinned = true;
-        app.sim.reheat(0.4);
+        node.pinned = true; // a dragged island is placed by hand from now on
       }
       return;
     }
@@ -76,10 +75,10 @@ export function installInteractions(canvas) {
     const d = drag;
     drag = null;
     if (!d) return;
-    if (d.kind === "node") {
+    if (d.kind === "node" && d.moved) {
       const node = nodeBySlug(d.slug);
-      if (node) node.pinned = false;
-      app.sim.reheat(0.2);
+      if (node) postPositions([node]).catch((error) => console.error(error));
+      return;
     }
     if (d.moved) return;
     const hit = hitTest(e.clientX, e.clientY);
