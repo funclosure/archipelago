@@ -1,7 +1,8 @@
 #!/usr/bin/env bun
-import { Command } from "commander";
+import { Command, CommanderError } from "commander";
 import type { Database } from "bun:sqlite";
 import { openDatabase } from "../core/db.ts";
+import { ArchipelagoError } from "../core/errors.ts";
 import {
   domainInputSchema, islandInputSchema, islandUpdateSchema, straitInputSchema, verdictInputSchema,
   sessionEndInputSchema, slugSchema,
@@ -49,6 +50,10 @@ const common = (cmd: Command) => cmd.option("--json", "compact JSON output").opt
 
 const program = new Command();
 program.name("archipelago").description("Chart what you understand about a domain, as islands in open water.").version("0.1.0");
+
+// Commander's own errors (unknown option, missing argument) go through the same JSON path as ours.
+program.exitOverride();
+program.configureOutput({ writeErr: () => {} });
 
 // ---- domain ----
 const domain = program.command("domain").description("Domains (one per archipelago)");
@@ -277,10 +282,22 @@ program
   .option("--domain <slug>", "domain to open")
   .option("--no-open", "do not open the browser")
   .action((o: { port: string; domain?: string; open: boolean }) => {
-    const server = startServer({ port: Number(o.port) });
-    const url = `http://127.0.0.1:${server.port}/${o.domain ? `?domain=${encodeURIComponent(o.domain)}` : ""}`;
-    console.log(`Archipelago map: ${url}`);
-    if (o.open) Bun.spawn(["open", url]);
+    try {
+      const server = startServer({ port: Number(o.port) });
+      const url = `http://127.0.0.1:${server.port}/${o.domain ? `?domain=${encodeURIComponent(o.domain)}` : ""}`;
+      console.log(`Archipelago map: ${url}`);
+      if (o.open) Bun.spawn(["open", url]);
+    } catch (error) {
+      fail(error, false);
+    }
   });
 
-program.parseAsync(process.argv);
+try {
+  await program.parseAsync(process.argv);
+} catch (error) {
+  if (error instanceof CommanderError) {
+    if (error.exitCode === 0) process.exit(0); // --help / --version already printed
+    fail(new ArchipelagoError(error.message.replace(/^error: /, "")), process.argv.includes("--json"));
+  }
+  throw error;
+}

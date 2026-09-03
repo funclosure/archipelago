@@ -105,6 +105,12 @@ test("errors carry valid slugs and exit 1", () => {
   expect(nonSibling.code).toBe(1);
   expect(nonSibling.json.error).toContain("siblings");
   expect(cli(["domain", "show", "--slug", "nope"]).json).toEqual({ error: 'no domain "nope"', valid: ["sd"] });
+  const bogus = cli(["domain", "add", "--slug", "sd", "--name", "x", "--bogus"]);
+  expect(bogus.code).toBe(1);
+  expect(bogus.json.error).toContain("unknown option");
+  const unknownCmd = cli(["sail"]);
+  expect(unknownCmd.code).toBe(1);
+  expect(unknownCmd.json.error).toContain("unknown command");
 });
 
 test("--stdin merges a JSON object under the flags", () => {
