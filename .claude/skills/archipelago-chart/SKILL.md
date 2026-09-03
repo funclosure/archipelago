@@ -7,7 +7,7 @@ description: Use when the user wants to chart, probe, survey, or map what they u
 
 You are the surveyor. The conversation is not the record; the database is. Every verdict goes through the `archipelago` CLI, and the map in the browser redraws within two seconds of each write.
 
-Run the CLI from the project root as `bun run src/cli/index.ts …` (or `archipelago …` after `bun link`). Every command prints JSON. Errors exit 1 with `{ "error", "valid" }`, where `valid` lists the slugs you could have used. Slugs are lowercase kebab-case and unique per domain.
+Run the CLI from the project root as `bun run src/cli/index.ts …` (or `archipelago …` after `bun link`). Every command prints JSON. Errors exit 1 with `{ "error" }`, plus `valid` listing the slugs you could have used when the error is an unknown slug. Slugs are lowercase kebab-case and unique per domain.
 
 ## Vocabulary
 
@@ -40,11 +40,11 @@ When the user names a domain that does not exist (`domain list`):
 3. Write it:
 
 ```bash
-A="bun run src/cli/index.ts"
-$A domain add --slug system-design --name "System Design"
-$A island add --domain system-design --slug caching --name Caching --summary "Keeping hot data close to where it is read." --order 1
-$A island add --domain system-design --slug databases --name Databases --summary "…" --order 2
-$A strait add --domain system-design --from caching --to databases --name cache-aside
+A() { bun run src/cli/index.ts "$@"; }   # works in bash and zsh; define once per shell
+A domain add --slug system-design --name "System Design"
+A island add --domain system-design --slug caching --name Caching --summary "Keeping hot data close to where it is read." --order 1
+A island add --domain system-design --slug databases --name Databases --summary "…" --order 2
+A strait add --domain system-design --from caching --to databases --name cache-aside
 ```
 
 The sketch is now stable: later sittings read it from the database and never regenerate it.
@@ -52,10 +52,10 @@ The sketch is now stable: later sittings read it from the database and never reg
 ## 2. Every turn, before anything else
 
 ```bash
-$A session show --domain <slug>        # if .active is null:
-$A session start --domain <slug>
-$A comment list --domain <slug> --unread
-$A focus show --domain <slug>
+A session show --domain <slug>        # if .active is null:
+A session start --domain <slug>
+A comment list --domain <slug> --unread
+A focus show --domain <slug>
 ```
 
 Handle each unread comment, then `comment mark-read --domain <slug> --all`:
@@ -85,7 +85,7 @@ Tone: a knowledgeable peer curious how they think. Short questions. No praise in
 Confidence below 0.6: ask one more question instead of writing. Evidence is a verbatim quote from the user's answer. Rationale is one sentence naming which test decided it.
 
 ```bash
-$A verdict set --domain <slug> --target island:caching --state settled --confidence 0.85 \
+A verdict set --domain <slug> --target island:caching --state settled --confidence 0.85 \
   --evidence "the app checks the cache first and on a miss reads the database and writes the cache" \
   --rationale "applied cache-aside to the product-page scenario correctly"
 ```
@@ -101,7 +101,7 @@ A reef is written only when you can state (a) the specific false claim and (b) a
 When two neighbouring islands both have verdicts, ask one question about how they relate ("when would you reach for X instead of Y?"). Record it on the strait with the same states:
 
 ```bash
-$A verdict set --domain <slug> --target strait:caching~databases --state sandbar --confidence 0.6 \
+A verdict set --domain <slug> --target strait:caching~databases --state sandbar --confidence 0.6 \
   --evidence "you cache reads, the database is for writes" --rationale "shape right, missed invalidation"
 ```
 
@@ -112,8 +112,8 @@ When the user asks to go closer, or a `sail_closer` comment arrives, sketch that
 ## 8. Ending a sitting
 
 ```bash
-$A session end --domain <slug> --summary "<one paragraph: what was charted, reefs found, where to sail next>"
-$A snapshot --domain <slug>
+A session end --domain <slug> --summary "<one paragraph: what was charted, reefs found, where to sail next>"
+A snapshot --domain <slug>
 ```
 
 Then give the user an orientation in prose, at the current scale: the islands they stand on, the sandbars, any reef, and the nearest open water (the snapshot's `nearestOpenWater` lists it in order).
@@ -135,4 +135,4 @@ snapshot --domain [--scale <island-slug>]
 serve    [--port 4480] [--domain <slug>] [--no-open]
 ```
 
-Add `--stdin` to any command to merge a JSON object from stdin under the flags.
+Add `--stdin` to any command to merge a JSON object from stdin under the flags, and `--json` for compact output (already the default when stdout is not a terminal, as it is when you run commands).
