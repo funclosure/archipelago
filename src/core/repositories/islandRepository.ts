@@ -16,9 +16,13 @@ export type IslandUpsert = {
 };
 
 export function upsertIsland(db: Database, input: IslandUpsert): Island {
-  if (input.parentId != null) {
-    const existing = getIsland(db, input.domainId, input.slug);
-    if (existing) assertNotDescendant(db, existing, input.parentId);
+  const existing = getIsland(db, input.domainId, input.slug);
+  if (existing && input.parentId != null) {
+    assertNotDescendant(db, existing, input.parentId);
+    if (input.parentId !== existing.parentId) {
+      // A moved island has new siblings; its old straits would join non-siblings, so they go.
+      db.run("delete from straits where from_island_id = ? or to_island_id = ?", [existing.id, existing.id]);
+    }
   }
   return db
     .query<Island, Record<string, string | number | null>>(

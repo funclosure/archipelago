@@ -5,6 +5,7 @@ import { upsertDomain } from "../../src/core/repositories/domainRepository.ts";
 import {
   upsertIsland, updateIsland, getIsland, requireIsland, listIslands, listIslandSlugs, islandPath,
 } from "../../src/core/repositories/islandRepository.ts";
+import { upsertStrait, listStraits } from "../../src/core/repositories/straitRepository.ts";
 import { ConflictError, NotFoundError } from "../../src/core/errors.ts";
 
 let db: Database;
@@ -60,4 +61,15 @@ test("requireIsland lists valid slugs; updateIsland patches fields", () => {
   const updated = updateIsland(db, domainId, "caching", { summary: "new" });
   expect(updated.summary).toBe("new");
   expect(updated.name).toBe("Caching");
+});
+
+test("reparenting an island drops its straits, which joined its old siblings", () => {
+  const a = upsertIsland(db, { domainId, slug: "caching", name: "Caching" });
+  const b = upsertIsland(db, { domainId, slug: "databases", name: "Databases" });
+  const c = upsertIsland(db, { domainId, slug: "queues", name: "Queues" });
+  upsertStrait(db, { domainId, fromIslandId: a.id, toIslandId: b.id });
+  upsertStrait(db, { domainId, fromIslandId: b.id, toIslandId: c.id });
+  upsertIsland(db, { domainId, slug: "caching", name: "Caching", parentId: c.id });
+  expect(listStraits(db, domainId, null).map((s) => [s.fromIslandId, s.toIslandId])).toEqual([[b.id, c.id]]);
+  expect(listStraits(db, domainId, c.id)).toEqual([]);
 });

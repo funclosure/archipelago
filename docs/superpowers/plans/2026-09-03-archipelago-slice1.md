@@ -761,6 +761,7 @@ import { upsertDomain } from "../../src/core/repositories/domainRepository.ts";
 import {
   upsertIsland, updateIsland, getIsland, requireIsland, listIslands, listIslandSlugs, islandPath,
 } from "../../src/core/repositories/islandRepository.ts";
+import { upsertStrait, listStraits } from "../../src/core/repositories/straitRepository.ts";
 import { ConflictError, NotFoundError } from "../../src/core/errors.ts";
 
 let db: Database;
@@ -817,6 +818,17 @@ test("requireIsland lists valid slugs; updateIsland patches fields", () => {
   expect(updated.summary).toBe("new");
   expect(updated.name).toBe("Caching");
 });
+
+test("reparenting an island drops its straits, which joined its old siblings", () => {
+  const a = upsertIsland(db, { domainId, slug: "caching", name: "Caching" });
+  const b = upsertIsland(db, { domainId, slug: "databases", name: "Databases" });
+  const c = upsertIsland(db, { domainId, slug: "queues", name: "Queues" });
+  upsertStrait(db, { domainId, fromIslandId: a.id, toIslandId: b.id });
+  upsertStrait(db, { domainId, fromIslandId: b.id, toIslandId: c.id });
+  upsertIsland(db, { domainId, slug: "caching", name: "Caching", parentId: c.id });
+  expect(listStraits(db, domainId, null).map((s) => [s.fromIslandId, s.toIslandId])).toEqual([[b.id, c.id]]);
+  expect(listStraits(db, domainId, c.id)).toEqual([]);
+});
 ```
 
 - [ ] **Step 2: Run test to verify it fails**
@@ -847,9 +859,13 @@ export type IslandUpsert = {
 };
 
 export function upsertIsland(db: Database, input: IslandUpsert): Island {
-  if (input.parentId != null) {
-    const existing = getIsland(db, input.domainId, input.slug);
-    if (existing) assertNotDescendant(db, existing, input.parentId);
+  const existing = getIsland(db, input.domainId, input.slug);
+  if (existing && input.parentId != null) {
+    assertNotDescendant(db, existing, input.parentId);
+    if (input.parentId !== existing.parentId) {
+      // A moved island has new siblings; its old straits would join non-siblings, so they go.
+      db.run("delete from straits where from_island_id = ? or to_island_id = ?", [existing.id, existing.id]);
+    }
   }
   return db
     .query<Island, Record<string, string | number | null>>(
