@@ -31,6 +31,8 @@ If the user has not opened it, start it once in the background and tell them the
 bun run src/cli/index.ts serve --domain <slug>
 ```
 
+Islands keep fixed positions once the map has placed them; if the user wants one moved, they drag it, or you run `A island update --domain <slug> --slug <island> --x <n> --y <n>` with world coordinates 0..1000.
+
 ## 1. Setup: a new domain
 
 When the user names a domain that does not exist (`domain list`):

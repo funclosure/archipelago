@@ -40,6 +40,8 @@ Open water is never a low score. A reef never looks like a gap.
 
 Click an island to select it (the terminal then knows which one "this one" is). The card offers **Probe this**, **Sail closer** (or **Sail in** when the island already has islets), and a note box for notes and disputes. Claude reads them at the start of its next turn.
 
+Islands keep their place. The map lays out new islands once, around the ones already there, and stores the positions; verdicts never move anything. Drag an island to rearrange, and it stays where you put it. `archipelago island update --domain <slug> --slug <island> --x <0..1000> --y <0..1000>` sets a position by hand.
+
 ## Layout
 
 ```
