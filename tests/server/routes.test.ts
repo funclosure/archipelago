@@ -98,9 +98,16 @@ test("cross-site POSTs are rejected", async () => {
   expect(wrongType.status).toBe(415);
   expect(await wrongType.json()).toEqual({ error: "expected application/json" });
 
-  const ok = await post("/api/comment", { domain: "sd", targetType: "island", targetId: "caching", body: "hello", kind: "note" });
-  expect(ok.status).toBe(200);
-  expect(ok.json.comment.kind).toBe("note");
+  // The page's own requests carry the server's origin; both localhost spellings must match the URL port.
+  for (const origin of [base, base.replace("127.0.0.1", "localhost")]) {
+    const ok = await fetch(base + "/api/comment", {
+      method: "POST",
+      headers: { "content-type": "application/json", origin },
+      body: JSON.stringify({ domain: "sd", targetType: "island", targetId: "caching", body: "hello", kind: "note" }),
+    });
+    expect(ok.status).toBe(200);
+    expect((await ok.json()).comment.kind).toBe("note");
+  }
 });
 
 test("static files are served fresh and traversal is blocked", async () => {
