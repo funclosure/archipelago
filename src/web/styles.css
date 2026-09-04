@@ -38,7 +38,7 @@ html, body { margin: 0; height: 100%; background: var(--water); color: var(--tex
 
 /* ---- the pane: head, log, foot ---- */
 .pane { position: fixed; top: 0; right: 0; bottom: 0; width: clamp(340px, 38vw, 440px); background: var(--panel);
-  border-left: 1px solid var(--line); display: flex; flex-direction: column; box-shadow: -12px 0 32px rgba(0, 0, 0, .35); }
+  border-left: 1px solid var(--line); display: flex; flex-direction: column; box-shadow: -12px 0 32px rgba(0, 0, 0, .35); z-index: 2; }
 .pane[hidden] { display: none; }
 @media (max-width: 720px) { .pane { width: 100%; } }
 
@@ -94,7 +94,7 @@ html, body { margin: 0; height: 100%; background: var(--water); color: var(--tex
   animation: blink 1s steps(2) infinite; }
 @keyframes blink { to { visibility: hidden; } }
 @media (prefers-reduced-motion: reduce) { .caret, .chip.just-lit { animation: none; } }
-.empty { display: grid; gap: 10px; justify-items: start; }
+.empty, .actions { display: grid; gap: 10px; justify-items: start; }
 .btn { background: var(--land); color: var(--water); border: 0; border-radius: 6px; padding: 7px 12px; font: inherit; font-size: 12px;
   font-weight: 500; cursor: pointer; }
 .btn.ghost { background: transparent; color: var(--text); border: 1px solid var(--line); }
@@ -104,7 +104,7 @@ button:focus-visible, textarea:focus-visible, input:focus-visible { outline: 2px
 .foot { padding: 12px 20px 14px; border-top: 1px solid var(--line); display: grid; gap: 6px; }
 .foot form { display: flex; gap: 6px; align-items: flex-end; margin: 0; }
 .foot textarea { flex: 1; resize: none; background: var(--water); border: 1px solid var(--line); border-radius: 6px; color: var(--text);
-  padding: 8px 10px; font: inherit; font-size: 13px; line-height: 1.4; min-height: 36px; max-height: 118px; }
+  padding: 8px 10px; font: inherit; font-size: 13px; line-height: 1.4; min-height: 36px; max-height: 118px; box-sizing: border-box; }
 .foot textarea:disabled { color: var(--muted); }
 .foot .meta { display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); }
 .foot .meta .busy { color: var(--sand); }

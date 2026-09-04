@@ -5,7 +5,6 @@ import { renderMarkdown } from "./markdown.js";
 
 const pane = document.getElementById("pane");
 const STICK_PX = 40;            // within this of the bottom, the log follows new content
-const MAX_ANSWER_HEIGHT = 118;  // about five lines of the answer box
 const ROUNDS = 4;
 
 let noteDraft = "";       // note text survives re-renders
@@ -96,9 +95,11 @@ async function loadThread(slug) {
     if (thread.slug !== slug || gen !== loadGen) return;
     thread.messages = messages;
     thread.loaded = true;
+    thread.answering = false; // a reef answer is complete once the stored proposal status is back
     thread.loadError = null; // thread.error belongs to the last turn and stays until the next one
   } catch (error) {
     if (thread.slug !== slug || gen !== loadGen) return;
+    thread.answering = false; // do not wedge the buttons if the refetch fails
     thread.loadError = error.message; // version stays set: the next version change retries, a re-render does not
   }
   render();
@@ -153,12 +154,12 @@ async function answerReef(slug, id, answer, note) {
     if (thread.slug !== slug) return; // the reader moved on while the answer was in flight
     thread.disputeDraft = "";
     thread.version = null;
+    // thread.answering stays true: Confirm/Dispute re-enable only once the refetched thread lands
     ok = true;
   } catch (error) {
     if (thread.slug !== slug) return; // the reader moved on; this failure is not theirs to see
     thread.error = error.message;
-  } finally {
-    if (thread.slug === slug) thread.answering = false;
+    thread.answering = false;
   }
   render();
   if (ok && answer === "dispute" && thread.slug === slug) await runTurn(slug, null);
@@ -188,7 +189,12 @@ function renderLive() {
   const stuck = atBottom(log);
   if (thread.live) {
     live.replaceChildren(renderMarkdown(thread.live));
-    (live.lastElementChild || live).append(el("span", "caret"));
+    // Descend to the deepest last block (e.g. into a list's last <li>) so the caret
+    // follows the last character rather than landing after the whole block; stop
+    // above inline elements so it trails them instead of nesting inside.
+    let tail = live;
+    while (tail.lastElementChild && !["CODE", "STRONG", "EM", "BR"].includes(tail.lastElementChild.tagName)) tail = tail.lastElementChild;
+    tail.append(el("span", "caret"));
   } else {
     live.replaceChildren();
   }
@@ -209,8 +215,9 @@ function focusAnswer() {
 }
 
 function growAnswer(ta) {
+  if (!ta) return;
   ta.style.height = "auto";
-  ta.style.height = `${Math.min(MAX_ANSWER_HEIGHT, ta.scrollHeight)}px`;
+  ta.style.height = `${ta.scrollHeight}px`;
 }
 
 // ---- head ----
@@ -296,7 +303,7 @@ function headEl(island) {
 // ---- log ----
 
 function retryButton() {
-  const actions = el("div", "empty");
+  const actions = el("div", "actions");
   actions.append(
     button("Retry", () => {
       thread.version = null; // the render below refetches
