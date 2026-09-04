@@ -265,7 +265,7 @@ function frame(now) {
     drawStrait(ctx, l, { dim: Boolean(focusSlug) && !(near.has(l.source.slug) && near.has(l.target.slug)) });
   }
   for (const n of app.nodes) {
-    drawIsland(ctx, n, { dim: Boolean(focusSlug) && !near.has(n.slug), spotlight: n.slug === focusSlug, now });
+    drawIsland(ctx, n, { dim: Boolean(focusSlug) && !near.has(n.slug), selected: n.slug === focusSlug, now });
   }
   requestAnimationFrame(frame);
 }
