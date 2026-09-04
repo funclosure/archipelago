@@ -262,16 +262,18 @@ function sseResponse(run: (emit: (event: JudgeEvent) => void) => Promise<void>):
       const emit = (event: JudgeEvent) => write(`event: ${event.type}\ndata: ${JSON.stringify(event)}\n\n`);
       write(": open\n\n"); // a first frame now, so the headers leave before `run` blocks (a 409 check must see the 200 first)
       const ping = setInterval(() => write(": ping\n\n"), PING_MS);
-      void run(emit).finally(() => {
-        clearInterval(ping);
-        if (!open) return;
-        open = false;
-        try {
-          controller.close();
-        } catch {
-          // already closed by the client
-        }
-      });
+      void run(emit)
+        .finally(() => {
+          clearInterval(ping);
+          if (!open) return;
+          open = false;
+          try {
+            controller.close();
+          } catch {
+            // already closed by the client
+          }
+        })
+        .catch(() => {});
     },
     cancel() {
       // the client went away; `write` becomes a no-op on the next enqueue failure

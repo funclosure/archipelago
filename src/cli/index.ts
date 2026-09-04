@@ -308,9 +308,10 @@ program
   .option("--stub", "run the judge without the Agent SDK (canned replies, no login needed)")
   .action((o: { port: string; domain?: string; open: boolean; stub?: boolean }) => {
     try {
-      const server = startServer({ port: Number(o.port), stub: Boolean(o.stub) });
+      const stub = o.stub || process.env.ARCHIPELAGO_STUB === "1";
+      const server = startServer({ port: Number(o.port), stub });
       const url = `http://127.0.0.1:${server.port}/${o.domain ? `?domain=${encodeURIComponent(o.domain)}` : ""}`;
-      console.log(`Archipelago map: ${url}${o.stub ? "  (judge: stub)" : ""}`);
+      console.log(`Archipelago map: ${url}${stub ? "  (judge: stub)" : ""}`);
       if (o.open) Bun.spawn(["open", url]);
     } catch (error) {
       fail(error, false);

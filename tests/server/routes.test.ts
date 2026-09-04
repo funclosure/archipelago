@@ -214,6 +214,29 @@ test("a runner failure streams one error and stores no judge message", async () 
   expect((await thread("databases")).messages.map((m: any) => m.role)).toEqual(["you"]);
 });
 
+test("ARCHIPELAGO_STUB=1 selects the stub runner through startServer when no stub option is passed", async () => {
+  const prevEnv = process.env.ARCHIPELAGO_STUB;
+  process.env.ARCHIPELAGO_STUB = "1";
+  let envServer: ReturnType<typeof startServer> | undefined;
+  try {
+    envServer = startServer({ port: 0, dbPath: join(dir, "test.sqlite"), staticRoot: dir });
+    const envBase = `http://127.0.0.1:${envServer.port}`;
+    const res = await fetch(envBase + "/api/probe", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ domain: "sd", island: "databases" }),
+    });
+    expect(res.status).toBe(200);
+    const events = parseSse(await res.text());
+    expect(events.map((e) => e.type)).toEqual(["text", "done"]);
+    expect(events[0]!.data.text).toContain("Databases");
+  } finally {
+    if (prevEnv === undefined) delete process.env.ARCHIPELAGO_STUB;
+    else process.env.ARCHIPELAGO_STUB = prevEnv;
+    envServer?.stop(true);
+  }
+});
+
 test("a second turn on the same island while one runs is 409, and the lock clears afterwards", async () => {
   let release!: () => void;
   const slow: JudgeRunner = ({ emit }) =>
@@ -240,6 +263,7 @@ test("a second turn on the same island while one runs is 409, and the lock clear
     release();
     await third.text();
   } finally {
+    release?.();
     other.stop(true);
   }
 });
