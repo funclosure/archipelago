@@ -10,17 +10,18 @@ bun test                              # all tests (bun test, NOT vitest — vite
 bunx tsc --noEmit                     # typecheck
 bun run src/cli/index.ts <command>    # the CLI; `bun link` registers it as `archipelago`
 bun run src/cli/index.ts serve        # map server on 127.0.0.1:4480, opens the browser
+bun run src/cli/index.ts serve --stub # judge without a Claude login
 ```
 
 ## Architecture
 
-One seam. Claude in the terminal is the producer (skill → CLI → SQLite). The browser is the consumer (server → JSON API → canvas page polling `/api/version`). Comments and focus flow back through the same database.
+Two brains, one database. Claude in the terminal is the cartographer (skill → CLI → SQLite): it sketches islands, islets, and straits. The judge runs inside the server on the Claude Agent SDK (`src/server/judge/`), one thread per island, and writes verdicts through the same repositories. The browser is the consumer (server → JSON API → canvas page polling `/api/version`) and the judge's chat surface (`POST /api/probe` streaming server-sent events). Comments and focus flow back through the same database.
 
 ```
-src/core/       types.ts, errors.ts, validators.ts, db.ts, migrate.ts, migrations/ (0001_initial.sql, 0002_positions.sql), repositories/, view-model.ts, targets.ts
+src/core/       types.ts, errors.ts, validators.ts, db.ts, migrate.ts, migrations/ (0001_initial.sql, 0002_positions.sql, 0003_threads.sql), repositories/, view-model.ts, targets.ts
 src/cli/        index.ts (commander), io.ts
-src/server/     index.ts (startServer), routes.ts (handleRequest)
-src/web/        index.html, styles.css, app.js, view-model.js, layout.js, camera.js, draw.js, interactions.js, card.js
+src/server/     index.ts (startServer), routes.ts (handleRequest), judge/ (PROTOCOL.md, protocol.ts, context.ts, tools.ts, runner.ts, stub.ts, sdk.ts)
+src/web/        index.html, styles.css, app.js, view-model.js, layout.js, camera.js, draw.js, interactions.js, card.js, stream.js, thread.js
 .claude/skills/archipelago-chart/SKILL.md
 tests/          core/, cli/, server/, web/
 ```
@@ -37,3 +38,7 @@ tests/          core/, cli/, server/, web/
 - Skill is the charting protocol; change behaviour there before changing code.
 - Map positions live on `islands.x`/`islands.y` in a fixed 1000×1000 world per scale (null = unplaced). The page places unplaced islands once (existing ones pinned) and posts `/api/positions`; the simulation never runs when everything is placed. Every island at a scale shares one radius (`islandRadius(count)` in `src/web/view-model.js`); elevation never changes size.
 - Schema changes go in a new numbered migration under `src/core/migrations/`; `0001_initial.sql` is frozen.
+- The judge writes only through `record_verdict` (sandbar, settled, mountainous) and `propose_reef`; a reef is written only when the reader confirms it via `POST /api/probe/reef`.
+- `ConflictError` → 409. `POST /api/probe` holds one turn per island at a time.
+- The judge's behaviour lives in `src/server/judge/PROTOCOL.md`; change it there before changing code. The skill is the cartographer's protocol only.
+- `bun test` never spawns the SDK: server tests run with `stub: true`; `sdk.ts` imports the SDK lazily.

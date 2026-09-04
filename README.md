@@ -2,7 +2,7 @@
 
 A conversational tool for charting what you understand about a domain, shown as islands in open water.
 
-You talk to Claude in the Claude Code terminal. A charting skill drives a CLI that records five-state verdicts into a local SQLite file. A map in the browser redraws within two seconds and can send comments back to the session.
+Claude in the terminal is the cartographer: a skill drives a CLI that sketches islands and straits into a local SQLite file. The judge lives in the browser: click an island, press **Probe this**, and a conversation runs inside the map server on the Claude Agent SDK, through your Claude Code login. Verdicts land on the map within two seconds.
 
 Read `docs/BRIEF.md` for the idea and `docs/superpowers/specs/2026-09-03-archipelago-slice1-design.md` for how this slice is built.
 
@@ -38,9 +38,13 @@ Open water is never a low score. A reef never looks like a gap.
 
 ## From the map
 
-Click an island to select it (the terminal then knows which one "this one" is). The card offers **Probe this**, **Sail closer** (or **Sail in** when the island already has islets), and a note box for notes and disputes. Claude reads them at the start of its next turn.
+Click an island to select it. The card holds the island's thread: **Probe this** starts it, the judge asks first, and each verdict shows as a line in the thread while the island fills in on the map. A reef is proposed with the false claim and its consequence; you **Confirm** or **Dispute** it before it is written. **Sail closer** (or **Sail in** when the island has islets) and the note box still go to Claude in the terminal.
 
 Islands keep their place. The map lays out new islands once, around the ones already there, and stores the positions; verdicts never move anything. Drag an island to rearrange, and it stays where you put it. `archipelago island update --domain <slug> --slug <island> --x <0..1000> --y <0..1000>` sets a position by hand.
+
+## The judge
+
+`archipelago serve` runs the judge on `@anthropic-ai/claude-agent-sdk`, which uses your Claude Code login; there is no API key. Set `ARCHIPELAGO_MODEL` to change the model (default `claude-opus-5`). `archipelago serve --stub` (or `ARCHIPELAGO_STUB=1`) runs a canned judge with no login, for development: a message containing `settled` charts the island, `reef` proposes a reef, `fail` errors.
 
 ## Layout
 
@@ -50,6 +54,7 @@ src/cli/       the archipelago command
 src/server/    Bun.serve JSON API + static files
 src/web/       one-canvas map, plain ES modules
 .claude/skills/archipelago-chart/SKILL.md   the charting protocol
+src/server/judge/PROTOCOL.md   the judge's protocol (system prompt), read at runtime
 ```
 
 ## Development
