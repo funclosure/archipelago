@@ -21,6 +21,7 @@ export type IslandView = {
   children: { total: number; byState: RollupState };
   x: number | null;
   y: number | null;
+  harbour: boolean;
   messages: number;
   landmarks: { total: number; unlocked: number; items: LandmarkView[] };
 };
@@ -32,6 +33,7 @@ export type Snapshot = {
   islands: IslandView[];
   straits: StraitView[];
   focus: string | null;
+  harbour: string | null;
   unreadComments: number;
   nearestOpenWater: string[];
   reefs: string[];
@@ -81,6 +83,7 @@ export function buildSnapshot(db: Database, domainSlug: string, scaleSlug: strin
       children: { total: children.length, byState },
       x: island.x,
       y: island.y,
+      harbour: island.harbour === 1,
       messages: messageCounts.get(island.id) ?? 0,
       landmarks: landmarkView(landmarksByIsland.get(island.id) ?? []),
     };
@@ -106,6 +109,7 @@ export function buildSnapshot(db: Database, domainSlug: string, scaleSlug: strin
     islands: islandViews,
     straits: straitViews,
     focus: focusIsland ? focusIsland.slug : null,
+    harbour: islandViews.find((i) => i.harbour)?.slug ?? null,
     unreadComments: listComments(db, domain.id, { unreadOnly: true }).length,
     nearestOpenWater: nearestOpenWater(islandViews, straitViews),
     reefs: [

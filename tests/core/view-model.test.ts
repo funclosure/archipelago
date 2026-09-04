@@ -2,7 +2,7 @@ import { test, expect, beforeEach } from "bun:test";
 import type { Database } from "bun:sqlite";
 import { openDatabase } from "../../src/core/db.ts";
 import { upsertDomain } from "../../src/core/repositories/domainRepository.ts";
-import { upsertIsland, updateIsland } from "../../src/core/repositories/islandRepository.ts";
+import { upsertIsland, updateIsland, setHarbour } from "../../src/core/repositories/islandRepository.ts";
 import { upsertStrait } from "../../src/core/repositories/straitRepository.ts";
 import { addVerdict } from "../../src/core/repositories/verdictRepository.ts";
 import { addComment } from "../../src/core/repositories/commentRepository.ts";
@@ -117,4 +117,18 @@ test("snapshot carries each island's landmarks with lit state and evidence", () 
     ],
   });
   expect(snap.islands.find((i) => i.slug === "queues")!.landmarks).toEqual({ total: 0, unlocked: 0, items: [] });
+});
+
+test("the snapshot names the harbour at its own scale only", () => {
+  const ttl = upsertIsland(db, { domainId, slug: "caching-ttl", name: "TTL", parentId: caching });
+  expect(buildSnapshot(db, "sd", null).harbour).toBeNull();
+  setHarbour(db, domainId, "queues");
+  const top = buildSnapshot(db, "sd", null);
+  expect(top.harbour).toBe("queues");
+  expect(top.islands.filter((i) => i.harbour).map((i) => i.slug)).toEqual(["queues"]);
+  expect(buildSnapshot(db, "sd", "caching").harbour).toBeNull();
+  setHarbour(db, domainId, "caching-ttl");
+  expect(buildSnapshot(db, "sd", "caching").harbour).toBe("caching-ttl");
+  expect(buildSnapshot(db, "sd", null).harbour).toBe("queues");
+  expect(ttl.harbour).toBe(0); // the row read before setHarbour is untouched
 });

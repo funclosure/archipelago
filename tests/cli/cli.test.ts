@@ -196,3 +196,22 @@ test("landmark add and list", () => {
   expect(cli(["landmark", "add", "--domain", "sd", "--island", "caching", "--slug", "Bad Slug", "--name", "X"]).code).toBe(1);
   expect(cli(["landmark", "add", "--domain", "sd", "--island", "caching", "--slug", "blank", "--name", "   "]).code).toBe(1);
 });
+
+test("harbour: set, show, snapshot, clear, unknown island", () => {
+  cli(["domain", "add", "--slug", "sd", "--name", "System Design"]);
+  cli(["island", "add", "--domain", "sd", "--slug", "caching", "--name", "Caching"]);
+  cli(["island", "add", "--domain", "sd", "--slug", "databases", "--name", "Databases"]);
+  expect(cli(["harbour", "show", "--domain", "sd"]).json).toEqual({ harbour: null, parent: null });
+  const set = cli(["harbour", "set", "--domain", "sd", "--island", "caching"]);
+  expect(set.code).toBe(0);
+  expect(set.json).toMatchObject({ harbour: "caching", parent: null });
+  expect(typeof set.json.version).toBe("number");
+  expect(cli(["harbour", "set", "--domain", "sd", "--island", "databases"]).json).toMatchObject({ harbour: "databases", parent: null });
+  expect(cli(["harbour", "show", "--domain", "sd"]).json).toEqual({ harbour: "databases", parent: null });
+  expect(cli(["snapshot", "--domain", "sd"]).json.harbour).toBe("databases");
+  expect(cli(["harbour", "clear", "--domain", "sd"]).json).toMatchObject({ cleared: 1 });
+  expect(cli(["harbour", "show", "--domain", "sd"]).json).toEqual({ harbour: null, parent: null });
+  const bad = cli(["harbour", "set", "--domain", "sd", "--island", "nope"]);
+  expect(bad.code).toBe(1);
+  expect(bad.json.valid).toEqual(["caching", "databases"]);
+});

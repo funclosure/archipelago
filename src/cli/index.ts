@@ -10,6 +10,7 @@ import {
 import { listDomains, requireDomain, upsertDomain } from "../core/repositories/domainRepository.ts";
 import {
   getIsland, getIslandById, islandPath, listIslands, requireIsland, updateIsland, upsertIsland,
+  setHarbour, clearHarbour, getHarbour,
 } from "../core/repositories/islandRepository.ts";
 import { countStraitsTouching, listStraits, upsertStrait } from "../core/repositories/straitRepository.ts";
 import { addVerdict, latestVerdict, latestVerdicts, verdictHistory } from "../core/repositories/verdictRepository.ts";
@@ -279,6 +280,41 @@ common(focus.command("set").option("--domain <slug>").option("--island <slug>").
       const i = o.clear ? null : requireIsland(db, d.id, slugSchema.parse(o.island));
       const state = setFocus(db, d.id, i ? i.id : null);
       return { focus: i ? i.slug : null, version: state.version };
+    }),
+  ),
+);
+
+// ---- harbour ----
+const harbour = program.command("harbour").description("The island to set out from at a scale");
+const parentOf = (db: Database, domainId: number, slug: unknown) =>
+  slug === undefined ? null : requireIsland(db, domainId, slugSchema.parse(slug));
+common(harbour.command("set").option("--domain <slug>").option("--island <slug>")).action(
+  run((o) =>
+    withDb((db) => {
+      const d = requireDomain(db, slugSchema.parse(o.domain));
+      const island = setHarbour(db, d.id, slugSchema.parse(o.island));
+      const parent = island.parentId === null ? null : getIslandById(db, island.parentId);
+      return { harbour: island.slug, parent: parent ? parent.slug : null, version: getViewState(db, d.id).version };
+    }),
+  ),
+);
+common(harbour.command("clear").option("--domain <slug>").option("--parent <slug>", "clear among this island's islets")).action(
+  run((o) =>
+    withDb((db) => {
+      const d = requireDomain(db, slugSchema.parse(o.domain));
+      const parent = parentOf(db, d.id, o.parent);
+      const cleared = clearHarbour(db, d.id, parent ? parent.id : null);
+      return { cleared, version: getViewState(db, d.id).version };
+    }),
+  ),
+);
+common(harbour.command("show").option("--domain <slug>").option("--parent <slug>", "show among this island's islets")).action(
+  run((o) =>
+    withDb((db) => {
+      const d = requireDomain(db, slugSchema.parse(o.domain));
+      const parent = parentOf(db, d.id, o.parent);
+      const h = getHarbour(db, d.id, parent ? parent.id : null);
+      return { harbour: h ? h.slug : null, parent: parent ? parent.slug : null };
     }),
   ),
 );
