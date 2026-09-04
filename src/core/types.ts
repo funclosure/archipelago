@@ -68,3 +68,33 @@ export type Comment = {
 };
 
 export type ViewState = { domainId: number; focusIslandId: number | null; version: number };
+
+export const messageRoles = ["you", "judge"] as const;
+export type MessageRole = (typeof messageRoles)[number];
+
+export const messageKinds = ["text", "reef_proposal", "system"] as const;
+export type MessageKind = (typeof messageKinds)[number];
+
+export type Message = {
+  id: number;
+  domainId: number;
+  islandId: number;
+  role: MessageRole;
+  kind: MessageKind;
+  body: string;
+  createdAt: string;
+};
+
+export const reefStatuses = ["pending", "confirmed", "disputed"] as const;
+export type ReefStatus = (typeof reefStatuses)[number];
+
+/** The JSON body of a `reef_proposal` message. */
+export type ReefProposal = {
+  target: string;
+  claim: string;
+  consequence: string;
+  evidence: string;
+  confidence: number;
+  rationale: string;
+  status: ReefStatus;
+};
