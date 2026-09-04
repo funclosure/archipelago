@@ -224,11 +224,17 @@ function renderStrip() {
   const nameOf = (slug) => s.islands.find((i) => i.slug === slug)?.name ?? slug;
   const open = s.nearestOpenWater.slice(0, 4).map(nameOf);
   const reefs = s.reefs.map((r) => (r.startsWith("island:") ? nameOf(r.slice(7)) : r.replace("strait:", "strait ")));
-  strip.replaceChildren(
+  const items = [];
+  if (s.harbour) {
+    const h = s.islands.find((i) => i.slug === s.harbour);
+    items.push(stripItem(h && h.verdict ? "Home port" : "Set out from", nameOf(s.harbour)));
+  }
+  items.push(
     stripItem("Nearest open water", open.length ? open.join(" · ") : "none at this scale"),
     stripItem("Reefs", reefs.length ? reefs.join(" · ") : "none charted"),
   );
-  if (s.unreadComments) strip.append(stripItem("Unread", `${s.unreadComments} for Claude`));
+  if (s.unreadComments) items.push(stripItem("Unread", `${s.unreadComments} for Claude`));
+  strip.replaceChildren(...items);
 }
 
 function renderStatus() {

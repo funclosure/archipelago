@@ -260,7 +260,10 @@ function headEl(island) {
   row.append(el("h2", null, island.name));
   const v = island.verdict;
   const pillText = v ? `${v.state} · ${pct(v.confidence)}` : island.children.total ? "open water · islets below" : "open water";
-  row.append(el("span", `pill${v ? (v.state === "reef" ? " reef" : "") : " open"}`, pillText));
+  const pills = el("span", "pills");
+  pills.append(el("span", `pill${v ? (v.state === "reef" ? " reef" : "") : " open"}`, pillText));
+  if (island.harbour) pills.append(el("span", "pill harbour", "harbour"));
+  row.append(pills);
   head.append(row);
   if (island.summary) head.append(el("p", "summary", island.summary));
   const hasLandmarks = island.landmarks && island.landmarks.total > 0;

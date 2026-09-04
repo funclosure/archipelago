@@ -49,6 +49,8 @@ html, body { margin: 0; height: 100%; background: var(--water); color: var(--tex
   background: var(--land); color: var(--water); white-space: nowrap; }
 .pill.open { background: transparent; border: 1px dashed var(--open); color: var(--muted); }
 .pill.reef { background: var(--reef); color: var(--text); }
+.pills { display: flex; gap: 6px; }
+.pill.harbour { background: transparent; border: 1px dashed var(--sand); color: var(--sand); }
 .head .summary { margin: 0; color: var(--muted); font-size: 12px; }
 .chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .chip { font-size: 11px; padding: 2px 8px; border-radius: 999px; border: 1px dashed var(--muted); color: var(--muted); }

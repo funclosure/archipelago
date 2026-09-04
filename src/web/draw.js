@@ -15,6 +15,8 @@ export const PALETTE = {
 };
 
 const RISE_MS = 600;
+const LABEL_FONT = "24px Georgia, 'Times New Roman', serif";
+const ANCHOR_GAP = 6; // px between the anchor glyph and the name
 
 export function clear(ctx, w, h) {
   ctx.fillStyle = PALETTE.water;
@@ -186,12 +188,20 @@ function drawRollup(ctx, node, grow) {
 }
 
 function drawLabel(ctx, node, grow, hasOwnVerdict) {
-  ctx.font = "24px Georgia, 'Times New Roman', serif";
+  ctx.font = LABEL_FONT;
   ctx.textAlign = "center";
   ctx.textBaseline = "top";
   ctx.fillStyle = node.state === "open" ? PALETTE.openText : PALETTE.text;
   const offset = !hasOwnVerdict && node.island.children.total > 0 ? 30 : 14;
-  ctx.fillText(node.name, node.x, node.y + node.radius * grow + offset);
+  const y = node.y + node.radius * grow + offset;
+  ctx.fillText(node.name, node.x, y);
+  if (node.island.harbour) {
+    // The harbour: an anchor hangs off the left edge of the name; the name stays centred on the island.
+    const half = ctx.measureText(node.name).width / 2;
+    ctx.textAlign = "right";
+    ctx.fillStyle = PALETTE.sand;
+    ctx.fillText("⚓", node.x - half - ANCHOR_GAP, y);
+  }
 }
 
 export function drawStrait(ctx, link, { dim = false } = {}) {
