@@ -18,7 +18,7 @@ bun run src/cli/index.ts serve --stub # judge without a Claude login
 Two brains, one database. Claude in the terminal is the cartographer (skill → CLI → SQLite): it sketches islands, islets, and straits. The judge runs inside the server on the Claude Agent SDK (`src/server/judge/`), one thread per island, and writes verdicts through the same repositories. The browser is the consumer (server → JSON API → canvas page polling `/api/version`) and the judge's chat surface (`POST /api/probe` streaming server-sent events). Comments and focus flow back through the same database.
 
 ```
-src/core/       types.ts, errors.ts, validators.ts, db.ts, migrate.ts, migrations/ (0001_initial.sql, 0002_positions.sql, 0003_threads.sql), repositories/, view-model.ts, targets.ts
+src/core/       types.ts, errors.ts, validators.ts, db.ts, migrate.ts, migrations/ (0001_initial.sql, 0002_positions.sql, 0003_threads.sql, 0004_landmarks.sql), repositories/, view-model.ts, targets.ts
 src/cli/        index.ts (commander), io.ts
 src/server/     index.ts (startServer), routes.ts (handleRequest), judge/ (PROTOCOL.md, protocol.ts, context.ts, tools.ts, runner.ts, stub.ts, sdk.ts)
 src/web/        index.html, styles.css, app.js, view-model.js, layout.js, camera.js, draw.js, interactions.js, card.js, stream.js, thread.js
@@ -42,3 +42,4 @@ tests/          core/, cli/, server/, web/
 - Behaviour lives in protocol text before code: the cartographer's in `.claude/skills/archipelago-chart/SKILL.md`, the judge's in `src/server/judge/PROTOCOL.md`.
 - The judge's tool surface is closed by `tools: []` plus `allowedTools` in `src/server/judge/sdk.ts`, not by `canUseTool`; do not "fix" it back.
 - `bun test` never spawns the SDK: server tests run with `stub: true`; `sdk.ts` imports the SDK lazily.
+- Landmarks are dark or lit, never a state; unique per island. `set_landmarks` only when an island has none; `unlock_landmark` links the latest reader message and writes the system line `landmark lit: <name>`. The judge's verdict lands when all landmarks are lit, a reef is clear, or after the fourth reader answer.
