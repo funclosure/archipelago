@@ -15,6 +15,7 @@ import { countStraitsTouching, listStraits, upsertStrait } from "../core/reposit
 import { addVerdict, latestVerdict, latestVerdicts, verdictHistory } from "../core/repositories/verdictRepository.ts";
 import { activeSession, endSession, listSessions, startSession } from "../core/repositories/sessionRepository.ts";
 import { markCommentsRead } from "../core/repositories/commentRepository.ts";
+import { listMessages } from "../core/repositories/messageRepository.ts";
 import { getViewState, setFocus } from "../core/repositories/viewStateRepository.ts";
 import { buildSnapshot, listCommentViews } from "../core/view-model.ts";
 import { resolveVerdictTarget } from "../core/targets.ts";
@@ -276,6 +277,18 @@ common(
       const ids = o.all ? ("all" as const) : (o.id as string[] | undefined)?.map(Number) ?? [];
       if (!o.all && ids.length === 0) throw new ArchipelagoError("pass --id <n> ... or --all");
       return { marked: markCommentsRead(db, d.id, ids) };
+    }),
+  ),
+);
+
+// ---- thread ----
+const thread = program.command("thread").description("The judge's conversation on one island");
+common(thread.command("show").option("--domain <slug>").option("--island <slug>")).action(
+  run((o) =>
+    withDb((db) => {
+      const d = requireDomain(db, slugSchema.parse(o.domain));
+      const i = requireIsland(db, d.id, slugSchema.parse(o.island));
+      return { island: i.slug, messages: listMessages(db, i.id) };
     }),
   ),
 );

@@ -3,6 +3,7 @@ import { hashSeed, seededRandom, islandRadius, buildNodes, buildLinks, WORLD } f
 
 const island = (slug, verdict = null, pos = { x: null, y: null }, byState = { sandbar: 0, settled: 0, mountainous: 0, reef: 0, open: 0 }) => ({
   slug, name: slug, summary: null, hasChildren: Object.values(byState).some(Boolean), verdict, x: pos.x, y: pos.y,
+  messages: 0,
   children: { total: Object.values(byState).reduce((a, b) => a + b, 0), byState },
 });
 const snapshot = (islands, straits = []) => ({

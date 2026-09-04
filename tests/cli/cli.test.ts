@@ -6,6 +6,7 @@ import { openDatabase } from "../../src/core/db.ts";
 import { requireDomain } from "../../src/core/repositories/domainRepository.ts";
 import { requireIsland } from "../../src/core/repositories/islandRepository.ts";
 import { addComment } from "../../src/core/repositories/commentRepository.ts";
+import { addMessage } from "../../src/core/repositories/messageRepository.ts";
 
 const ROOT = resolve(import.meta.dir, "../..");
 let dir: string;
@@ -161,4 +162,22 @@ test("island update --x --y round-trips", () => {
   expect(updated.json).toMatchObject({ x: 250, y: 750.5 });
   expect(cli(["island", "list", "--domain", "sd"]).json.islands[0]).toMatchObject({ x: 250, y: 750.5 });
   expect(cli(["island", "update", "--domain", "sd", "--slug", "caching", "--x", "1200"]).code).toBe(1);
+});
+
+test("thread show prints an island's messages in order", () => {
+  cli(["domain", "add", "--slug", "sd", "--name", "System Design"]);
+  cli(["island", "add", "--domain", "sd", "--slug", "caching", "--name", "Caching"]);
+  const db = openDatabase(dbPath);
+  const d = requireDomain(db, "sd");
+  const i = requireIsland(db, d.id, "caching");
+  addMessage(db, { domainId: d.id, islandId: i.id, role: "judge", kind: "text", body: "Explain caching." });
+  addMessage(db, { domainId: d.id, islandId: i.id, role: "you", kind: "text", body: "hot data close to readers" });
+  db.close();
+  const shown = cli(["thread", "show", "--domain", "sd", "--island", "caching"]);
+  expect(shown.code).toBe(0);
+  expect(shown.json.island).toBe("caching");
+  expect(shown.json.messages.map((m: any) => [m.role, m.body])).toEqual([["judge", "Explain caching."], ["you", "hot data close to readers"]]);
+  const missing = cli(["thread", "show", "--domain", "sd", "--island", "nope"]);
+  expect(missing.code).toBe(1);
+  expect(missing.json).toEqual({ error: 'no island "nope" in this domain', valid: ["caching"] });
 });

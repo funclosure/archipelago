@@ -6,6 +6,7 @@ import { getStraitById, listStraits } from "./repositories/straitRepository.ts";
 import { latestVerdicts } from "./repositories/verdictRepository.ts";
 import { listComments } from "./repositories/commentRepository.ts";
 import { getViewState } from "./repositories/viewStateRepository.ts";
+import { countMessages } from "./repositories/messageRepository.ts";
 
 export type VerdictView = { state: VerdictState; confidence: number; evidence: string; rationale: string | null; at: string };
 export type RollupState = Record<VerdictState | "open", number>;
@@ -18,6 +19,7 @@ export type IslandView = {
   children: { total: number; byState: RollupState };
   x: number | null;
   y: number | null;
+  messages: number;
 };
 export type StraitView = { from: string; to: string; name: string | null; verdict: VerdictView | null };
 export type Snapshot = {
@@ -51,6 +53,7 @@ export function buildSnapshot(db: Database, domainSlug: string, scaleSlug: strin
 
   const islands = listIslands(db, domain.id, parentId);
   const islandVerdicts = latestVerdicts(db, "island", islands.map((i) => i.id));
+  const messageCounts = countMessages(db, islands.map((i) => i.id));
   const islandViews: IslandView[] = islands.map((island) => {
     const children = listIslands(db, domain.id, island.id);
     const childVerdicts = latestVerdicts(db, "island", children.map((c) => c.id));
@@ -69,6 +72,7 @@ export function buildSnapshot(db: Database, domainSlug: string, scaleSlug: strin
       children: { total: children.length, byState },
       x: island.x,
       y: island.y,
+      messages: messageCounts.get(island.id) ?? 0,
     };
   });
 

@@ -7,6 +7,7 @@ import { upsertStrait } from "../../src/core/repositories/straitRepository.ts";
 import { addVerdict } from "../../src/core/repositories/verdictRepository.ts";
 import { addComment } from "../../src/core/repositories/commentRepository.ts";
 import { setFocus } from "../../src/core/repositories/viewStateRepository.ts";
+import { addMessage } from "../../src/core/repositories/messageRepository.ts";
 import { buildSnapshot, listCommentViews, formatTarget } from "../../src/core/view-model.ts";
 import { NotFoundError } from "../../src/core/errors.ts";
 
@@ -93,4 +94,11 @@ test("snapshot islands carry their positions", () => {
   const snap = buildSnapshot(db, "sd", null);
   expect(snap.islands.find((i) => i.slug === "caching")).toMatchObject({ x: 100, y: 200 });
   expect(snap.islands.find((i) => i.slug === "queues")).toMatchObject({ x: null, y: null });
+});
+
+test("snapshot counts each island's thread", () => {
+  addMessage(db, { domainId, islandId: caching, role: "judge", kind: "text", body: "Explain caching." });
+  addMessage(db, { domainId, islandId: caching, role: "you", kind: "text", body: "hot data" });
+  const snap = buildSnapshot(db, "sd", null);
+  expect(snap.islands.map((i) => [i.slug, i.messages])).toEqual([["caching", 2], ["queues", 0], ["databases", 0]]);
 });
