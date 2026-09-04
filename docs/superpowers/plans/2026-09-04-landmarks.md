@@ -620,7 +620,11 @@ In `renderContext`, after the `Current verdict` / `Earlier verdicts` lines and b
       lines.push(`- ${l.name} (${l.slug}): ${l.unlockedAt ? `lit — "${indent(l.evidence ?? "")}"` : "dark"}`);
     }
   }
-  lines.push(`Round: ${ctx.round} of 4 (reader answers so far; the verdict lands after the fourth at the latest)`);
+  if (ctx.round >= 4 && !ctx.verdict) {
+    lines.push(`Round: ${ctx.round} of 4. This is the fourth answer: decide now with record_verdict or propose_reef before writing anything else.`);
+  } else {
+    lines.push(`Round: ${ctx.round} of 4 (reader answers so far; the verdict lands after the fourth at the latest)`);
+  }
 ```
 
 - [ ] **Step 5: Tools**
@@ -631,14 +635,13 @@ In `src/server/judge/tools.ts`: import `setLandmarks as setLandmarkRows, unlockL
 /** Writes an island's landmarks once. Refused when any exist: landmarks are cartography, not per-turn state. */
 export function setLandmarks(deps: ToolDeps, input: unknown): { landmarks: string[] } {
   const parsed = landmarksInputSchema.parse(input);
-  return withDb(deps.dbPath, (db) =>
-    db.transaction(() => {
-      const domain = requireDomain(db, deps.domain);
-      const island = requireIsland(db, domain.id, deps.island);
-      if (listLandmarks(db, island.id).length > 0) throw new ArchipelagoError(`island:${island.slug} already has landmarks; they are set once`);
-      return { landmarks: setLandmarkRows(db, domain.id, island.id, parsed.items).map((l) => l.slug) };
-    })(),
-  );
+  // No outer transaction: the repository's setLandmarks is one already, and bun:sqlite transactions do not nest.
+  return withDb(deps.dbPath, (db) => {
+    const domain = requireDomain(db, deps.domain);
+    const island = requireIsland(db, domain.id, deps.island);
+    if (listLandmarks(db, island.id).length > 0) throw new ArchipelagoError(`island:${island.slug} already has landmarks; they are set once`);
+    return { landmarks: setLandmarkRows(db, domain.id, island.id, parsed.items).map((l) => l.slug) };
+  });
 }
 
 /** Lights one landmark from the latest reader answer and records it in the thread. */
@@ -660,7 +663,7 @@ export function unlockLandmark(deps: ToolDeps, input: unknown): { slug: string; 
 
 - [ ] **Step 6: SDK tools**
 
-In `src/server/judge/sdk.ts`: `TOOL_NAMES` becomes `["island_context", "record_verdict", "propose_reef", "set_landmarks", "unlock_landmark"]`; import `setLandmarks, unlockLandmark` from `./tools.ts`; add to the `tools` array:
+In `src/server/judge/sdk.ts`: raise `MAX_TURNS` from 8 to 16 (a deciding reply may make up to six `unlock_landmark` calls plus `record_verdict`; the turn timeout still bounds wall-clock). `TOOL_NAMES` becomes `["island_context", "record_verdict", "propose_reef", "set_landmarks", "unlock_landmark"]`; import `setLandmarks, unlockLandmark` from `./tools.ts`; add to the `tools` array:
 
 ```ts
       sdk.tool(
@@ -742,7 +745,7 @@ export const stubRunner: JudgeRunner = async ({ dbPath, domain, island, emit }) 
 
 - [ ] **Step 8: The protocol**
 
-Replace sections "## Tools" through "## 4. Verdict first, then teach" of `src/server/judge/PROTOCOL.md` (keep the title paragraph, Vocabulary, and section 5 Straits) with:
+In `src/server/judge/PROTOCOL.md`, change "you write to it only through the three tools" in the title paragraph to "you write to it only through the five tools". Then replace sections "## Tools" through "## 4. Verdict first, then teach" (keep the title paragraph, Vocabulary, and section 5 Straits) with:
 
 ```markdown
 ## Tools
@@ -824,11 +827,9 @@ git commit -m "feat(judge): landmarks in the context, set_landmarks and unlock_l
 
 - [ ] **Step 1: Write the failing helper tests**
 
-Append to `tests/web/thread.test.js`:
+In `tests/web/thread.test.js`, change the existing import to `import { threadItems, proposalFromBody, paragraphs, landmarkFromSystem } from "../../src/web/thread.js";` and append:
 
 ```js
-import { landmarkFromSystem } from "../../src/web/thread.js";
-
 test("a 'landmark lit' system message becomes a landmark item; other system lines stay system", () => {
   expect(landmarkFromSystem("landmark lit: Hit ratio")).toBe("Hit ratio");
   expect(landmarkFromSystem("charted as settled")).toBeNull();
@@ -839,8 +840,6 @@ test("a 'landmark lit' system message becomes a landmark item; other system line
   expect(items.map((i) => [i.kind, i.text])).toEqual([["landmark", "Hit ratio"], ["system", "charted as settled"]]);
 });
 ```
-
-(Move the new import up to the top of the file next to the existing one.)
 
 Append to `tests/web/view-model.test.js` (add `litSegments` to the import):
 
