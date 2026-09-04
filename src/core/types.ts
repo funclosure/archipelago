@@ -98,3 +98,16 @@ export type ReefProposal = {
   rationale: string;
   status: ReefStatus;
 };
+
+export type Landmark = {
+  id: number;
+  domainId: number;
+  islandId: number;
+  slug: string;
+  name: string;
+  sortOrder: number;
+  unlockedAt: string | null;
+  evidence: string | null;
+  messageId: number | null;
+  createdAt: string;
+};

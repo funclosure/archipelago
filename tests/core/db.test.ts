@@ -10,7 +10,7 @@ test("openDatabase creates the schema", () => {
     .query<{ name: string }, []>("select name from sqlite_master where type = 'table' order by name")
     .all()
     .map((r) => r.name);
-  for (const t of ["schema_migrations", "domains", "islands", "straits", "verdicts", "sessions", "comments", "messages", "view_state"]) {
+  for (const t of ["schema_migrations", "domains", "islands", "straits", "verdicts", "sessions", "comments", "messages", "landmarks", "view_state"]) {
     expect(tables).toContain(t);
   }
 });
@@ -41,7 +41,7 @@ test("0002 adds nullable island positions", () => {
   expect(cols).toContain("x");
   expect(cols).toContain("y");
   const versions = db.query<{ version: string }, []>("select version from schema_migrations order by version").all().map((r) => r.version);
-  expect(versions).toEqual(["0001_initial", "0002_positions", "0003_threads"]);
+  expect(versions).toEqual(["0001_initial", "0002_positions", "0003_threads", "0004_landmarks"]);
 });
 
 test("0002 upgrades a database created with 0001 only", () => {
@@ -61,7 +61,7 @@ test("0002 upgrades a database created with 0001 only", () => {
     .get(domainId)!.version;
 
   const ran = migrateDatabase(db);
-  expect(ran).toEqual(["0002_positions", "0003_threads"]);
+  expect(ran).toEqual(["0002_positions", "0003_threads", "0004_landmarks"]);
 
   const island = db.query<{ x: number | null; y: number | null }, []>("select x, y from islands where slug = 'caching'").get();
   expect(island).toEqual({ x: null, y: null });
@@ -87,4 +87,22 @@ test("0003 adds the messages table with version triggers", () => {
   expect(() => db.run("insert into messages (domain_id, island_id, role, kind, body) values (?, ?, 'you', 'open', 'x')", [domainId, islandId])).toThrow();
   db.run("delete from islands where id = ?", [islandId]);
   expect(db.query<{ n: number }, []>("select count(*) as n from messages").get()!.n).toBe(0);
+});
+
+test("0004 adds landmarks with insert, update, and delete version triggers", () => {
+  const db = openDatabase(":memory:");
+  db.run("insert into domains (slug, name) values ('sd', 'System Design')");
+  const domainId = db.query<{ id: number }, []>("select id from domains where slug = 'sd'").get()!.id;
+  db.run("insert into islands (domain_id, slug, name) values (?, 'caching', 'Caching')", [domainId]);
+  const islandId = db.query<{ id: number }, []>("select id from islands where slug = 'caching'").get()!.id;
+  const version = () => db.query<{ version: number }, [number]>("select version from view_state where domain_id = ?").get(domainId)!.version;
+  const v0 = version();
+  db.run("insert into landmarks (domain_id, island_id, slug, name) values (?, ?, 'a', 'A')", [domainId, islandId]);
+  expect(version()).toBe(v0 + 1);
+  db.run("update landmarks set name = 'A2' where slug = 'a'");
+  expect(version()).toBe(v0 + 2);
+  db.run("delete from landmarks where slug = 'a'");
+  expect(version()).toBe(v0 + 3);
+  db.run("insert into landmarks (domain_id, island_id, slug, name) values (?, ?, 'b', 'B')", [domainId, islandId]);
+  expect(() => db.run("insert into landmarks (domain_id, island_id, slug, name) values (?, ?, 'b', 'B again')", [domainId, islandId])).toThrow();
 });
