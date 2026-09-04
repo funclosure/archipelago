@@ -4,6 +4,7 @@
 import { WORLD } from "./view-model.js";
 
 const MARGIN = 0.06; // of the shorter viewport side, each edge
+const SELECT_ZOOM = 1.5; // × home scale when an island is selected
 
 export function createCamera() {
   const cam = { x: 0, y: 0, scale: 1 };
@@ -15,11 +16,21 @@ export function createCamera() {
     get home() {
       return home;
     },
-    /** The framing that fits the whole world into a w × h viewport, centred, with a margin. */
-    fit(w, h) {
-      const scale = (Math.min(w, h) * (1 - 2 * MARGIN)) / WORLD;
-      home = { x: (w - WORLD * scale) / 2, y: (h - WORLD * scale) / 2, scale };
+    /** The framing that fits the whole world into the w − inset by h area, centred, with a margin. */
+    fit(w, h, inset = 0) {
+      const aw = Math.max(1, w - inset);
+      const scale = (Math.min(aw, h) * (1 - 2 * MARGIN)) / WORLD;
+      home = { x: (aw - WORLD * scale) / 2, y: (h - WORLD * scale) / 2, scale };
       return home;
+    },
+    /** The framing at `scale` that puts a world point at the centre of the w − inset by h area. */
+    centreOn(point, w, h, inset = 0, scale = cam.scale) {
+      const aw = Math.max(1, w - inset);
+      return { x: aw / 2 - point.x * scale, y: h / 2 - point.y * scale, scale };
+    },
+    /** The select zoom: a step in from home, unless the reader is already closer. */
+    closer() {
+      return Math.max(cam.scale, home.scale * SELECT_ZOOM);
     },
     snapHome() {
       Object.assign(cam, home);
