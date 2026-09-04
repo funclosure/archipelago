@@ -1,7 +1,7 @@
 :root {
   --water: #1a1816; --text: #ede8e3; --muted: #8f877f;
   --sand: #d9c7a3; --land: #c9a87c; --ridge: #8a6e4b; --reef: #a3452e;
-  --panel: #221f1c; --line: #3a342f;
+  --panel: #221f1c; --line: #3a342f; --open: #8a8078;
 }
 html, body { margin: 0; height: 100%; background: var(--water); color: var(--text);
   font: 14px/1.5 system-ui, -apple-system, sans-serif; overflow: hidden; }
@@ -9,11 +9,11 @@ html, body { margin: 0; height: 100%; background: var(--water); color: var(--tex
 #map.dragging { cursor: grabbing; }
 #map.hover { cursor: pointer; }
 
-.chrome { position: fixed; left: 0; right: 0; display: flex; justify-content: space-between;
-  padding: 16px 20px; pointer-events: none; }
+.chrome { position: fixed; left: 0; display: flex; padding: 16px 20px; pointer-events: none; }
 .chrome > * { pointer-events: auto; }
-.top { top: 0; align-items: flex-start; }
-.bottom { bottom: 0; align-items: flex-end; }
+.top { top: 0; }
+.bottom { bottom: 0; }
+.chrome-stack { display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
 
 .breadcrumb { display: flex; align-items: center; gap: 8px; font-family: Georgia, serif; font-size: 18px; }
 .crumb { background: none; border: 0; color: var(--muted); font: inherit; cursor: pointer; padding: 0; }
@@ -26,14 +26,14 @@ html, body { margin: 0; height: 100%; background: var(--water); color: var(--tex
 .legend { display: flex; gap: 14px; font-size: 12px; color: var(--muted); }
 .legend span::before { content: ""; display: inline-block; width: 10px; height: 10px; border-radius: 50%;
   margin-right: 6px; vertical-align: middle; box-sizing: border-box; }
-.legend .open::before { border: 1px dashed var(--muted); }
+.legend .open::before { border: 1px dashed var(--open); }
 .legend .sandbar::before { background: var(--sand); opacity: .7; }
 .legend .settled::before { background: var(--land); }
 .legend .mountainous::before { background: var(--ridge); }
 .legend .reef::before { background: var(--land); box-shadow: inset 0 -3px 0 var(--reef); }
 
 .strip { display: flex; gap: 24px; font-size: 12px; }
-.strip-item { display: flex; flex-direction: column; gap: 2px; text-align: right; }
+.strip-item { display: flex; flex-direction: column; gap: 2px; }
 .strip-label { color: var(--muted); text-transform: uppercase; letter-spacing: .08em; font-size: 10px; }
 
 .card { position: fixed; top: 64px; right: 20px; width: 320px; max-height: calc(100vh - 160px); overflow: auto;

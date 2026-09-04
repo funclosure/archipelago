@@ -1,4 +1,4 @@
-import { app, api, hitTest, setScale, postPositions } from "./app.js";
+import { app, api, hitTest, setScale, postPositions, frameSelection } from "./app.js";
 
 const CLICK_SLOP = 4; // px of pointer travel before a press counts as a drag
 
@@ -9,6 +9,7 @@ export async function select(slug) {
   if (slug === app.selected) return;
   app.selected = slug;
   for (const fn of app.listeners) fn(app.snapshot);
+  frameSelection(); // the listeners have opened or closed the pane, so its width is settled
   // Serialise focus writes so the server always ends on the latest selection.
   focusQueue = focusQueue.then(() =>
     api("/api/focus", {

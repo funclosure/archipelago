@@ -42,8 +42,9 @@ function resize() {
   canvas.height = Math.round(app.size.h * dpr);
   canvas.style.width = app.size.w + "px";
   canvas.style.height = app.size.h + "px";
-  app.camera.fit(app.size.w, app.size.h);
-  app.camera.snapHome();
+  app.camera.fit(app.size.w, app.size.h, paneInset());
+  if (app.selected) frameSelection();
+  else app.camera.snapHome();
 }
 
 /** Change scale (null = top level), update the URL, and refetch. */
@@ -89,6 +90,7 @@ function applySnapshot(snapshot) {
   if (isFirstSnapshot) app.selected = snapshot.focus;
   renderChrome();
   for (const fn of app.listeners) fn(snapshot);
+  if (isFirstSnapshot && app.selected) frameSelection(); // the pane is open now, so its width is known
 }
 
 async function poll() {
@@ -115,6 +117,24 @@ export function hitTest(px, py) {
     }
   }
   return best;
+}
+
+/** How much of the viewport's right edge the pane covers: 0 when it is hidden or absent. */
+export function paneInset() {
+  const pane = document.getElementById("pane");
+  return pane && !pane.hidden ? pane.offsetWidth : 0;
+}
+
+const FRAME_MS = 450;
+
+/** Frames the selected island at the centre of the map area beside the pane, or returns home. */
+export function frameSelection() {
+  const { w, h } = app.size;
+  const inset = paneInset();
+  app.camera.fit(w, h, inset);
+  const node = app.selected ? app.nodes.find((n) => n.slug === app.selected) : null;
+  if (node) app.camera.animateTo(app.camera.centreOn(node, w, h, inset, app.camera.closer()), FRAME_MS);
+  else app.camera.animateTo(app.camera.home, FRAME_MS);
 }
 
 /** Nodes the page still has to place (no stored coordinates). */

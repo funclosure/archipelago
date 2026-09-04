@@ -10,6 +10,8 @@ export const PALETTE = {
   reef: "#a3452e",
   spotlight: "#f2d9a8",
   channel: "#4a4038",
+  open: "#8a8078",
+  openText: "#a8a097",
 };
 
 const RISE_MS = 600;
@@ -80,7 +82,7 @@ export function drawIsland(ctx, node, { dim = false, spotlight = false, now = 0 
     tracePath(ctx, pts);
     ctx.setLineDash([6, 6]);
     ctx.lineWidth = 1.8;
-    ctx.strokeStyle = PALETTE.muted;
+    ctx.strokeStyle = PALETTE.open;
     ctx.stroke();
     ctx.setLineDash([]);
     const lm = node.island.landmarks;
@@ -187,7 +189,7 @@ function drawLabel(ctx, node, grow, hasOwnVerdict) {
   ctx.font = "24px Georgia, 'Times New Roman', serif";
   ctx.textAlign = "center";
   ctx.textBaseline = "top";
-  ctx.fillStyle = node.state === "open" ? PALETTE.muted : PALETTE.text;
+  ctx.fillStyle = node.state === "open" ? PALETTE.openText : PALETTE.text;
   const offset = !hasOwnVerdict && node.island.children.total > 0 ? 30 : 14;
   ctx.fillText(node.name, node.x, node.y + node.radius * grow + offset);
 }
