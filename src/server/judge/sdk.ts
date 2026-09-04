@@ -2,13 +2,13 @@ import { z } from "zod";
 import { ArchipelagoError } from "../../core/errors.ts";
 import { readProtocol } from "./protocol.ts";
 import { renderContext, renderThreadPrompt } from "./context.ts";
-import { islandContext, proposeReef, recordVerdict } from "./tools.ts";
+import { islandContext, proposeReef, recordVerdict, setLandmarks, unlockLandmark } from "./tools.ts";
 import type { JudgeRunner } from "./runner.ts";
 
 export const DEFAULT_MODEL = "claude-opus-5";
 const SERVER = "archipelago";
-const TOOL_NAMES = ["island_context", "record_verdict", "propose_reef"];
-const MAX_TURNS = 8;
+const TOOL_NAMES = ["island_context", "record_verdict", "propose_reef", "set_landmarks", "unlock_landmark"];
+const MAX_TURNS = 16;
 
 async function loadSdk() {
   try {
@@ -100,6 +100,18 @@ export const sdkRunner: JudgeRunner = async ({ dbPath, domain, island, emit, sig
           rationale: z.string(),
         },
         async (args) => guard(() => proposeReef(deps, args)),
+      ),
+      sdk.tool(
+        "set_landmarks",
+        "Name this island's 4–6 landmarks (key concepts) once, when the context says it has none. Slugs are lowercase-kebab; names are short.",
+        { items: z.array(z.object({ slug: z.string(), name: z.string() })).min(4).max(6) },
+        async (args) => guard(() => setLandmarks(deps, args)),
+      ),
+      sdk.tool(
+        "unlock_landmark",
+        "Light one landmark the reader's latest answer covered: they explained or applied it, not merely named it. Evidence is a verbatim quote from that answer.",
+        { slug: z.string(), evidence: z.string() },
+        async (args) => guard(() => unlockLandmark(deps, args)),
       ),
     ],
   });

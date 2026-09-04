@@ -5,9 +5,14 @@ import { requireDomain } from "../../core/repositories/domainRepository.ts";
 import { requireIsland } from "../../core/repositories/islandRepository.ts";
 import { addVerdict } from "../../core/repositories/verdictRepository.ts";
 import { activeSession } from "../../core/repositories/sessionRepository.ts";
-import { addMessage } from "../../core/repositories/messageRepository.ts";
+import { addMessage, listMessages } from "../../core/repositories/messageRepository.ts";
+import {
+  setLandmarks as setLandmarkRows,
+  unlockLandmark as unlockLandmarkRow,
+  listLandmarks,
+} from "../../core/repositories/landmarkRepository.ts";
 import { resolveVerdictTarget } from "../../core/targets.ts";
-import { judgeVerdictInputSchema, reefProposalInputSchema } from "../../core/validators.ts";
+import { judgeVerdictInputSchema, landmarksInputSchema, reefProposalInputSchema, unlockInputSchema } from "../../core/validators.ts";
 import type { ReefProposal, Verdict, VerdictState } from "../../core/types.ts";
 import { buildJudgeContext, type JudgeContext } from "./context.ts";
 
@@ -76,4 +81,32 @@ export function proposeReef(deps: ToolDeps, input: unknown): { id: number; targe
     });
     return { id: message.id, target: target.label };
   });
+}
+
+/** Writes an island's landmarks once. Refused when any exist: landmarks are cartography, not per-turn state. */
+export function setLandmarks(deps: ToolDeps, input: unknown): { landmarks: string[] } {
+  const parsed = landmarksInputSchema.parse(input);
+  // No outer transaction: the repository's setLandmarks is one already, and bun:sqlite transactions do not nest.
+  return withDb(deps.dbPath, (db) => {
+    const domain = requireDomain(db, deps.domain);
+    const island = requireIsland(db, domain.id, deps.island);
+    if (listLandmarks(db, island.id).length > 0) throw new ArchipelagoError(`island:${island.slug} already has landmarks; they are set once`);
+    return { landmarks: setLandmarkRows(db, domain.id, island.id, parsed.items).map((l) => l.slug) };
+  });
+}
+
+/** Lights one landmark from the latest reader answer and records it in the thread. */
+export function unlockLandmark(deps: ToolDeps, input: unknown): { slug: string; name: string; unlocked: number; total: number } {
+  const parsed = unlockInputSchema.parse(input);
+  return withDb(deps.dbPath, (db) =>
+    db.transaction(() => {
+      const domain = requireDomain(db, deps.domain);
+      const island = requireIsland(db, domain.id, deps.island);
+      const answer = [...listMessages(db, island.id)].reverse().find((m) => m.role === "you" && m.kind === "text") ?? null;
+      const lit = unlockLandmarkRow(db, island.id, parsed.slug, parsed.evidence, answer ? answer.id : null);
+      addMessage(db, { domainId: domain.id, islandId: island.id, role: "judge", kind: "system", body: `landmark lit: ${lit.name}` });
+      const all = listLandmarks(db, island.id);
+      return { slug: lit.slug, name: lit.name, unlocked: all.filter((l) => l.unlockedAt !== null).length, total: all.length };
+    })(),
+  );
 }

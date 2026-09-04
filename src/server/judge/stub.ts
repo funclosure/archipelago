@@ -1,20 +1,33 @@
 import type { JudgeRunner } from "./runner.ts";
-import { islandContext, proposeReef, recordVerdict } from "./tools.ts";
+import { islandContext, proposeReef, recordVerdict, setLandmarks, unlockLandmark } from "./tools.ts";
+
+const CANNED = [
+  { slug: "shape", name: "Shape" }, { slug: "scale", name: "Scale" }, { slug: "failure", name: "Failure" }, { slug: "tradeoff", name: "Tradeoff" },
+];
 
 /**
  * No-login judge for `serve --stub` and tests. Reads the thread, reacts to a keyword in the reader's
  * last message, and writes through the same tool functions the SDK runner uses:
- *   "settled" → record_verdict settled · "reef" → propose_reef · "fail" → throws · else a canned follow-up.
+ *   first open on a landmark-less island → set_landmarks (four canned) · "fail" → throws ·
+ *   "reef" → propose_reef · "settled" → record_verdict settled · "unlock <slug>" → unlock_landmark · else a canned follow-up.
  */
 export const stubRunner: JudgeRunner = async ({ dbPath, domain, island, emit }) => {
   const deps = { dbPath, domain, island };
-  const ctx = islandContext(deps);
-  const last = [...ctx.thread].reverse().find((m) => m.role === "you");
+  let ctx = islandContext(deps);
   const say = (text: string) => {
     emit({ type: "text", text });
     return text;
   };
-  if (!last) return say(`Tell me how ${ctx.island.name} works, in your own words, and where it breaks.`);
+  const last = [...ctx.thread].reverse().find((m) => m.role === "you");
+  if (!last) {
+    if (ctx.landmarks.length === 0) {
+      emit({ type: "progress", message: "set_landmarks" });
+      setLandmarks(deps, { items: CANNED });
+      ctx = islandContext(deps);
+    }
+    const names = ctx.landmarks.map((l) => l.slug).join(", ");
+    return say(`Here the coastline has ${ctx.landmarks.length} points: ${names}. Tell me how ${ctx.island.name} works, in your own words, and where it breaks.`);
+  }
   const text = last.body.toLowerCase();
   if (text.includes("fail")) throw new Error("stub failure");
   if (text.includes("reef")) {
@@ -32,6 +45,12 @@ export const stubRunner: JudgeRunner = async ({ dbPath, domain, island, emit }) 
       rationale: "stub: the message contained the word settled",
     });
     return say(`Charted as settled. Where next: ${ctx.nearestOpenWater[0] ?? "nowhere, everything is charted"}.`);
+  }
+  const unlock = /unlock\s+([a-z0-9-]+)/.exec(text);
+  if (unlock) {
+    emit({ type: "progress", message: "unlock_landmark" });
+    const lit = unlockLandmark(deps, { slug: unlock[1], evidence: last.body });
+    return say(`You put it as "${last.body.slice(0, 40)}". That charts ${lit.name}: ${lit.unlocked} of ${lit.total}. What about the rest?`);
   }
   return say(`Say more about ${ctx.island.name}.`);
 };

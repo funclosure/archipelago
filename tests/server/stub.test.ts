@@ -7,6 +7,7 @@ import { upsertDomain } from "../../src/core/repositories/domainRepository.ts";
 import { upsertIsland } from "../../src/core/repositories/islandRepository.ts";
 import { latestVerdict } from "../../src/core/repositories/verdictRepository.ts";
 import { addMessage, listMessages } from "../../src/core/repositories/messageRepository.ts";
+import { listLandmarks } from "../../src/core/repositories/landmarkRepository.ts";
 import { stubRunner } from "../../src/server/judge/stub.ts";
 import { createRunner, type JudgeEvent } from "../../src/server/judge/runner.ts";
 
@@ -38,7 +39,22 @@ async function turn(lastMessage?: string) {
 test("an empty thread gets an opening question", async () => {
   const { events, reply } = await turn();
   expect(reply).toContain("Caching");
-  expect(events).toEqual([{ type: "text", text: reply }]);
+  expect(events).toEqual([{ type: "progress", message: "set_landmarks" }, { type: "text", text: reply }]);
+});
+
+test("first open on a landmark-less island sets four canned landmarks; 'unlock <slug>' lights one", async () => {
+  const opening = await turn();
+  expect(opening.events[0]).toEqual({ type: "progress", message: "set_landmarks" });
+  expect(opening.reply).toContain("shape");
+  const db = openDatabase(dbPath);
+  expect(listLandmarks(db, caching).map((l) => l.slug)).toEqual(["shape", "scale", "failure", "tradeoff"]);
+  db.close();
+  const { events } = await turn("here is how, unlock scale");
+  expect(events[0]).toEqual({ type: "progress", message: "unlock_landmark" });
+  const db2 = openDatabase(dbPath);
+  expect(listLandmarks(db2, caching).find((l) => l.slug === "scale")?.unlockedAt).not.toBeNull();
+  expect(listMessages(db2, caching).at(-1)).toMatchObject({ kind: "system", body: "landmark lit: Scale" });
+  db2.close();
 });
 
 test("'settled' records a verdict through the real tool", async () => {

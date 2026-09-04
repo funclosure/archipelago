@@ -4,8 +4,9 @@ import { getIslandById, islandPath, listIslands, requireIsland } from "../../cor
 import { listStraits } from "../../core/repositories/straitRepository.ts";
 import { latestVerdict, latestVerdicts, verdictHistory } from "../../core/repositories/verdictRepository.ts";
 import { listMessages, parseProposal } from "../../core/repositories/messageRepository.ts";
+import { listLandmarks } from "../../core/repositories/landmarkRepository.ts";
 import { buildSnapshot } from "../../core/view-model.ts";
-import type { Message, ReefProposal, Verdict, VerdictState } from "../../core/types.ts";
+import type { Landmark, Message, ReefProposal, Verdict, VerdictState } from "../../core/types.ts";
 
 export type JudgeContext = {
   domain: { slug: string; name: string };
@@ -22,6 +23,9 @@ export type JudgeContext = {
   nearestOpenWater: string[];
   pendingReefs: { id: number; proposal: ReefProposal }[];
   thread: Message[];
+  landmarks: Landmark[];
+  /** Reader answers so far: the count of `you` text messages. */
+  round: number;
 };
 
 /** Everything the judge sees about one island. Read fresh from the database; never cached. */
@@ -61,6 +65,8 @@ export function buildJudgeContext(db: Database, domainSlug: string, islandSlug: 
     nearestOpenWater: buildSnapshot(db, domain.slug, parent ? parent.slug : null).nearestOpenWater,
     pendingReefs,
     thread,
+    landmarks: listLandmarks(db, island.id),
+    round: thread.filter((m) => m.role === "you" && m.kind === "text").length,
   };
 }
 
@@ -86,6 +92,20 @@ export function renderContext(ctx: JudgeContext): string {
   );
   if (ctx.history.length > 1) {
     lines.push(`Earlier verdicts: ${ctx.history.slice(1).map((v) => `${v.state} on ${v.createdAt.slice(0, 10)}`).join(", ")}`);
+  }
+  const lit = ctx.landmarks.filter((l) => l.unlockedAt !== null).length;
+  if (ctx.landmarks.length === 0) {
+    lines.push(``, `Landmarks: none yet — call set_landmarks with 4–6 before your opening question.`);
+  } else {
+    lines.push(``, `Landmarks (${lit} of ${ctx.landmarks.length} lit):`);
+    for (const l of ctx.landmarks) {
+      lines.push(`- ${l.name} (${l.slug}): ${l.unlockedAt ? `lit — "${indent(l.evidence ?? "")}"` : "dark"}`);
+    }
+  }
+  if (ctx.round >= 4 && !ctx.verdict) {
+    lines.push(`Round: ${ctx.round} of 4. This is the fourth answer: decide now with record_verdict or propose_reef before writing anything else.`);
+  } else {
+    lines.push(`Round: ${ctx.round} of 4 (reader answers so far; the verdict lands after the fourth at the latest)`);
   }
   lines.push(``, `Islets (${ctx.islets.length}):`);
   if (ctx.islets.length === 0) lines.push(`- none`);

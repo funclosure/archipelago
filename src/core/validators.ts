@@ -136,3 +136,12 @@ export const landmarkInputSchema = z.object({
   name: z.string().min(1),
   order: numberInput.pipe(z.number().int()).optional(),
 });
+
+export const landmarksInputSchema = z.object({
+  items: z.array(z.object({ slug: slugSchema, name: z.string().min(1) })).min(4).max(6),
+});
+
+export const unlockInputSchema = z.object({
+  slug: slugSchema,
+  evidence: z.string().min(1),
+});

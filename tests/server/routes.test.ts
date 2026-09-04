@@ -160,13 +160,14 @@ test("probe opens a thread: the judge asks first, the reply is stored, the strea
   const v1 = (await get("/api/version?domain=sd")).json.version;
   const r = await probe({ domain: "sd", island: "databases" });
   expect(r.status).toBe(200);
-  expect(r.events.map((e) => e.type)).toEqual(["text", "done"]);
-  expect(r.events[0]!.data.text).toContain("Databases");
+  expect(r.events.map((e) => e.type)).toEqual(["progress", "text", "done"]);
+  expect(r.events[1]!.data.text).toContain("Databases");
   const t = await thread("databases");
   expect(t.island).toBe("databases");
   expect(t.messages.map((m: any) => [m.role, m.kind])).toEqual([["judge", "text"]]);
-  expect(t.messages[0].body).toBe(r.events[0]!.data.text);
-  expect((await get("/api/version?domain=sd")).json.version).toBe(v1 + 1);
+  expect(t.messages[0].body).toBe(r.events[1]!.data.text);
+  // Opening on a landmark-less island also writes its four landmarks, so the version advances by more than one.
+  expect((await get("/api/version?domain=sd")).json.version).toBeGreaterThan(v1);
   expect((await islandView("databases")).messages).toBe(1);
 });
 
@@ -228,8 +229,8 @@ test("ARCHIPELAGO_STUB=1 selects the stub runner through startServer when no stu
     });
     expect(res.status).toBe(200);
     const events = parseSse(await res.text());
-    expect(events.map((e) => e.type)).toEqual(["text", "done"]);
-    expect(events[0]!.data.text).toContain("Databases");
+    expect(events.map((e) => e.type)).toEqual(["progress", "text", "done"]);
+    expect(events[1]!.data.text).toContain("Databases");
   } finally {
     if (prevEnv === undefined) delete process.env.ARCHIPELAGO_STUB;
     else process.env.ARCHIPELAGO_STUB = prevEnv;

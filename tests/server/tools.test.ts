@@ -9,8 +9,16 @@ import { upsertStrait } from "../../src/core/repositories/straitRepository.ts";
 import { addVerdict, latestVerdict } from "../../src/core/repositories/verdictRepository.ts";
 import { addMessage, listMessages, parseProposal } from "../../src/core/repositories/messageRepository.ts";
 import { startSession } from "../../src/core/repositories/sessionRepository.ts";
+import { listLandmarks, setLandmarks } from "../../src/core/repositories/landmarkRepository.ts";
 import { renderContext, renderThreadPrompt } from "../../src/server/judge/context.ts";
-import { islandContext, recordVerdict, proposeReef, systemLine } from "../../src/server/judge/tools.ts";
+import {
+  islandContext,
+  recordVerdict,
+  proposeReef,
+  systemLine,
+  setLandmarks as setLandmarksTool,
+  unlockLandmark as unlockLandmarkTool,
+} from "../../src/server/judge/tools.ts";
 
 let dir: string;
 let dbPath: string;
@@ -133,4 +141,44 @@ test("systemLine names the target unless it is this thread's island", () => {
   expect(systemLine("island:caching", "settled", "caching")).toBe("charted as settled");
   expect(systemLine("island:databases", "sandbar", "caching")).toBe("island databases charted as sandbar");
   expect(systemLine("strait:caching~databases", "reef", "caching")).toBe("strait caching~databases charted as reef");
+});
+
+test("context carries landmarks and the round, and renders them", () => {
+  const db = openDatabase(dbPath);
+  setLandmarks(db, ids.domain, ids.caching, [{ slug: "hit-ratio", name: "Hit ratio" }, { slug: "invalidation", name: "Invalidation" }]);
+  addMessage(db, { domainId: ids.domain, islandId: ids.caching, role: "judge", kind: "text", body: "Explain." });
+  addMessage(db, { domainId: ids.domain, islandId: ids.caching, role: "you", kind: "text", body: "first answer" });
+  addMessage(db, { domainId: ids.domain, islandId: ids.caching, role: "judge", kind: "system", body: "landmark lit: Hit ratio" });
+  addMessage(db, { domainId: ids.domain, islandId: ids.caching, role: "you", kind: "text", body: "second answer" });
+  db.close();
+  const ctx = islandContext(deps());
+  expect(ctx.landmarks.map((l) => l.slug)).toEqual(["hit-ratio", "invalidation"]);
+  expect(ctx.round).toBe(2);
+  const text = renderContext(ctx);
+  expect(text).toContain("Landmarks (0 of 2 lit)");
+  expect(text).toContain("- Hit ratio (hit-ratio): dark");
+  expect(text).toContain("Round: 2 of 4");
+  expect(renderContext(islandContext({ ...deps(), island: "databases" }))).toContain("Landmarks: none yet");
+});
+
+test("set_landmarks writes 4–6 once; unlock_landmark lights one, links the answer, and adds the system line", () => {
+  expect(() => setLandmarksTool(deps(), { items: [{ slug: "a", name: "A" }] })).toThrow(); // fewer than 4
+  const out = setLandmarksTool(deps(), { items: [
+    { slug: "hit-ratio", name: "Hit ratio" }, { slug: "invalidation", name: "Invalidation" },
+    { slug: "eviction", name: "Eviction" }, { slug: "stampede", name: "Stampede" },
+  ] });
+  expect(out.landmarks).toEqual(["hit-ratio", "invalidation", "eviction", "stampede"]);
+  expect(() => setLandmarksTool(deps(), { items: out.landmarks.map((s) => ({ slug: s, name: s })) })).toThrow(/already has landmarks/);
+
+  const db = openDatabase(dbPath);
+  const answer = addMessage(db, { domainId: ids.domain, islandId: ids.caching, role: "you", kind: "text", body: "the app checks the cache first" });
+  db.close();
+  const lit = unlockLandmarkTool(deps(), { slug: "hit-ratio", evidence: "checks the cache first" });
+  expect(lit).toEqual({ slug: "hit-ratio", name: "Hit ratio", unlocked: 1, total: 4 });
+  const db2 = openDatabase(dbPath);
+  expect(listLandmarks(db2, ids.caching).find((l) => l.slug === "hit-ratio")).toMatchObject({ evidence: "checks the cache first", messageId: answer.id });
+  expect(listMessages(db2, ids.caching).at(-1)).toMatchObject({ role: "judge", kind: "system", body: "landmark lit: Hit ratio" });
+  db2.close();
+  expect(() => unlockLandmarkTool(deps(), { slug: "hit-ratio", evidence: "again" })).toThrow(/already lit/);
+  expect(() => unlockLandmarkTool(deps(), { slug: "nope", evidence: "x" })).toThrow(/no landmark/);
 });
