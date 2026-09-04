@@ -127,7 +127,7 @@ export function renderContext(ctx: JudgeContext): string {
 export function renderThreadPrompt(thread: Message[]): string {
   if (thread.length === 0) return "Open the probe on this island.";
   const lines = thread.map((m) => {
-    if (m.kind === "system") return `[map] ${m.body}`;
+    if (m.kind === "system") return `[map] ${indent(m.body)}`;
     if (m.kind === "reef_proposal") {
       const p = parseProposal(m.body);
       return `[reef proposal #${m.id}, ${p.status}] ${p.claim} — ${p.consequence}`;

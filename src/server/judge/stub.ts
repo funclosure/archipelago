@@ -8,8 +8,8 @@ const CANNED = [
 /**
  * No-login judge for `serve --stub` and tests. Reads the thread, reacts to a keyword in the reader's
  * last message, and writes through the same tool functions the SDK runner uses:
- *   first open on a landmark-less island → set_landmarks (four canned) · "fail" → throws ·
- *   "reef" → propose_reef · "settled" → record_verdict settled · "unlock <slug>" → unlock_landmark · else a canned follow-up.
+ *   first open on a landmark-less island → set_landmarks (four canned) · "unlock <slug>" → unlock_landmark ·
+ *   "fail" → throws · "reef" → propose_reef · "settled" → record_verdict settled · else a canned follow-up.
  */
 export const stubRunner: JudgeRunner = async ({ dbPath, domain, island, emit }) => {
   const deps = { dbPath, domain, island };
@@ -29,6 +29,13 @@ export const stubRunner: JudgeRunner = async ({ dbPath, domain, island, emit }) 
     return say(`Here the coastline has ${ctx.landmarks.length} points: ${names}. Tell me how ${ctx.island.name} works, in your own words, and where it breaks.`);
   }
   const text = last.body.toLowerCase();
+  // `unlock` is tested before `fail`, so `unlock failure` lights the canned Failure landmark instead of throwing.
+  const unlock = /unlock\s+([a-z0-9-]+)/.exec(text);
+  if (unlock) {
+    emit({ type: "progress", message: "unlock_landmark" });
+    const lit = unlockLandmark(deps, { slug: unlock[1], evidence: last.body });
+    return say(`You put it as "${last.body.slice(0, 40)}". That charts ${lit.name}: ${lit.unlocked} of ${lit.total}. What about the rest?`);
+  }
   if (text.includes("fail")) throw new Error("stub failure");
   if (text.includes("reef")) {
     emit({ type: "progress", message: "propose_reef" });
@@ -45,12 +52,6 @@ export const stubRunner: JudgeRunner = async ({ dbPath, domain, island, emit }) 
       rationale: "stub: the message contained the word settled",
     });
     return say(`Charted as settled. Where next: ${ctx.nearestOpenWater[0] ?? "nowhere, everything is charted"}.`);
-  }
-  const unlock = /unlock\s+([a-z0-9-]+)/.exec(text);
-  if (unlock) {
-    emit({ type: "progress", message: "unlock_landmark" });
-    const lit = unlockLandmark(deps, { slug: unlock[1], evidence: last.body });
-    return say(`You put it as "${last.body.slice(0, 40)}". That charts ${lit.name}: ${lit.unlocked} of ${lit.total}. What about the rest?`);
   }
   return say(`Say more about ${ctx.island.name}.`);
 };

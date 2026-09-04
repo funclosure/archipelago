@@ -55,6 +55,11 @@ test("first open on a landmark-less island sets four canned landmarks; 'unlock <
   expect(listLandmarks(db2, caching).find((l) => l.slug === "scale")?.unlockedAt).not.toBeNull();
   expect(listMessages(db2, caching).at(-1)).toMatchObject({ kind: "system", body: "landmark lit: Scale" });
   db2.close();
+  // `unlock` is tested before `fail`, so the Failure landmark lights instead of throwing.
+  expect((await turn("unlock failure")).events[0]).toEqual({ type: "progress", message: "unlock_landmark" });
+  const db3 = openDatabase(dbPath);
+  expect(listLandmarks(db3, caching).find((l) => l.slug === "failure")?.unlockedAt).not.toBeNull();
+  db3.close();
 });
 
 test("'settled' records a verdict through the real tool", async () => {

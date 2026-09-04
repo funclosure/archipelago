@@ -37,7 +37,7 @@ tests/          core/, cli/, server/, web/
 - Page: no framework, no bundler. Pure helpers in `view-model.js` are unit-tested; the canvas is checked by hand.
 - Map positions live on `islands.x`/`islands.y` in a fixed 1000×1000 world per scale (null = unplaced). The page places unplaced islands once (existing ones pinned) and posts `/api/positions`; the simulation never runs when everything is placed. Every island at a scale shares one radius (`islandRadius(count)` in `src/web/view-model.js`); elevation never changes size.
 - Schema changes go in a new numbered migration under `src/core/migrations/`; `0001_initial.sql` is frozen.
-- The judge writes only through `record_verdict` (sandbar, settled, mountainous) and `propose_reef`; a reef is written only when the reader confirms it via `POST /api/probe/reef`.
+- The judge writes only through its five tools: `island_context` reads; `set_landmarks`, `unlock_landmark`, `record_verdict` (sandbar, settled, mountainous) and `propose_reef` write. A reef is written only when the reader confirms it via `POST /api/probe/reef`.
 - `ConflictError` → 409. `POST /api/probe` holds one turn per island at a time.
 - Behaviour lives in protocol text before code: the cartographer's in `.claude/skills/archipelago-chart/SKILL.md`, the judge's in `src/server/judge/PROTOCOL.md`.
 - The judge's tool surface is closed by `tools: []` plus `allowedTools` in `src/server/judge/sdk.ts`, not by `canUseTool`; do not "fix" it back.

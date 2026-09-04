@@ -86,7 +86,13 @@ export function drawIsland(ctx, node, { dim = false, spotlight = false, now = 0 
     const lm = node.island.landmarks;
     if (lm && lm.total > 0 && lm.unlocked > 0) {
       // Each lit landmark turns one run of the dashed coastline solid: the island is being charted.
-      traceSegments(ctx, pts, litSegments(pts.length, lm.total, lm.unlocked));
+      // outline() starts at 3 o'clock, so the runs are rotated a quarter turn to begin at the top.
+      const lit = litSegments(pts.length, lm.total, lm.unlocked);
+      const n = pts.length;
+      const shift = Math.round(n / 4);
+      const rotated = new Array(n);
+      for (let k = 0; k < n; k++) rotated[k] = lit[(k + shift) % n];
+      traceSegments(ctx, pts, rotated);
       ctx.lineWidth = 2.4;
       ctx.strokeStyle = PALETTE.sand;
       ctx.stroke();

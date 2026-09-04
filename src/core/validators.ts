@@ -133,13 +133,15 @@ export const landmarkInputSchema = z.object({
   domain: slugSchema,
   island: slugSchema,
   slug: slugSchema,
-  name: z.string().min(1),
+  name: z.string().trim().min(1),
   order: numberInput.pipe(z.number().int()).optional(),
 });
 
-export const landmarksInputSchema = z.object({
-  items: z.array(z.object({ slug: slugSchema, name: z.string().min(1) })).min(4).max(6),
-});
+export const landmarksInputSchema = z
+  .object({
+    items: z.array(z.object({ slug: slugSchema, name: z.string().trim().min(1) })).min(4).max(6),
+  })
+  .refine((v) => new Set(v.items.map((i) => i.slug)).size === v.items.length, { message: "landmark slugs must be unique" });
 
 export const unlockInputSchema = z.object({
   slug: slugSchema,

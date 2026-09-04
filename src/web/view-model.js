@@ -98,8 +98,9 @@ export function buildLinks(snapshot, nodes) {
 }
 
 /**
- * Which of `segments` coastline segments are lit: the outline is cut into `total` equal runs clockwise
- * from the top, and the first `unlocked` runs are lit. All dark when the island has no landmarks.
+ * Which of `segments` coastline segments are lit: the outline is cut into `total` equal runs and the
+ * first `unlocked` runs are lit, starting at segment 0. All dark when the island has no landmarks.
+ * The caller rotates the result so the first lit run begins at the top of the blob.
  */
 export function litSegments(segments, total, unlocked) {
   const out = new Array(segments).fill(false);

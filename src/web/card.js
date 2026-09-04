@@ -23,6 +23,7 @@ const thread = {
   loadError: null,    // the thread itself could not be fetched
   disputeDraft: "",   // the objection typed into the dock while a reef is pending
   litSeen: null,      // slugs already lit at the last render, so only newly lit chips pulse
+  focusPending: false, // a turn ended before the dock's input existed; the next renderDock focuses it
 };
 
 export function installCard() {
@@ -71,7 +72,7 @@ function post(path, body) {
 function resetThread(slug) {
   Object.assign(thread, {
     slug, version: null, messages: [], loaded: false, draft: "", live: "", progress: null, inFlight: false, error: null, loadError: null,
-    disputeDraft: "", litSeen: null,
+    disputeDraft: "", litSeen: null, focusPending: false,
   });
 }
 
@@ -129,6 +130,9 @@ async function runTurn(slug, message) {
   if (input && !input.disabled) {
     input.focus();
     input.setSelectionRange(input.value.length, input.value.length);
+  } else {
+    // The opening turn renders the dock's input disabled until the refetched thread arrives: focus it then.
+    thread.focusPending = true;
   }
 }
 
@@ -182,7 +186,8 @@ function landmarksEl(island) {
   }
   wrap.append(row);
   const parts = [`${island.landmarks.unlocked} of ${island.landmarks.total} charted`];
-  if (!island.verdict && thread.messages.length) parts.push(`round ${roundOf(thread.messages)} of 4`);
+  const round = roundOf(thread.messages);
+  if (!island.verdict && round > 0) parts.push(`round ${round} of 4`); // the opening turn is not a round yet
   wrap.append(el("div", "muted", parts.join(" · ")));
   return wrap;
 }
@@ -299,6 +304,11 @@ function renderDock(island) {
     });
   }
   dock.append(form);
+  if (thread.focusPending && !input.disabled) {
+    thread.focusPending = false;
+    input.focus();
+    input.setSelectionRange(input.value.length, input.value.length);
+  }
 }
 
 function render() {

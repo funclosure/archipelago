@@ -50,6 +50,8 @@ A island add --domain system-design --slug caching --name Caching --summary "Kee
 A island add --domain system-design --slug databases --name Databases --summary "…" --order 2
 A landmark add --domain system-design --island caching --slug hit-ratio --name "Hit ratio" --order 1
 A landmark add --domain system-design --island caching --slug invalidation --name "Invalidation" --order 2
+A landmark add --domain system-design --island caching --slug eviction --name "Eviction" --order 3
+A landmark add --domain system-design --island caching --slug stampede --name "Stampede" --order 4
 A strait add --domain system-design --from caching --to databases --name cache-aside
 ```
 

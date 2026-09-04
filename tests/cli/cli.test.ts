@@ -194,4 +194,5 @@ test("landmark add and list", () => {
   expect(list.json.landmarks.map((l: any) => l.slug)).toEqual(["hit-ratio", "invalidation"]);
   expect(cli(["landmark", "add", "--domain", "sd", "--island", "nope", "--slug", "x", "--name", "X"]).json).toEqual({ error: 'no island "nope" in this domain', valid: ["caching"] });
   expect(cli(["landmark", "add", "--domain", "sd", "--island", "caching", "--slug", "Bad Slug", "--name", "X"]).code).toBe(1);
+  expect(cli(["landmark", "add", "--domain", "sd", "--island", "caching", "--slug", "blank", "--name", "   "]).code).toBe(1);
 });

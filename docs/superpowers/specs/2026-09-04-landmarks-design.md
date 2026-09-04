@@ -75,7 +75,7 @@ Repository `src/core/repositories/landmarkRepository.ts`:
 - `upsertLandmark(db, { domainId, islandId, slug, name, sortOrder })` — insert or rename; never touches `unlocked_at`.
 - `setLandmarks(db, domainId, islandId, items[{slug,name}])` — in one transaction: upserts the given items in order and deletes dark landmarks not in the list; lit ones are always kept. Used by the judge's `set_landmarks` (only when the island has none) and by the CLI when re-sketching.
 - `unlockLandmark(db, islandId, slug, evidence, messageId | null)` — throws `NotFoundError` (with the island's landmark slugs as `valid`) for an unknown slug, `ConflictError` if already lit.
-- `listLandmarks(db, islandId)`, `countLandmarks(db, islandIds) → Map<islandId, { total, unlocked }>`.
+- `listLandmarks(db, islandId)`, `listLandmarksByIsland(db, islandIds) → Map<islandId, Landmark[]>` (the snapshot counts and lists from the same rows; a separate `countLandmarks` was folded into it).
 
 `Landmark` type in `types.ts`; slugs validated by `slugSchema`, unique per island (not per domain: the same landmark name can recur on different islands).
 
@@ -99,7 +99,7 @@ Snapshot: each `IslandView` gains `landmarks: { total, unlocked, items: [{ slug,
 
 - **Card header**: a chip row under the summary, in sort order. Dark chips: muted text, dashed border. Lit chips: sand fill, dark text; `title` carries the evidence quote. Under the chips: `3 of 5 charted · round 2 of 4` (round shown only while the island is open water and the thread is non-empty). Islands with zero landmarks show no row.
 - **Thread**: a `system` message whose body starts with `landmark lit:` renders as an inline sand chip with the landmark name, not as the uppercase "charted as" line. The matching header chip gets a one-time `lit` animation when it changes from dark to lit while the card is open.
-- **Map** (`draw.js`): for an open-water island with `landmarks.total > 0`, the 14-point outline is split into `total` runs of consecutive segments (pure helper `coastlineRuns(points, total, unlocked)` in `view-model.js`, clockwise from the top); segments in lit runs are drawn solid at the sandbar colour, dark runs keep the dash. A verdict fills the island as today. Nodes carry `landmarks` from the snapshot.
+- **Map** (`draw.js`): for an open-water island with `landmarks.total > 0`, the 14-point outline is split into `total` runs of consecutive segments (pure helper `litSegments(segments, total, unlocked)` in `view-model.js`; `draw.js` rotates its result a quarter turn so the runs start at the top and go clockwise); segments in lit runs are drawn solid at the sandbar colour, dark runs keep the dash. A verdict fills the island as today. Nodes carry `landmarks` from the snapshot.
 - Card and map both read from the snapshot; the poll reveals both within two seconds of a tool write, and the thread refetches as today.
 
 ## The answer dock
@@ -125,7 +125,7 @@ The reader's controls leave the card. A fixed **dock** sits at the bottom centre
 - `tests/server/stub.test.ts`: `unlock <slug>` and first-open `set_landmarks`.
 - `tests/server/protocol.test.ts`: the protocol names `unlock_landmark`, `set_landmarks`, "acknowledge", and the four-answer rule.
 - `tests/cli/cli.test.ts`: `landmark add/list`.
-- `tests/web/view-model.test.js`: `coastlineRuns` splits 14 segments into `total` runs and marks the first `unlocked` lit.
+- `tests/web/view-model.test.js`: `litSegments` splits 14 segments into `total` runs and marks the first `unlocked` lit.
 - `tests/web/thread.test.js`: a `landmark lit:` system message is classified as `landmark`.
 - By hand: the dock appears at the bottom centre when an island is selected, disappears when none is, switches to Confirm / Dispute on a pending reef, and is disabled during a turn.
 - By hand on a scratch database against the real judge: an answer lights a chip and an arc mid-reply; the fourth answer produces a verdict.
@@ -135,3 +135,4 @@ The reader's controls leave the card. A fixed **dock** sits at the bottom centre
 - Landmarks on straits.
 - Un-lighting a landmark (a dispute reopens the verdict, not a landmark).
 - Landmark-level verdict states; a landmark is dark or lit.
+- No server-side backstop for the four-answer rule; it lives in the context line and the protocol.

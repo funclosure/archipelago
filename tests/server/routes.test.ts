@@ -161,13 +161,14 @@ test("probe opens a thread: the judge asks first, the reply is stored, the strea
   const r = await probe({ domain: "sd", island: "databases" });
   expect(r.status).toBe(200);
   expect(r.events.map((e) => e.type)).toEqual(["progress", "text", "done"]);
+  expect(r.events[0]!.data.message).toBe("set_landmarks");
   expect(r.events[1]!.data.text).toContain("Databases");
   const t = await thread("databases");
   expect(t.island).toBe("databases");
   expect(t.messages.map((m: any) => [m.role, m.kind])).toEqual([["judge", "text"]]);
   expect(t.messages[0].body).toBe(r.events[1]!.data.text);
-  // Opening on a landmark-less island also writes its four landmarks, so the version advances by more than one.
-  expect((await get("/api/version?domain=sd")).json.version).toBeGreaterThan(v1);
+  // Four landmark inserts on this landmark-less island, plus the judge's stored message.
+  expect((await get("/api/version?domain=sd")).json.version).toBe(v1 + 5);
   expect((await islandView("databases")).messages).toBe(1);
 });
 

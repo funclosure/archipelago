@@ -9,5 +9,6 @@ test("the protocol names the states, the five tools, the round shape, and the fo
   expect(text).toMatch(/acknowledge/i);
   expect(text).toMatch(/fourth reader answer/i);
   expect(text).toMatch(/verdict first/i);
+  expect(text).toMatch(/replace the nudge and the question/i);
   expect(text).not.toContain("bun run src/cli/index.ts");
 });

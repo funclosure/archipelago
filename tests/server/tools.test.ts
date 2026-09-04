@@ -163,6 +163,10 @@ test("context carries landmarks and the round, and renders them", () => {
 
 test("set_landmarks writes 4–6 once; unlock_landmark lights one, links the answer, and adds the system line", () => {
   expect(() => setLandmarksTool(deps(), { items: [{ slug: "a", name: "A" }] })).toThrow(); // fewer than 4
+  expect(() => setLandmarksTool(deps(), { items: [
+    { slug: "hit-ratio", name: "Hit ratio" }, { slug: "hit-ratio", name: "Again" },
+    { slug: "eviction", name: "Eviction" }, { slug: "stampede", name: "Stampede" },
+  ] })).toThrow(/unique/); // a duplicated slug is refused before anything is written
   const out = setLandmarksTool(deps(), { items: [
     { slug: "hit-ratio", name: "Hit ratio" }, { slug: "invalidation", name: "Invalidation" },
     { slug: "eviction", name: "Eviction" }, { slug: "stampede", name: "Stampede" },
