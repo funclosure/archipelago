@@ -1,5 +1,5 @@
 import type { Database } from "bun:sqlite";
-import type { Comment, CommentTargetType, Verdict, VerdictState } from "./types.ts";
+import type { Comment, CommentTargetType, Landmark, Verdict, VerdictState } from "./types.ts";
 import { requireDomain } from "./repositories/domainRepository.ts";
 import { getIslandById, islandPath, listIslands, requireIsland } from "./repositories/islandRepository.ts";
 import { getStraitById, listStraits } from "./repositories/straitRepository.ts";
@@ -7,9 +7,11 @@ import { latestVerdicts } from "./repositories/verdictRepository.ts";
 import { listComments } from "./repositories/commentRepository.ts";
 import { getViewState } from "./repositories/viewStateRepository.ts";
 import { countMessages } from "./repositories/messageRepository.ts";
+import { listLandmarksByIsland } from "./repositories/landmarkRepository.ts";
 
 export type VerdictView = { state: VerdictState; confidence: number; evidence: string; rationale: string | null; at: string };
 export type RollupState = Record<VerdictState | "open", number>;
+export type LandmarkView = { slug: string; name: string; lit: boolean; evidence: string | null };
 export type IslandView = {
   slug: string;
   name: string;
@@ -20,6 +22,7 @@ export type IslandView = {
   x: number | null;
   y: number | null;
   messages: number;
+  landmarks: { total: number; unlocked: number; items: LandmarkView[] };
 };
 export type StraitView = { from: string; to: string; name: string | null; verdict: VerdictView | null };
 export type Snapshot = {
@@ -45,6 +48,11 @@ function emptyRollup(): RollupState {
   return { sandbar: 0, settled: 0, mountainous: 0, reef: 0, open: 0 };
 }
 
+function landmarkView(list: Landmark[]): { total: number; unlocked: number; items: LandmarkView[] } {
+  const items = list.map((l) => ({ slug: l.slug, name: l.name, lit: l.unlockedAt !== null, evidence: l.evidence }));
+  return { total: items.length, unlocked: items.filter((i) => i.lit).length, items };
+}
+
 export function buildSnapshot(db: Database, domainSlug: string, scaleSlug: string | null): Snapshot {
   const domain = requireDomain(db, domainSlug);
   const scaleIsland = scaleSlug ? requireIsland(db, domain.id, scaleSlug) : null;
@@ -54,6 +62,7 @@ export function buildSnapshot(db: Database, domainSlug: string, scaleSlug: strin
   const islands = listIslands(db, domain.id, parentId);
   const islandVerdicts = latestVerdicts(db, "island", islands.map((i) => i.id));
   const messageCounts = countMessages(db, islands.map((i) => i.id));
+  const landmarksByIsland = listLandmarksByIsland(db, islands.map((i) => i.id));
   const islandViews: IslandView[] = islands.map((island) => {
     const children = listIslands(db, domain.id, island.id);
     const childVerdicts = latestVerdicts(db, "island", children.map((c) => c.id));
@@ -73,6 +82,7 @@ export function buildSnapshot(db: Database, domainSlug: string, scaleSlug: strin
       x: island.x,
       y: island.y,
       messages: messageCounts.get(island.id) ?? 0,
+      landmarks: landmarkView(landmarksByIsland.get(island.id) ?? []),
     };
   });
 

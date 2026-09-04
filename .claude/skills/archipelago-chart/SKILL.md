@@ -16,6 +16,7 @@ Run the CLI from the project root as `bun run src/cli/index.ts …` (or `archipe
 | domain | the whole archipelago, e.g. `system-design` |
 | island | a concept; islets are islands with a `--parent` |
 | strait | how two sibling islands relate |
+| landmark | a key concept on an island; the judge lights it when the user's answer covers it |
 | open water | no verdict yet. Never a state anyone writes. |
 | sandbar | rough but correct |
 | settled | solid: explains and applies |
@@ -38,7 +39,7 @@ The judge runs inside that server on the Claude Agent SDK, through the user's Cl
 
 When the user names a domain that does not exist (`domain list`):
 
-1. Propose 6–10 top-level islands, each with a slug, a name, and a one-line summary, and the straits between islands that neighbour each other conceptually. Print the sketch as a table.
+1. Propose 6–10 top-level islands, each with a slug, a name, a one-line summary, and 4–6 landmarks (the key concepts a person who knows this island can explain, as slug + short name), and the straits between islands that neighbour each other conceptually. Print the sketch as a table with a landmarks column.
 2. Wait for the user to approve or edit it. Do not write before that.
 3. Write it:
 
@@ -47,6 +48,8 @@ A() { bun run src/cli/index.ts "$@"; }   # works in bash and zsh; define once pe
 A domain add --slug system-design --name "System Design"
 A island add --domain system-design --slug caching --name Caching --summary "Keeping hot data close to where it is read." --order 1
 A island add --domain system-design --slug databases --name Databases --summary "…" --order 2
+A landmark add --domain system-design --island caching --slug hit-ratio --name "Hit ratio" --order 1
+A landmark add --domain system-design --island caching --slug invalidation --name "Invalidation" --order 2
 A strait add --domain system-design --from caching --to databases --name cache-aside
 ```
 
@@ -84,7 +87,7 @@ A island show --domain <slug> --slug <island>      # verdict and history
 
 ## 4. Sailing closer
 
-When the user asks to go closer, or a `sail_closer` comment arrives, first read the island's thread (`thread show`) and its verdict so the islets follow what the judge found. Then sketch 4–8 islets exactly as in Setup, with slugs that do not collide with any slug in the domain (prefix with the parent when in doubt, e.g. `caching-invalidation`), plus straits between neighbouring islets. Show the sketch, get approval, then write with `--parent <island-slug>`. If the island has no verdict yet, suggest the user probe it on the map first, but do what the user asks.
+When the user asks to go closer, or a `sail_closer` comment arrives, first read the island's thread (`thread show`) and its verdict so the islets follow what the judge found. Then sketch 4–8 islets exactly as in Setup, with slugs that do not collide with any slug in the domain (prefix with the parent when in doubt, e.g. `caching-invalidation`), plus straits between neighbouring islets, and 4–6 landmarks per islet, written with `landmark add`. Show the sketch, get approval, then write with `--parent <island-slug>`. If the island has no verdict yet, suggest the user probe it on the map first, but do what the user asks.
 
 ## 5. Ending a sitting
 
@@ -103,6 +106,7 @@ island   add --domain --slug --name [--summary] [--parent] [--order]
          update --domain --slug [--name] [--summary] [--order] [--x --y]
          list --domain [--parent] | show --domain --slug
 strait   add --domain --from --to [--name] [--summary] | list --domain [--parent]
+landmark add --domain --island --slug --name [--order] | list --domain --island
 thread   show --domain --island
 verdict  history --domain --target island:<slug>|strait:<a>~<b>
          set --domain --target --state --confidence --evidence [--rationale]   (repairs only)

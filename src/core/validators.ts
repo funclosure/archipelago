@@ -128,3 +128,11 @@ export const reefAnswerInputSchema = z.object({
   answer: z.enum(["confirm", "dispute"]),
   note: z.string().trim().min(1).optional(),
 });
+
+export const landmarkInputSchema = z.object({
+  domain: slugSchema,
+  island: slugSchema,
+  slug: slugSchema,
+  name: z.string().min(1),
+  order: numberInput.pipe(z.number().int()).optional(),
+});

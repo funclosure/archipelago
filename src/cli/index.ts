@@ -5,7 +5,7 @@ import { openDatabase } from "../core/db.ts";
 import { ArchipelagoError } from "../core/errors.ts";
 import {
   domainInputSchema, islandInputSchema, islandUpdateSchema, straitInputSchema, verdictInputSchema,
-  sessionEndInputSchema, slugSchema,
+  sessionEndInputSchema, slugSchema, landmarkInputSchema,
 } from "../core/validators.ts";
 import { listDomains, requireDomain, upsertDomain } from "../core/repositories/domainRepository.ts";
 import {
@@ -16,6 +16,7 @@ import { addVerdict, latestVerdict, latestVerdicts, verdictHistory } from "../co
 import { activeSession, endSession, listSessions, startSession } from "../core/repositories/sessionRepository.ts";
 import { markCommentsRead } from "../core/repositories/commentRepository.ts";
 import { listMessages } from "../core/repositories/messageRepository.ts";
+import { listLandmarks, upsertLandmark } from "../core/repositories/landmarkRepository.ts";
 import { getViewState, setFocus } from "../core/repositories/viewStateRepository.ts";
 import { buildSnapshot, listCommentViews } from "../core/view-model.ts";
 import { resolveVerdictTarget } from "../core/targets.ts";
@@ -177,6 +178,30 @@ common(strait.command("list").option("--domain <slug>").option("--parent <slug>"
           state: verdicts.get(s.id)?.state ?? null,
         })),
       };
+    }),
+  ),
+);
+
+// ---- landmark ----
+const landmark = program.command("landmark").description("The key concepts on an island; the judge lights them");
+common(
+  landmark.command("add").option("--domain <slug>").option("--island <slug>").option("--slug <slug>").option("--name <name>").option("--order <n>"),
+).action(
+  run((o) =>
+    withDb((db) => {
+      const input = landmarkInputSchema.parse(o);
+      const d = requireDomain(db, input.domain);
+      const i = requireIsland(db, d.id, input.island);
+      return upsertLandmark(db, { domainId: d.id, islandId: i.id, slug: input.slug, name: input.name, sortOrder: input.order ?? null });
+    }),
+  ),
+);
+common(landmark.command("list").option("--domain <slug>").option("--island <slug>")).action(
+  run((o) =>
+    withDb((db) => {
+      const d = requireDomain(db, slugSchema.parse(o.domain));
+      const i = requireIsland(db, d.id, slugSchema.parse(o.island));
+      return { island: i.slug, landmarks: listLandmarks(db, i.id) };
     }),
   ),
 );

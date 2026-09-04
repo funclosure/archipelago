@@ -181,3 +181,17 @@ test("thread show prints an island's messages in order", () => {
   expect(missing.code).toBe(1);
   expect(missing.json).toEqual({ error: 'no island "nope" in this domain', valid: ["caching"] });
 });
+
+test("landmark add and list", () => {
+  cli(["domain", "add", "--slug", "sd", "--name", "System Design"]);
+  cli(["island", "add", "--domain", "sd", "--slug", "caching", "--name", "Caching"]);
+  const a = cli(["landmark", "add", "--domain", "sd", "--island", "caching", "--slug", "invalidation", "--name", "Invalidation", "--order", "2"]);
+  expect(a.code).toBe(0);
+  expect(a.json).toMatchObject({ slug: "invalidation", name: "Invalidation", sortOrder: 2, unlockedAt: null });
+  cli(["landmark", "add", "--domain", "sd", "--island", "caching", "--slug", "hit-ratio", "--name", "Hit ratio", "--order", "1"]);
+  const list = cli(["landmark", "list", "--domain", "sd", "--island", "caching"]);
+  expect(list.json.island).toBe("caching");
+  expect(list.json.landmarks.map((l: any) => l.slug)).toEqual(["hit-ratio", "invalidation"]);
+  expect(cli(["landmark", "add", "--domain", "sd", "--island", "nope", "--slug", "x", "--name", "X"]).json).toEqual({ error: 'no island "nope" in this domain', valid: ["caching"] });
+  expect(cli(["landmark", "add", "--domain", "sd", "--island", "caching", "--slug", "Bad Slug", "--name", "X"]).code).toBe(1);
+});
