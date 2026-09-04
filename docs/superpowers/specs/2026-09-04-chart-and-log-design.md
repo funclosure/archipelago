@@ -1,7 +1,7 @@
 # Chart and log: the page layout
 
 **Date:** 2026-09-04
-**Status:** approved design, awaiting plan
+**Status:** implemented (plan: docs/superpowers/plans/2026-09-04-chart-and-log.md)
 **Builds on:** landmarks (`2026-09-04-landmarks-design.md`); markdown and streaming rules from medium-pool's text lane (`~/Documents/Workspace/Projects/medium-pool/skills/medium-text/`)
 **Mockups:** https://claude.ai/code/artifact/4c4ed1c3-d830-47c3-a011-8fd3ead6eadd (direction A)
 
