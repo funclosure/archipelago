@@ -1,7 +1,7 @@
 # Contour: how an island is drawn
 
 **Date:** 2026-09-05
-**Status:** approved design (written by Victor), awaiting plan
+**Status:** implemented (plan: docs/superpowers/plans/2026-09-05-contour.md)
 **Reads:** the island spec (data and growth); replaces the island and strait drawing in `src/web/draw.js`
 
 
