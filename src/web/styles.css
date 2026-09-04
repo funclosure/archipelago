@@ -69,3 +69,4 @@ html, body { margin: 0; height: 100%; background: var(--water); color: var(--tex
 .card .reef-title { font-size: 11px; text-transform: uppercase; letter-spacing: .1em; color: var(--reef); margin-bottom: 4px; }
 .card .reef-block .actions { margin: 8px 0 0; }
 .card .note input:disabled { color: var(--muted); }
+.card button:disabled { opacity: .5; cursor: default; }

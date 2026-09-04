@@ -11,15 +11,18 @@ let renderId = 0;         // guards async appends against stale renders
 const thread = {
   slug: null,
   version: null,      // snapshot version the messages were fetched at; null forces a refetch
+  loadGen: 0,         // bumped per fetch so a slow load cannot overwrite a newer one
   messages: [],
   loaded: false,
   draft: "",
   live: "",           // the judge's reply as it streams
   progress: null,     // tool in flight, shown under the live text
   inFlight: false,
-  error: null,
+  error: null,        // a turn failed; the messages on screen are still good
+  loadError: null,    // the thread itself could not be fetched
   disputeFor: null,   // proposal id whose objection box is open
   disputeDraft: "",
+  disputeFocusPending: false, // the objection box was just opened and wants the caret
 };
 
 export function installCard() {
@@ -67,27 +70,30 @@ function post(path, body) {
 /** Points the thread at another island, dropping everything from the previous one. */
 function resetThread(slug) {
   Object.assign(thread, {
-    slug, version: null, messages: [], loaded: false, draft: "", live: "", progress: null, inFlight: false, error: null, disputeFor: null, disputeDraft: "",
+    slug, version: null, loadGen: 0, messages: [], loaded: false, draft: "", live: "", progress: null, inFlight: false, error: null, loadError: null,
+    disputeFor: null, disputeDraft: "", disputeFocusPending: false,
   });
 }
 
 async function loadThread(slug) {
   thread.version = app.version;
+  const gen = ++thread.loadGen;
   try {
     const { messages } = await api(`/api/thread?domain=${encodeURIComponent(app.domain)}&island=${encodeURIComponent(slug)}`);
-    if (thread.slug !== slug) return;
+    if (thread.slug !== slug || gen !== thread.loadGen) return;
     thread.messages = messages;
     thread.loaded = true;
+    thread.loadError = null; // thread.error belongs to the last turn and stays until the next one
   } catch (error) {
-    if (thread.slug !== slug) return;
-    thread.error = error.message; // version stays set: the next version change retries, a re-render does not
+    if (thread.slug !== slug || gen !== thread.loadGen) return;
+    thread.loadError = error.message; // version stays set: the next version change retries, a re-render does not
   }
   render();
 }
 
 /** One judge turn. `message` null opens or continues the thread without a new reader message. */
 async function runTurn(slug, message) {
-  if (thread.inFlight) return;
+  if (thread.inFlight || thread.slug !== slug) return;
   thread.inFlight = true;
   thread.live = "";
   thread.progress = null;
@@ -109,7 +115,9 @@ async function runTurn(slug, message) {
       }
     });
   } catch (error) {
+    if (thread.slug !== slug) return; // the reader is on another island; nothing here is theirs
     thread.error = error.message;
+    if (message) thread.draft = message; // the fetch never reached the server, so the message is not stored: give it back
   }
   if (thread.slug !== slug) return;
   thread.inFlight = false;
@@ -117,16 +125,22 @@ async function runTurn(slug, message) {
   thread.progress = null;
   thread.version = null; // the stored reply and any system lines come back with the refetch
   render();
+  const input = card.querySelector("#thread-input");
+  if (input && !input.disabled) {
+    input.focus();
+    input.setSelectionRange(input.value.length, input.value.length);
+  }
 }
 
 async function answerReef(slug, id, answer, note) {
   try {
     await post("/api/probe/reef", { domain: app.domain, id, answer, ...(note ? { note } : {}) });
+    if (thread.slug !== slug) return; // the reader moved on while the answer was in flight
     thread.disputeFor = null;
     thread.disputeDraft = "";
     thread.version = null;
     render();
-    if (answer === "dispute") await runTurn(slug, null);
+    if (answer === "dispute" && thread.slug === slug) await runTurn(slug, null);
   } catch (error) {
     thread.error = error.message;
     render();
@@ -164,13 +178,17 @@ function reefEl(item, island) {
     return box;
   }
   const actions = el("div", "actions");
-  actions.append(button("Confirm", () => void answerReef(island.slug, item.id, "confirm")));
-  actions.append(
-    button("Dispute", () => {
-      thread.disputeFor = thread.disputeFor === item.id ? null : item.id;
-      render();
-    }, "ghost"),
-  );
+  const confirm = button("Confirm", () => void answerReef(island.slug, item.id, "confirm"));
+  confirm.disabled = thread.inFlight; // a dispute's follow-up turn would be dropped
+  actions.append(confirm);
+  const dispute = button("Dispute", () => {
+    const opening = thread.disputeFor !== item.id;
+    thread.disputeFor = opening ? item.id : null;
+    if (opening) thread.disputeFocusPending = true; // only a fresh box takes the caret
+    render();
+  }, "ghost");
+  dispute.disabled = thread.inFlight;
+  actions.append(dispute);
   box.append(actions);
   if (thread.disputeFor === item.id) {
     const form = el("form", "note");
@@ -180,13 +198,18 @@ function reefEl(item, island) {
     input.addEventListener("input", () => (thread.disputeDraft = input.value));
     const send = button("Send", null);
     send.type = "submit";
+    send.disabled = thread.inFlight;
     form.append(input, send);
     form.addEventListener("submit", (e) => {
       e.preventDefault();
+      if (thread.inFlight) return;
       void answerReef(island.slug, item.id, "dispute", input.value.trim() || undefined);
     });
     box.append(form);
-    queueMicrotask(() => input.focus());
+    if (thread.disputeFocusPending) {
+      thread.disputeFocusPending = false;
+      queueMicrotask(() => input.focus());
+    }
   }
   return box;
 }
@@ -194,7 +217,19 @@ function reefEl(item, island) {
 function threadEl(island) {
   const section = el("div", "thread");
   if (!thread.loaded) {
-    section.append(el("p", "muted", thread.error ? thread.error : "loading the thread…"));
+    if (!thread.loadError) {
+      section.append(el("p", "muted", "loading the thread…"));
+      return section;
+    }
+    section.append(el("p", "error", thread.loadError));
+    const actions = el("div", "actions");
+    actions.append(
+      button("Retry", () => {
+        thread.version = null; // the render below refetches
+        render();
+      }),
+    );
+    section.append(actions);
     return section;
   }
   const items = threadItems(thread.messages);
