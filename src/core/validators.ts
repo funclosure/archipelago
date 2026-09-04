@@ -97,3 +97,34 @@ export function parseTarget(target: string): ParsedTarget {
   }
   throw new ArchipelagoError(`target must be island:<slug> or strait:<a>~<b>, got "${target}"`);
 }
+
+/** What the judge may write directly. A reef is never recorded here; it goes through a proposal. */
+export const judgeVerdictInputSchema = z.object({
+  target: z.string().min(1),
+  state: z.enum(["sandbar", "settled", "mountainous"]),
+  confidence: numberInput.pipe(z.number().min(0).max(1)),
+  evidence: z.string().min(1),
+  rationale: z.string().min(1),
+});
+
+export const reefProposalInputSchema = z.object({
+  target: z.string().min(1),
+  claim: z.string().min(1),
+  consequence: z.string().min(1),
+  evidence: z.string().min(1),
+  confidence: numberInput.pipe(z.number().min(0).max(1)),
+  rationale: z.string().min(1),
+});
+
+export const probeInputSchema = z.object({
+  domain: slugSchema,
+  island: slugSchema,
+  message: z.string().trim().min(1).optional(),
+});
+
+export const reefAnswerInputSchema = z.object({
+  domain: slugSchema,
+  id: numberInput.pipe(z.number().int().positive()),
+  answer: z.enum(["confirm", "dispute"]),
+  note: z.string().trim().min(1).optional(),
+});
