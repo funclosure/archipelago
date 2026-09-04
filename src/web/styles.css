@@ -54,3 +54,18 @@ html, body { margin: 0; height: 100%; background: var(--water); color: var(--tex
 .card .history { margin: 12px 0 0; padding-left: 16px; font-size: 12px; color: var(--muted); }
 .card .history li { margin: 2px 0; }
 .card .sent { color: var(--sand); font-size: 12px; margin-top: 6px; }
+
+.card .thread { margin-top: 6px; border-top: 1px solid var(--line); padding-top: 10px; }
+.card .messages { display: flex; flex-direction: column; gap: 8px; max-height: 40vh; overflow: auto; padding-right: 4px; }
+.card .msg p { margin: 0 0 6px; }
+.card .msg p:last-child { margin-bottom: 0; }
+.card .msg.you { align-self: flex-end; max-width: 90%; background: var(--water); border: 1px solid var(--line); border-radius: 10px 10px 2px 10px; padding: 6px 10px; }
+.card .msg.judge { font-family: Georgia, serif; font-size: 14px; }
+.card .msg.system { font-size: 11px; text-transform: uppercase; letter-spacing: .1em; color: var(--sand); text-align: center; }
+.card .progress { font-size: 11px; color: var(--muted); font-style: italic; }
+.card .error { color: var(--reef); font-size: 12px; margin-top: 6px; }
+.card .reef-block { border: 1px solid var(--reef); border-radius: 8px; padding: 8px 10px; }
+.card .reef-block p { margin: 0 0 4px; }
+.card .reef-title { font-size: 11px; text-transform: uppercase; letter-spacing: .1em; color: var(--reef); margin-bottom: 4px; }
+.card .reef-block .actions { margin: 8px 0 0; }
+.card .note input:disabled { color: var(--muted); }

@@ -1,9 +1,26 @@
 import { app, api, setScale } from "./app.js";
+import { streamPost } from "./stream.js";
+import { threadItems, paragraphs } from "./thread.js";
 
 const card = document.getElementById("card");
-let draft = "";                 // note text survives re-renders
-let lastSent = null;            // { slug, text } shown under the note box
-let renderId = 0;               // guards the async history append against stale renders
+let noteDraft = "";       // note text survives re-renders
+let lastSent = null;      // { slug, text } shown under the note box
+let renderId = 0;         // guards async appends against stale renders
+
+// The one thread the page shows: the selected island's stored messages plus the turn in flight.
+const thread = {
+  slug: null,
+  version: null,      // snapshot version the messages were fetched at; null forces a refetch
+  messages: [],
+  loaded: false,
+  draft: "",
+  live: "",           // the judge's reply as it streams
+  progress: null,     // tool in flight, shown under the live text
+  inFlight: false,
+  error: null,
+  disputeFor: null,   // proposal id whose objection box is open
+  disputeDraft: "",
+};
 
 export function installCard() {
   app.listeners.add(() => render());
@@ -25,10 +42,8 @@ function button(label, onClick, className) {
 }
 
 const SENT_TEXT = {
-  probe_me: "Asked Claude to probe this island next.",
   sail_closer: "Asked Claude to chart this island's coastline.",
   note: "Note sent. Claude reads it at the start of the next turn.",
-  dispute: "Dispute sent. Claude will reopen this verdict.",
 };
 
 async function sendComment(island, kind, body) {
@@ -45,14 +60,202 @@ async function sendComment(island, kind, body) {
   render();
 }
 
+function post(path, body) {
+  return api(path, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+}
+
+/** Points the thread at another island, dropping everything from the previous one. */
+function resetThread(slug) {
+  Object.assign(thread, {
+    slug, version: null, messages: [], loaded: false, draft: "", live: "", progress: null, inFlight: false, error: null, disputeFor: null, disputeDraft: "",
+  });
+}
+
+async function loadThread(slug) {
+  thread.version = app.version;
+  try {
+    const { messages } = await api(`/api/thread?domain=${encodeURIComponent(app.domain)}&island=${encodeURIComponent(slug)}`);
+    if (thread.slug !== slug) return;
+    thread.messages = messages;
+    thread.loaded = true;
+  } catch (error) {
+    if (thread.slug !== slug) return;
+    thread.error = error.message; // version stays set: the next version change retries, a re-render does not
+  }
+  render();
+}
+
+/** One judge turn. `message` null opens or continues the thread without a new reader message. */
+async function runTurn(slug, message) {
+  if (thread.inFlight) return;
+  thread.inFlight = true;
+  thread.live = "";
+  thread.progress = null;
+  thread.error = null;
+  if (message) thread.messages = [...thread.messages, { id: `local-${Date.now()}`, role: "you", kind: "text", body: message }];
+  render();
+  try {
+    await streamPost("/api/probe", { domain: app.domain, island: slug, ...(message ? { message } : {}) }, (e) => {
+      if (thread.slug !== slug) return;
+      if (e.type === "text") {
+        thread.live += e.data.text;
+        thread.progress = null;
+        renderLive();
+      } else if (e.type === "progress") {
+        thread.progress = e.data.message;
+        renderLive();
+      } else if (e.type === "error") {
+        thread.error = e.data.message;
+      }
+    });
+  } catch (error) {
+    thread.error = error.message;
+  }
+  if (thread.slug !== slug) return;
+  thread.inFlight = false;
+  thread.live = "";
+  thread.progress = null;
+  thread.version = null; // the stored reply and any system lines come back with the refetch
+  render();
+}
+
+async function answerReef(slug, id, answer, note) {
+  try {
+    await post("/api/probe/reef", { domain: app.domain, id, answer, ...(note ? { note } : {}) });
+    thread.disputeFor = null;
+    thread.disputeDraft = "";
+    thread.version = null;
+    render();
+    if (answer === "dispute") await runTurn(slug, null);
+  } catch (error) {
+    thread.error = error.message;
+    render();
+  }
+}
+
+/** Updates only the streaming parts, so deltas do not rebuild the card. */
+function renderLive() {
+  const live = card.querySelector("#live");
+  const progress = card.querySelector("#progress");
+  if (!live || !progress) return; // no list on screen yet; the full render at the end of the turn shows everything
+  live.replaceChildren(...paragraphs(thread.live).map((p) => el("p", null, p)));
+  live.hidden = !thread.live;
+  progress.textContent = thread.progress ? `judge: ${thread.progress}` : "";
+  progress.hidden = !thread.progress;
+  live.scrollIntoView({ block: "nearest" });
+}
+
+function messageEl(item, island) {
+  if (item.kind === "system") return el("div", "msg system", item.text);
+  if (item.kind === "reef_proposal") return reefEl(item, island);
+  const m = el("div", `msg ${item.role}`);
+  m.append(...paragraphs(item.text).map((p) => el("p", null, p)));
+  return m;
+}
+
+function reefEl(item, island) {
+  const p = item.proposal;
+  const box = el("div", "reef-block");
+  box.append(el("div", "reef-title", "Reef?"));
+  box.append(el("p", null, p.claim));
+  box.append(el("p", "muted", `If so: ${p.consequence}`));
+  if (p.status !== "pending") {
+    box.append(el("div", "muted", p.status === "confirmed" ? "confirmed, charted as reef" : "disputed"));
+    return box;
+  }
+  const actions = el("div", "actions");
+  actions.append(button("Confirm", () => void answerReef(island.slug, item.id, "confirm")));
+  actions.append(
+    button("Dispute", () => {
+      thread.disputeFor = thread.disputeFor === item.id ? null : item.id;
+      render();
+    }, "ghost"),
+  );
+  box.append(actions);
+  if (thread.disputeFor === item.id) {
+    const form = el("form", "note");
+    const input = el("input");
+    input.placeholder = "what is wrong with this reef";
+    input.value = thread.disputeDraft;
+    input.addEventListener("input", () => (thread.disputeDraft = input.value));
+    const send = button("Send", null);
+    send.type = "submit";
+    form.append(input, send);
+    form.addEventListener("submit", (e) => {
+      e.preventDefault();
+      void answerReef(island.slug, item.id, "dispute", input.value.trim() || undefined);
+    });
+    box.append(form);
+    queueMicrotask(() => input.focus());
+  }
+  return box;
+}
+
+function threadEl(island) {
+  const section = el("div", "thread");
+  if (!thread.loaded) {
+    section.append(el("p", "muted", thread.error ? thread.error : "loading the thread…"));
+    return section;
+  }
+  const items = threadItems(thread.messages);
+  if (items.length === 0 && !thread.inFlight) {
+    section.append(el("p", "muted", island.verdict ? "No thread yet. The judge asks first." : "Unsurveyed. The judge asks first."));
+    const actions = el("div", "actions");
+    actions.append(button("Probe this", () => void runTurn(island.slug, null)));
+    section.append(actions);
+    return section;
+  }
+  const list = el("div", "messages");
+  for (const item of items) list.append(messageEl(item, island));
+  const live = el("div", "msg judge");
+  live.id = "live";
+  live.hidden = true;
+  const progress = el("div", "progress");
+  progress.id = "progress";
+  progress.hidden = true;
+  list.append(live, progress);
+  section.append(list);
+  if (thread.error) section.append(el("div", "error", thread.error));
+
+  const form = el("form", "note");
+  const input = el("input");
+  input.id = "thread-input";
+  input.placeholder = thread.inFlight ? "the judge is thinking…" : "your answer";
+  input.value = thread.draft;
+  input.disabled = thread.inFlight;
+  input.addEventListener("input", () => (thread.draft = input.value));
+  const send = button("Send", null);
+  send.type = "submit";
+  send.disabled = thread.inFlight;
+  form.append(input, send);
+  form.addEventListener("submit", (e) => {
+    e.preventDefault();
+    const body = input.value.trim();
+    if (!body || thread.inFlight) return;
+    thread.draft = "";
+    void runTurn(island.slug, body);
+  });
+  section.append(form);
+  return section;
+}
+
 function render() {
   const s = app.snapshot;
   const island = s && app.selected ? s.islands.find((i) => i.slug === app.selected) : null;
   if (!island) {
     card.hidden = true;
     card.replaceChildren();
+    if (thread.slug !== null) resetThread(null);
     return;
   }
+  if (thread.slug !== island.slug) {
+    resetThread(island.slug);
+    void loadThread(island.slug);
+  } else if (thread.version !== app.version) {
+    void loadThread(island.slug); // also mid-turn: a verdict's system line shows in the same beat as the map
+  }
+
+  const hadFocus = document.activeElement && document.activeElement.id === "thread-input";
   card.hidden = false;
   card.replaceChildren();
 
@@ -67,46 +270,47 @@ function render() {
     card.append(el("blockquote", null, `“${island.verdict.evidence}”`));
     if (island.verdict.rationale) card.append(el("p", "muted", island.verdict.rationale));
     card.append(el("p", "muted", `confidence ${Math.round(island.verdict.confidence * 100)}% · ${island.verdict.at.slice(0, 10)}`));
-  } else if (island.children.total) {
+  }
+  if (island.children.total) {
     const b = island.children.byState;
     card.append(
       el("p", "muted", `${island.children.total} islets: ${b.mountainous} mountainous, ${b.settled} settled, ${b.sandbar} sandbar, ${b.reef} reef, ${b.open} open`),
     );
-  } else {
-    card.append(el("p", "muted", "Unsurveyed. Ask Claude to probe it, or leave a note."));
   }
 
   const actions = el("div", "actions");
-  actions.append(button("Probe this", () => sendComment(island, "probe_me", "")));
   if (island.hasChildren) actions.append(button("Sail in", () => setScale(island.slug), "ghost"));
   else actions.append(button("Sail closer", () => sendComment(island, "sail_closer", ""), "ghost"));
   card.append(actions);
 
+  card.append(threadEl(island));
+  renderLive();
+
   const note = el("form", "note");
   const input = el("input");
-  input.placeholder = "a note or a dispute for Claude";
-  input.value = draft;
-  input.addEventListener("input", () => (draft = input.value));
-  const kind = el("select");
-  for (const k of ["note", "dispute"]) {
-    const o = el("option", null, k);
-    o.value = k;
-    kind.append(o);
-  }
+  input.placeholder = "a note for Claude in the terminal";
+  input.value = noteDraft;
+  input.addEventListener("input", () => (noteDraft = input.value));
   const send = button("Send", null);
   send.type = "submit";
-  note.append(input, kind, send);
+  note.append(input, send);
   note.addEventListener("submit", (e) => {
     e.preventDefault();
     const body = input.value.trim();
     if (!body) return;
-    draft = "";
-    void sendComment(island, kind.value, body);
+    noteDraft = "";
+    void sendComment(island, "note", body);
   });
   card.append(note);
-
   if (lastSent && lastSent.slug === island.slug) card.append(el("div", "sent", lastSent.text));
 
+  if (hadFocus) {
+    const again = card.querySelector("#thread-input");
+    if (again && !again.disabled) {
+      again.focus();
+      again.setSelectionRange(again.value.length, again.value.length);
+    }
+  }
   void renderHistory(island, ++renderId);
 }
 
