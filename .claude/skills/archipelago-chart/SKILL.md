@@ -40,7 +40,7 @@ The judge runs inside that server on the Claude Agent SDK, through the user's Cl
 
 When the user names a domain that does not exist (`domain list`):
 
-1. Propose 6–10 top-level islands, each with a slug, a name, a one-line summary, and 4–6 landmarks (the key concepts a person who knows this island can explain, as slug + short name), and the straits between islands that neighbour each other conceptually, and the harbour: the island the user already half-stands on (when nothing is known, the island with the most straits). Print the sketch as a table with a landmarks column. Print it as a line under the table.
+1. Propose 6–10 top-level islands, each with a slug, a name, a one-line summary, and 4–6 landmarks (the key concepts a person who knows this island can explain, as slug + short name), and the straits between islands that neighbour each other conceptually, and the harbour: the island the user already half-stands on (when nothing is known, the island with the most straits). Print the sketch as a table with a landmarks column, and the harbour as a line under the table.
 2. Wait for the user to approve or edit it. Do not write before that.
 3. Write it:
 

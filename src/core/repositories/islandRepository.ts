@@ -18,6 +18,7 @@ export type IslandUpsert = {
 export function upsertIsland(db: Database, input: IslandUpsert): Island {
   return db.transaction(() => {
     const existing = getIsland(db, input.domainId, input.slug);
+    // A moved island gets new siblings: its position and its harbour (one per parent) do not travel with it.
     const resetPosition = existing != null && input.parentId != null && input.parentId !== existing.parentId;
     if (existing && input.parentId != null) {
       assertNotDescendant(db, existing, input.parentId);
@@ -37,6 +38,7 @@ export function upsertIsland(db: Database, input: IslandUpsert): Island {
            sort_order = coalesce($sortOrder, islands.sort_order),
            x = case when $resetPosition then null else islands.x end,
            y = case when $resetPosition then null else islands.y end,
+           harbour = case when $resetPosition then 0 else islands.harbour end,
            updated_at = ${NOW}
          returning ${COLS}`,
       )

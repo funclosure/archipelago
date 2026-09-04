@@ -155,3 +155,13 @@ test("harbour: one per parent, moves between siblings, islets keep their own, cl
     expect((e as NotFoundError).valid).toEqual(["caching", "caching-ttl", "databases"]);
   }
 });
+
+test("re-parenting an island drops its harbour, since the flag is one per parent", () => {
+  const caching = upsertIsland(db, { domainId, slug: "caching", name: "Caching" });
+  upsertIsland(db, { domainId, slug: "databases", name: "Databases" });
+  setHarbour(db, domainId, "databases");
+  const moved = upsertIsland(db, { domainId, slug: "databases", name: "Databases", parentId: caching.id });
+  expect(moved.harbour).toBe(0);
+  expect(getHarbour(db, domainId, null)).toBeNull();
+  expect(getHarbour(db, domainId, caching.id)).toBeNull();
+});

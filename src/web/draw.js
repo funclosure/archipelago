@@ -200,7 +200,7 @@ function drawLabel(ctx, node, grow, hasOwnVerdict) {
     const half = ctx.measureText(node.name).width / 2;
     ctx.textAlign = "right";
     ctx.fillStyle = PALETTE.sand;
-    ctx.fillText("⚓", node.x - half - ANCHOR_GAP, y);
+    ctx.fillText("⚓\uFE0E", node.x - half - ANCHOR_GAP, y); // text presentation, so the sand fill applies
   }
 }
 
