@@ -34,11 +34,6 @@ export function threadItems(messages) {
   });
 }
 
-/** Paragraphs of a message: split on blank lines, trimmed, empties dropped. */
-export function paragraphs(text) {
-  return String(text).split(/\n\s*\n/).map((p) => p.trim()).filter(Boolean);
-}
-
 // Inline markdown. Strong and em require non-space content at both ends, so "2 * 3 * 4" stays literal;
 // underscores need a non-word character on the outside, so snake_case stays literal. No nesting.
 const INLINE = /\*\*(\S(?:[^*\n]*?\S)?)\*\*|`([^`\n]+)`|(?<![\w*])\*(\S(?:[^*\n]*?\S)?)\*(?![\w*])|(?<!\w)_(\S(?:[^_\n]*?\S)?)_(?!\w)/g;
