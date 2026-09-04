@@ -16,7 +16,6 @@ html, body { margin: 0; height: 100%; background: var(--water); color: var(--tex
 .chrome { position: fixed; left: 0; display: flex; padding: 16px 20px; pointer-events: none; }
 .chrome > * { pointer-events: auto; }
 .top { top: 0; }
-.bottom { bottom: 0; }
 .chrome-stack { display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
 
 .breadcrumb { display: flex; align-items: center; gap: 8px; font-family: Georgia, serif; font-size: 18px; }
@@ -41,7 +40,7 @@ html, body { margin: 0; height: 100%; background: var(--water); color: var(--tex
 .head .row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .head h2 { margin: 0; font: 22px Georgia, serif; }
 .pill { font-size: 10px; text-transform: uppercase; letter-spacing: .1em; padding: 4px 8px; border-radius: 4px;
-  background: var(--grass); color: var(--sea); white-space: nowrap; }
+  background: var(--grass); color: #10283A; white-space: nowrap; }
 .pill.open { background: transparent; border: 1px dashed var(--open); color: var(--muted); }
 .pill.reef { background: var(--reef); color: var(--text); }
 .pills { display: flex; gap: 6px; }

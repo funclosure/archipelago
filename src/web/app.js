@@ -257,6 +257,7 @@ function frame(now) {
   if (focusSlug) {
     near.add(focusSlug);
     for (const l of app.links) {
+      if (!l.source.island.verdict || !l.target.island.verdict) continue; // only charted channels count as near
       if (l.source.slug === focusSlug) near.add(l.target.slug);
       if (l.target.slug === focusSlug) near.add(l.source.slug);
     }
