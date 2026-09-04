@@ -25,7 +25,7 @@ Three directions were mocked up. The reader chose **A, Chart and log**: the map 
 |---|---|
 | Where the conversation lives | One pane on the right, full height, three regions: head, log, foot. The log is the only thing that scrolls. |
 | Where the answer box lives | Pinned to the bottom of the pane. Confirm and Dispute replace Send while a reef is pending. |
-| What happens to the map on select | It pans, at its current zoom, so the selected island sits at the centre of the area left of the pane. On deselect it pans back to the home framing. |
+| What happens to the map on select | It pans and zooms in a little, so the selected island sits at the centre of the area left of the pane at 1.5× the home scale (or at the reader's own zoom when that is larger). On deselect it returns to the home framing. |
 | Where the verdict shows | As a card in the log at the point it landed, and as a pill in the head afterwards. |
 | The note to the cartographer | A link in the head that opens a small field under it. The foot always means "answer the judge". |
 | Markdown | Every message, and the reply while it streams, renders through one forgiving markdown renderer modelled on medium-pool's text lane: paragraphs, lists, headings, bold, italic, code spans, and fenced code, tolerant of half-written input. |
@@ -72,8 +72,9 @@ Everything in `card.js` that guards against stale islands, lost drafts, and load
 `camera.js` learns about an inset.
 
 - `fit(w, h, inset = 0)`: the home framing centres the world in the `w - inset` by `h` area. `app.resize()` and the pane's open/close both call it; the inset is the pane's rendered width when it is visible and zero otherwise.
-- `centreOn(point, w, h, inset = 0)`: the framing at the current scale that puts a world point at the centre of the same area. Pure; returns `{ x, y, scale }`.
-- On select, the page calls `camera.animateTo(camera.centreOn(node, w, h, inset), 400)`. On deselect, `animateTo(home, 400)`. A select while the pane is already open pans between islands. The zoom the reader chose with the wheel is kept.
+- `centreOn(point, w, h, inset = 0, scale = current)`: the framing at `scale` that puts a world point at the centre of the same area. Pure; returns `{ x, y, scale }`.
+- `closer()`: the select zoom, `max(current scale, home scale × 1.5)`.
+- On select, the page calls `camera.animateTo(camera.centreOn(node, w, h, inset, camera.closer()), 450)`. On deselect, `animateTo(home, 450)`, which also restores the home zoom. A select while the pane is already open pans between islands. A wheel zoom larger than the select zoom is kept.
 - The focus spotlight and the dimming of far islands stay as today.
 
 `draw.js`: open-water outline colour becomes `#8a8078` and open-water labels `#a8a097`; both are new entries in `PALETTE` (`open`, `openText`). Nothing else on the canvas changes.
@@ -92,7 +93,7 @@ In `src/web/thread.js`, tested in `tests/web/thread.test.js`:
 In `src/web/camera.js`, tested in `tests/web/camera.test.js`:
 
 - `fit(w, h, inset)` centres the world in the reduced area.
-- `centreOn(point, w, h, inset)` puts the point at the reduced area's centre and keeps the current scale.
+- `centreOn(point, w, h, inset, scale)` puts the point at the reduced area's centre at the given scale; `closer()` is 1.5× home, or the current scale when larger.
 
 ## Copy
 
