@@ -6,12 +6,12 @@ const card = document.getElementById("card");
 let noteDraft = "";       // note text survives re-renders
 let lastSent = null;      // { slug, text } shown under the note box
 let renderId = 0;         // guards async appends against stale renders
+let loadGen = 0;          // monotonic across islands, so a slow load can never overwrite a newer one
 
 // The one thread the page shows: the selected island's stored messages plus the turn in flight.
 const thread = {
   slug: null,
   version: null,      // snapshot version the messages were fetched at; null forces a refetch
-  loadGen: 0,         // bumped per fetch so a slow load cannot overwrite a newer one
   messages: [],
   loaded: false,
   draft: "",
@@ -70,22 +70,22 @@ function post(path, body) {
 /** Points the thread at another island, dropping everything from the previous one. */
 function resetThread(slug) {
   Object.assign(thread, {
-    slug, version: null, loadGen: 0, messages: [], loaded: false, draft: "", live: "", progress: null, inFlight: false, error: null, loadError: null,
+    slug, version: null, messages: [], loaded: false, draft: "", live: "", progress: null, inFlight: false, error: null, loadError: null,
     disputeFor: null, disputeDraft: "", disputeFocusPending: false,
   });
 }
 
 async function loadThread(slug) {
   thread.version = app.version;
-  const gen = ++thread.loadGen;
+  const gen = ++loadGen;
   try {
     const { messages } = await api(`/api/thread?domain=${encodeURIComponent(app.domain)}&island=${encodeURIComponent(slug)}`);
-    if (thread.slug !== slug || gen !== thread.loadGen) return;
+    if (thread.slug !== slug || gen !== loadGen) return;
     thread.messages = messages;
     thread.loaded = true;
     thread.loadError = null; // thread.error belongs to the last turn and stays until the next one
   } catch (error) {
-    if (thread.slug !== slug || gen !== thread.loadGen) return;
+    if (thread.slug !== slug || gen !== loadGen) return;
     thread.loadError = error.message; // version stays set: the next version change retries, a re-render does not
   }
   render();
@@ -142,6 +142,7 @@ async function answerReef(slug, id, answer, note) {
     render();
     if (answer === "dispute" && thread.slug === slug) await runTurn(slug, null);
   } catch (error) {
+    if (thread.slug !== slug) return; // the reader moved on; this failure is not theirs to see
     thread.error = error.message;
     render();
   }
@@ -231,6 +232,18 @@ function threadEl(island) {
     );
     section.append(actions);
     return section;
+  }
+  if (thread.loadError) {
+    // the messages below are the last good ones; only the refetch failed
+    section.append(el("p", "muted", `could not refresh the thread: ${thread.loadError}`));
+    const actions = el("div", "actions");
+    actions.append(
+      button("Retry", () => {
+        thread.version = null; // the render below refetches
+        render();
+      }),
+    );
+    section.append(actions);
   }
   const items = threadItems(thread.messages);
   if (items.length === 0 && !thread.inFlight) {

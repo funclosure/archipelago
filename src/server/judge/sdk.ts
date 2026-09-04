@@ -59,7 +59,7 @@ function guard(fn: () => unknown): ToolResult {
 }
 
 /** One stateless judge turn on the Agent SDK, through the user's Claude Code login. */
-export const sdkRunner: JudgeRunner = async ({ dbPath, domain, island, emit }) => {
+export const sdkRunner: JudgeRunner = async ({ dbPath, domain, island, emit, signal }) => {
   const sdk = await loadSdk();
   const deps = { dbPath, domain, island };
   const context = islandContext(deps);
@@ -104,9 +104,17 @@ export const sdkRunner: JudgeRunner = async ({ dbPath, domain, island, emit }) =
     ],
   });
 
+  // The caller cancels a hung turn through `signal`; the SDK stops on its own AbortController.
+  const abortController = new AbortController();
+  if (signal) {
+    if (signal.aborted) abortController.abort();
+    else signal.addEventListener("abort", () => abortController.abort(), { once: true });
+  }
+
   const conversation = sdk.query({
     prompt,
     options: {
+      abortController,
       systemPrompt,
       model: process.env.ARCHIPELAGO_MODEL ?? DEFAULT_MODEL,
       includePartialMessages: true,
@@ -128,6 +136,12 @@ export const sdkRunner: JudgeRunner = async ({ dbPath, domain, island, emit }) =
       if (message.type === "stream_event") {
         if (message.parent_tool_use_id) continue;
         const ev = message.event;
+        // A new text block after earlier text means a tool call ran in between: keep them separate paragraphs.
+        if (ev.type === "content_block_start" && ev.content_block.type === "text" && reply) {
+          reply += "\n\n";
+          emit({ type: "text", text: "\n\n" });
+          continue;
+        }
         if (ev.type === "content_block_delta" && ev.delta.type === "text_delta" && ev.delta.text) {
           reply += ev.delta.text;
           emit({ type: "text", text: ev.delta.text });

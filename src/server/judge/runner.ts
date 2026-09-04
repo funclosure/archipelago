@@ -11,6 +11,8 @@ export type JudgeTurn = {
   domain: string;
   island: string;
   emit: (event: JudgeEvent) => void;
+  /** Aborted when the turn runs past the server's timeout; the SDK runner cancels on it, the stub ignores it. */
+  signal?: AbortSignal;
 };
 
 /** Runs one judge turn on the stored thread. Emits text as it arrives and resolves with the whole reply. */

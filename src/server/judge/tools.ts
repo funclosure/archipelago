@@ -1,5 +1,6 @@
 import type { Database } from "bun:sqlite";
 import { openDatabase } from "../../core/db.ts";
+import { ArchipelagoError } from "../../core/errors.ts";
 import { requireDomain } from "../../core/repositories/domainRepository.ts";
 import { requireIsland } from "../../core/repositories/islandRepository.ts";
 import { addVerdict } from "../../core/repositories/verdictRepository.ts";
@@ -41,6 +42,10 @@ export function recordVerdict(deps: ToolDeps, input: unknown): { verdict: Verdic
       const domain = requireDomain(db, deps.domain);
       const island = requireIsland(db, domain.id, deps.island);
       const target = resolveVerdictTarget(db, domain.id, parsed.target);
+      // A thread charts its own island. Straits are exempt: they legitimately name two islands.
+      if (target.targetType === "island" && target.targetId !== island.id) {
+        throw new ArchipelagoError(`this thread charts island:${deps.island}; record_verdict cannot chart another island`);
+      }
       const session = activeSession(db, domain.id);
       const verdict = addVerdict(db, {
         targetType: target.targetType, targetId: target.targetId, state: parsed.state, confidence: parsed.confidence,

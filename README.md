@@ -22,7 +22,7 @@ Then in Claude Code, inside this directory:
 
 > /archipelago-chart — I want to chart System Design.
 
-Claude sketches the archipelago, you approve it, and the charting conversation begins. Watch the map fill in.
+Claude sketches the archipelago and you approve it in the terminal. Then open the map, click an island and probe it: the judge asks, you answer, and the map fills in.
 
 ## The five states
 
@@ -44,7 +44,7 @@ Islands keep their place. The map lays out new islands once, around the ones alr
 
 ## The judge
 
-`archipelago serve` runs the judge on `@anthropic-ai/claude-agent-sdk`, which uses your Claude Code login; there is no API key. Set `ARCHIPELAGO_MODEL` to change the model (default `claude-opus-5`). `archipelago serve --stub` (or `ARCHIPELAGO_STUB=1`) runs a canned judge with no login, for development: a message containing `settled` charts the island, `reef` proposes a reef, `fail` errors.
+`archipelago serve` runs the judge on `@anthropic-ai/claude-agent-sdk`, which uses your Claude Code login; there is no API key. Set `ARCHIPELAGO_MODEL` to change the model (default `claude-opus-5`). A turn that runs past 180 s is cancelled and the island released; set `ARCHIPELAGO_TURN_TIMEOUT_MS` (milliseconds) to change that. `archipelago serve --stub` (or `ARCHIPELAGO_STUB=1`) runs a canned judge with no login, for development: a message containing `settled` charts the island, `reef` proposes a reef, `fail` errors.
 
 ## Layout
 
@@ -53,7 +53,7 @@ src/core/      types, validators, migrations, repositories, view-model   (bun:sq
 src/cli/       the archipelago command
 src/server/    Bun.serve JSON API + static files
 src/web/       one-canvas map, plain ES modules
-.claude/skills/archipelago-chart/SKILL.md   the charting protocol
+.claude/skills/archipelago-chart/SKILL.md   the cartographer's protocol
 src/server/judge/PROTOCOL.md   the judge's protocol (system prompt), read at runtime
 ```
 

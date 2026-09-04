@@ -268,6 +268,35 @@ test("a second turn on the same island while one runs is 409, and the lock clear
   }
 });
 
+test("a turn that never answers times out, releases the island, and stores nothing", async () => {
+  let aborted = false;
+  const hung: JudgeRunner = ({ signal }) =>
+    new Promise<string>((_resolve, reject) => {
+      signal?.addEventListener("abort", () => {
+        aborted = true;
+        reject(new Error("aborted"));
+      });
+    });
+  const other = startServer({ port: 0, dbPath: join(dir, "test.sqlite"), staticRoot: dir, runner: hung, turnTimeoutMs: 50 });
+  const otherBase = `http://127.0.0.1:${other.port}`;
+  const start = () =>
+    fetch(otherBase + "/api/probe", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ domain: "sd", island: "databases" }) });
+  try {
+    const first = await start();
+    expect(first.status).toBe(200);
+    const events = parseSse(await first.text());
+    expect(events.map((e) => e.type)).toEqual(["error"]);
+    expect(events[0]!.data.message).toBe(`the judge did not answer within ${50 / 1000} s`);
+    expect(aborted).toBe(true);
+    const second = await start(); // the lock is released, not wedged until restart
+    expect(second.status).toBe(200);
+    await second.text();
+    expect((await thread("databases")).messages).toEqual([]);
+  } finally {
+    other.stop(true);
+  }
+});
+
 test("thread and probe errors, and the cross-site guard on probe", async () => {
   expect((await get("/api/thread?domain=sd&island=nope")).status).toBe(404);
   expect((await get("/api/thread?domain=sd&island=nope")).json).toEqual({ error: 'no island "nope" in this domain', valid: ["caching", "databases"] });

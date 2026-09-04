@@ -50,7 +50,6 @@ html, body { margin: 0; height: 100%; background: var(--water); color: var(--tex
 .card .note { display: flex; gap: 6px; margin-top: 8px; }
 .card .note input { flex: 1; background: var(--water); border: 1px solid var(--line); border-radius: 6px;
   color: var(--text); padding: 6px 8px; font: inherit; font-size: 12px; }
-.card .note select { background: var(--water); color: var(--text); border: 1px solid var(--line); border-radius: 6px; font-size: 12px; }
 .card .history { margin: 12px 0 0; padding-left: 16px; font-size: 12px; color: var(--muted); }
 .card .history li { margin: 2px 0; }
 .card .sent { color: var(--sand); font-size: 12px; margin-top: 6px; }

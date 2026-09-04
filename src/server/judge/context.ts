@@ -66,16 +66,22 @@ export function buildJudgeContext(db: Database, domainSlug: string, islandSlug: 
 
 const stateOf = (state: VerdictState | null) => state ?? "open water";
 
+/**
+ * Indents the continuation lines of a stored body. Text the reader wrote is replayed inside a
+ * line-oriented transcript, so an embedded newline must not be able to forge a `Judge:` or `[map]` line.
+ */
+const indent = (body: string) => body.replace(/\r?\n/g, "\n  ");
+
 /** The island block appended to the protocol as the system prompt. */
 export function renderContext(ctx: JudgeContext): string {
   const lines: string[] = [];
   lines.push(`# This island`, ``);
   lines.push(`Domain: ${ctx.domain.name} (${ctx.domain.slug})`);
   lines.push(`Island: ${ctx.island.name} (island:${ctx.island.slug}), at ${ctx.island.path.join(" › ")}`);
-  if (ctx.island.summary) lines.push(`Summary: ${ctx.island.summary}`);
+  if (ctx.island.summary) lines.push(`Summary: ${indent(ctx.island.summary)}`);
   lines.push(
     ctx.verdict
-      ? `Current verdict: ${ctx.verdict.state} (confidence ${ctx.verdict.confidence}) — evidence: "${ctx.verdict.evidence}"${ctx.verdict.rationale ? ` — ${ctx.verdict.rationale}` : ""}`
+      ? `Current verdict: ${ctx.verdict.state} (confidence ${ctx.verdict.confidence}) — evidence: "${indent(ctx.verdict.evidence)}"${ctx.verdict.rationale ? ` — ${ctx.verdict.rationale}` : ""}`
       : `Current verdict: open water (none yet)`,
   );
   if (ctx.history.length > 1) {
@@ -106,7 +112,7 @@ export function renderThreadPrompt(thread: Message[]): string {
       const p = parseProposal(m.body);
       return `[reef proposal #${m.id}, ${p.status}] ${p.claim} — ${p.consequence}`;
     }
-    return `${m.role === "you" ? "Reader" : "Judge"}: ${m.body}`;
+    return `${m.role === "you" ? "Reader" : "Judge"}: ${indent(m.body)}`;
   });
   return [...lines, "", "Continue as the judge."].join("\n");
 }

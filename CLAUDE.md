@@ -35,10 +35,10 @@ tests/          core/, cli/, server/, web/
 - CLI: JSON always; pretty on a TTY, compact with `--json` or when piped; `--stdin` merges JSON under flags; errors exit 1 with `{ error, valid? }`.
 - Server opens and closes the database per request. Static files are read fresh (`Cache-Control: no-cache`); no build step for the page.
 - Page: no framework, no bundler. Pure helpers in `view-model.js` are unit-tested; the canvas is checked by hand.
-- Skill is the charting protocol; change behaviour there before changing code.
 - Map positions live on `islands.x`/`islands.y` in a fixed 1000×1000 world per scale (null = unplaced). The page places unplaced islands once (existing ones pinned) and posts `/api/positions`; the simulation never runs when everything is placed. Every island at a scale shares one radius (`islandRadius(count)` in `src/web/view-model.js`); elevation never changes size.
 - Schema changes go in a new numbered migration under `src/core/migrations/`; `0001_initial.sql` is frozen.
 - The judge writes only through `record_verdict` (sandbar, settled, mountainous) and `propose_reef`; a reef is written only when the reader confirms it via `POST /api/probe/reef`.
 - `ConflictError` → 409. `POST /api/probe` holds one turn per island at a time.
-- The judge's behaviour lives in `src/server/judge/PROTOCOL.md`; change it there before changing code. The skill is the cartographer's protocol only.
+- Behaviour lives in protocol text before code: the cartographer's in `.claude/skills/archipelago-chart/SKILL.md`, the judge's in `src/server/judge/PROTOCOL.md`.
+- The judge's tool surface is closed by `tools: []` plus `allowedTools` in `src/server/judge/sdk.ts`, not by `canUseTool`; do not "fix" it back.
 - `bun test` never spawns the SDK: server tests run with `stub: true`; `sdk.ts` imports the SDK lazily.

@@ -52,4 +52,7 @@ export async function streamPost(url, body, onEvent) {
     buffer = rest;
     for (const e of events) onEvent(e);
   }
+  buffer += decoder.decode(); // flush any bytes the decoder held back mid-character
+  const { events } = parseSseBuffer(buffer);
+  for (const e of events) onEvent(e);
 }

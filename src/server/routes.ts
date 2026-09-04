@@ -18,9 +18,11 @@ import { resolveCommentTarget, resolveVerdictTarget } from "../core/targets.ts";
 import { systemLine } from "./judge/tools.ts";
 import type { JudgeEvent, JudgeRunner } from "./judge/runner.ts";
 
-export type ServerContext = { dbPath?: string; staticRoot: string; runner: JudgeRunner };
+export type ServerContext = { dbPath?: string; staticRoot: string; runner: JudgeRunner; turnTimeoutMs: number };
 
 const PING_MS = 20_000;
+/** How long one judge turn may run before the island is released. Overridable by `ARCHIPELAGO_TURN_TIMEOUT_MS`. */
+export const JUDGE_TURN_TIMEOUT_MS = 180_000;
 /** Islands with a judge turn running, as `<domain>/<island>`. One turn per island at a time. */
 const inFlight = new Set<string>();
 
@@ -169,8 +171,21 @@ async function handleApi(req: Request, url: URL, ctx: ServerContext): Promise<Re
     });
     inFlight.add(key);
     return sseResponse(async (emit) => {
+      // A hung turn would wedge this island until the server restarts: cap it, and cancel the runner.
+      const ms = ctx.turnTimeoutMs;
+      const abort = new AbortController();
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      const expiry = new Promise<never>((_, reject) => {
+        timer = setTimeout(() => {
+          // Reject before aborting: a runner that rejects on abort would otherwise win the race and
+          // report its own cancellation instead of the timeout the reader needs to see.
+          reject(new ArchipelagoError(`the judge did not answer within ${ms / 1000} s`));
+          abort.abort();
+        }, ms);
+      });
       try {
-        const reply = (await ctx.runner({ dbPath: ctx.dbPath, domain: input.domain, island: input.island, emit })).trim();
+        const turn = ctx.runner({ dbPath: ctx.dbPath, domain: input.domain, island: input.island, emit, signal: abort.signal });
+        const reply = (await Promise.race([turn, expiry])).trim();
         if (reply) {
           withDb(ctx, (db) => {
             const d = requireDomain(db, input.domain);
@@ -182,6 +197,7 @@ async function handleApi(req: Request, url: URL, ctx: ServerContext): Promise<Re
       } catch (error) {
         emit({ type: "error", message: error instanceof Error ? error.message : String(error) });
       } finally {
+        clearTimeout(timer);
         inFlight.delete(key);
       }
     });
@@ -248,9 +264,10 @@ async function serveStatic(pathname: string, staticRoot: string): Promise<Respon
  */
 function sseResponse(run: (emit: (event: JudgeEvent) => void) => Promise<void>): Response {
   const encoder = new TextEncoder();
+  let open = true;
+  let ping: ReturnType<typeof setInterval> | undefined;
   const stream = new ReadableStream<Uint8Array>({
     start(controller) {
-      let open = true;
       const write = (chunk: string) => {
         if (!open) return;
         try {
@@ -261,7 +278,7 @@ function sseResponse(run: (emit: (event: JudgeEvent) => void) => Promise<void>):
       };
       const emit = (event: JudgeEvent) => write(`event: ${event.type}\ndata: ${JSON.stringify(event)}\n\n`);
       write(": open\n\n"); // a first frame now, so the headers leave before `run` blocks (a 409 check must see the 200 first)
-      const ping = setInterval(() => write(": ping\n\n"), PING_MS);
+      ping = setInterval(() => write(": ping\n\n"), PING_MS);
       void run(emit)
         .finally(() => {
           clearInterval(ping);
@@ -276,7 +293,9 @@ function sseResponse(run: (emit: (event: JudgeEvent) => void) => Promise<void>):
         .catch(() => {});
     },
     cancel() {
-      // the client went away; `write` becomes a no-op on the next enqueue failure
+      // the client went away: stop the keep-alive now rather than at the end of the turn
+      open = false;
+      clearInterval(ping);
     },
   });
   return new Response(stream, {
