@@ -72,3 +72,18 @@ Contour is a rendering of one island. It reads only derived data from the island
 - Reef is a hatch over an elevation, never a separate shape.
 - Open water is drawn as the absence of rings, never as a fill.
 - Any two islands with the same `landmarks`, `state`, and `harbour` render identically except for their seeded coastline.
+
+## Addendum: what the renderer needs that the spec leaves open
+
+Decided 2026-09-05 with Victor's palette decision: **one world, the chrome follows Contour.**
+
+- **Box to world.** The map keeps one shared radius per scale (`islandRadius(count)`, 48–88 world units). That radius is the coast radius 62 of the 200-unit box, so one box unit is `radius / 62` world units; every Contour measure scales by that.
+- **Name.** Not in the spec; kept. Drawn centred at (100, 204), just under the box, in line at alpha 0.9 (0.6 while open), 20 box units, Georgia. The anchor at (100, 184) sits between the coast and the name.
+- **Selection and hover.** Outside Contour, the map's own mark: a ring at radius 76, line at alpha 0.5, width 1, for the selected or hovered island. Far islands still dim to alpha 0.28 while one is selected. The renderer stays stateless; the map passes `selected` and `dim`.
+- **Straits.** As written: nothing between two islands until both have verdicts. The sketch's straits still exist in the data and the CLI; the map only shows charted channels.
+- **Legend.** Removed. Elevation is countable and lamps are self-evident; the strip keeps nearest open water and reefs.
+- **Motion.** The old rise animation goes. The page keeps, per island, the time each aspect last changed (`litAt` per landmark, `stateAt`, `levelAt`) so the three write animations can run; reduced motion collapses them to instant.
+- **Palette on the chrome.** `styles.css` defines the Contour tokens (`--sea`, `--line-1`, `--line-07`, `--line-03`, `--lamp`, `--reef`, `--sand`, `--grass`, `--snow`) and aliases the old names to them so the pane, strip, outline, and chips change colour without changing class names: `--water → sea`, `--text → line at .92`, `--muted → line at .55`, `--sand → lamp`, `--land → grass`, `--ridge → snow`, `--panel → #163449`, `--panel-2 → #245069`, `--line → line at .14`, `--open → line at .30`. Lit chips, the harbour pill, the lit line, the caret, and primary buttons are lamp on sea. Typography is unchanged.
+- **Sounding mark.** `?` at radius 52 on the arc's midpoint, 9 box units, line at alpha 0.3, Georgia.
+- **Rollup ring.** Segment colours: sandbar sand, settled and mountainous grass, reef the reef colour, open a gap; stroke width 3, alpha 1, no fill inside.
+- **Hatch.** Clipped to the coast path; 45° lines across the whole box at 6-unit pitch.
