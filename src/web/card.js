@@ -363,11 +363,15 @@ function logEl(island) {
   const items = logItems(thread.messages, island);
   if (items.length === 0 && !thread.inFlight) {
     const empty = el("div", "empty");
+    if (island.verdict) empty.append(verdictEl(island.verdict));
     empty.append(el("p", "muted", island.verdict ? "No thread yet. The judge asks first." : "Unsurveyed. The judge asks first."));
     empty.append(button(island.verdict ? "Explore it" : "Make landfall", () => void runTurn(island.slug, null)));
     log.append(empty);
+    if (thread.error) log.append(el("div", "error", thread.error));
     return log;
   }
+  // a verdict written from the terminal has no system line; show it at the top of the log
+  if (island.verdict && !items.some((i) => i.kind === "verdict")) log.append(verdictEl(island.verdict));
   for (const item of items) log.append(itemEl(item));
   const live = el("div", "msg judge");
   live.id = "live";
@@ -464,6 +468,7 @@ function render() {
   }
 
   const hadFocus = document.activeElement && document.activeElement.id === "answer";
+  const hadNoteFocus = document.activeElement && document.activeElement.id === "note";
   const prevLog = pane.querySelector(".log");
   const stuck = !prevLog || atBottom(prevLog);
   const prevTop = prevLog ? prevLog.scrollTop : 0;
@@ -474,6 +479,13 @@ function render() {
   renderLive();
   const log = pane.querySelector(".log");
   log.scrollTop = stuck ? log.scrollHeight : prevTop;
+  if (hadNoteFocus) {
+    const note = pane.querySelector("#note");
+    if (note) {
+      note.focus();
+      note.setSelectionRange(note.value.length, note.value.length);
+    }
+  }
   if (hadFocus || thread.focusPending) focusAnswer();
   // Remember which chips are lit so the next render can pulse only the newly lit ones.
   thread.litSeen = new Set((island.landmarks?.items ?? []).filter((l) => l.lit).map((l) => l.slug));

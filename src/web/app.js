@@ -85,12 +85,11 @@ function applySnapshot(snapshot) {
   } else if (!app.placementInFlight) {
     app.placing = new Set(unplaced().map((n) => n.slug));
   }
-  if (!sameScale) app.camera.animateTo(app.camera.home, 400);
   // A reload should still show the terminal's focus, without posting a fresh selection.
   if (isFirstSnapshot) app.selected = snapshot.focus;
   renderChrome();
   for (const fn of app.listeners) fn(snapshot);
-  if (isFirstSnapshot && app.selected) frameSelection(); // the pane is open now, so its width is known
+  if (!sameScale) frameSelection(); // the listeners have opened or closed the pane; refit home to the map area and frame the selection or go home
 }
 
 async function poll() {
@@ -122,7 +121,8 @@ export function hitTest(px, py) {
 /** How much of the viewport's right edge the pane covers: 0 when it is hidden or absent. */
 export function paneInset() {
   const pane = document.getElementById("pane");
-  return pane && !pane.hidden ? pane.offsetWidth : 0;
+  // A full-width pane covers the map, so the map keeps its own framing underneath.
+  return pane && !pane.hidden && pane.offsetWidth < app.size.w ? pane.offsetWidth : 0;
 }
 
 const FRAME_MS = 450;

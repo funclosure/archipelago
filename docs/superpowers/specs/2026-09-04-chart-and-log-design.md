@@ -63,7 +63,7 @@ Three directions were mocked up. The reader chose **A, Chart and log**: the map 
 - A textarea that grows from one to five lines. Enter sends, Shift-Enter inserts a newline. Placeholders: `your answer`, `the judge is thinking…`, `what is wrong with this reef`, and before the first turn `press Make landfall to begin` (or `press Explore it to begin`).
 - `Send`, or `Dispute` (ghost) and `Confirm` while a reef is pending. One answer per proposal: both buttons disable the moment one is pressed, so a double click cannot post twice.
 - A meta line under the box: left `Enter to send · Shift-Enter for a new line`; right, while a turn is in flight, `the judge is answering`.
-- Focus lands in the textarea when an island is selected, after a turn ends, and after the opening turn's refetch, using the existing `focusPending` mechanism. Escape in the textarea does nothing; Escape elsewhere deselects, as today.
+- Focus lands in the textarea after a turn ends and after the opening turn's refetch, using the existing `focusPending` mechanism. It does not land on select: Escape only deselects when focus is outside the box, so focusing on select would make Escape-to-deselect unreachable. Escape in the textarea does nothing; Escape elsewhere deselects, as today.
 
 Everything in `card.js` that guards against stale islands, lost drafts, and loads that resolve late stays as it is. The pane is a re-layout of that module, not a rewrite of its state.
 
