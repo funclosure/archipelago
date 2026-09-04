@@ -53,6 +53,15 @@ function provisionalPosition(snapshot, island, placedBySlug, radius) {
   return { x: clampWorld(cx + Math.cos(angle) * offset), y: clampWorld(cy + Math.sin(angle) * offset) };
 }
 
+/** When each lit landmark lit: 0 for those already lit when the page first saw the island, now() for ones lit since. */
+function litTimes(island, prev) {
+  const litAt = new Map(prev ? prev.litAt : []);
+  const lit = new Set((island.landmarks?.items ?? []).filter((l) => l.lit).map((l) => l.slug));
+  for (const slug of lit) if (!litAt.has(slug)) litAt.set(slug, prev ? now() : 0);
+  for (const slug of [...litAt.keys()]) if (!lit.has(slug)) litAt.delete(slug);
+  return litAt;
+}
+
 export function buildNodes(snapshot, previous = new Map()) {
   const radius = islandRadius(snapshot.islands.length);
   const placedBySlug = new Map(snapshot.islands.filter((i) => i.x !== null && i.y !== null).map((i) => [i.slug, i]));
@@ -85,7 +94,8 @@ export function buildNodes(snapshot, previous = new Map()) {
       vx: prev && !placed ? prev.vx : 0,
       vy: prev && !placed ? prev.vy : 0,
       pinned: placed,
-      changedAt: prev ? (prev.state !== state ? now() : prev.changedAt) : now(),
+      stateAt: prev ? (prev.state !== state ? now() : prev.stateAt) : 0,
+      litAt: litTimes(island, prev),
     };
   });
 }
@@ -95,16 +105,4 @@ export function buildLinks(snapshot, nodes) {
   return snapshot.straits
     .filter((s) => bySlug.has(s.from) && bySlug.has(s.to))
     .map((s) => ({ source: bySlug.get(s.from), target: bySlug.get(s.to), strait: s, state: s.verdict ? s.verdict.state : "open" }));
-}
-
-/**
- * Which of `segments` coastline segments are lit: the outline is cut into `total` equal runs and the
- * first `unlocked` runs are lit, starting at segment 0. All dark when the island has no landmarks.
- * The caller rotates the result so the first lit run begins at the top of the blob.
- */
-export function litSegments(segments, total, unlocked) {
-  const out = new Array(segments).fill(false);
-  if (total <= 0) return out;
-  for (let i = 0; i < segments; i++) out[i] = Math.floor((i * total) / segments) < unlocked;
-  return out;
 }

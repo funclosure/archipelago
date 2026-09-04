@@ -1,5 +1,5 @@
 import { test, expect } from "bun:test";
-import { hashSeed, seededRandom, islandRadius, buildNodes, buildLinks, litSegments, WORLD } from "../../src/web/view-model.js";
+import { hashSeed, seededRandom, islandRadius, buildNodes, buildLinks, WORLD } from "../../src/web/view-model.js";
 
 const island = (slug, verdict = null, pos = { x: null, y: null }, byState = { sandbar: 0, settled: 0, mountainous: 0, reef: 0, open: 0 }) => ({
   slug, name: slug, summary: null, hasChildren: Object.values(byState).some(Boolean), verdict, x: pos.x, y: pos.y,
@@ -34,7 +34,7 @@ test("placed islands sit exactly at their stored coordinates, pinned, across reb
   const previous = new Map(first.map((n) => [n.slug, { ...n, x: 5, y: 6 }]));
   const next = buildNodes(snapshot([island("caching", { state: "settled" }, { x: 120, y: 640 })]), previous);
   expect(next[0]).toMatchObject({ x: 120, y: 640, placed: true, state: "settled" });
-  expect(next[0].changedAt).toBeGreaterThan(0);
+  expect(next[0].stateAt).toBeGreaterThan(0);
 });
 
 test("unplaced islands start near their placed strait neighbours, else near the centre, and keep provisional spots", () => {
@@ -68,12 +68,22 @@ test("buildLinks joins nodes by slug and skips unknown ends", () => {
   expect(links[0].state).toBe("reef");
 });
 
-test("litSegments lights a clockwise prefix of equal runs", () => {
-  expect(litSegments(14, 5, 0)).toEqual(new Array(14).fill(false));
-  expect(litSegments(14, 5, 5)).toEqual(new Array(14).fill(true));
-  expect(litSegments(14, 0, 0)).toEqual(new Array(14).fill(false));
-  expect(litSegments(4, 2, 1)).toEqual([true, true, false, false]);
-  const two = litSegments(14, 5, 2);
-  expect(two.filter(Boolean)).toHaveLength(6);
-  expect(two.indexOf(false)).toBe(6); // a prefix, never scattered
+test("nodes remember when each landmark lit and when the state changed; nothing animates on first build", () => {
+  const withLm = (slug, lit, verdict = null) => ({
+    ...island(slug, verdict),
+    landmarks: { total: 2, unlocked: lit.length, items: [{ slug: "a", name: "A", lit: lit.includes("a"), evidence: null }, { slug: "b", name: "B", lit: lit.includes("b"), evidence: null }] },
+  });
+  const first = buildNodes(snapshot([withLm("caching", ["a"])]));
+  expect(first[0].stateAt).toBe(0);
+  expect(first[0].litAt.get("a")).toBe(0);
+  expect(first[0].litAt.has("b")).toBe(false);
+  const prev = new Map(first.map((n) => [n.slug, n]));
+  const second = buildNodes(snapshot([withLm("caching", ["a", "b"])]), prev);
+  expect(second[0].litAt.get("a")).toBe(0); // already lit: no new animation
+  expect(second[0].litAt.get("b")).toBeGreaterThan(0);
+  expect(second[0].stateAt).toBe(0); // still open
+  const prev2 = new Map(second.map((n) => [n.slug, n]));
+  const third = buildNodes(snapshot([withLm("caching", ["a", "b"], { state: "settled", confidence: 0.8, evidence: "e", rationale: null, at: "2026-09-05" })]), prev2);
+  expect(third[0].stateAt).toBeGreaterThan(0);
+  expect(third[0].litAt.get("b")).toBe(second[0].litAt.get("b")); // unchanged lamps keep their time
 });
