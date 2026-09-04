@@ -102,6 +102,10 @@ Snapshot: each `IslandView` gains `landmarks: { total, unlocked, items: [{ slug,
 - **Map** (`draw.js`): for an open-water island with `landmarks.total > 0`, the 14-point outline is split into `total` runs of consecutive segments (pure helper `coastlineRuns(points, total, unlocked)` in `view-model.js`, clockwise from the top); segments in lit runs are drawn solid at the sandbar colour, dark runs keep the dash. A verdict fills the island as today. Nodes carry `landmarks` from the snapshot.
 - Card and map both read from the snapshot; the poll reveals both within two seconds of a tool write, and the thread refetches as today.
 
+## The answer dock
+
+The reader's controls leave the card. A fixed **dock** sits at the bottom centre of the page (above the legend and strip, about 640px wide, narrower on small windows) and is shown only while an island is selected. It holds the answer box and **Send**. When the selected island's thread has a pending reef proposal, the dock switches to reef mode: the box's placeholder becomes "what is wrong with this reef", the buttons become **Confirm** and **Dispute** (Dispute sends the box's text as the objection, empty allowed). While a turn is in flight the dock is disabled and reads "the judge is thinking…". The card keeps the thread, chips, verdict, and the note-for-Claude box; the reef block in the thread shows the claim, the consequence, and its status, with no buttons of its own. Focus returns to the dock's box after a turn, as it did for the card's box. Escape still clears the selection only when the box is not focused.
+
 ## Stub
 
 `serve --stub`: a reader message containing `unlock <slug>` lights that landmark; an empty thread on a landmark-less island calls `set_landmarks` with four canned items (`shape`, `scale`, `failure`, `tradeoff`) before the opening line. Other keywords unchanged.
@@ -123,6 +127,7 @@ Snapshot: each `IslandView` gains `landmarks: { total, unlocked, items: [{ slug,
 - `tests/cli/cli.test.ts`: `landmark add/list`.
 - `tests/web/view-model.test.js`: `coastlineRuns` splits 14 segments into `total` runs and marks the first `unlocked` lit.
 - `tests/web/thread.test.js`: a `landmark lit:` system message is classified as `landmark`.
+- By hand: the dock appears at the bottom centre when an island is selected, disappears when none is, switches to Confirm / Dispute on a pending reef, and is disabled during a turn.
 - By hand on a scratch database against the real judge: an answer lights a chip and an arc mid-reply; the fourth answer produces a verdict.
 
 ## Out of scope

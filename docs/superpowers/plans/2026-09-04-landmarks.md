@@ -22,6 +22,7 @@
 - The round count is the number of reader (`you`) `text` messages in the thread.
 - Thread system line for an unlock is exactly `landmark lit: <name>`.
 - The map splits the 14-point open-water outline into `total` runs clockwise from the top; lit runs draw solid in the sandbar colour, dark runs keep the dash.
+- The reader's answer box and Send live in a fixed dock at the bottom centre (`#dock`), shown only while an island is selected; in reef mode the dock's buttons are Confirm and Dispute; the card's reef block has no buttons.
 - Errors: `NotFoundError` → 404, `ConflictError` → 409, other `ArchipelagoError` and zod → 400.
 - Commit messages end with the trailers `Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>` and `Claude-Session: https://claude.ai/code/session_01CRzNtnhqVcygozGdKkfExq`.
 
@@ -44,7 +45,8 @@
 | `src/web/thread.js` | `landmark` item kind |
 | `src/web/view-model.js` | `litSegments` |
 | `src/web/draw.js` | solid arcs on the open-water outline |
-| `src/web/card.js` | chip row, progress line, inline landmark chip, lit animation |
+| `src/web/card.js` | chip row, progress line, inline landmark chip, lit animation, the answer dock |
+| `src/web/index.html` | the `#dock` element |
 | `src/web/styles.css` | chip and animation styles |
 | `README.md`, `CLAUDE.md` | docs |
 
@@ -815,10 +817,10 @@ git commit -m "feat(judge): landmarks in the context, set_landmarks and unlock_l
 
 ---
 
-### Task 4: Chips on the card, arcs on the map
+### Task 4: Chips on the card, arcs on the map, the answer dock
 
 **Files:**
-- Modify: `src/web/thread.js`, `src/web/view-model.js`, `src/web/draw.js`, `src/web/card.js`, `src/web/styles.css`
+- Modify: `src/web/thread.js`, `src/web/view-model.js`, `src/web/draw.js`, `src/web/card.js`, `src/web/styles.css`, `src/web/index.html`
 - Modify: `tests/web/thread.test.js`, `tests/web/view-model.test.js`
 
 **Interfaces:**
@@ -989,7 +991,89 @@ and at the end of `render()`, just before `void renderHistory(island, ++renderId
   thread.litSeen = new Set((island.landmarks?.items ?? []).filter((l) => l.lit).map((l) => l.slug));
 ```
 
-- [ ] **Step 7: Styles**
+- [ ] **Step 7: The answer dock**
+
+In `src/web/index.html`, add after the `<aside id="card" …>` line:
+
+```html
+<div id="dock" class="dock" hidden></div>
+```
+
+In `src/web/card.js`:
+
+- Add `const dock = document.getElementById("dock");` next to `const card = …`.
+- Remove the answer `form` that `threadEl` builds (the block that creates `#thread-input` and its Send) and the reef block's `actions` and dispute form in `reefEl`; the reef block keeps the title, the claim, the consequence, and a status line: `pending — answer below`, `confirmed, charted as reef`, or `disputed`.
+- Add a function that renders the dock, called at the end of `render()` (and with `null` when the card is hidden):
+
+```js
+/** The reader's controls: the answer box at the bottom centre, or Confirm / Dispute while a reef is pending. */
+function renderDock(island) {
+  if (!island || !thread.loaded) {
+    dock.hidden = true;
+    dock.replaceChildren();
+    return;
+  }
+  dock.hidden = false;
+  dock.replaceChildren();
+  const pending = threadItems(thread.messages).find((i) => i.kind === "reef_proposal" && i.proposal.status === "pending");
+  const form = el("form", "note");
+  const input = el("input");
+  input.id = "thread-input";
+  input.disabled = thread.inFlight;
+  input.placeholder = thread.inFlight ? "the judge is thinking…" : pending ? "what is wrong with this reef" : thread.messages.length ? "your answer" : "press Probe this to begin";
+  input.value = pending ? thread.disputeDraft : thread.draft;
+  input.addEventListener("input", () => {
+    if (pending) thread.disputeDraft = input.value;
+    else thread.draft = input.value;
+  });
+  form.append(input);
+  if (pending) {
+    const dispute = button("Dispute", null, "ghost");
+    dispute.type = "submit";
+    dispute.disabled = thread.inFlight;
+    const confirm = button("Confirm", () => void answerReef(island.slug, pending.id, "confirm"));
+    confirm.disabled = thread.inFlight;
+    form.append(dispute, confirm);
+    form.addEventListener("submit", (e) => {
+      e.preventDefault();
+      if (thread.inFlight) return;
+      void answerReef(island.slug, pending.id, "dispute", input.value.trim() || undefined);
+    });
+  } else {
+    const send = button("Send", null);
+    send.type = "submit";
+    send.disabled = thread.inFlight || thread.messages.length === 0;
+    input.disabled = input.disabled || thread.messages.length === 0;
+    form.append(send);
+    form.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const body = input.value.trim();
+      if (!body || thread.inFlight) return;
+      thread.draft = "";
+      void runTurn(island.slug, body);
+    });
+  }
+  dock.append(form);
+}
+```
+
+- In `render()`: when there is no island, call `renderDock(null)` before returning; at the end (before `renderHistory`) call `renderDock(island)`. The existing `hadFocus` restore keeps working because the input keeps its `#thread-input` id; it now lives in the dock, so query `document` (not `card`) for it in that block and in `runTurn`'s end-of-turn focus.
+- `answerReef` clears `thread.disputeDraft` as today; drop `disputeFor` and `disputeFocusPending` from the thread state and `resetThread` since the dock replaces the inline dispute box.
+- The "Probe this" button stays in the card's empty-thread branch.
+
+Append to `src/web/styles.css`:
+
+```css
+.dock { position: fixed; left: 50%; bottom: 64px; transform: translateX(-50%); width: min(640px, calc(100vw - 40px));
+  background: var(--panel); border-radius: 10px; padding: 10px 12px; box-shadow: 0 12px 32px rgba(0, 0, 0, .4); }
+.dock .note { display: flex; gap: 6px; margin: 0; }
+.dock .note input { flex: 1; background: var(--water); border: 1px solid var(--line); border-radius: 6px; color: var(--text); padding: 8px 10px; font: inherit; font-size: 13px; }
+.dock button { background: var(--land); color: var(--water); border: 0; border-radius: 6px; padding: 6px 12px; font: inherit; font-size: 12px; cursor: pointer; }
+.dock button.ghost { background: transparent; color: var(--text); border: 1px solid var(--line); }
+.dock button:disabled, .dock input:disabled { opacity: .5; cursor: default; }
+```
+
+- [ ] **Step 8: Styles**
 
 Append to `src/web/styles.css`:
 
@@ -1003,7 +1087,7 @@ Append to `src/web/styles.css`:
 .card .msg.landmark { align-self: center; font-size: 11px; padding: 2px 10px; border-radius: 999px; background: var(--sand); color: var(--water); }
 ```
 
-- [ ] **Step 8: Check by hand with the stub**
+- [ ] **Step 9: Check by hand with the stub**
 
 ```bash
 export ARCHIPELAGO_DB_PATH=/tmp/landmarks-check.sqlite
@@ -1019,16 +1103,16 @@ A landmark add --domain sd --island databases --slug sharding --name Sharding --
 A serve --domain sd --stub --no-open --port 4483
 ```
 
-Open `http://127.0.0.1:4483/?domain=sd`. Check: (a) Databases' card shows four dashed chips and "0 of 4 charted" before any thread; (b) Probe this on Databases: the stub's opening names the four; send `unlock transactions`: the Transactions chip fills and pulses, a small "◆ Transactions" chip appears in the thread, the line reads "1 of 4 charted · round 1 of 4", and on the map one quarter of Databases' dashed outline is now a solid sand arc; (c) Caching has no landmarks: Probe this makes the stub set four (`shape, scale, failure, tradeoff`), chips appear, then `unlock scale` lights one and one arc; (d) `settled` still charts the island and the arcs give way to the fill; (e) reload keeps chips and arcs. Kill the server and remove `/tmp/landmarks-check.sqlite*` afterwards. Record what you saw.
+Open `http://127.0.0.1:4483/?domain=sd`. Check first: no dock while nothing is selected; clicking an island shows the dock at the bottom centre, above the legend; the card has no answer box; Escape with the dock box focused does nothing, Escape elsewhere hides both. Then: (a) Databases' card shows four dashed chips and "0 of 4 charted" before any thread; (b) Probe this on Databases: the stub's opening names the four; send `unlock transactions`: the Transactions chip fills and pulses, a small "◆ Transactions" chip appears in the thread, the line reads "1 of 4 charted · round 1 of 4", and on the map one quarter of Databases' dashed outline is now a solid sand arc; (c) Caching has no landmarks: Probe this makes the stub set four (`shape, scale, failure, tradeoff`), chips appear, then `unlock scale` lights one and one arc; (d) `settled` still charts the island and the arcs give way to the fill; (e) reload keeps chips and arcs; (f) send `reef`: the dock switches to Confirm / Dispute with the objection placeholder, the card's reef block shows "pending — answer below" and no buttons; Dispute with a typed objection posts it and the judge replies; send `reef` again and Confirm: the island turns reef and the dock returns to the answer box. Kill the server and remove `/tmp/landmarks-check.sqlite*` afterwards. Record what you saw.
 
-- [ ] **Step 9: Run the suite and commit**
+- [ ] **Step 10: Run the suite and commit**
 
 Run: `bun test && bunx tsc --noEmit`
 Expected: all pass.
 
 ```bash
 git add src/web tests/web
-git commit -m "feat(web): landmark chips on the card and solid arcs on the open-water coastline"
+git commit -m "feat(web): landmark chips, solid coastline arcs, and the answer dock at the bottom centre"
 ```
 
 ---
