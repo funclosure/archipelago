@@ -305,11 +305,12 @@ program
   .option("--port <n>", "port", "4480")
   .option("--domain <slug>", "domain to open")
   .option("--no-open", "do not open the browser")
-  .action((o: { port: string; domain?: string; open: boolean }) => {
+  .option("--stub", "run the judge without the Agent SDK (canned replies, no login needed)")
+  .action((o: { port: string; domain?: string; open: boolean; stub?: boolean }) => {
     try {
-      const server = startServer({ port: Number(o.port) });
+      const server = startServer({ port: Number(o.port), stub: Boolean(o.stub) });
       const url = `http://127.0.0.1:${server.port}/${o.domain ? `?domain=${encodeURIComponent(o.domain)}` : ""}`;
-      console.log(`Archipelago map: ${url}`);
+      console.log(`Archipelago map: ${url}${o.stub ? "  (judge: stub)" : ""}`);
       if (o.open) Bun.spawn(["open", url]);
     } catch (error) {
       fail(error, false);

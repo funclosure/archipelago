@@ -2,17 +2,27 @@ import type { Database } from "bun:sqlite";
 import { normalize, resolve, sep } from "node:path";
 import { z } from "zod";
 import { openDatabase } from "../core/db.ts";
-import { ArchipelagoError, NotFoundError } from "../core/errors.ts";
-import { commentInputSchema, focusInputSchema, positionsInputSchema, slugSchema } from "../core/validators.ts";
+import { ArchipelagoError, ConflictError, NotFoundError } from "../core/errors.ts";
+import {
+  commentInputSchema, focusInputSchema, positionsInputSchema, probeInputSchema, reefAnswerInputSchema, slugSchema,
+} from "../core/validators.ts";
 import { listDomains, requireDomain } from "../core/repositories/domainRepository.ts";
-import { requireIsland, setIslandPositions } from "../core/repositories/islandRepository.ts";
-import { verdictHistory } from "../core/repositories/verdictRepository.ts";
+import { getIslandById, requireIsland, setIslandPositions } from "../core/repositories/islandRepository.ts";
+import { addVerdict, verdictHistory } from "../core/repositories/verdictRepository.ts";
 import { addComment } from "../core/repositories/commentRepository.ts";
+import { addMessage, getMessage, listMessages, parseProposal, setReefStatus } from "../core/repositories/messageRepository.ts";
+import { activeSession } from "../core/repositories/sessionRepository.ts";
 import { getViewState, setFocus } from "../core/repositories/viewStateRepository.ts";
 import { buildSnapshot } from "../core/view-model.ts";
 import { resolveCommentTarget, resolveVerdictTarget } from "../core/targets.ts";
+import { systemLine } from "./judge/tools.ts";
+import type { JudgeEvent, JudgeRunner } from "./judge/runner.ts";
 
-export type ServerContext = { dbPath?: string; staticRoot: string };
+export type ServerContext = { dbPath?: string; staticRoot: string; runner: JudgeRunner };
+
+const PING_MS = 20_000;
+/** Islands with a judge turn running, as `<domain>/<island>`. One turn per island at a time. */
+const inFlight = new Set<string>();
 
 export async function handleRequest(req: Request, ctx: ServerContext): Promise<Response> {
   const url = new URL(req.url);
@@ -136,6 +146,82 @@ async function handleApi(req: Request, url: URL, ctx: ServerContext): Promise<Re
     );
   }
 
+  if (route === "GET /api/thread") {
+    const slug = slugSchema.parse(q("domain"));
+    const islandSlug = slugSchema.parse(q("island"));
+    return json(
+      withDb(ctx, (db) => {
+        const d = requireDomain(db, slug);
+        const i = requireIsland(db, d.id, islandSlug);
+        return { island: i.slug, messages: listMessages(db, i.id) };
+      }),
+    );
+  }
+
+  if (route === "POST /api/probe") {
+    const input = probeInputSchema.parse(await req.json());
+    const key = `${input.domain}/${input.island}`;
+    if (inFlight.has(key)) throw new ConflictError("a turn is already running for this island");
+    withDb(ctx, (db) => {
+      const d = requireDomain(db, input.domain);
+      const i = requireIsland(db, d.id, input.island);
+      if (input.message) addMessage(db, { domainId: d.id, islandId: i.id, role: "you", kind: "text", body: input.message });
+    });
+    inFlight.add(key);
+    return sseResponse(async (emit) => {
+      try {
+        const reply = (await ctx.runner({ dbPath: ctx.dbPath, domain: input.domain, island: input.island, emit })).trim();
+        if (reply) {
+          withDb(ctx, (db) => {
+            const d = requireDomain(db, input.domain);
+            const i = requireIsland(db, d.id, input.island);
+            addMessage(db, { domainId: d.id, islandId: i.id, role: "judge", kind: "text", body: reply });
+          });
+        }
+        emit({ type: "done" });
+      } catch (error) {
+        emit({ type: "error", message: error instanceof Error ? error.message : String(error) });
+      } finally {
+        inFlight.delete(key);
+      }
+    });
+  }
+
+  if (route === "POST /api/probe/reef") {
+    const input = reefAnswerInputSchema.parse(await req.json());
+    return json(
+      withDb(ctx, (db) => {
+        const d = requireDomain(db, input.domain);
+        const message = getMessage(db, input.id);
+        if (!message || message.domainId !== d.id || message.kind !== "reef_proposal") {
+          throw new NotFoundError(`no reef proposal ${input.id} in this domain`);
+        }
+        const proposal = parseProposal(message.body);
+        if (proposal.status !== "pending") throw new ConflictError(`reef proposal ${input.id} is already ${proposal.status}`);
+        const island = getIslandById(db, message.islandId)!;
+        if (input.answer === "confirm") {
+          const target = resolveVerdictTarget(db, d.id, proposal.target);
+          const session = activeSession(db, d.id);
+          db.transaction(() => {
+            addVerdict(db, {
+              targetType: target.targetType, targetId: target.targetId, state: "reef", confidence: proposal.confidence,
+              evidence: proposal.evidence, rationale: `${proposal.claim} — ${proposal.consequence}. ${proposal.rationale}`,
+              sessionId: session ? session.id : null,
+            });
+            setReefStatus(db, message.id, "confirmed");
+            addMessage(db, { domainId: d.id, islandId: island.id, role: "judge", kind: "system", body: systemLine(target.label, "reef", island.slug) });
+          })();
+        } else {
+          db.transaction(() => {
+            setReefStatus(db, message.id, "disputed");
+            addMessage(db, { domainId: d.id, islandId: island.id, role: "you", kind: "text", body: input.note ?? "I dispute this." });
+          })();
+        }
+        return { id: message.id, status: input.answer === "confirm" ? "confirmed" : "disputed", version: getViewState(db, d.id).version };
+      }),
+    );
+  }
+
   return json({ error: `no route ${route}` }, 404);
 }
 
@@ -156,12 +242,53 @@ async function serveStatic(pathname: string, staticRoot: string): Promise<Respon
   return new Response(file, { headers: { "Cache-Control": "no-cache" } });
 }
 
+/**
+ * A server-sent-event response driven by `run`. Events are `event: <type>\ndata: <json>\n\n`; a `: ping`
+ * comment every 20 s keeps the connection alive through Bun's idle timeout. The stream closes when `run` settles.
+ */
+function sseResponse(run: (emit: (event: JudgeEvent) => void) => Promise<void>): Response {
+  const encoder = new TextEncoder();
+  const stream = new ReadableStream<Uint8Array>({
+    start(controller) {
+      let open = true;
+      const write = (chunk: string) => {
+        if (!open) return;
+        try {
+          controller.enqueue(encoder.encode(chunk));
+        } catch {
+          open = false;
+        }
+      };
+      const emit = (event: JudgeEvent) => write(`event: ${event.type}\ndata: ${JSON.stringify(event)}\n\n`);
+      write(": open\n\n"); // a first frame now, so the headers leave before `run` blocks (a 409 check must see the 200 first)
+      const ping = setInterval(() => write(": ping\n\n"), PING_MS);
+      void run(emit).finally(() => {
+        clearInterval(ping);
+        if (!open) return;
+        open = false;
+        try {
+          controller.close();
+        } catch {
+          // already closed by the client
+        }
+      });
+    },
+    cancel() {
+      // the client went away; `write` becomes a no-op on the next enqueue failure
+    },
+  });
+  return new Response(stream, {
+    headers: { "content-type": "text/event-stream", "cache-control": "no-store", connection: "keep-alive" },
+  });
+}
+
 function json(value: unknown, status = 200): Response {
   return Response.json(value, { status });
 }
 
 function errorResponse(error: unknown): Response {
   if (error instanceof NotFoundError) return json(error.toJSON(), 404);
+  if (error instanceof ConflictError) return json(error.toJSON(), 409);
   if (error instanceof ArchipelagoError) return json(error.toJSON(), 400);
   if (error instanceof z.ZodError) {
     return json({ error: error.issues.map((i) => `${i.path.join(".") || "input"}: ${i.message}`).join("; ") }, 400);
