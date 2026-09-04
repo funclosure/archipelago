@@ -4,6 +4,7 @@ import { openDatabase } from "../../src/core/db.ts";
 import { upsertDomain } from "../../src/core/repositories/domainRepository.ts";
 import {
   upsertIsland, updateIsland, getIsland, requireIsland, listIslands, listIslandSlugs, islandPath, setIslandPositions,
+  setHarbour, clearHarbour, getHarbour,
 } from "../../src/core/repositories/islandRepository.ts";
 import { upsertStrait, listStraits } from "../../src/core/repositories/straitRepository.ts";
 import { getViewState } from "../../src/core/repositories/viewStateRepository.ts";
@@ -117,4 +118,40 @@ test("setIslandPositions writes all rows or none and bumps the version once per 
   }
   expect(getIsland(db, domainId, "caching")).toMatchObject({ x: 100, y: 200 });
   expect(getViewState(db, domainId).version).toBe(before + 2);
+});
+
+test("harbour: one per parent, moves between siblings, islets keep their own, clear counts", () => {
+  const caching = upsertIsland(db, { domainId, slug: "caching", name: "Caching" });
+  upsertIsland(db, { domainId, slug: "databases", name: "Databases" });
+  upsertIsland(db, { domainId, slug: "caching-ttl", name: "TTL", parentId: caching.id });
+  expect(getHarbour(db, domainId, null)).toBeNull();
+  expect(caching.harbour).toBe(0);
+
+  const v0 = getViewState(db, domainId).version;
+  expect(setHarbour(db, domainId, "caching").harbour).toBe(1);
+  expect(getViewState(db, domainId).version).toBeGreaterThan(v0);
+  expect(getHarbour(db, domainId, null)?.slug).toBe("caching");
+
+  setHarbour(db, domainId, "databases");
+  expect(getHarbour(db, domainId, null)?.slug).toBe("databases");
+  expect(getIsland(db, domainId, "caching")?.harbour).toBe(0);
+
+  setHarbour(db, domainId, "caching-ttl");
+  expect(getHarbour(db, domainId, caching.id)?.slug).toBe("caching-ttl");
+  expect(getHarbour(db, domainId, null)?.slug).toBe("databases"); // the top scale is untouched
+
+  expect(setHarbour(db, domainId, "databases").harbour).toBe(1); // idempotent
+  expect(getHarbour(db, domainId, null)?.slug).toBe("databases");
+
+  expect(clearHarbour(db, domainId, null)).toBe(1);
+  expect(clearHarbour(db, domainId, null)).toBe(0);
+  expect(getHarbour(db, domainId, null)).toBeNull();
+  expect(getHarbour(db, domainId, caching.id)?.slug).toBe("caching-ttl");
+
+  expect(() => setHarbour(db, domainId, "nope")).toThrow(NotFoundError);
+  try {
+    setHarbour(db, domainId, "nope");
+  } catch (e) {
+    expect((e as NotFoundError).valid).toEqual(["caching", "caching-ttl", "databases"]);
+  }
 });

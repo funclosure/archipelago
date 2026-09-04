@@ -3,7 +3,7 @@ import { ConflictError, NotFoundError } from "../errors.ts";
 import type { Island } from "../types.ts";
 
 const COLS =
-  "id, domain_id as domainId, parent_id as parentId, slug, name, summary, sort_order as sortOrder, x, y, created_at as createdAt, updated_at as updatedAt";
+  "id, domain_id as domainId, parent_id as parentId, slug, name, summary, sort_order as sortOrder, x, y, harbour, created_at as createdAt, updated_at as updatedAt";
 const NOW = "strftime('%Y-%m-%dT%H:%M:%fZ','now')";
 
 export type IslandUpsert = {
@@ -135,6 +135,42 @@ export function islandPath(db: Database, islandId: number): Island[] {
     current = current.parentId === null ? null : getIslandById(db, current.parentId);
   }
   return path;
+}
+
+/** Marks `slug` as the harbour among its siblings, clearing whichever sibling had it. Idempotent. */
+export function setHarbour(db: Database, domainId: number, slug: string): Island {
+  const island = requireIsland(db, domainId, slug);
+  return db.transaction(() => {
+    clearHarbour(db, domainId, island.parentId);
+    return db
+      .query<Island, [number]>(`update islands set harbour = 1, updated_at = ${NOW} where id = ? returning ${COLS}`)
+      .get(island.id)!;
+  })();
+}
+
+/** Clears the harbour among one parent's children (null = the top scale). Returns how many rows changed. */
+export function clearHarbour(db: Database, domainId: number, parentId: number | null): number {
+  const rows =
+    parentId === null
+      ? db
+          .query<{ id: number }, [number]>(
+            `update islands set harbour = 0, updated_at = ${NOW} where domain_id = ? and parent_id is null and harbour = 1 returning id`,
+          )
+          .all(domainId)
+      : db
+          .query<{ id: number }, [number, number]>(
+            `update islands set harbour = 0, updated_at = ${NOW} where domain_id = ? and parent_id = ? and harbour = 1 returning id`,
+          )
+          .all(domainId, parentId);
+  return rows.length;
+}
+
+/** The harbour among one parent's children (null = the top scale), or null. */
+export function getHarbour(db: Database, domainId: number, parentId: number | null): Island | null {
+  if (parentId === null) {
+    return db.query<Island, [number]>(`select ${COLS} from islands where domain_id = ? and parent_id is null and harbour = 1`).get(domainId) ?? null;
+  }
+  return db.query<Island, [number, number]>(`select ${COLS} from islands where domain_id = ? and parent_id = ? and harbour = 1`).get(domainId, parentId) ?? null;
 }
 
 /** Throws if `candidateParentId` is `island` itself or any descendant of it: a parent link there would form a cycle. */

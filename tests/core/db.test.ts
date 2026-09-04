@@ -41,7 +41,7 @@ test("0002 adds nullable island positions", () => {
   expect(cols).toContain("x");
   expect(cols).toContain("y");
   const versions = db.query<{ version: string }, []>("select version from schema_migrations order by version").all().map((r) => r.version);
-  expect(versions).toEqual(["0001_initial", "0002_positions", "0003_threads", "0004_landmarks"]);
+  expect(versions).toEqual(["0001_initial", "0002_positions", "0003_threads", "0004_landmarks", "0005_harbour"]);
 });
 
 test("0002 upgrades a database created with 0001 only", () => {
@@ -61,7 +61,7 @@ test("0002 upgrades a database created with 0001 only", () => {
     .get(domainId)!.version;
 
   const ran = migrateDatabase(db);
-  expect(ran).toEqual(["0002_positions", "0003_threads", "0004_landmarks"]);
+  expect(ran).toEqual(["0002_positions", "0003_threads", "0004_landmarks", "0005_harbour"]);
 
   const island = db.query<{ x: number | null; y: number | null }, []>("select x, y from islands where slug = 'caching'").get();
   expect(island).toEqual({ x: null, y: null });
@@ -105,4 +105,19 @@ test("0004 adds landmarks with insert, update, and delete version triggers", () 
   expect(version()).toBe(v0 + 3);
   db.run("insert into landmarks (domain_id, island_id, slug, name) values (?, ?, 'b', 'B')", [domainId, islandId]);
   expect(() => db.run("insert into landmarks (domain_id, island_id, slug, name) values (?, ?, 'b', 'B again')", [domainId, islandId])).toThrow();
+});
+
+test("0005 adds the harbour flag, one per parent", () => {
+  const db = openDatabase(":memory:");
+  expect(db.query<{ version: string }, []>("select version from schema_migrations").all().map((r) => r.version)).toContain("0005_harbour");
+  db.run("insert into domains (slug, name) values ('sd', 'System Design')");
+  const domainId = db.query<{ id: number }, []>("select id from domains where slug = 'sd'").get()!.id;
+  db.run("insert into islands (domain_id, slug, name, harbour) values (?, 'a', 'A', 1)", [domainId]);
+  expect(() => db.run("insert into islands (domain_id, slug, name, harbour) values (?, 'b', 'B', 1)", [domainId])).toThrow();
+  db.run("insert into islands (domain_id, slug, name) values (?, 'b', 'B')", [domainId]);
+  const aId = db.query<{ id: number }, []>("select id from islands where slug = 'a'").get()!.id;
+  // a different parent may have its own harbour
+  db.run("insert into islands (domain_id, parent_id, slug, name, harbour) values (?, ?, 'a-1', 'A1', 1)", [domainId, aId]);
+  expect(db.query<{ n: number }, []>("select count(*) as n from islands where harbour = 1").get()!.n).toBe(2);
+  expect(db.query<{ harbour: number }, []>("select harbour from islands where slug = 'b'").get()!.harbour).toBe(0);
 });

@@ -22,6 +22,7 @@ export type Island = {
   sortOrder: number;
   x: number | null;
   y: number | null;
+  harbour: 0 | 1;
   createdAt: string;
   updatedAt: string;
 };
