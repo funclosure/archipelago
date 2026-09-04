@@ -17,6 +17,7 @@ Run the CLI from the project root as `bun run src/cli/index.ts …` (or `archipe
 | island | a concept; islets are islands with a `--parent` |
 | strait | how two sibling islands relate |
 | landmark | a key concept on an island; the judge lights it when the user's answer covers it |
+| harbour | the island to set out from at this scale; the strip names it |
 | open water | no verdict yet. Never a state anyone writes. |
 | sandbar | rough but correct |
 | settled | solid: explains and applies |
@@ -39,7 +40,7 @@ The judge runs inside that server on the Claude Agent SDK, through the user's Cl
 
 When the user names a domain that does not exist (`domain list`):
 
-1. Propose 6–10 top-level islands, each with a slug, a name, a one-line summary, and 4–6 landmarks (the key concepts a person who knows this island can explain, as slug + short name), and the straits between islands that neighbour each other conceptually. Print the sketch as a table with a landmarks column.
+1. Propose 6–10 top-level islands, each with a slug, a name, a one-line summary, and 4–6 landmarks (the key concepts a person who knows this island can explain, as slug + short name), and the straits between islands that neighbour each other conceptually, and the harbour: the island the user already half-stands on (when nothing is known, the island with the most straits). Print the sketch as a table with a landmarks column. Print it as a line under the table.
 2. Wait for the user to approve or edit it. Do not write before that.
 3. Write it:
 
@@ -53,9 +54,10 @@ A landmark add --domain system-design --island caching --slug invalidation --nam
 A landmark add --domain system-design --island caching --slug eviction --name "Eviction" --order 3
 A landmark add --domain system-design --island caching --slug stampede --name "Stampede" --order 4
 A strait add --domain system-design --from caching --to databases --name cache-aside
+A harbour set --domain system-design --island caching
 ```
 
-The sketch is now stable: later sittings read it from the database and never regenerate it. Tell the user to click an island on the map and press **Probe this** to start charting it.
+The sketch is now stable: later sittings read it from the database and never regenerate it. Tell the user to click an island on the map and press **Make landfall** to start charting it; the anchor on the map marks the harbour.
 
 ## 2. Every turn, before anything else
 
@@ -89,7 +91,7 @@ A island show --domain <slug> --slug <island>      # verdict and history
 
 ## 4. Sailing closer
 
-When the user asks to go closer, or a `sail_closer` comment arrives, first read the island's thread (`thread show`) and its verdict so the islets follow what the judge found. Then sketch 4–8 islets exactly as in Setup, with slugs that do not collide with any slug in the domain (prefix with the parent when in doubt, e.g. `caching-invalidation`), plus straits between neighbouring islets, and 4–6 landmarks per islet, written with `landmark add`. Show the sketch, get approval, then write with `--parent <island-slug>`. If the island has no verdict yet, suggest the user probe it on the map first, but do what the user asks.
+When the user asks to go closer, or a `sail_closer` comment arrives, first read the island's thread (`thread show`) and its verdict so the islets follow what the judge found. Then sketch 4–8 islets exactly as in Setup, with slugs that do not collide with any slug in the domain (prefix with the parent when in doubt, e.g. `caching-invalidation`), plus straits between neighbouring islets, and 4–6 landmarks per islet, written with `landmark add`. Show the sketch, get approval, then write with `--parent <island-slug>`. Set a harbour among the islets (`harbour set`) when one is the natural first step; otherwise leave it unset. If the island has no verdict yet, suggest the user probe it on the map first, but do what the user asks.
 
 ## 5. Ending a sitting
 
@@ -98,7 +100,7 @@ A session end --domain <slug> --summary "<one paragraph: what was sketched, what
 A snapshot --domain <slug>
 ```
 
-Then give the user an orientation in prose, at the current scale: the islands they stand on, the sandbars, any reef, and the nearest open water (the snapshot's `nearestOpenWater` lists it in order).
+Then give the user an orientation in prose, at the current scale: the islands they stand on, the sandbars, any reef, and the nearest open water (the snapshot's `nearestOpenWater` lists it in order), and the harbour when the user has not set out from it yet.
 
 ## Command reference
 
@@ -114,6 +116,7 @@ verdict  history --domain --target island:<slug>|strait:<a>~<b>
          set --domain --target --state --confidence --evidence [--rationale]   (repairs only)
 session  start --domain | end --domain --summary | show --domain
 focus    show --domain | set --domain --island <slug> | set --domain --clear
+harbour  set --domain --island <slug> | clear --domain [--parent <slug>] | show --domain [--parent <slug>]
 comment  list --domain [--unread] | mark-read --domain [--id n ...] [--all]
 snapshot --domain [--scale <island-slug>]
 serve    [--port 4480] [--domain <slug>] [--no-open] [--stub]

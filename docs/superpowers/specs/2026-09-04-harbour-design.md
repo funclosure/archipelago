@@ -1,7 +1,7 @@
 # Harbour: the island to set out from
 
 **Date:** 2026-09-04
-**Status:** approved design, awaiting plan
+**Status:** implemented (plan: docs/superpowers/plans/2026-09-04-harbour.md)
 **Builds on:** chart-and-log (`2026-09-04-chart-and-log-design.md`)
 
 ## Why
