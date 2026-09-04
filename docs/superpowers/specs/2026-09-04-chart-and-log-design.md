@@ -54,13 +54,13 @@ Three directions were mocked up. The reader chose **A, Chart and log**: the map 
 - The last `charted as <state>` line renders as the verdict card: a pill `charted as settled`, `confidence 82% · 2026-09-04`, the evidence in italic serif, the rationale muted. Earlier `charted as` lines stay as small system lines. The card reads its content from the island's latest verdict.
 - Reef proposals as the reef block, as today.
 - Other system lines as today.
-- Empty thread: `Unsurveyed. The judge asks first.` (or `No thread yet…` when a verdict exists) with the `Probe this` button. The foot's box is disabled until the thread has a message.
+- Empty thread: `Unsurveyed. The judge asks first.` with a `Make landfall` button on open water; `No thread yet. The judge asks first.` with an `Explore it` button when a verdict exists. `Probe this` is retired: probing is the judge's verb, landfall is the reader's. The foot's box is disabled until the thread has a message.
 - The log sticks to the bottom: when the reader was within 40px of the bottom before an update, the update scrolls it to the bottom; otherwise it stays where it is.
 - Load and turn errors show at the end of the log with `Retry`, as today.
 
 **Foot** (never scrolls):
 
-- A textarea that grows from one to five lines. Enter sends, Shift-Enter inserts a newline. Placeholders as today (`your answer`, `the judge is thinking…`, `what is wrong with this reef`, `press Probe this to begin`).
+- A textarea that grows from one to five lines. Enter sends, Shift-Enter inserts a newline. Placeholders: `your answer`, `the judge is thinking…`, `what is wrong with this reef`, and before the first turn `press Make landfall to begin` (or `press Explore it to begin`).
 - `Send`, or `Dispute` (ghost) and `Confirm` while a reef is pending. One answer per proposal: both buttons disable the moment one is pressed, so a double click cannot post twice.
 - A meta line under the box: left `Enter to send · Shift-Enter for a new line`; right, while a turn is in flight, `the judge is answering`.
 - Focus lands in the textarea when an island is selected, after a turn ends, and after the opening turn's refetch, using the existing `focusPending` mechanism. Escape in the textarea does nothing; Escape elsewhere deselects, as today.
@@ -99,6 +99,7 @@ In `src/web/camera.js`, tested in `tests/web/camera.test.js`:
 
 - Pills: `open water`, `open water · islets below`, `sandbar`, `settled · 82%`, `mountainous · 91%`, `reef · 88%`.
 - Head links: `Sail closer`, `Sail in`, `Note to cartographer`.
+- Empty-thread button: `Make landfall` on open water, `Explore it` when a verdict exists.
 - Note sent: `Note sent. Claude reads it at the start of the next turn.`
 - Foot meta: `Enter to send · Shift-Enter for a new line`; `the judge is answering`.
 - Verdict card pill: `charted as <state>`.
