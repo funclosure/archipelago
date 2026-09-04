@@ -66,6 +66,21 @@ html, body { margin: 0; height: 100%; background: var(--water); color: var(--tex
 .card .reef-block { border: 1px solid var(--reef); border-radius: 8px; padding: 8px 10px; }
 .card .reef-block p { margin: 0 0 4px; }
 .card .reef-title { font-size: 11px; text-transform: uppercase; letter-spacing: .1em; color: var(--reef); margin-bottom: 4px; }
-.card .reef-block .actions { margin: 8px 0 0; }
 .card .note input:disabled { color: var(--muted); }
 .card button:disabled { opacity: .5; cursor: default; }
+
+.card .landmarks { margin: 4px 0 10px; }
+.card .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 4px; }
+.card .chip { font-size: 11px; padding: 2px 8px; border-radius: 999px; border: 1px dashed var(--muted); color: var(--muted); }
+.card .chip.lit { background: var(--sand); border: 1px solid var(--sand); color: var(--water); }
+.card .chip.just-lit { animation: lit-pulse .8s ease-out 1; }
+@keyframes lit-pulse { 0% { box-shadow: 0 0 0 0 rgba(217, 199, 163, .8); } 100% { box-shadow: 0 0 0 10px rgba(217, 199, 163, 0); } }
+.card .msg.landmark { align-self: center; font-size: 11px; padding: 2px 10px; border-radius: 999px; background: var(--sand); color: var(--water); }
+
+.dock { position: fixed; left: 50%; bottom: 64px; transform: translateX(-50%); width: min(640px, calc(100vw - 40px));
+  background: var(--panel); border-radius: 10px; padding: 10px 12px; box-shadow: 0 12px 32px rgba(0, 0, 0, .4); }
+.dock .note { display: flex; gap: 6px; margin: 0; }
+.dock .note input { flex: 1; background: var(--water); border: 1px solid var(--line); border-radius: 6px; color: var(--text); padding: 8px 10px; font: inherit; font-size: 13px; }
+.dock button { background: var(--land); color: var(--water); border: 0; border-radius: 6px; padding: 6px 12px; font: inherit; font-size: 12px; cursor: pointer; }
+.dock button.ghost { background: transparent; color: var(--text); border: 1px solid var(--line); }
+.dock button:disabled, .dock input:disabled { opacity: .5; cursor: default; }

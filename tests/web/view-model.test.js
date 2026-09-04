@@ -1,5 +1,5 @@
 import { test, expect } from "bun:test";
-import { hashSeed, seededRandom, islandRadius, buildNodes, buildLinks, WORLD } from "../../src/web/view-model.js";
+import { hashSeed, seededRandom, islandRadius, buildNodes, buildLinks, litSegments, WORLD } from "../../src/web/view-model.js";
 
 const island = (slug, verdict = null, pos = { x: null, y: null }, byState = { sandbar: 0, settled: 0, mountainous: 0, reef: 0, open: 0 }) => ({
   slug, name: slug, summary: null, hasChildren: Object.values(byState).some(Boolean), verdict, x: pos.x, y: pos.y,
@@ -66,4 +66,14 @@ test("buildLinks joins nodes by slug and skips unknown ends", () => {
   expect(links).toHaveLength(1);
   expect(links[0].source.slug).toBe("a");
   expect(links[0].state).toBe("reef");
+});
+
+test("litSegments lights a clockwise prefix of equal runs", () => {
+  expect(litSegments(14, 5, 0)).toEqual(new Array(14).fill(false));
+  expect(litSegments(14, 5, 5)).toEqual(new Array(14).fill(true));
+  expect(litSegments(14, 0, 0)).toEqual(new Array(14).fill(false));
+  expect(litSegments(4, 2, 1)).toEqual([true, true, false, false]);
+  const two = litSegments(14, 5, 2);
+  expect(two.filter(Boolean)).toHaveLength(6);
+  expect(two.indexOf(false)).toBe(6); // a prefix, never scattered
 });

@@ -1,4 +1,4 @@
-import { seededRandom } from "./view-model.js";
+import { seededRandom, litSegments } from "./view-model.js";
 
 export const PALETTE = {
   water: "#1a1816",
@@ -46,6 +46,21 @@ function tracePath(ctx, pts) {
   ctx.closePath();
 }
 
+/** Only the lit coastline segments: segment k runs from mid(k) to mid(k+1) through point k+1. */
+function traceSegments(ctx, pts, lit) {
+  const n = pts.length;
+  const mid = (i) => ({ x: (pts[i % n].x + pts[(i + 1) % n].x) / 2, y: (pts[i % n].y + pts[(i + 1) % n].y) / 2 });
+  ctx.beginPath();
+  for (let k = 0; k < n; k++) {
+    if (!lit[k]) continue;
+    const a = mid(k);
+    const p = pts[(k + 1) % n];
+    const b = mid(k + 1);
+    ctx.moveTo(a.x, a.y);
+    ctx.quadraticCurveTo(p.x, p.y, b.x, b.y);
+  }
+}
+
 export function drawIsland(ctx, node, { dim = false, spotlight = false, now = 0 } = {}) {
   const t = node.changedAt ? Math.min(1, (now - node.changedAt) / RISE_MS) : 1;
   const ease = 1 - Math.pow(1 - t, 3);
@@ -61,12 +76,21 @@ export function drawIsland(ctx, node, { dim = false, spotlight = false, now = 0 
   }
 
   if (state === "open") {
-    tracePath(ctx, outline(node, grow));
+    const pts = outline(node, grow);
+    tracePath(ctx, pts);
     ctx.setLineDash([6, 6]);
     ctx.lineWidth = 1.8;
     ctx.strokeStyle = PALETTE.muted;
     ctx.stroke();
     ctx.setLineDash([]);
+    const lm = node.island.landmarks;
+    if (lm && lm.total > 0 && lm.unlocked > 0) {
+      // Each lit landmark turns one run of the dashed coastline solid: the island is being charted.
+      traceSegments(ctx, pts, litSegments(pts.length, lm.total, lm.unlocked));
+      ctx.lineWidth = 2.4;
+      ctx.strokeStyle = PALETTE.sand;
+      ctx.stroke();
+    }
   } else if (state === "sandbar") {
     tracePath(ctx, outline(node, grow * 0.8));
     ctx.fillStyle = PALETTE.sand;

@@ -11,9 +11,20 @@ export function proposalFromBody(body) {
   }
 }
 
+const LANDMARK_PREFIX = "landmark lit: ";
+
+/** The landmark name carried by a `landmark lit: <name>` system line, or null. */
+export function landmarkFromSystem(body) {
+  return typeof body === "string" && body.startsWith(LANDMARK_PREFIX) ? body.slice(LANDMARK_PREFIX.length) : null;
+}
+
 /** Stored messages → items the card renders. A proposal that fails to parse renders as plain text. */
 export function threadItems(messages) {
   return messages.map((m) => {
+    if (m.kind === "system") {
+      const name = landmarkFromSystem(m.body);
+      if (name) return { id: m.id, role: m.role, kind: "landmark", text: name, proposal: null };
+    }
     if (m.kind === "reef_proposal") {
       const proposal = proposalFromBody(m.body);
       if (proposal) return { id: m.id, role: m.role, kind: "reef_proposal", text: "", proposal };

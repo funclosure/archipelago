@@ -3,6 +3,7 @@ import { streamPost } from "./stream.js";
 import { threadItems, paragraphs } from "./thread.js";
 
 const card = document.getElementById("card");
+const dock = document.getElementById("dock");
 let noteDraft = "";       // note text survives re-renders
 let lastSent = null;      // { slug, text } shown under the note box
 let renderId = 0;         // guards async appends against stale renders
@@ -20,9 +21,8 @@ const thread = {
   inFlight: false,
   error: null,        // a turn failed; the messages on screen are still good
   loadError: null,    // the thread itself could not be fetched
-  disputeFor: null,   // proposal id whose objection box is open
-  disputeDraft: "",
-  disputeFocusPending: false, // the objection box was just opened and wants the caret
+  disputeDraft: "",   // the objection typed into the dock while a reef is pending
+  litSeen: null,      // slugs already lit at the last render, so only newly lit chips pulse
 };
 
 export function installCard() {
@@ -71,7 +71,7 @@ function post(path, body) {
 function resetThread(slug) {
   Object.assign(thread, {
     slug, version: null, messages: [], loaded: false, draft: "", live: "", progress: null, inFlight: false, error: null, loadError: null,
-    disputeFor: null, disputeDraft: "", disputeFocusPending: false,
+    disputeDraft: "", litSeen: null,
   });
 }
 
@@ -125,7 +125,7 @@ async function runTurn(slug, message) {
   thread.progress = null;
   thread.version = null; // the stored reply and any system lines come back with the refetch
   render();
-  const input = card.querySelector("#thread-input");
+  const input = document.querySelector("#thread-input");
   if (input && !input.disabled) {
     input.focus();
     input.setSelectionRange(input.value.length, input.value.length);
@@ -136,7 +136,6 @@ async function answerReef(slug, id, answer, note) {
   try {
     await post("/api/probe/reef", { domain: app.domain, id, answer, ...(note ? { note } : {}) });
     if (thread.slug !== slug) return; // the reader moved on while the answer was in flight
-    thread.disputeFor = null;
     thread.disputeDraft = "";
     thread.version = null;
     render();
@@ -160,58 +159,43 @@ function renderLive() {
   live.scrollIntoView({ block: "nearest" });
 }
 
-function messageEl(item, island) {
+function messageEl(item) {
+  if (item.kind === "landmark") return el("div", "msg landmark", `◆ ${item.text}`);
   if (item.kind === "system") return el("div", "msg system", item.text);
-  if (item.kind === "reef_proposal") return reefEl(item, island);
+  if (item.kind === "reef_proposal") return reefEl(item);
   const m = el("div", `msg ${item.role}`);
   m.append(...paragraphs(item.text).map((p) => el("p", null, p)));
   return m;
 }
 
-function reefEl(item, island) {
+const roundOf = (messages) => messages.filter((m) => m.role === "you" && m.kind === "text").length;
+
+/** The landmark chip row: dark chips dashed, lit chips filled with the reader's evidence on hover. */
+function landmarksEl(island) {
+  const wrap = el("div", "landmarks");
+  const row = el("div", "chips");
+  for (const l of island.landmarks.items) {
+    const chip = el("span", `chip${l.lit ? " lit" : ""}`, l.name);
+    if (l.lit && l.evidence) chip.title = `“${l.evidence}”`;
+    if (l.lit && thread.litSeen && !thread.litSeen.has(l.slug)) chip.classList.add("just-lit");
+    row.append(chip);
+  }
+  wrap.append(row);
+  const parts = [`${island.landmarks.unlocked} of ${island.landmarks.total} charted`];
+  if (!island.verdict && thread.messages.length) parts.push(`round ${roundOf(thread.messages)} of 4`);
+  wrap.append(el("div", "muted", parts.join(" · ")));
+  return wrap;
+}
+
+/** The reef the judge proposed. The reader answers it in the dock, not here. */
+function reefEl(item) {
   const p = item.proposal;
   const box = el("div", "reef-block");
   box.append(el("div", "reef-title", "Reef?"));
   box.append(el("p", null, p.claim));
   box.append(el("p", "muted", `If so: ${p.consequence}`));
-  if (p.status !== "pending") {
-    box.append(el("div", "muted", p.status === "confirmed" ? "confirmed, charted as reef" : "disputed"));
-    return box;
-  }
-  const actions = el("div", "actions");
-  const confirm = button("Confirm", () => void answerReef(island.slug, item.id, "confirm"));
-  confirm.disabled = thread.inFlight; // a dispute's follow-up turn would be dropped
-  actions.append(confirm);
-  const dispute = button("Dispute", () => {
-    const opening = thread.disputeFor !== item.id;
-    thread.disputeFor = opening ? item.id : null;
-    if (opening) thread.disputeFocusPending = true; // only a fresh box takes the caret
-    render();
-  }, "ghost");
-  dispute.disabled = thread.inFlight;
-  actions.append(dispute);
-  box.append(actions);
-  if (thread.disputeFor === item.id) {
-    const form = el("form", "note");
-    const input = el("input");
-    input.placeholder = "what is wrong with this reef";
-    input.value = thread.disputeDraft;
-    input.addEventListener("input", () => (thread.disputeDraft = input.value));
-    const send = button("Send", null);
-    send.type = "submit";
-    send.disabled = thread.inFlight;
-    form.append(input, send);
-    form.addEventListener("submit", (e) => {
-      e.preventDefault();
-      if (thread.inFlight) return;
-      void answerReef(island.slug, item.id, "dispute", input.value.trim() || undefined);
-    });
-    box.append(form);
-    if (thread.disputeFocusPending) {
-      thread.disputeFocusPending = false;
-      queueMicrotask(() => input.focus());
-    }
-  }
+  const status = p.status === "pending" ? "pending — answer below" : p.status === "confirmed" ? "confirmed, charted as reef" : "disputed";
+  box.append(el("div", "muted", status));
   return box;
 }
 
@@ -254,7 +238,7 @@ function threadEl(island) {
     return section;
   }
   const list = el("div", "messages");
-  for (const item of items) list.append(messageEl(item, island));
+  for (const item of items) list.append(messageEl(item));
   const live = el("div", "msg judge");
   live.id = "live";
   live.hidden = true;
@@ -264,27 +248,57 @@ function threadEl(island) {
   list.append(live, progress);
   section.append(list);
   if (thread.error) section.append(el("div", "error", thread.error));
+  return section;
+}
 
+/** The reader's controls: the answer box at the bottom centre, or Confirm / Dispute while a reef is pending. */
+function renderDock(island) {
+  if (!island || !thread.loaded) {
+    dock.hidden = true;
+    dock.replaceChildren();
+    return;
+  }
+  dock.hidden = false;
+  dock.replaceChildren();
+  const pending = threadItems(thread.messages).find((i) => i.kind === "reef_proposal" && i.proposal.status === "pending");
   const form = el("form", "note");
   const input = el("input");
   input.id = "thread-input";
-  input.placeholder = thread.inFlight ? "the judge is thinking…" : "your answer";
-  input.value = thread.draft;
   input.disabled = thread.inFlight;
-  input.addEventListener("input", () => (thread.draft = input.value));
-  const send = button("Send", null);
-  send.type = "submit";
-  send.disabled = thread.inFlight;
-  form.append(input, send);
-  form.addEventListener("submit", (e) => {
-    e.preventDefault();
-    const body = input.value.trim();
-    if (!body || thread.inFlight) return;
-    thread.draft = "";
-    void runTurn(island.slug, body);
+  input.placeholder = thread.inFlight ? "the judge is thinking…" : pending ? "what is wrong with this reef" : thread.messages.length ? "your answer" : "press Probe this to begin";
+  input.value = pending ? thread.disputeDraft : thread.draft;
+  input.addEventListener("input", () => {
+    if (pending) thread.disputeDraft = input.value;
+    else thread.draft = input.value;
   });
-  section.append(form);
-  return section;
+  form.append(input);
+  if (pending) {
+    const dispute = button("Dispute", null, "ghost");
+    dispute.type = "submit";
+    dispute.disabled = thread.inFlight;
+    const confirm = button("Confirm", () => void answerReef(island.slug, pending.id, "confirm"));
+    confirm.disabled = thread.inFlight;
+    form.append(dispute, confirm);
+    form.addEventListener("submit", (e) => {
+      e.preventDefault();
+      if (thread.inFlight) return;
+      void answerReef(island.slug, pending.id, "dispute", input.value.trim() || undefined);
+    });
+  } else {
+    const send = button("Send", null);
+    send.type = "submit";
+    send.disabled = thread.inFlight || thread.messages.length === 0;
+    input.disabled = input.disabled || thread.messages.length === 0;
+    form.append(send);
+    form.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const body = input.value.trim();
+      if (!body || thread.inFlight) return;
+      thread.draft = "";
+      void runTurn(island.slug, body);
+    });
+  }
+  dock.append(form);
 }
 
 function render() {
@@ -294,6 +308,7 @@ function render() {
     card.hidden = true;
     card.replaceChildren();
     if (thread.slug !== null) resetThread(null);
+    renderDock(null);
     return;
   }
   if (thread.slug !== island.slug) {
@@ -313,6 +328,7 @@ function render() {
   if (island.verdict && island.verdict.state === "reef") state.classList.add("reef");
   card.append(state);
   if (island.summary) card.append(el("p", "muted", island.summary));
+  if (island.landmarks && island.landmarks.total) card.append(landmarksEl(island));
 
   if (island.verdict) {
     card.append(el("blockquote", null, `“${island.verdict.evidence}”`));
@@ -352,13 +368,16 @@ function render() {
   card.append(note);
   if (lastSent && lastSent.slug === island.slug) card.append(el("div", "sent", lastSent.text));
 
+  renderDock(island);
   if (hadFocus) {
-    const again = card.querySelector("#thread-input");
+    const again = document.querySelector("#thread-input");
     if (again && !again.disabled) {
       again.focus();
       again.setSelectionRange(again.value.length, again.value.length);
     }
   }
+  // Remember which chips are lit so the next render can pulse only the newly lit ones.
+  thread.litSeen = new Set((island.landmarks?.items ?? []).filter((l) => l.lit).map((l) => l.slug));
   void renderHistory(island, ++renderId);
 }
 

@@ -1,5 +1,5 @@
 import { test, expect } from "bun:test";
-import { threadItems, proposalFromBody, paragraphs } from "../../src/web/thread.js";
+import { threadItems, proposalFromBody, paragraphs, landmarkFromSystem } from "../../src/web/thread.js";
 
 const proposal = { target: "island:caching", claim: "never stale", consequence: "stale prices", evidence: "q", confidence: 0.7, rationale: "r", status: "pending" };
 
@@ -25,4 +25,14 @@ test("threadItems keeps order, parses proposals, and degrades a broken proposal 
 test("paragraphs splits on blank lines and drops empties", () => {
   expect(paragraphs("one\n\ntwo\n \n\nthree\n")).toEqual(["one", "two", "three"]);
   expect(paragraphs("")).toEqual([]);
+});
+
+test("a 'landmark lit' system message becomes a landmark item; other system lines stay system", () => {
+  expect(landmarkFromSystem("landmark lit: Hit ratio")).toBe("Hit ratio");
+  expect(landmarkFromSystem("charted as settled")).toBeNull();
+  const items = threadItems([
+    { id: 1, role: "judge", kind: "system", body: "landmark lit: Hit ratio" },
+    { id: 2, role: "judge", kind: "system", body: "charted as settled" },
+  ]);
+  expect(items.map((i) => [i.kind, i.text])).toEqual([["landmark", "Hit ratio"], ["system", "charted as settled"]]);
 });

@@ -96,3 +96,14 @@ export function buildLinks(snapshot, nodes) {
     .filter((s) => bySlug.has(s.from) && bySlug.has(s.to))
     .map((s) => ({ source: bySlug.get(s.from), target: bySlug.get(s.to), strait: s, state: s.verdict ? s.verdict.state : "open" }));
 }
+
+/**
+ * Which of `segments` coastline segments are lit: the outline is cut into `total` equal runs clockwise
+ * from the top, and the first `unlocked` runs are lit. All dark when the island has no landmarks.
+ */
+export function litSegments(segments, total, unlocked) {
+  const out = new Array(segments).fill(false);
+  if (total <= 0) return out;
+  for (let i = 0; i < segments; i++) out[i] = Math.floor((i * total) / segments) < unlocked;
+  return out;
+}
