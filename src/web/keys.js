@@ -93,7 +93,9 @@ function escape(e) {
 function onKeydown(e) {
   if (e.key === "Tab") {
     e.preventDefault();
-    setRegion(nextRegion(current, e.shiftKey));
+    let next = nextRegion(current, e.shiftKey);
+    if (next === "pane" && document.getElementById("pane")?.hidden) next = nextRegion(next, e.shiftKey);
+    setRegion(next);
     return;
   }
   if (e.key === "Escape") {

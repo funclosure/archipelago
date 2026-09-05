@@ -2,12 +2,14 @@
 import { app, setScale, frameSelection } from "./app.js";
 import { select } from "./interactions.js";
 import { FULL_W, RAIL_W, visibleRows, dashClass, countNodes, summaryLine } from "./outline-model.js";
+import { registerRegion, region } from "./keys.js";
+import { moveCursor } from "./keys-model.js";
 
 // app.js imports installOutline from here and this file imports app: fine, because nothing below reads app or select at module evaluation.
 
 // ---- DOM ----
 
-const state = { rail: false, expanded: new Set(), menuOpen: false, domains: null };
+const state = { rail: false, expanded: new Set(), menuOpen: false, domains: null, cursor: null };
 let root = null;
 let peek = null;
 
@@ -60,6 +62,7 @@ function toggleRail() {
   document.documentElement.style.setProperty("--outline-w", `${state.rail ? RAIL_W : FULL_W}px`);
   hidePeek();
   save();
+  seedCursor(); // a cursor on an islet falls back to a top-level island when the rail collapses
   render();
   frameSelection(); // frames against the intended width (outlineInset reads --outline-w), so the map settles where the panel will
 }
@@ -73,9 +76,14 @@ function toggleExpanded(slug) {
 
 function listEl(outline) {
   const ul = el("ul", "list");
+  ul.tabIndex = 0;
+  ul.setAttribute("role", "listbox");
+  if (state.cursor) ul.setAttribute("aria-activedescendant", `row-${state.cursor}`);
   for (const row of visibleRows(outline.islands, state.expanded, app.selected)) {
     const li = el("li");
-    const r = el("div", `row${row.node.slug === app.selected ? " on" : ""}${row.depth ? " islet" : ""}`);
+    const r = el("div", `row${row.node.slug === app.selected ? " on" : ""}${row.depth ? " islet" : ""}${row.node.slug === state.cursor ? " cur" : ""}`);
+    r.id = `row-${row.node.slug}`;
+    r.setAttribute("role", "option");
     r.style.paddingLeft = `${6 + row.depth * 20}px`;
     const tw = button(row.open ? "▾" : "▸", (e) => {
       e.stopPropagation();
@@ -187,7 +195,7 @@ function render() {
   frag.append(railEl(outline));
   const ft = el("div", "ft");
   const hint = el("span");
-  hint.append(el("kbd", null, "["), " outline");
+  hint.append(el("kbd", null, "["), " outline · ", el("kbd", null, "?"), " keys");
   ft.append(hint, el("span", null, `${countNodes(outline.islands)} islands`));
   frag.append(ft);
   const top = root.querySelector(".list")?.scrollTop ?? 0;
@@ -197,9 +205,64 @@ function render() {
   if (peek && !peek.hidden) peek.replaceChildren(listEl(outline));
 }
 
+/** The rows the cursor moves over: the list when expanded, the top-level dashes when railed. */
+function cursorRows() {
+  if (!app.outline) return [];
+  if (state.rail) return app.outline.islands.map((node) => ({ node, depth: 0, hasChildren: false, open: false }));
+  return visibleRows(app.outline.islands, state.expanded, app.selected);
+}
+
+function seedCursor() {
+  const rows = cursorRows();
+  if (rows.some((r) => r.node.slug === state.cursor)) return;
+  const pick = rows.find((r) => r.node.slug === app.selected) ?? rows.find((r) => r.node.harbour) ?? rows[0];
+  state.cursor = pick ? pick.node.slug : null;
+}
+
+function scrollCursorIntoView() {
+  const row = root.querySelector(".row.cur");
+  if (row) row.scrollIntoView({ block: "nearest" });
+}
+
+const outlineHandler = {
+  onKey(e) {
+    if (e.key === "Enter") {
+      const row = cursorRows().find((r) => r.node.slug === state.cursor);
+      if (!row) return false;
+      void go(row.node);
+      return true;
+    }
+    const move = moveCursor(cursorRows(), state.cursor, e.key);
+    if (!move) return false;
+    if (move.toggle) toggleExpanded(move.toggle);
+    else {
+      state.cursor = move.cursor;
+      render();
+      scrollCursorIntoView();
+    }
+    return true;
+  },
+  onFocus() {
+    seedCursor();
+    render();
+  },
+  onBlur() {
+    render(); // the cursor only draws while focused
+  },
+  menuOpen: () => state.menuOpen,
+  closeMenu,
+  hasCursor: () => state.cursor !== null,
+  clearCursor() {
+    state.cursor = null;
+    render();
+  },
+  toggleRail,
+};
+
 export function installOutline() {
   root = document.getElementById("outline");
   load();
+  registerRegion("outline", outlineHandler);
   document.documentElement.style.setProperty("--outline-w", `${state.rail ? RAIL_W : FULL_W}px`);
   root.addEventListener("mouseenter", () => showPeek());
   root.addEventListener("mouseleave", (e) => { if (!(peek && e.relatedTarget && peek.contains(e.relatedTarget))) hidePeek(); });
