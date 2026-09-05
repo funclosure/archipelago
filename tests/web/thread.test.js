@@ -1,5 +1,5 @@
 import { test, expect } from "bun:test";
-import { threadItems, proposalFromBody, landmarkFromSystem, inlineSegments, mdBlocks, logItems } from "../../src/web/thread.js";
+import { threadItems, proposalFromBody, landmarkFromSystem, inlineSegments, mdBlocks, logItems, askFor } from "../../src/web/thread.js";
 
 const proposal = { target: "island:caching", claim: "never stale", consequence: "stale prices", evidence: "q", confidence: 0.7, rationale: "r", status: "pending" };
 
@@ -113,4 +113,11 @@ test("logItems merges consecutive lit lines and turns only the last 'charted as'
   expect(items[6].verdict).toBe(verdict);
   // without a verdict on the island the line stays a system line
   expect(logItems(messages, { verdict: null }).map((i) => i.kind)).toEqual(["text", "text", "landmark", "system", "landmark", "text", "system"]);
+});
+
+test("askFor finds the ask attached to a message", () => {
+  const asks = [{ id: 1, messageId: 7, options: ["a", "b"], picked: null }, { id: 2, messageId: 9, options: ["c", "d"], picked: "c" }];
+  expect(askFor(asks, 9).id).toBe(2);
+  expect(askFor(asks, 8)).toBeNull();
+  expect(askFor([], 7)).toBeNull();
 });

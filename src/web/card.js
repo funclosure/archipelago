@@ -1,6 +1,6 @@
 import { app, api, setScale, frameSelection } from "./app.js";
 import { streamPost } from "./stream.js";
-import { logItems } from "./thread.js";
+import { logItems, askFor } from "./thread.js";
 import { renderMarkdown } from "./markdown.js";
 import { renderCta } from "./cta.js";
 import { select } from "./interactions.js";
@@ -155,7 +155,7 @@ async function runTurn(slug, message, askId) {
   if (!focusAnswer()) thread.focusPending = true;
 }
 
-const pendingAskOf = () => thread.asks.find((a) => a.messageId !== null && a.picked === null) ?? null;
+const pendingAskOf = () => [...thread.asks].reverse().find((a) => a.messageId !== null && a.picked === null) ?? null;
 
 /** The reader chose an option, or typed instead of choosing: either way it is the next message. */
 function answerAsk(slug, ask, body) {
@@ -382,7 +382,7 @@ function itemEl(item) {
   if (item.kind === "reef_proposal") return reefEl(item);
   const m = el("div", `msg ${item.role}`);
   m.append(renderMarkdown(item.text));
-  const ask = item.role === "judge" ? thread.asks.find((a) => a.messageId === item.id) : null;
+  const ask = item.role === "judge" ? askFor(thread.asks, item.id) : null;
   if (ask) m.append(choicesEl(ask));
   return m;
 }
@@ -496,6 +496,29 @@ function footEl(island) {
 
 // ---- the pane ----
 
+/** The model handed to renderCta, shared by the "no island selected" and normal render paths. */
+function ctaModel(island) {
+  return {
+    island,
+    pendingReef: island && thread.loaded ? logItems(thread.messages, island).find((i) => i.kind === "reef_proposal" && i.proposal.status === "pending") ?? null : null,
+    verdict: island ? island.verdict : null,
+    inFlight: thread.inFlight,
+    answering: thread.answering,
+    stay: thread.stay,
+    nearest: nearestOpen(),
+    onConfirm: () => {
+      const p = logItems(thread.messages, island).find((i) => i.kind === "reef_proposal" && i.proposal.status === "pending");
+      if (p) void answerReef(island.slug, p.id, "confirm");
+    },
+    onDispute: () => focusAnswer(),
+    onSail: (slug) => void select(slug),
+    onStay: () => {
+      thread.stay = true;
+      render();
+    },
+  };
+}
+
 function render() {
   const s = app.snapshot;
   const island = s && app.selected ? s.islands.find((i) => i.slug === app.selected) : null;
@@ -504,25 +527,7 @@ function render() {
     pane.hidden = true;
     pane.replaceChildren();
     if (thread.slug !== null) resetThread(null);
-    renderCta({
-      island,
-      pendingReef: island && thread.loaded ? logItems(thread.messages, island).find((i) => i.kind === "reef_proposal" && i.proposal.status === "pending") ?? null : null,
-      verdict: island ? island.verdict : null,
-      inFlight: thread.inFlight,
-      answering: thread.answering,
-      stay: thread.stay,
-      nearest: nearestOpen(),
-      onConfirm: () => {
-        const p = logItems(thread.messages, island).find((i) => i.kind === "reef_proposal" && i.proposal.status === "pending");
-        if (p) void answerReef(island.slug, p.id, "confirm");
-      },
-      onDispute: () => focusAnswer(),
-      onSail: (slug) => void select(slug),
-      onStay: () => {
-        thread.stay = true;
-        render();
-      },
-    });
+    renderCta(ctaModel(island));
     return;
   }
   if (thread.slug !== island.slug) {
@@ -556,25 +561,7 @@ function render() {
   // Remember which chips are lit so the next render can pulse only the newly lit ones.
   thread.litSeen = new Set((island.landmarks?.items ?? []).filter((l) => l.lit).map((l) => l.slug));
   void renderHistory(island, ++renderId);
-  renderCta({
-    island,
-    pendingReef: island && thread.loaded ? logItems(thread.messages, island).find((i) => i.kind === "reef_proposal" && i.proposal.status === "pending") ?? null : null,
-    verdict: island ? island.verdict : null,
-    inFlight: thread.inFlight,
-    answering: thread.answering,
-    stay: thread.stay,
-    nearest: nearestOpen(),
-    onConfirm: () => {
-      const p = logItems(thread.messages, island).find((i) => i.kind === "reef_proposal" && i.proposal.status === "pending");
-      if (p) void answerReef(island.slug, p.id, "confirm");
-    },
-    onDispute: () => focusAnswer(),
-    onSail: (slug) => void select(slug),
-    onStay: () => {
-      thread.stay = true;
-      render();
-    },
-  });
+  renderCta(ctaModel(island));
 }
 
 /** The first island in nearest open water at this scale, as { slug, name }, or null. */
@@ -595,10 +582,12 @@ function gripEl() {
   grip.addEventListener("pointerdown", (e) => {
     e.preventDefault();
     pane.classList.add("resizing");
-    const badge = el("div", "width");
-    pane.append(badge);
+    const badge = el("div", "pane-width");
+    document.body.append(badge);
+    let last;
     const move = (ev) => {
       const w = Math.min(PANE_MAX, Math.max(PANE_MIN, window.innerWidth - ev.clientX));
+      last = w;
       document.documentElement.style.setProperty("--pane-w", `${w}px`);
       badge.textContent = `${Math.round(w)}px`;
     };
@@ -607,10 +596,12 @@ function gripEl() {
       window.removeEventListener("pointerup", up);
       pane.classList.remove("resizing");
       badge.remove();
-      try {
-        localStorage.setItem("pane-w", getComputedStyle(pane).width);
-      } catch {
-        /* storage unavailable */
+      if (last !== undefined) {
+        try {
+          localStorage.setItem("pane-w", `${last}px`);
+        } catch {
+          /* storage unavailable */
+        }
       }
       frameSelection();
     };

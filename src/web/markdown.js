@@ -2,11 +2,14 @@
 import { mdBlocks } from "./thread.js";
 
 const svgCache = new Map(); // diagram source → SVG markup; streaming re-renders never redraw
+const nodeCache = new Map(); // diagram source → parsed SVG node, cloned on repeat appends
+const pending = new Map(); // diagram source → in-flight render promise, shared across frames
 let mermaidReady = false;
 let diagramSeq = 0;
 
 function mermaidInit() {
-  if (mermaidReady || typeof window === "undefined" || !window.mermaid) return Boolean(window.mermaid);
+  if (typeof window === "undefined" || !window.mermaid) return false;
+  if (mermaidReady) return true;
   window.mermaid.initialize({
     startOnLoad: false,
     securityLevel: "strict",
@@ -24,9 +27,11 @@ function mermaidInit() {
   return true;
 }
 
-/** SVG markup → an element, without innerHTML. */
-function svgElement(markup) {
-  return new DOMParser().parseFromString(markup, "image/svg+xml").documentElement;
+/** SVG markup → an element, without innerHTML. Null when the markup fails to parse. */
+function svgNode(markup) {
+  const doc = new DOMParser().parseFromString(markup, "image/svg+xml");
+  if (doc.getElementsByTagName("parsererror").length > 0 || doc.documentElement.nodeName === "parsererror") return null;
+  return document.importNode(doc.documentElement, true);
 }
 
 function sourceBlock(text) {
@@ -47,8 +52,8 @@ function diagramElement(source) {
   box.append(cap);
   const holder = document.createElement("div");
   box.append(holder);
-  if (svgCache.has(source)) {
-    holder.append(svgElement(svgCache.get(source)));
+  if (nodeCache.has(source)) {
+    holder.append(nodeCache.get(source).cloneNode(true));
     return box;
   }
   if (!mermaidInit()) {
@@ -56,13 +61,30 @@ function diagramElement(source) {
     return box;
   }
   holder.textContent = "drawing a diagram…";
-  window.mermaid
-    .render(`diagram-${++diagramSeq}`, source)
-    .then(({ svg }) => {
-      svgCache.set(source, svg);
-      holder.replaceChildren(svgElement(svg));
-    })
-    .catch(() => holder.replaceChildren(sourceBlock(source)));
+  let p = pending.get(source);
+  if (!p) {
+    p = window.mermaid
+      .render(`diagram-${++diagramSeq}`, source)
+      .then(({ svg }) => {
+        svgCache.set(source, svg);
+        pending.delete(source);
+        return svg;
+      })
+      .catch((e) => {
+        pending.delete(source);
+        throw e;
+      });
+    pending.set(source, p);
+  }
+  p.then((svg) => {
+    const node = svgNode(svg);
+    if (!node) {
+      holder.replaceChildren(sourceBlock(source));
+      return;
+    }
+    nodeCache.set(source, node);
+    holder.replaceChildren(node);
+  }).catch(() => holder.replaceChildren(sourceBlock(source)));
   return box;
 }
 

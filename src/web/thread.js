@@ -18,6 +18,11 @@ export function landmarkFromSystem(body) {
   return typeof body === "string" && body.startsWith(LANDMARK_PREFIX) ? body.slice(LANDMARK_PREFIX.length) : null;
 }
 
+/** The ask attached to a message, matched by messageId, or null. */
+export function askFor(asks, messageId) {
+  return asks.find((a) => a.messageId === messageId) ?? null;
+}
+
 /** Stored messages → items the card renders. A proposal that fails to parse renders as plain text. */
 export function threadItems(messages) {
   return messages.map((m) => {
