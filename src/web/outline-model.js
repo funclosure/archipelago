@@ -22,6 +22,17 @@ export function visibleRows(islands, expanded, selected, depth = 0) {
   return rows;
 }
 
+/**
+ * Whether collapsing `slug` would actually hide rows. An island that holds the selection stays
+ * open however `expanded` reads, so Left on it must ascend rather than flip a flag no one can see.
+ */
+export function collapsible(islands, expanded, selected, slug) {
+  if (!expanded.has(slug)) return false;
+  const without = new Set(expanded);
+  without.delete(slug);
+  return visibleRows(islands, without, selected).length !== visibleRows(islands, expanded, selected).length;
+}
+
 /** The rail dash's class for a top-level island. */
 export function dashClass(node, selected) {
   if (node.slug === selected) return "dash on";

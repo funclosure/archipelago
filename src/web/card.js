@@ -9,6 +9,14 @@ import { registerRegion } from "./keys.js";
 
 const pane = document.getElementById("pane");
 const STICK_PX = 40;            // within this of the bottom, the log follows new content
+const LOG_STEP = 80;            // one arrow's worth of the log
+// How far each scroll key moves the log. Arrows step; Page keys take nearly a screen.
+const SCROLL_BY = {
+  ArrowDown: () => LOG_STEP,
+  ArrowUp: () => -LOG_STEP,
+  PageDown: (log) => log.clientHeight * 0.9,
+  PageUp: (log) => -log.clientHeight * 0.9,
+};
 const ROUNDS = 4;
 const PANE_MIN = 340;
 const PANE_MAX = 760;
@@ -62,6 +70,11 @@ export function installCard() {
       return true;
     },
     onKey(e) {
+      const log = pane.querySelector(".log");
+      if (log && Object.hasOwn(SCROLL_BY, e.key)) { // reading the log is fine mid-turn, so this sits above the in-flight guard
+        log.scrollBy(0, SCROLL_BY[e.key](log));
+        return true;
+      }
       const island = app.nodes.find((n) => n.slug === app.selected) ?? null;
       if (!island || thread.inFlight) return false;
       const click = (sel) => {
@@ -72,19 +85,22 @@ export function installCard() {
       };
       switch (e.key) {
         case "Enter":
-        case "/":
           return focusAnswer();
         case "l":
           return click("#landfall");
-        case "n":
-          return click("#note-toggle");
+        case "n": {
+          const note = pane.querySelector("#note");
+          if (!note) return click("#note-toggle"); // opening it focuses it; a second n must not close it
+          note.focus();
+          return true;
+        }
         case "c": {
           const p = thread.loaded ? logItems(thread.messages, island).find((i) => i.kind === "reef_proposal" && i.proposal.status === "pending") : null;
           if (!p || thread.answering) return false;
           void answerReef(island.slug, p.id, "confirm");
           return true;
         }
-        case "d":
+        case "d": // the dispute box is the answer box in reef mode
           return focusAnswer();
         case "1": case "2": case "3": case "4": {
           const ask = thread.loaded ? pendingAskOf() : null;

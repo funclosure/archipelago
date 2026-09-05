@@ -227,13 +227,14 @@ body[data-focus="outline"] #outline { box-shadow: inset -1px 0 var(--lamp); }
 body[data-focus="pane"] #pane { box-shadow: inset 1px 0 var(--lamp), -12px 0 32px rgba(0, 0, 0, .35); }
 .map-focus { position: fixed; top: 0; left: var(--outline-w); right: 0; height: 1px; background: var(--lamp); pointer-events: none; z-index: 3; transition: left .18s ease; }
 body[data-focus="map"] .map-focus { display: block; }
-body:not([data-focus="map"]) .map-focus, .map-focus[hidden] { display: none; }
+body:not([data-focus="map"]) .map-focus { display: none; }
 body[data-focus="map"].pane-open .map-focus { right: var(--pane-w); }
 body[data-focus="outline"] :is(.outline, .peek) .row.cur { outline: 1px solid var(--lamp); outline-offset: -1px; }
 body[data-focus="outline"] .outline .dash.cur { outline: 1px solid var(--lamp); outline-offset: 2px; }
 
 /* ---- cheat sheet ---- */
-.keys { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; pointer-events: none; z-index: 6; }
+.keys { position: fixed; top: 0; bottom: 0; left: var(--outline-w); right: 0; display: flex; align-items: center; justify-content: center; pointer-events: none; z-index: 6; }
+body.pane-open .keys { right: var(--pane-w); }
 .keys[hidden] { display: none; }
 .keys-card { pointer-events: auto; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px 18px; box-shadow: 0 12px 32px rgba(0, 0, 0, .45); min-width: 360px; }
 .keys-card .lbl { font-size: 10px; text-transform: uppercase; letter-spacing: .1em; color: var(--lamp); margin-bottom: 8px; }

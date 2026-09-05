@@ -65,7 +65,7 @@ const EVERYWHERE = [["Tab", "next region"], ["⇧Tab", "previous region"], ["[",
 const REGION_KEYS = {
   outline: { title: "Outline", keys: [["↓ j", "move"], ["↑ k", "move"], ["↵", "select"], ["→ ←", "expand / collapse"], ["Home End", "first / last"]] },
   map: { title: "Map", keys: [["↵", "select"], ["← → ↑ ↓", "pan"], ["+ −", "zoom"], ["0", "home"], ["Esc", "deselect"]] },
-  pane: { title: "Pane", keys: [["↵ /", "answer"], ["l", "make landfall"], ["n", "note"], ["1–4", "pick option"], ["c", "confirm reef"], ["d", "dispute"], ["⌘↵", "send"]] },
+  pane: { title: "Pane", keys: [["↵ /", "answer"], ["l", "make landfall"], ["n", "note"], ["1–4", "pick option"], ["c", "confirm reef"], ["d", "dispute"], ["↑ ↓", "scroll"], ["⌘↵", "send"]] },
 };
 
 /** The cheat sheet's sections for a region. */

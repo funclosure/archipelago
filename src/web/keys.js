@@ -111,7 +111,7 @@ function step(from, back) {
 
 function onKeydown(e) {
   if (!shown(current)) setRegion(step(current, false)); // a hidden region (e.g. the pane, poll-hidden) never keeps focus
-  if (e.key === "Tab") {
+  if (e.key === "Tab" && !e.metaKey && !e.ctrlKey && !e.altKey) { // ⌘⇥ and friends stay the browser's
     e.preventDefault();
     setRegion(step(current, e.shiftKey));
     return;
@@ -120,7 +120,7 @@ function onKeydown(e) {
     escape(e);
     return;
   }
-  if (e.key === "Enter" && e.metaKey) {
+  if (e.key === "Enter" && e.metaKey && current === "pane") {
     if (handlers.pane?.send?.()) {
       e.preventDefault();
       e.stopPropagation(); // the textarea's own Enter handler must not submit as well

@@ -17,11 +17,11 @@ Victor: "for the left panel, can we support keyboard up and down, and let's thin
 | Focus | Exactly one of three regions holds focus: outline, map, pane. Keys dispatch to the focused region. Tab cycles regions. The page shows the focused region. |
 | Letters in text fields | Dead. Inside any input or textarea only Escape, Enter, and Tab are live. |
 | Escape | A ladder, one rung per press: close the menu or the cheat sheet → leave the text field → hide the outline cursor → deselect. |
-| Rows | Stay divs. The outline list carries `tabindex="0"` and `aria-activedescendant`; rows get ids. |
+| Rows | Stay divs. The outline aside carries `tabindex="0"`, `role="listbox"`, and `aria-activedescendant`; the list and its `li`s are `role="presentation"`; rows are `role="option"` and, in the aside only, get ids. |
 
 ## Regions and focus
 
-`src/web/keys.js` owns the one window `keydown` listener (capture phase, replacing the two in `outline.js` and `interactions.js`) and the region state: `region ∈ {"outline","map","pane"}`, initially `outline`. `setRegion(name)` stores it, stamps `document.body.dataset.focus = name`, and moves DOM focus to the region's container (`#outline .list`, `#map`, `#pane`), each of which carries `tabindex="0"` (`-1` is not used: the containers are the Tab stops). Clicking inside a region calls `setRegion` (a `mousedown` listener on each container). Selecting from the outline with Enter keeps the outline focused; selecting by clicking the map focuses the map; `/` focuses the pane and its answer box.
+`src/web/keys.js` owns the one window `keydown` listener (capture phase, replacing the two in `outline.js` and `interactions.js`) and the region state: `region ∈ {"outline","map","pane"}`, initially `outline`. `setRegion(name)` stores it, stamps `document.body.dataset.focus = name`, and moves DOM focus to the region's container (`#outline`, `#map`, `#pane`), each of which carries `tabindex="0"` (`-1` is not used: the containers are the Tab stops). The outline aside is itself the listbox: because it is the element that holds focus, it carries `role="listbox"` and the `aria-activedescendant` pointing at the cursor row's id. The hover peek renders the same rows without ids, so no id is ever duplicated. Clicking inside a region calls `setRegion` (a `mousedown` listener on each container). Selecting from the outline with Enter keeps the outline focused; selecting by clicking the map focuses the map; `/` focuses the pane and its answer box.
 
 The focused region shows a 1px lamp line along its inner edge: the outline's right edge, the pane's left edge, and for the map a line along the top of the map area between the outline and the pane (`#map-focus`, positioned from `--outline-w` and `--pane-w`). Reduced motion does not matter here; it is a static line. The outline's cursor row draws only while the outline is focused.
 
@@ -35,7 +35,7 @@ A region whose container is hidden never keeps focus: the dispatcher steps past 
 
 | Key | Does |
 |---|---|
-| Tab / Shift-Tab | Next / previous region: outline → map → pane → outline. |
+| Tab / Shift-Tab | Next / previous region: outline → map → pane → outline. With Cmd, Ctrl, or Alt held it stays the browser's. |
 | `[` | Toggle the rail (unchanged). |
 | `?` | Open or close the cheat sheet. |
 | `/` | Focus the pane and its answer box (if there is one). |
@@ -49,7 +49,7 @@ A region whose container is hidden never keeps focus: the dispatcher steps past 
 | Home / End | First / last visible row. |
 | Enter | Select the cursor row (`setScale` first if its scale differs, as a click does). |
 | Right | Expand the cursor island if it has islets and is collapsed; else move to its first islet. |
-| Left | Collapse the cursor island if expanded; else move to its parent row. |
+| Left | Collapse the cursor island if expanded; else move to its parent row. An island stays open while it holds the selection, so collapsing it would change nothing: Left moves to its parent instead (`collapsible` in `outline-model.js`). |
 
 The cursor is a slug in `outline.js` state (not persisted). When the outline gains focus with no cursor, it lands on the selected island, else the harbour, else the first row. When the rail is collapsed, Up/Down still move the cursor over the top-level dashes and Enter selects; the peek does not open from the keyboard.
 
@@ -63,7 +63,7 @@ The cursor is a slug in `outline.js` state (not persisted). When the outline gai
 | `0` | Frame home (`frameSelection`). |
 | Escape | Deselect (existing). |
 
-**Pane focused** (island selected; keys are ignored while a turn is in flight except Escape and `?`):
+**Pane focused** (island selected; keys are ignored while a turn is in flight except Escape, `?`, and the scroll keys, which stay live so the log can be read while the judge writes):
 
 | Key | Does |
 |---|---|
@@ -73,7 +73,9 @@ The cursor is a slug in `outline.js` state (not persisted). When the outline gai
 | `1`–`4` | Pick that option of the pending ask. |
 | `c` | Confirm the pending reef (same one-shot path as the card). |
 | `d` | Focus the dispute box (the answer box in reef mode). |
-| Cmd-Enter | Send, from anywhere in the pane. |
+| Down / Up | Scroll the log by 80px. |
+| PageDown / PageUp | Scroll the log by 90% of its height. |
+| Cmd-Enter | Send, from anywhere in the pane (only while the pane is focused). |
 | Escape (in a text field) | Blur it; the pane stays focused. |
 
 ## The cheat sheet

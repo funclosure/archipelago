@@ -1,5 +1,5 @@
 import { test, expect } from "bun:test";
-import { visibleRows, dashClass, summaryLine, countNodes } from "../../src/web/outline-model.js";
+import { visibleRows, collapsible, dashClass, summaryLine, countNodes } from "../../src/web/outline-model.js";
 
 const node = (slug, extra = {}, children = []) => ({
   slug, name: slug, state: "open", landmarks: { total: 4, unlocked: 0 }, harbour: false, scale: null, children, ...extra,
@@ -19,6 +19,15 @@ test("visibleRows shows islets only for expanded islands, or those holding the s
   expect(deep.map((r) => r.node.slug)).toEqual(["caching", "caching-ttl", "caching-ttl-jitter", "databases"]);
   expect(deep[0].open).toBe(true);
   expect(deep[2].depth).toBe(2);
+});
+
+test("collapsible is false for a parent held open by the selection", () => {
+  const open = new Set(["caching"]);
+  expect(collapsible(tree, open, null, "caching")).toBe(true);
+  expect(collapsible(tree, open, "caching-ttl", "caching")).toBe(false); // its own islet is selected
+  expect(collapsible(tree, open, "caching-ttl-jitter", "caching")).toBe(false); // a grandchild is selected
+  expect(collapsible(tree, new Set(), null, "caching")).toBe(false); // already collapsed
+  expect(collapsible(tree, open, null, "databases")).toBe(false); // no islets to hide
 });
 
 test("dashClass ranks selected over charted over lit over dark", () => {

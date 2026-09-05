@@ -1,7 +1,7 @@
 // The outline: the domain's tree on the left. Pure helpers first (tested), then the DOM.
 import { app, setScale, frameSelection } from "./app.js";
 import { select } from "./interactions.js";
-import { FULL_W, RAIL_W, visibleRows, dashClass, countNodes, summaryLine } from "./outline-model.js";
+import { FULL_W, RAIL_W, visibleRows, collapsible, dashClass, countNodes, summaryLine } from "./outline-model.js";
 import { registerRegion, region } from "./keys.js";
 import { moveCursor } from "./keys-model.js";
 
@@ -9,7 +9,7 @@ import { moveCursor } from "./keys-model.js";
 
 // ---- DOM ----
 
-const state = { rail: false, expanded: new Set(), menuOpen: false, domains: null, cursor: null };
+const state = { rail: false, expanded: new Set(), menuOpen: false, domains: null, cursor: null, cursorCleared: false };
 let root = null;
 let peek = null;
 
@@ -62,6 +62,7 @@ function toggleRail() {
   document.documentElement.style.setProperty("--outline-w", `${state.rail ? RAIL_W : FULL_W}px`);
   hidePeek();
   save();
+  state.cursorCleared = false;
   seedCursor(); // a cursor on an islet falls back to a top-level island when the rail collapses
   render();
   frameSelection(); // frames against the intended width (outlineInset reads --outline-w), so the map settles where the panel will
@@ -74,14 +75,16 @@ function toggleExpanded(slug) {
   render();
 }
 
-function listEl(outline) {
+/** The row list. Only the aside's copy carries ids: the peek is a duplicate and must not repeat them. */
+function listEl(outline, { ids = true } = {}) {
   const ul = el("ul", "list");
-  ul.setAttribute("role", "listbox");
-  if (state.cursor) ul.setAttribute("aria-activedescendant", `row-${state.cursor}`);
+  ul.setAttribute("role", "presentation"); // the aside is the listbox; it holds focus and aria-activedescendant
   for (const row of visibleRows(outline.islands, state.expanded, app.selected)) {
     const li = el("li");
+    li.setAttribute("role", "presentation");
     const r = el("div", `row${row.node.slug === app.selected ? " on" : ""}${row.depth ? " islet" : ""}${row.node.slug === state.cursor ? " cur" : ""}`);
-    r.id = `row-${row.node.slug}`;
+    if (ids) r.id = `row-${row.node.slug}`;
+    r.dataset.slug = row.node.slug;
     r.setAttribute("role", "option");
     r.style.paddingLeft = `${6 + row.depth * 20}px`;
     const tw = button(row.open ? "▾" : "▸", (e) => {
@@ -110,7 +113,7 @@ function showPeek() {
     document.body.append(peek);
   }
   peek.hidden = false;
-  peek.replaceChildren(listEl(app.outline));
+  peek.replaceChildren(listEl(app.outline, { ids: false }));
 }
 
 function hidePeek() {
@@ -185,9 +188,10 @@ function render() {
   root.classList.toggle("rail", state.rail);
   if (!outline) {
     root.replaceChildren();
+    root.removeAttribute("aria-activedescendant"); // the rows it named are gone
     return;
   }
-  if (state.cursor === null && region() === "outline") seedCursor();
+  if (state.cursor === null && !state.cursorCleared && region() === "outline") seedCursor();
   const frag = document.createDocumentFragment();
   frag.append(headerEl(outline));
   frag.append(el("div", "sum", summaryLine(outline)));
@@ -203,7 +207,8 @@ function render() {
   root.replaceChildren(frag);
   const list = root.querySelector(".list");
   if (list) list.scrollTop = top;
-  if (peek && !peek.hidden) peek.replaceChildren(listEl(outline));
+  if (peek && !peek.hidden) peek.replaceChildren(listEl(outline, { ids: false }));
+  applyCursor(); // the rows are new; the aside's aria-activedescendant follows them
 }
 
 /** The rows the cursor moves over: the list when expanded, the top-level dashes when railed. */
@@ -223,13 +228,28 @@ function seedCursor() {
 /** Paints the cursor onto the rows already on screen; no rebuild. */
 function applyCursor() {
   if (!root) return;
-  for (const r of root.querySelectorAll(".row.cur, .dash.cur")) r.classList.remove("cur");
-  const list = root.querySelector(".list");
+  const boxes = peek ? [root, peek] : [root];
+  for (const box of boxes) for (const n of box.querySelectorAll(".row.cur, .dash.cur")) n.classList.remove("cur");
   if (state.cursor) {
-    root.querySelector(`#row-${CSS.escape(state.cursor)}`)?.classList.add("cur");
-    root.querySelector(`.dash[data-slug="${CSS.escape(state.cursor)}"]`)?.classList.add("cur");
-    list?.setAttribute("aria-activedescendant", `row-${state.cursor}`);
-  } else list?.removeAttribute("aria-activedescendant");
+    const sel = `[data-slug="${CSS.escape(state.cursor)}"]`;
+    for (const box of boxes) for (const n of box.querySelectorAll(sel)) n.classList.add("cur");
+    root.setAttribute("aria-activedescendant", `row-${state.cursor}`); // the aside holds focus, so the aside carries it
+  } else root.removeAttribute("aria-activedescendant");
+}
+
+/** Moves the cursor to the nearest shallower row above it. Returns whether it moved. */
+function ascend() {
+  const rows = cursorRows();
+  const i = rows.findIndex((r) => r.node.slug === state.cursor);
+  if (i < 0) return false;
+  for (let j = i - 1; j >= 0; j--) {
+    if (rows[j].depth >= rows[i].depth) continue;
+    state.cursor = rows[j].node.slug;
+    applyCursor();
+    scrollCursorIntoView();
+    return true;
+  }
+  return false; // a top-level row: Left has nowhere to go
 }
 
 function scrollCursorIntoView() {
@@ -247,8 +267,11 @@ const outlineHandler = {
     }
     const move = moveCursor(cursorRows(), state.cursor, e.key);
     if (!move) return false;
-    if (move.toggle) toggleExpanded(move.toggle); // a rebuild, but from a key press: nothing is under the pointer
-    else {
+    if (move.toggle) {
+      // Left on a parent kept open by the selection would flip `expanded` with no visible change: ascend instead.
+      if (e.key === "ArrowLeft" && !collapsible(app.outline.islands, state.expanded, app.selected, move.toggle)) return ascend();
+      toggleExpanded(move.toggle); // a rebuild, but from a key press: nothing is under the pointer
+    } else {
       state.cursor = move.cursor;
       applyCursor();
       scrollCursorIntoView();
@@ -256,6 +279,7 @@ const outlineHandler = {
     return true;
   },
   onFocus() {
+    state.cursorCleared = false;
     seedCursor();
     applyCursor();
   },
@@ -264,6 +288,7 @@ const outlineHandler = {
   hasCursor: () => state.cursor !== null,
   clearCursor() {
     state.cursor = null;
+    state.cursorCleared = true; // Escape's next rung is deselect: render must not seed the cursor back
     applyCursor();
   },
   toggleRail,
