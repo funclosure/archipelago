@@ -15,6 +15,7 @@ export function shikiBundle(): Promise<VendorBundle> {
   if (!bundle) {
     bundle = build().catch((error) => {
       bundle = null;
+      console.error("shiki bundle failed:", error);
       throw error;
     });
   }

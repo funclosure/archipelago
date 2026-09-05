@@ -1,8 +1,9 @@
-// The one bundled artifact the page loads: shiki's sync core, its JavaScript regex engine, and the
-// eleven grammars the judge may use. Built once per process by `shikiBundle()` and served at
-// /vendor/shiki.js. Add a language here and in `LANGS` in src/web/code-model.js together.
-export { createHighlighterCoreSync } from "shiki/core";
-export { createJavaScriptRegexEngine } from "shiki/engine/javascript";
+// The one bundled artifact the page loads: shiki's core, its oniguruma engine, and the eleven
+// grammars the judge may use. Built once per process by `shikiBundle()` and served at
+// /vendor/shiki.js; the engine's wasm is served beside it at /vendor/onig.wasm. Add a language here
+// and in `LANGS` in src/web/code-model.js together.
+export { createHighlighterCore } from "shiki/core";
+export { createOnigurumaEngine } from "shiki/engine/oniguruma";
 export { default as swift } from "@shikijs/langs/swift";
 export { default as objectiveC } from "@shikijs/langs/objective-c";
 export { default as kotlin } from "@shikijs/langs/kotlin";

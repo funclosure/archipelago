@@ -370,6 +370,13 @@ test("mermaid is served from the vendor route", async () => {
   expect((await r.text()).length).toBeGreaterThan(100000);
 });
 
+test("the oniguruma wasm is served beside the bundle as application/wasm", async () => {
+  const r = await fetch(`${base}/vendor/onig.wasm`);
+  expect(r.status).toBe(200);
+  expect(r.headers.get("content-type")).toBe("application/wasm");
+  expect((await r.arrayBuffer()).byteLength).toBeGreaterThan(400000);
+});
+
 test("shiki is bundled and served from the vendor route with an ETag", async () => {
   const r = await fetch(`${base}/vendor/shiki.js`);
   expect(r.status).toBe(200);
@@ -378,7 +385,8 @@ test("shiki is bundled and served from the vendor route with an ETag", async () 
   expect(etag).toMatch(/^"[0-9a-f]+"$/);
   const body = await r.text();
   expect(body.length).toBeGreaterThan(500000);
-  expect(body).toContain("createHighlighterCoreSync");
+  expect(body).toContain("createHighlighterCore");
+  expect(body).toContain("createOnigurumaEngine");
   const again = await fetch(`${base}/vendor/shiki.js`, { headers: { "if-none-match": etag! } });
   expect(again.status).toBe(304);
   expect(await again.text()).toBe("");

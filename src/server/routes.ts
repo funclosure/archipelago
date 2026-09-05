@@ -24,6 +24,7 @@ import { shikiBundle } from "./vendor.ts";
 export type ServerContext = { dbPath?: string; staticRoot: string; runner: JudgeRunner; turnTimeoutMs: number };
 
 const MERMAID_PATH = fileURLToPath(import.meta.resolve("mermaid/dist/mermaid.min.js"));
+const ONIG_WASM_PATH = fileURLToPath(import.meta.resolve("shiki/dist/onig.wasm"));
 
 const PING_MS = 20_000;
 /** How long one judge turn may run before the island is released. Overridable by `ARCHIPELAGO_TURN_TIMEOUT_MS`. */
@@ -45,6 +46,9 @@ export async function handleRequest(req: Request, ctx: ServerContext): Promise<R
     const route = `${req.method} ${url.pathname}`;
     if (route === "GET /vendor/mermaid.js") {
       return new Response(Bun.file(MERMAID_PATH), { headers: { "Content-Type": "text/javascript; charset=utf-8", "Cache-Control": "no-cache" } });
+    }
+    if (route === "GET /vendor/onig.wasm") {
+      return new Response(Bun.file(ONIG_WASM_PATH), { headers: { "Content-Type": "application/wasm", "Cache-Control": "no-cache" } });
     }
     if (route === "GET /vendor/shiki.js") {
       const { body, etag } = await shikiBundle();

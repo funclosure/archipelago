@@ -1,6 +1,7 @@
 // Code fences in the log: shiki tokens → one span per token, coloured by --code-<slot> in styles.css.
-// The highlighter arrives by dynamic import of the server's bundle; until then, and for languages it
-// lacks, the block is plain text under the same caption.
+// The highlighter arrives by dynamic import of the server's bundle and its oniguruma wasm
+// (/vendor/onig.wasm), so building it is async; until it lands, and for languages it lacks, the
+// block is plain text under the same caption. A failed load warns and leaves the page plain.
 import { LANGS, contourTheme, resolveLang, labelOf, spansOf } from "./code-model.js";
 
 const CACHE_MAX = 64;
@@ -27,15 +28,25 @@ const cache = new Map(); // `${lang}\n${text}` → span lines, closed blocks onl
 export function loadHighlighter(onReady) {
   if (highlighter || loading) return;
   loading = import("/vendor/shiki.js")
-    .then((m) => {
+    .then(async (m) => {
       const grammars = [m.swift, m.objectiveC, m.kotlin, m.typescript, m.tsx, m.javascript, m.json, m.bash, m.python, m.sql, m.yaml];
-      highlighter = m.createHighlighterCoreSync({ langs: grammars, themes: [contourTheme], engine: m.createJavaScriptRegexEngine({ forgiving: true }) });
+      highlighter = await m.createHighlighterCore({
+        langs: grammars,
+        themes: [contourTheme],
+        engine: m.createOnigurumaEngine(fetch("/vendor/onig.wasm")),
+      });
       warm();
-      onReady();
+      return true;
     })
-    .catch(() => {
+    .catch((error) => {
+      console.warn("code highlighting unavailable:", error);
       loading = null; // the page stays plain; a later call may try again
+      return false;
     });
+  // Outside the catch: a throw from onReady() is the page's bug, not a highlighter failure.
+  loading.then((ready) => {
+    if (ready) onReady();
+  });
 }
 
 /** The first tokenize of a language compiles its grammar (~150 ms); do it off the critical path. */
