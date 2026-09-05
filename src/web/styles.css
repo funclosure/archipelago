@@ -113,14 +113,14 @@ button:focus-visible, textarea:focus-visible, input:focus-visible { outline: 2px
 /* ---- the outline: Linear rows, Shuttle rail ---- */
 .outline { position: fixed; top: 0; left: 0; bottom: 0; width: var(--outline-w); background: var(--panel); border-right: 1px solid var(--line);
   display: flex; flex-direction: column; z-index: 2; font-size: 13px; line-height: 1.35; transition: width .18s ease; }
-.outline .oh { position: relative; height: 44px; padding: 0 8px 0 12px; border-bottom: 1px solid var(--line); display: flex; align-items: center; gap: 6px; flex: none; }
+.outline .oh { position: relative; height: 44px; padding: 0 10px 0 12px; border-bottom: 1px solid var(--line); display: flex; align-items: center; gap: 6px; flex: none; }
 .outline .ws { display: flex; align-items: center; gap: 6px; padding: 4px 6px; border: 0; border-radius: 6px; background: transparent; font: inherit; font-weight: 500;
   color: var(--text); cursor: pointer; min-width: 0; }
 .outline .ws:hover { background: var(--panel-2); }
 .outline .ws .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .outline .ws .chev { color: var(--muted); font-size: 10px; }
 .outline .sp { flex: 1; }
-.outline .ib { width: 26px; height: 26px; border: 0; background: transparent; color: var(--muted); border-radius: 6px; cursor: pointer; font: 13px system-ui, sans-serif;
+.outline .ib { width: 28px; height: 28px; border: 0; background: transparent; color: var(--muted); border-radius: 6px; cursor: pointer; font: 14px system-ui, sans-serif;
   display: grid; place-items: center; }
 .outline .ib:hover { background: var(--panel-2); color: var(--text); }
 .outline .menu { position: absolute; top: 40px; left: 8px; min-width: 200px; background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
@@ -129,13 +129,13 @@ button:focus-visible, textarea:focus-visible, input:focus-visible { outline: 2px
 .outline .mi:hover { background: var(--panel-2); }
 .outline .mi.on { background: rgba(245, 194, 66, .12); }
 .outline .sum { padding: 10px 14px 6px; font-size: 11px; color: var(--muted); }
-.outline .sec { padding: 10px 14px 4px; font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.outline .sec { padding: 12px 14px 6px; font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
 :is(.outline, .peek) .list { list-style: none; margin: 0; padding: 0 8px 8px; overflow: auto; flex: 1; }
-:is(.outline, .peek) .row { display: flex; align-items: center; gap: 8px; height: 28px; padding: 0 8px 0 6px; border-radius: 6px; cursor: pointer; color: var(--text);
+:is(.outline, .peek) .row { display: flex; align-items: center; gap: 10px; height: 32px; padding: 0 10px 0 8px; border-radius: 6px; cursor: pointer; color: var(--text);
   user-select: none; }
 :is(.outline, .peek) .row:hover { background: var(--panel-2); }
 :is(.outline, .peek) .row.on { background: rgba(245, 194, 66, .12); }
-:is(.outline, .peek) .row.islet { height: 26px; font-size: 12.5px; }
+:is(.outline, .peek) .row.islet { height: 28px; font-size: 12.5px; }
 :is(.outline, .peek) .row .tw { width: 14px; height: 14px; border: 0; background: transparent; color: var(--muted); font-size: 9px; border-radius: 4px; flex: none;
   display: grid; place-items: center; cursor: pointer; padding: 0; }
 :is(.outline, .peek) .row .tw:hover { background: var(--line); color: var(--text); }
@@ -148,7 +148,7 @@ button:focus-visible, textarea:focus-visible, input:focus-visible { outline: 2px
 :is(.outline, .peek) .row .dot.mountainous { background: var(--snow); border: 0; }
 :is(.outline, .peek) .row .dot.reef { background: var(--sand-fill); border: 0; box-shadow: inset 0 -2px 0 var(--reef); }
 :is(.outline, .peek) .row .name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-:is(.outline, .peek) .row .name.open { color: var(--muted); }
+:is(.outline, .peek) .row .name.open { color: rgba(255, 255, 255, .78); }
 :is(.outline, .peek) .row .anchor { color: var(--lamp); font-size: 11px; }
 :is(.outline, .peek) .row .n { font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
 .outline .ft { padding: 8px 14px; border-top: 1px solid var(--line); font-size: 11px; color: var(--muted); display: flex; justify-content: space-between; flex: none; }
