@@ -76,7 +76,6 @@ function toggleExpanded(slug) {
 
 function listEl(outline) {
   const ul = el("ul", "list");
-  ul.tabIndex = 0;
   ul.setAttribute("role", "listbox");
   if (state.cursor) ul.setAttribute("aria-activedescendant", `row-${state.cursor}`);
   for (const row of visibleRows(outline.islands, state.expanded, app.selected)) {
@@ -171,7 +170,8 @@ function headerEl(outline) {
 function railEl(outline) {
   const dashes = el("div", "dashes");
   for (const node of outline.islands) {
-    const d = el("div", dashClass(node, app.selected));
+    const d = el("div", `${dashClass(node, app.selected)}${node.slug === state.cursor ? " cur" : ""}`);
+    d.dataset.slug = node.slug;
     d.title = node.name;
     d.addEventListener("click", () => void go(node));
     dashes.append(d);
@@ -219,6 +219,18 @@ function seedCursor() {
   state.cursor = pick ? pick.node.slug : null;
 }
 
+/** Paints the cursor onto the rows already on screen; no rebuild. */
+function applyCursor() {
+  if (!root) return;
+  for (const r of root.querySelectorAll(".row.cur, .dash.cur")) r.classList.remove("cur");
+  const list = root.querySelector(".list");
+  if (state.cursor) {
+    root.querySelector(`#row-${CSS.escape(state.cursor)}`)?.classList.add("cur");
+    root.querySelector(`.dash[data-slug="${CSS.escape(state.cursor)}"]`)?.classList.add("cur");
+    list?.setAttribute("aria-activedescendant", `row-${state.cursor}`);
+  } else list?.removeAttribute("aria-activedescendant");
+}
+
 function scrollCursorIntoView() {
   const row = root.querySelector(".row.cur");
   if (row) row.scrollIntoView({ block: "nearest" });
@@ -227,6 +239,7 @@ function scrollCursorIntoView() {
 const outlineHandler = {
   onKey(e) {
     if (e.key === "Enter") {
+      if (state.cursor === null) seedCursor(); // a cold Enter selects the seeded row
       const row = cursorRows().find((r) => r.node.slug === state.cursor);
       if (!row) return false;
       void go(row.node);
@@ -234,27 +247,24 @@ const outlineHandler = {
     }
     const move = moveCursor(cursorRows(), state.cursor, e.key);
     if (!move) return false;
-    if (move.toggle) toggleExpanded(move.toggle);
+    if (move.toggle) toggleExpanded(move.toggle); // a rebuild, but from a key press: nothing is under the pointer
     else {
       state.cursor = move.cursor;
-      render();
+      applyCursor();
       scrollCursorIntoView();
     }
     return true;
   },
   onFocus() {
     seedCursor();
-    render();
-  },
-  onBlur() {
-    render(); // the cursor only draws while focused
+    applyCursor();
   },
   menuOpen: () => state.menuOpen,
   closeMenu,
   hasCursor: () => state.cursor !== null,
   clearCursor() {
     state.cursor = null;
-    render();
+    applyCursor();
   },
   toggleRail,
 };

@@ -9,7 +9,7 @@ let current = "outline";
 let sheetOpen = false;
 
 const containers = () => ({
-  outline: document.querySelector("#outline .list") ?? document.getElementById("outline"),
+  outline: document.getElementById("outline"),
   map: document.getElementById("map"),
   pane: document.getElementById("pane"),
 });
@@ -25,13 +25,17 @@ export function region() {
 /** Moves focus to a region: stamps the body, moves DOM focus, tells the regions. */
 export function setRegion(name) {
   if (!REGIONS.includes(name)) return;
+  const c = containers()[name];
+  const holds = Boolean(c) && (document.activeElement === c || c.contains(document.activeElement));
+  if (name === current && holds) return; // a click inside the focused region changes nothing
   const prev = current;
   current = name;
   document.body.dataset.focus = name;
-  const c = containers()[name];
   if (c && document.activeElement !== c && !(c.contains(document.activeElement) && isTyping(document.activeElement))) c.focus({ preventScroll: true });
-  if (prev !== name) handlers[prev]?.onBlur?.();
-  handlers[name]?.onFocus?.();
+  if (prev !== name) {
+    handlers[prev]?.onBlur?.();
+    handlers[name]?.onFocus?.();
+  }
   if (sheetOpen) renderSheet();
 }
 
@@ -90,12 +94,22 @@ function escape(e) {
   else if (rung === "deselect") void select(null);
 }
 
+const shown = (name) => {
+  const c = containers()[name];
+  return Boolean(c) && !c.hidden;
+};
+
+/** The next region that is on the page, skipping any that are hidden. */
+function step(from, back) {
+  let n = nextRegion(from, back);
+  for (let i = 1; i < REGIONS.length && !shown(n); i++) n = nextRegion(n, back);
+  return n;
+}
+
 function onKeydown(e) {
   if (e.key === "Tab") {
     e.preventDefault();
-    let next = nextRegion(current, e.shiftKey);
-    if (next === "pane" && document.getElementById("pane")?.hidden) next = nextRegion(next, e.shiftKey);
-    setRegion(next);
+    setRegion(step(current, e.shiftKey));
     return;
   }
   if (e.key === "Escape") {
@@ -103,7 +117,10 @@ function onKeydown(e) {
     return;
   }
   if (e.key === "Enter" && e.metaKey) {
-    if (handlers.pane?.send?.()) e.preventDefault();
+    if (handlers.pane?.send?.()) {
+      e.preventDefault();
+      e.stopPropagation(); // the textarea's own Enter handler must not submit as well
+    }
     return;
   }
   if (isTyping(e.target)) return; // the field owns its keys
@@ -120,6 +137,7 @@ function onKeydown(e) {
   }
   if (e.key === "/") {
     e.preventDefault();
+    if (!shown("pane")) return;
     setRegion("pane");
     handlers.pane?.focusAnswer?.();
     return;
@@ -133,7 +151,5 @@ export function installKeys() {
   for (const [name, c] of Object.entries(containers())) {
     c?.addEventListener("mousedown", () => setRegion(name));
   }
-  // The outline list is rebuilt on every render; catch its mousedowns from the aside.
-  document.getElementById("outline")?.addEventListener("mousedown", () => setRegion("outline"));
   setRegion("outline");
 }

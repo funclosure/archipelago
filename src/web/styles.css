@@ -222,14 +222,15 @@ body.pane-open .cta { right: var(--pane-w); }
 .cta-card .row button:disabled { opacity: .5; cursor: default; }
 
 /* ---- keyboard focus ---- */
-#map:focus, #pane:focus, .outline .list:focus { outline: none; }
+#map:focus, #pane:focus, #outline:focus { outline: none; }
 body[data-focus="outline"] #outline { box-shadow: inset -1px 0 var(--lamp); }
-body[data-focus="pane"] #pane { box-shadow: inset 1px 0 var(--lamp); }
+body[data-focus="pane"] #pane { box-shadow: inset 1px 0 var(--lamp), -12px 0 32px rgba(0, 0, 0, .35); }
 .map-focus { position: fixed; top: 0; left: var(--outline-w); right: 0; height: 1px; background: var(--lamp); pointer-events: none; z-index: 3; transition: left .18s ease; }
 body[data-focus="map"] .map-focus { display: block; }
 body:not([data-focus="map"]) .map-focus, .map-focus[hidden] { display: none; }
 body[data-focus="map"].pane-open .map-focus { right: var(--pane-w); }
 body[data-focus="outline"] :is(.outline, .peek) .row.cur { outline: 1px solid var(--lamp); outline-offset: -1px; }
+body[data-focus="outline"] .outline .dash.cur { outline: 1px solid var(--lamp); outline-offset: 2px; }
 
 /* ---- cheat sheet ---- */
 .keys { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; pointer-events: none; z-index: 6; }
