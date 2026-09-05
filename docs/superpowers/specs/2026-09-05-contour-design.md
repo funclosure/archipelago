@@ -87,3 +87,20 @@ Decided 2026-09-05 with Victor's palette decision: **one world, the chrome follo
 - **Sounding mark.** `?` at radius 52 on the arc's midpoint, 9 box units, line at alpha 0.3, Georgia.
 - **Rollup ring.** Segment colours: sandbar sand, settled and mountainous grass, reef the reef colour, open a gap; stroke width 3, alpha 1, no fill inside.
 - **Hatch.** Clipped to the coast path; 45° lines across the whole box at 6-unit pitch.
+
+## Addendum: reading contrast (2026-09-05)
+
+Victor, on the iOS Engineering chart at the top scale: "we need to improve on the contrast for the better reading." On a retina display the uncharted marks (line at alpha 0.3) and open names (0.6) sit near 2:1 against the sea. The values below replace the ones above; everything else in the spec stands.
+
+| Mark | was | now |
+|---|---|---|
+| Dark landmark arc (dotted coast) | line 0.3 | line 0.45 |
+| Sounding mark `?` | line 0.3 | line 0.45 |
+| Dark landmark ring | line 0.35 | line 0.5 |
+| Open strait (dotted) | line 0.3 | line 0.45 |
+| Island name while open | line 0.6 | line 0.75 |
+| `--muted` (counts, labels, summaries, meta, code comments via `--code-comment`) | line .55 | line .65 |
+| `--open` (dashed dots in the outline, the open pill's border) | line .30 | line .40 |
+| `--line-03` token | .3 | .45 (renamed in meaning only; the token name stays) |
+
+Firm arcs (1.0), contour rings (0.7), charted names (0.9), lamps, and fills are unchanged. Checked by hand on Victor's display against `ios-engineering` at the top scale: the dotted coasts, the `?` marks, and the open names read without leaning in; the lit/dark distinction on an island with two lamps is still obvious.
