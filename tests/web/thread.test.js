@@ -80,6 +80,11 @@ test("a mermaid fence is a code block with its language, closed only once the fe
   expect(mdBlocks("```mermaid\nflowchart TB").at(-1)).toMatchObject({ lang: "mermaid", closed: false });
 });
 
+test("a fence tag keeps hyphens and is lowercased", () => {
+  expect(mdBlocks("```objective-c\n@interface A\n```")[0]).toMatchObject({ lang: "objective-c", text: "@interface A", closed: true });
+  expect(mdBlocks("```Swift\nlet x = 1")[0]).toMatchObject({ lang: "swift", closed: false });
+});
+
 test("mdBlocks never loses text on partial input", () => {
   const full = "Measuring first is the **right instinct**, and you named it.\n\n- one\n- tw";
   for (let i = 0; i <= full.length; i++) {

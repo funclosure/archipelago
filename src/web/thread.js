@@ -87,11 +87,11 @@ export function mdBlocks(text) {
       } else fence.text += (fence.text ? "\n" : "") + raw;
       continue;
     }
-    const f = line.match(/^\s*```(\w*)/);
+    const f = line.match(/^\s*```([\w+-]*)/);
     if (f) {
       flushPara();
       flushList();
-      fence = { type: "code", lang: f[1], text: "", closed: false };
+      fence = { type: "code", lang: f[1].toLowerCase(), text: "", closed: false };
       continue;
     }
     const h = line.match(/^(#{1,3})\s+(.+)/);
