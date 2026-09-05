@@ -25,8 +25,8 @@ Victor: "one more skill that the teacher should have: not only rendering the flo
 `src/server/judge/PROTOCOL.md`:
 
 - §2's exception becomes "no markdown (except one diagram or code fence, §7 and §9)".
-- §7 gains "at most one fence per reply: a diagram or a code block, not both".
-- New **§9 Code**: Write code when a concrete snippet discriminates faster than prose, in one of three shapes: *predict* ("what does this print?"), *find* ("where does this break under load?"), *fix* ("write the one line that makes this safe"). A fenced block with a language tag (`swift`, `objective-c`, `kotlin`, `typescript`, `tsx`, `javascript`, `json`, `bash`, `python`, `sql`, `yaml`), three to twelve lines, no comments that answer the question. One fence per reply, and not in a reply that draws. Never in the opening turn, never to show off an API the question does not need. One sentence before it says what to look at. The fence does not count toward the 120 words. The reader may answer in code; treat their fence as their words.
+- §7 gains "at most one fence per reply: a diagram or a code block, not both" and "the fence does not count toward the 120 words of §2".
+- New **§9 Code**: Write code when a concrete snippet discriminates faster than prose, in one of three shapes: *predict* ("what does this print?"), *find* ("where does this break under load?"), *fix* ("write the one line that makes this safe"). A fenced block with a language tag (`swift`, `objective-c`, `kotlin`, `typescript`, `tsx`, `javascript`, `json`, `bash`, `python`, `sql`, `yaml`), three to twelve lines, no comments that answer the question. One fence per reply, and not in a reply that draws. Never in the opening turn, never to show off an API the question does not need. One sentence before it says what to look at; the fence sits between the nudge and the question. The fence does not count toward the 120 words. The reader may answer in code; treat their fence as their words.
 
 The stub judge (`src/server/judge/stub.ts`) answers a reader message containing `code` with a canned reply carrying a six-line Swift fence and a question, so the page can be checked without a login.
 
