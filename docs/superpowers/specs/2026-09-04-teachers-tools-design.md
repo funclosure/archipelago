@@ -1,7 +1,7 @@
 # Teacher's tools: diagrams, structured questions, and calls to action
 
 **Date:** 2026-09-04
-**Status:** approved design, awaiting plan
+**Status:** implemented (plan: docs/superpowers/plans/2026-09-05-teachers-tools.md)
 **Builds on:** chart-and-log (`2026-09-04-chart-and-log-design.md`), landmarks (`2026-09-04-landmarks-design.md`)
 **Prototype:** https://claude.ai/code/artifact/a251c701-2f8a-4bd2-9e1c-090be3cfa9c0
 
@@ -87,3 +87,7 @@ The `messages.kind` check is untouched: the question is a normal judge `text` me
 - The reader drawing diagrams. Editable diagrams.
 - Multi-select questions, free-text-only asks (the free answer already covers it).
 - Any other action in the call-to-action card.
+
+## Addendum
+
+The judge's acknowledgement is streamed before it calls `ask_reader`, so an ask cannot write its own message first without landing above the words that led to it. Instead the ask row carries the `question` and a nullable `message_id`; the route attaches unattached asks to the reply message it stores at the end of the turn, and stores the question itself when the reply is empty. `asks_ad` is unnecessary: asks are never deleted except by cascade.
