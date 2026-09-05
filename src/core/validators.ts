@@ -126,7 +126,13 @@ export const probeInputSchema = z.object({
 export const askInputSchema = z.object({
   question: z.string().trim().min(1),
   options: z
-    .array(z.string().trim().min(1))
+    .array(
+      z
+        .string()
+        .trim()
+        .min(1)
+        .refine((o) => !/\n/.test(o), { message: "an option cannot contain a newline" }),
+    )
     .min(2)
     .max(4)
     .refine((o) => new Set(o).size === o.length, { message: "options must be distinct" }),

@@ -6,6 +6,7 @@ import { ArchipelagoError, ConflictError, NotFoundError } from "../core/errors.t
 import {
   commentInputSchema, focusInputSchema, positionsInputSchema, probeInputSchema, reefAnswerInputSchema, slugSchema,
 } from "../core/validators.ts";
+import { attachAsks, listAsks, pickAsk } from "../core/repositories/askRepository.ts";
 import { listDomains, requireDomain } from "../core/repositories/domainRepository.ts";
 import { getIslandById, requireIsland, setIslandPositions } from "../core/repositories/islandRepository.ts";
 import { addVerdict, verdictHistory } from "../core/repositories/verdictRepository.ts";
@@ -160,7 +161,7 @@ async function handleApi(req: Request, url: URL, ctx: ServerContext): Promise<Re
       withDb(ctx, (db) => {
         const d = requireDomain(db, slug);
         const i = requireIsland(db, d.id, islandSlug);
-        return { island: i.slug, messages: listMessages(db, i.id) };
+        return { island: i.slug, messages: listMessages(db, i.id), asks: listAsks(db, i.id) };
       }),
     );
   }
@@ -169,9 +170,11 @@ async function handleApi(req: Request, url: URL, ctx: ServerContext): Promise<Re
     const input = probeInputSchema.parse(await req.json());
     const key = `${input.domain}/${input.island}`;
     if (inFlight.has(key)) throw new ConflictError("a turn is already running for this island");
+    if (input.askId !== undefined && !input.message) throw new ArchipelagoError("a pick needs a message");
     withDb(ctx, (db) => {
       const d = requireDomain(db, input.domain);
       const i = requireIsland(db, d.id, input.island);
+      if (input.askId !== undefined) pickAsk(db, d.id, input.askId, input.message!);
       if (input.message) addMessage(db, { domainId: d.id, islandId: i.id, role: "you", kind: "text", body: input.message });
     });
     inFlight.add(key);
@@ -191,13 +194,16 @@ async function handleApi(req: Request, url: URL, ctx: ServerContext): Promise<Re
       try {
         const turn = ctx.runner({ dbPath: ctx.dbPath, domain: input.domain, island: input.island, emit, signal: abort.signal });
         const reply = (await Promise.race([turn, expiry])).trim();
-        if (reply) {
-          withDb(ctx, (db) => {
-            const d = requireDomain(db, input.domain);
-            const i = requireIsland(db, d.id, input.island);
-            addMessage(db, { domainId: d.id, islandId: i.id, role: "judge", kind: "text", body: reply });
-          });
-        }
+        withDb(ctx, (db) => {
+          const d = requireDomain(db, input.domain);
+          const i = requireIsland(db, d.id, input.island);
+          // An ask recorded this turn rides on the reply; a silent turn still shows its question.
+          const unattached = listAsks(db, i.id).find((a) => a.messageId === null);
+          const body = reply || (unattached ? unattached.question : "");
+          if (!body) return;
+          const stored = addMessage(db, { domainId: d.id, islandId: i.id, role: "judge", kind: "text", body });
+          attachAsks(db, i.id, stored.id);
+        });
         emit({ type: "done" });
       } catch (error) {
         emit({ type: "error", message: error instanceof Error ? error.message : String(error) });

@@ -42,7 +42,12 @@ export function attachAsks(db: Database, islandId: number, messageId: number): n
 
 /** Records the reader's pick (an option or their own words). A second pick is a conflict. */
 export function pickAsk(db: Database, domainId: number, id: number, picked: string): Ask {
-  const ask = requireAsk(db, domainId, id);
-  if (ask.picked !== null) throw new ConflictError(`ask ${id} was already answered`);
-  return parse(db.query<Row, [string, number]>(`update asks set picked = ?, picked_at = ${NOW} where id = ? returning ${COLS}`).get(picked, id)!);
+  const row = db
+    .query<Row, [string, number, number]>(
+      `update asks set picked = ?, picked_at = ${NOW} where id = ? and domain_id = ? and picked is null returning ${COLS}`,
+    )
+    .get(picked, id, domainId);
+  if (row) return parse(row);
+  requireAsk(db, domainId, id); // no matching row: either it doesn't exist (throws NotFoundError) or it's already picked
+  throw new ConflictError(`ask ${id} was already answered`);
 }

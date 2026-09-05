@@ -217,5 +217,5 @@ test("the context carries a pending ask and the thread prompt shows the options 
   const ctx = islandContext(deps);
   expect(ctx.asks.map((a) => a.messageId)).toEqual([reply.id]);
   expect(renderContext(ctx)).toContain("Pending question");
-  expect(renderThreadPrompt(ctx.thread, ctx.asks)).toContain("[options: a | b]");
+  expect(renderThreadPrompt(ctx.thread, ctx.asks)).toContain("[options] a | b");
 });

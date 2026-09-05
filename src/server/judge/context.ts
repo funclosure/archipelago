@@ -125,7 +125,7 @@ export function renderContext(ctx: JudgeContext): string {
     lines.push(``, `Pending reef proposals (wait for the reader; do not propose again):`);
     for (const p of ctx.pendingReefs) lines.push(`- #${p.id} on ${p.proposal.target}: ${p.proposal.claim} — ${p.proposal.consequence}`);
   }
-  const pending = ctx.asks.find((a) => a.messageId !== null && a.picked === null);
+  const pending = ctx.asks.findLast((a) => a.messageId !== null && a.picked === null);
   if (pending) lines.push(``, `Pending question (wait for the reader's choice; do not ask again): ${pending.question} — options: ${pending.options.join(" | ")}`);
   return lines.join("\n");
 }
@@ -141,7 +141,11 @@ export function renderThreadPrompt(thread: Message[], asks: Ask[] = []): string 
     }
     const ask = asks.find((a) => a.messageId === m.id);
     const line = `${m.role === "you" ? "Reader" : "Judge"}: ${indent(m.body)}`;
-    return ask ? `${line}\n  [options: ${ask.options.join(" | ")}]${ask.picked !== null ? ` [picked: ${indent(ask.picked)}]` : ""}` : line;
+    if (!ask) return line;
+    // The markers sit at column 0: a reader's indented continuation lines (see `indent`) can never forge them.
+    const markers = [`[options] ${ask.options.join(" | ")}`];
+    if (ask.picked !== null) markers.push(`[picked] ${indent(ask.picked)}`);
+    return [line, ...markers].join("\n");
   });
   return [...lines, "", "Continue as the judge."].join("\n");
 }

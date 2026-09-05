@@ -308,6 +308,29 @@ test("the outline lists the whole tree", async () => {
   expect((await get("/api/outline?domain=nope")).status).toBe(404);
 });
 
+test("an ask attaches to the reply, shows in the thread, is picked through probe once", async () => {
+  // the stub asks on the second answer
+  await probe({ domain: "sd", island: "databases" });
+  await probe({ domain: "sd", island: "databases", message: "one" });
+  const r = await probe({ domain: "sd", island: "databases", message: "two" });
+  expect(r.status).toBe(200);
+  const t = await thread("databases");
+  expect(t.asks).toHaveLength(1);
+  const ask = t.asks[0];
+  expect(ask.picked).toBeNull();
+  expect(ask.messageId).toBe(t.messages.at(-1).id);
+  expect(t.messages.at(-1).body).toBe("Stub check: which of these is true?");
+  const pick = await probe({ domain: "sd", island: "databases", message: "the first option", askId: ask.id });
+  expect(pick.status).toBe(200);
+  const after = await thread("databases");
+  expect(after.asks[0].picked).toBe("the first option");
+  const again = await probe({ domain: "sd", island: "databases", message: "the second option", askId: ask.id });
+  expect(again.status).toBe(409);
+  const missing = await probe({ domain: "sd", island: "databases", askId: ask.id });
+  expect(missing.status).toBe(400);
+  expect((await probe({ domain: "sd", island: "databases", message: "x", askId: 999 })).status).toBe(404);
+});
+
 test("thread and probe errors, and the cross-site guard on probe", async () => {
   expect((await get("/api/thread?domain=sd&island=nope")).status).toBe(404);
   expect((await get("/api/thread?domain=sd&island=nope")).json).toEqual({ error: 'no island "nope" in this domain', valid: ["caching", "databases"] });
