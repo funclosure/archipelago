@@ -131,6 +131,7 @@ button:focus-visible, textarea:focus-visible, input:focus-visible { outline: 2px
 .outline .sum { padding: 10px 14px 6px; font-size: 11px; color: var(--muted); }
 .outline .sec { padding: 12px 14px 6px; font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
 :is(.outline, .peek) .list { list-style: none; margin: 0; padding: 0 8px 8px; overflow: auto; flex: 1; }
+:is(.outline, .peek) .list li + li { margin-top: 2px; }
 :is(.outline, .peek) .row { display: flex; align-items: center; gap: 10px; height: 32px; padding: 0 10px 0 8px; border-radius: 6px; cursor: pointer; color: var(--text);
   user-select: none; }
 :is(.outline, .peek) .row:hover { background: var(--panel-2); }
@@ -229,7 +230,7 @@ body[data-focus="pane"] #pane { box-shadow: inset 1px 0 var(--lamp), -12px 0 32p
 body[data-focus="map"] .map-focus { display: block; }
 body:not([data-focus="map"]) .map-focus { display: none; }
 body[data-focus="map"].pane-open .map-focus { right: var(--pane-w); }
-body[data-focus="outline"] :is(.outline, .peek) .row.cur { outline: 1px solid var(--lamp); outline-offset: -1px; }
+body[data-focus="outline"] :is(.outline, .peek) .row.cur { box-shadow: inset 0 0 0 1px var(--lamp); }
 body[data-focus="outline"] .outline .dash.cur { outline: 1px solid var(--lamp); outline-offset: 2px; }
 
 /* ---- cheat sheet ---- */
