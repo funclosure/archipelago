@@ -19,6 +19,7 @@ import { buildOutline, buildSnapshot } from "../core/view-model.ts";
 import { resolveCommentTarget, resolveVerdictTarget } from "../core/targets.ts";
 import { systemLine } from "./judge/tools.ts";
 import type { JudgeEvent, JudgeRunner } from "./judge/runner.ts";
+import { shikiBundle } from "./vendor.ts";
 
 export type ServerContext = { dbPath?: string; staticRoot: string; runner: JudgeRunner; turnTimeoutMs: number };
 
@@ -44,6 +45,12 @@ export async function handleRequest(req: Request, ctx: ServerContext): Promise<R
     const route = `${req.method} ${url.pathname}`;
     if (route === "GET /vendor/mermaid.js") {
       return new Response(Bun.file(MERMAID_PATH), { headers: { "Content-Type": "text/javascript; charset=utf-8", "Cache-Control": "no-cache" } });
+    }
+    if (route === "GET /vendor/shiki.js") {
+      const { body, etag } = await shikiBundle();
+      const headers = { "Content-Type": "text/javascript; charset=utf-8", "Cache-Control": "no-cache", ETag: etag };
+      if (req.headers.get("if-none-match") === etag) return new Response(null, { status: 304, headers });
+      return new Response(body, { headers });
     }
     return await serveStatic(url.pathname, ctx.staticRoot);
   } catch (error) {

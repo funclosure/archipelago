@@ -1,0 +1,16 @@
+// The one bundled artifact the page loads: shiki's sync core, its JavaScript regex engine, and the
+// eleven grammars the judge may use. Built once per process by `shikiBundle()` and served at
+// /vendor/shiki.js. Add a language here and in `LANGS` in src/web/code-model.js together.
+export { createHighlighterCoreSync } from "shiki/core";
+export { createJavaScriptRegexEngine } from "shiki/engine/javascript";
+export { default as swift } from "@shikijs/langs/swift";
+export { default as objectiveC } from "@shikijs/langs/objective-c";
+export { default as kotlin } from "@shikijs/langs/kotlin";
+export { default as typescript } from "@shikijs/langs/typescript";
+export { default as tsx } from "@shikijs/langs/tsx";
+export { default as javascript } from "@shikijs/langs/javascript";
+export { default as json } from "@shikijs/langs/json";
+export { default as bash } from "@shikijs/langs/bash";
+export { default as python } from "@shikijs/langs/python";
+export { default as sql } from "@shikijs/langs/sql";
+export { default as yaml } from "@shikijs/langs/yaml";

@@ -369,3 +369,17 @@ test("mermaid is served from the vendor route", async () => {
   expect(r.headers.get("content-type")).toContain("javascript");
   expect((await r.text()).length).toBeGreaterThan(100000);
 });
+
+test("shiki is bundled and served from the vendor route with an ETag", async () => {
+  const r = await fetch(`${base}/vendor/shiki.js`);
+  expect(r.status).toBe(200);
+  expect(r.headers.get("content-type")).toContain("javascript");
+  const etag = r.headers.get("etag");
+  expect(etag).toMatch(/^"[0-9a-f]+"$/);
+  const body = await r.text();
+  expect(body.length).toBeGreaterThan(500000);
+  expect(body).toContain("createHighlighterCoreSync");
+  const again = await fetch(`${base}/vendor/shiki.js`, { headers: { "if-none-match": etag! } });
+  expect(again.status).toBe(304);
+  expect(await again.text()).toBe("");
+});
