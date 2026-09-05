@@ -203,11 +203,12 @@ export function installOutline() {
   document.documentElement.style.setProperty("--outline-w", `${state.rail ? RAIL_W : FULL_W}px`);
   root.addEventListener("mouseenter", () => showPeek());
   root.addEventListener("mouseleave", (e) => { if (!(peek && e.relatedTarget && peek.contains(e.relatedTarget))) hidePeek(); });
+  // Capture phase: this runs before interactions.js's Escape handler on the same window, so closing the menu can swallow the key.
   window.addEventListener("keydown", (e) => {
     if (e.metaKey || e.ctrlKey || e.altKey) return;
     if (e.key === "Escape" && state.menuOpen) {
       closeMenu();
-      e.stopPropagation();
+      e.stopPropagation(); // stops the event before it reaches the target and the bubble-phase deselect
       return;
     }
     if (e.key !== "[") return;
@@ -215,7 +216,7 @@ export function installOutline() {
     if (t && (t.tagName === "INPUT" || t.tagName === "SELECT" || t.tagName === "TEXTAREA" || t.isContentEditable)) return;
     e.preventDefault();
     toggleRail();
-  });
+  }, { capture: true });
   app.listeners.add(() => render());
   render();
 }
