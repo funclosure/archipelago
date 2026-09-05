@@ -132,6 +132,10 @@ async function runTurn(slug, message, askId) {
   thread.error = null;
   if (message) thread.messages = [...thread.messages, { id: `local-${Date.now()}`, role: "you", kind: "text", body: message }];
   render();
+  if (message) {
+    const log = pane.querySelector(".log");
+    if (log) log.scrollTop = log.scrollHeight; // sending is a request to watch the reply arrive
+  }
   try {
     await streamPost("/api/probe", { domain: app.domain, island: slug, ...(message ? { message } : {}), ...(askId ? { askId } : {}) }, (e) => {
       if (thread.slug !== slug) return;
@@ -243,8 +247,11 @@ function focusAnswer() {
 
 function growAnswer(ta) {
   if (!ta) return;
+  const log = pane.querySelector(".log");
+  const stuck = log && atBottom(log);
   ta.style.height = "auto";
   ta.style.height = `${ta.scrollHeight}px`;
+  if (stuck) log.scrollTop = log.scrollHeight; // a taller answer box shrinks the log; keep it at the bottom
 }
 
 // ---- head ----
