@@ -329,6 +329,8 @@ test("an ask attaches to the reply, shows in the thread, is picked through probe
   const missing = await probe({ domain: "sd", island: "databases", askId: ask.id });
   expect(missing.status).toBe(400);
   expect((await probe({ domain: "sd", island: "databases", message: "x", askId: 999 })).status).toBe(404);
+  // an ask picked from another island's pane is not found there
+  expect((await probe({ domain: "sd", island: "caching", message: "x", askId: ask.id })).status).toBe(404);
 });
 
 test("thread and probe errors, and the cross-site guard on probe", async () => {

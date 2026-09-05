@@ -205,6 +205,7 @@ test("ask_reader records the options unattached and rejects bad option lists", (
   expect(() => askReader(deps, { question: "?", options: ["a", "a"] })).toThrow();
   expect(() => askReader(deps, { question: "?", options: ["a", "b", "c", "d", "e"] })).toThrow();
   expect(() => askReader(deps, { question: "", options: ["a", "b"] })).toThrow();
+  expect(() => askReader(deps, { question: "?", options: ["a\nb", "c"] })).toThrow(); // no newlines inside an option
 });
 
 test("the context carries a pending ask and the thread prompt shows the options after the question", () => {

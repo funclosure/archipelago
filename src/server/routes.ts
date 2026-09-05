@@ -7,7 +7,7 @@ import { ArchipelagoError, ConflictError, NotFoundError } from "../core/errors.t
 import {
   commentInputSchema, focusInputSchema, positionsInputSchema, probeInputSchema, reefAnswerInputSchema, slugSchema,
 } from "../core/validators.ts";
-import { attachAsks, listAsks, pickAsk } from "../core/repositories/askRepository.ts";
+import { attachAsks, listAsks, pickAsk, requireAsk } from "../core/repositories/askRepository.ts";
 import { listDomains, requireDomain } from "../core/repositories/domainRepository.ts";
 import { getIslandById, requireIsland, setIslandPositions } from "../core/repositories/islandRepository.ts";
 import { addVerdict, verdictHistory } from "../core/repositories/verdictRepository.ts";
@@ -181,7 +181,11 @@ async function handleApi(req: Request, url: URL, ctx: ServerContext): Promise<Re
     withDb(ctx, (db) => {
       const d = requireDomain(db, input.domain);
       const i = requireIsland(db, d.id, input.island);
-      if (input.askId !== undefined) pickAsk(db, d.id, input.askId, input.message!);
+      if (input.askId !== undefined) {
+        // An ask belongs to one island's thread; a pick from another island's pane is not this ask.
+        if (requireAsk(db, d.id, input.askId).islandId !== i.id) throw new NotFoundError(`no ask ${input.askId} on island:${i.slug}`);
+        pickAsk(db, d.id, input.askId, input.message!);
+      }
       if (input.message) addMessage(db, { domainId: d.id, islandId: i.id, role: "you", kind: "text", body: input.message });
     });
     inFlight.add(key);
