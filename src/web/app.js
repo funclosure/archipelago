@@ -133,7 +133,10 @@ export function paneInset() {
 /** How much of the viewport's left edge the outline covers: 0 when it is absent. */
 export function outlineInset() {
   const outline = document.getElementById("outline");
-  return outline && !outline.hidden ? outline.offsetWidth : 0;
+  if (!outline || outline.hidden) return 0;
+  // The intended width, not the measured one: the panel animates its width, and the map should frame against where it ends up.
+  const intended = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--outline-w"));
+  return Number.isFinite(intended) ? intended : outline.offsetWidth;
 }
 
 export function insets() {

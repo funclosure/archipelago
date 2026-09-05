@@ -61,7 +61,7 @@ function toggleRail() {
   hidePeek();
   save();
   render();
-  if (matchMedia("(prefers-reduced-motion: reduce)").matches) frameSelection();
+  frameSelection(); // frames against the intended width (outlineInset reads --outline-w), so the map settles where the panel will
 }
 
 function toggleExpanded(slug) {
@@ -188,7 +188,6 @@ export function installOutline() {
   document.documentElement.style.setProperty("--outline-w", `${state.rail ? RAIL_W : FULL_W}px`);
   root.addEventListener("mouseenter", () => showPeek());
   root.addEventListener("mouseleave", (e) => { if (!(peek && e.relatedTarget && peek.contains(e.relatedTarget))) hidePeek(); });
-  root.addEventListener("transitionend", (e) => { if (e.propertyName === "width") frameSelection(); });
   window.addEventListener("keydown", (e) => {
     if (e.key !== "[") return;
     const t = e.target;
