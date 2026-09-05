@@ -8,6 +8,8 @@ import { select } from "./interactions.js";
 const pane = document.getElementById("pane");
 const STICK_PX = 40;            // within this of the bottom, the log follows new content
 const ROUNDS = 4;
+const PANE_MIN = 340;
+const PANE_MAX = 760;
 
 let noteDraft = "";       // note text survives re-renders
 let noteOpen = false;     // the "Note to cartographer" field is showing
@@ -38,8 +40,11 @@ const thread = {
 
 export function installCard() {
   try {
-    const saved = localStorage.getItem("pane-w");
-    if (saved) document.documentElement.style.setProperty("--pane-w", saved);
+    const saved = parseFloat(localStorage.getItem("pane-w"));
+    if (Number.isFinite(saved)) {
+      const w = Math.min(PANE_MAX, Math.max(PANE_MIN, saved));
+      document.documentElement.style.setProperty("--pane-w", `${w}px`);
+    }
   } catch {
     /* storage unavailable */
   }
@@ -359,7 +364,7 @@ function reefEl(item) {
   return box;
 }
 
-function choicesEl(ask) {
+function choicesEl(ask, reefPending) {
   const box = el("div", "choices");
   box.append(el("div", "q", ask.picked !== null ? "you chose" : "choose one, or answer below"));
   for (const option of ask.options) {
@@ -367,7 +372,7 @@ function choicesEl(ask) {
     if (ask.picked !== null) {
       b.disabled = true;
       if (ask.picked === option) b.classList.add("picked");
-    } else if (thread.inFlight) {
+    } else if (thread.inFlight || reefPending) {
       b.disabled = true;
     }
     box.append(b);
@@ -375,7 +380,7 @@ function choicesEl(ask) {
   return box;
 }
 
-function itemEl(item) {
+function itemEl(item, reefPending) {
   if (item.kind === "landmark") return el("div", "lit-line", `◆ ${item.names.join(" · ")}`);
   if (item.kind === "verdict") return verdictEl(item.verdict);
   if (item.kind === "system") return el("div", "msg system", item.text);
@@ -383,7 +388,7 @@ function itemEl(item) {
   const m = el("div", `msg ${item.role}`);
   m.append(renderMarkdown(item.text));
   const ask = item.role === "judge" ? askFor(thread.asks, item.id) : null;
-  if (ask) m.append(choicesEl(ask));
+  if (ask) m.append(choicesEl(ask, reefPending));
   return m;
 }
 
@@ -413,7 +418,8 @@ function logEl(island) {
   }
   // a verdict written from the terminal has no system line; show it at the top of the log
   if (island.verdict && !items.some((i) => i.kind === "verdict")) log.append(verdictEl(island.verdict));
-  for (const item of items) log.append(itemEl(item));
+  const reefPending = Boolean(items.find((i) => i.kind === "reef_proposal" && i.proposal.status === "pending"));
+  for (const item of items) log.append(itemEl(item, reefPending));
   const live = el("div", "msg judge");
   live.id = "live";
   live.hidden = true;
@@ -572,9 +578,6 @@ function nearestOpen() {
   const i = s.islands.find((x) => x.slug === slug);
   return i ? { slug, name: i.name } : null;
 }
-
-const PANE_MIN = 340;
-const PANE_MAX = 760;
 
 function gripEl() {
   const grip = el("div", "grip");

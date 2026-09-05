@@ -1,7 +1,6 @@
 // mdBlocks → DOM. Built with createElement and textContent only; never innerHTML.
 import { mdBlocks } from "./thread.js";
 
-const svgCache = new Map(); // diagram source → SVG markup; streaming re-renders never redraw
 const nodeCache = new Map(); // diagram source → parsed SVG node, cloned on repeat appends
 const pending = new Map(); // diagram source → in-flight render promise, shared across frames
 let mermaidReady = false;
@@ -31,6 +30,12 @@ function mermaidInit() {
 function svgNode(markup) {
   const doc = new DOMParser().parseFromString(markup, "image/svg+xml");
   if (doc.getElementsByTagName("parsererror").length > 0 || doc.documentElement.nodeName === "parsererror") return null;
+  for (const n of doc.querySelectorAll("script")) n.remove();
+  for (const el of doc.querySelectorAll("*")) {
+    for (const attr of [...el.attributes]) {
+      if (attr.name.toLowerCase().startsWith("on")) el.removeAttribute(attr.name);
+    }
+  }
   return document.importNode(doc.documentElement, true);
 }
 
@@ -66,7 +71,6 @@ function diagramElement(source) {
     p = window.mermaid
       .render(`diagram-${++diagramSeq}`, source)
       .then(({ svg }) => {
-        svgCache.set(source, svg);
         pending.delete(source);
         return svg;
       })

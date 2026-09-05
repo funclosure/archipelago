@@ -11,7 +11,6 @@ import type { Ask, Landmark, Message, ReefProposal, Verdict, VerdictState } from
 
 export type JudgeContext = {
   domain: { slug: string; name: string };
-  islandId: number;
   island: { slug: string; name: string; summary: string | null; path: string[] };
   verdict: Verdict | null;
   history: Verdict[];
@@ -60,7 +59,6 @@ export function buildJudgeContext(db: Database, domainSlug: string, islandSlug: 
     .filter((p) => p.proposal.status === "pending");
   return {
     domain: { slug: domain.slug, name: domain.name },
-    islandId: island.id,
     island: { slug: island.slug, name: island.name, summary: island.summary, path: islandPath(db, island.id).map((i) => i.slug) },
     verdict: latestVerdict(db, "island", island.id),
     history: verdictHistory(db, "island", island.id),

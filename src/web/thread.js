@@ -18,9 +18,9 @@ export function landmarkFromSystem(body) {
   return typeof body === "string" && body.startsWith(LANDMARK_PREFIX) ? body.slice(LANDMARK_PREFIX.length) : null;
 }
 
-/** The ask attached to a message, matched by messageId, or null. */
+/** The latest ask attached to a message, matched by messageId, or null. */
 export function askFor(asks, messageId) {
-  return asks.find((a) => a.messageId === messageId) ?? null;
+  return asks.filter((a) => a.messageId === messageId).at(-1) ?? null;
 }
 
 /** Stored messages → items the card renders. A proposal that fails to parse renders as plain text. */

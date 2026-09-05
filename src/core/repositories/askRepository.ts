@@ -35,9 +35,17 @@ export function pendingAsk(db: Database, islandId: number): Ask | null {
   return row ? parse(row) : null;
 }
 
-/** Attaches every unattached ask on the island to the reply message. Returns how many rows changed. */
-export function attachAsks(db: Database, islandId: number, messageId: number): number {
-  return db.query<{ id: number }, [number, number]>(`update asks set message_id = ? where island_id = ? and message_id is null returning id`).all(messageId, islandId).length;
+/**
+ * Attaches every unattached ask on the island, created after `sinceId`, to the reply message.
+ * Returns how many rows changed. An ask from before the turn started (orphaned by an earlier,
+ * unrelated reply) never attaches to a later one.
+ */
+export function attachAsks(db: Database, islandId: number, messageId: number, sinceId = 0): number {
+  return db
+    .query<{ id: number }, [number, number, number]>(
+      `update asks set message_id = ? where island_id = ? and message_id is null and id > ? returning id`,
+    )
+    .all(messageId, islandId, sinceId).length;
 }
 
 /** Records the reader's pick (an option or their own words). A second pick is a conflict. */

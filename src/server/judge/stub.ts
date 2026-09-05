@@ -1,18 +1,5 @@
-import type { Database } from "bun:sqlite";
-import { openDatabase } from "../../core/db.ts";
-import { listAsks } from "../../core/repositories/askRepository.ts";
 import type { JudgeRunner } from "./runner.ts";
 import { askReader, islandContext, proposeReef, recordVerdict, setLandmarks, unlockLandmark } from "./tools.ts";
-
-/** Mirrors tools.ts's private helper: each call opens and closes the database, like every request. */
-function withDb<T>(dbPath: string | undefined, fn: (db: Database) => T): T {
-  const db = openDatabase(dbPath);
-  try {
-    return fn(db);
-  } finally {
-    db.close();
-  }
-}
 
 const CANNED = [
   { slug: "shape", name: "Shape" }, { slug: "scale", name: "Scale" }, { slug: "failure", name: "Failure" }, { slug: "tradeoff", name: "Tradeoff" },
@@ -74,7 +61,7 @@ export const stubRunner: JudgeRunner = async ({ dbPath, domain, island, emit }) 
   }
   // A second answer that matched none of the keywords above gets a canned ask, once.
   const answers = ctx.thread.filter((m) => m.role === "you" && m.kind === "text").length;
-  if (answers === 2 && withDb(dbPath, (db) => listAsks(db, ctx.islandId).length) === 0) {
+  if (answers === 2 && ctx.asks.length === 0) {
     emit({ type: "progress", message: "ask_reader" });
     askReader(deps, { question: "Stub check: which of these is true?", options: ["the first option", "the second option", "the third option"] });
     return say("Stub check: which of these is true?");

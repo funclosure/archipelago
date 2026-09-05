@@ -8,6 +8,7 @@ import { upsertDomain } from "../../src/core/repositories/domainRepository.ts";
 import { upsertIsland } from "../../src/core/repositories/islandRepository.ts";
 import { upsertStrait } from "../../src/core/repositories/straitRepository.ts";
 import { addVerdict } from "../../src/core/repositories/verdictRepository.ts";
+import { addAsk } from "../../src/core/repositories/askRepository.ts";
 import { parseSse } from "./sse.ts";
 import type { JudgeRunner } from "../../src/server/judge/runner.ts";
 
@@ -331,6 +332,20 @@ test("an ask attaches to the reply, shows in the thread, is picked through probe
   expect((await probe({ domain: "sd", island: "databases", message: "x", askId: 999 })).status).toBe(404);
   // an ask picked from another island's pane is not found there
   expect((await probe({ domain: "sd", island: "caching", message: "x", askId: ask.id })).status).toBe(404);
+});
+
+test("an ask orphaned from an earlier turn never attaches to a later reply", async () => {
+  const dbPath = join(dir, "test.sqlite");
+  const db = openDatabase(dbPath);
+  const domainId = upsertDomain(db, { slug: "sd", name: "System Design" }).id;
+  const islandId = upsertIsland(db, { domainId, slug: "databases", name: "Databases" }).id;
+  const orphan = addAsk(db, { domainId, islandId, question: "Orphaned: which resource saturates first?", options: ["CPU", "Memory"] });
+  db.close();
+  const r = await probe({ domain: "sd", island: "databases", message: "hello" });
+  expect(r.status).toBe(200);
+  const t = await thread("databases");
+  expect(t.asks.find((a: any) => a.id === orphan.id)?.messageId).toBeNull();
+  expect(t.messages.some((m: any) => m.body === orphan.question)).toBe(false);
 });
 
 test("thread and probe errors, and the cross-site guard on probe", async () => {

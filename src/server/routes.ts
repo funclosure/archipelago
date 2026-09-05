@@ -43,7 +43,7 @@ export async function handleRequest(req: Request, ctx: ServerContext): Promise<R
     if (req.method !== "GET") return json({ error: "method not allowed" }, 405);
     const route = `${req.method} ${url.pathname}`;
     if (route === "GET /vendor/mermaid.js") {
-      return new Response(Bun.file(MERMAID_PATH), { headers: { "Content-Type": "text/javascript; charset=utf-8", "Cache-Control": "public, max-age=86400" } });
+      return new Response(Bun.file(MERMAID_PATH), { headers: { "Content-Type": "text/javascript; charset=utf-8", "Cache-Control": "no-cache" } });
     }
     return await serveStatic(url.pathname, ctx.staticRoot);
   } catch (error) {
@@ -178,15 +178,18 @@ async function handleApi(req: Request, url: URL, ctx: ServerContext): Promise<Re
     const key = `${input.domain}/${input.island}`;
     if (inFlight.has(key)) throw new ConflictError("a turn is already running for this island");
     if (input.askId !== undefined && !input.message) throw new ArchipelagoError("a pick needs a message");
-    withDb(ctx, (db) => {
+    const askFloor = withDb(ctx, (db) => {
       const d = requireDomain(db, input.domain);
       const i = requireIsland(db, d.id, input.island);
-      if (input.askId !== undefined) {
-        // An ask belongs to one island's thread; a pick from another island's pane is not this ask.
-        if (requireAsk(db, d.id, input.askId).islandId !== i.id) throw new NotFoundError(`no ask ${input.askId} on island:${i.slug}`);
-        pickAsk(db, d.id, input.askId, input.message!);
-      }
-      if (input.message) addMessage(db, { domainId: d.id, islandId: i.id, role: "you", kind: "text", body: input.message });
+      return db.transaction(() => {
+        if (input.askId !== undefined) {
+          // An ask belongs to one island's thread; a pick from another island's pane is not this ask.
+          if (requireAsk(db, d.id, input.askId).islandId !== i.id) throw new NotFoundError(`no ask ${input.askId} on island:${i.slug}`);
+          pickAsk(db, d.id, input.askId, input.message!);
+        }
+        if (input.message) addMessage(db, { domainId: d.id, islandId: i.id, role: "you", kind: "text", body: input.message });
+        return listAsks(db, i.id).at(-1)?.id ?? 0;
+      })();
     });
     inFlight.add(key);
     return sseResponse(async (emit) => {
@@ -209,11 +212,13 @@ async function handleApi(req: Request, url: URL, ctx: ServerContext): Promise<Re
           const d = requireDomain(db, input.domain);
           const i = requireIsland(db, d.id, input.island);
           // An ask recorded this turn rides on the reply; a silent turn still shows its question.
-          const unattached = listAsks(db, i.id).find((a) => a.messageId === null);
+          // Only an ask created since this turn started counts: one left unattached from an earlier,
+          // unrelated reply must never latch onto this one.
+          const unattached = listAsks(db, i.id).find((a) => a.messageId === null && a.id > askFloor);
           const body = reply || (unattached ? unattached.question : "");
           if (!body) return;
           const stored = addMessage(db, { domainId: d.id, islandId: i.id, role: "judge", kind: "text", body });
-          attachAsks(db, i.id, stored.id);
+          attachAsks(db, i.id, stored.id, askFloor);
         });
         emit({ type: "done" });
       } catch (error) {

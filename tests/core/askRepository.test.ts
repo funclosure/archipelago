@@ -38,3 +38,13 @@ test("an ask is stored unattached, attaches to the reply message, is picked once
   const b = addAsk(db, { domainId, islandId, question: "Again?", options: ["x", "y"] });
   expect(listAsks(db, islandId).map((x) => x.id)).toEqual([a.id, b.id]);
 });
+
+test("attachAsks with sinceId skips asks created at or before the floor", () => {
+  const before = addAsk(db, { domainId, islandId, question: "Before the floor", options: ["x", "y"] });
+  const floor = before.id;
+  const after = addAsk(db, { domainId, islandId, question: "After the floor", options: ["x", "y"] });
+  const reply = addMessage(db, { domainId, islandId, role: "judge", kind: "text", body: "reply" });
+  expect(attachAsks(db, islandId, reply.id, floor)).toBe(1);
+  expect(requireAsk(db, domainId, before.id).messageId).toBeNull();
+  expect(requireAsk(db, domainId, after.id).messageId).toBe(reply.id);
+});

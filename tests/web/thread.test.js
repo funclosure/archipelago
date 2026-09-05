@@ -121,3 +121,8 @@ test("askFor finds the ask attached to a message", () => {
   expect(askFor(asks, 8)).toBeNull();
   expect(askFor([], 7)).toBeNull();
 });
+
+test("askFor returns the latest ask when more than one is attached to the same message", () => {
+  const asks = [{ id: 1, messageId: 9, options: ["a", "b"], picked: null }, { id: 2, messageId: 9, options: ["c", "d"], picked: null }];
+  expect(askFor(asks, 9).id).toBe(2);
+});
