@@ -2,6 +2,7 @@ import { app, api, setScale, frameSelection } from "./app.js";
 import { streamPost } from "./stream.js";
 import { logItems, askFor } from "./thread.js";
 import { renderMarkdown } from "./markdown.js";
+import { loadHighlighter } from "./code.js";
 import { renderCta } from "./cta.js";
 import { select } from "./interactions.js";
 
@@ -49,6 +50,7 @@ export function installCard() {
     /* storage unavailable */
   }
   app.listeners.add(() => render());
+  loadHighlighter(() => render());
   render();
 }
 

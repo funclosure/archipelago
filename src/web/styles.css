@@ -6,6 +6,9 @@
   --water: var(--sea); --text: rgba(255, 255, 255, .92); --muted: rgba(255, 255, 255, .55);
   --sand: var(--lamp); --land: var(--grass); --ridge: var(--snow);
   --panel: #163449; --panel-2: #245069; --line: rgba(255, 255, 255, .14); --open: rgba(255, 255, 255, .30);
+  /* code slots; a theme switch changes these six and nothing in the highlighter */
+  --code-fg: var(--text); --code-keyword: var(--lamp); --code-string: var(--sand-fill);
+  --code-comment: var(--muted); --code-type: var(--snow); --code-number: var(--grass);
   --outline-w: 232px;
   --pane-w: 480px;
 }
@@ -179,6 +182,21 @@ button:focus-visible, textarea:focus-visible, input:focus-visible { outline: 2px
 .diagram { margin: 6px 0 8px; padding: 10px 8px; background: var(--water); border: 1px solid var(--line); border-radius: 8px; overflow-x: auto; }
 .diagram svg { max-width: none; height: auto; display: block; margin: 0 auto; }
 .diagram .cap { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; margin-bottom: 6px; }
+
+/* ---- code blocks ---- */
+.codeblock { margin: 6px 0 8px; padding: 8px 10px 10px; background: var(--water); border: 1px solid var(--line); border-radius: 8px; }
+.codeblock .cap { display: flex; justify-content: space-between; align-items: center; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; margin-bottom: 6px; }
+.codeblock .copy { font: inherit; letter-spacing: inherit; text-transform: inherit; color: var(--muted); background: none; border: 0; padding: 0; cursor: pointer; }
+.codeblock .copy:hover { color: var(--lamp); }
+.codeblock .copy:focus-visible { outline: 1px solid var(--lamp); outline-offset: 2px; }
+.msg .codeblock pre { margin: 0; padding: 0; background: none; overflow-x: auto; white-space: pre; font-size: 12px; line-height: 1.5; }
+.msg .codeblock code { color: var(--code-fg); }
+.tok-keyword { color: var(--code-keyword); }
+.tok-string { color: var(--code-string); }
+.tok-comment { color: var(--code-comment); }
+.tok-type { color: var(--code-type); }
+.tok-number { color: var(--code-number); }
+.tok-i { font-style: italic; }
 
 /* ---- choices under a judge message ---- */
 .choices { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }

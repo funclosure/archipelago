@@ -1,5 +1,6 @@
 // mdBlocks → DOM. Built with createElement and textContent only; never innerHTML.
 import { mdBlocks } from "./thread.js";
+import { codeElement } from "./code.js";
 
 const nodeCache = new Map(); // diagram source → parsed SVG node, cloned on repeat appends
 const pending = new Map(); // diagram source → in-flight render promise, shared across frames
@@ -129,8 +130,10 @@ export function renderMarkdown(text) {
       frag.append(list);
     } else if (b.type === "code" && b.lang === "mermaid" && b.closed) {
       frag.append(diagramElement(b.text));
+    } else if (b.type === "code" && b.lang === "mermaid") {
+      frag.append(sourceBlock("drawing a diagram…"));
     } else if (b.type === "code") {
-      frag.append(sourceBlock(b.lang === "mermaid" ? "drawing a diagram…" : b.text));
+      frag.append(codeElement(b.lang, b.text, b.closed));
     }
   }
   return frag;
