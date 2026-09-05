@@ -6,6 +6,7 @@
   --water: var(--sea); --text: rgba(255, 255, 255, .92); --muted: rgba(255, 255, 255, .55);
   --sand: var(--lamp); --land: var(--grass); --ridge: var(--snow);
   --panel: #163449; --panel-2: #245069; --line: rgba(255, 255, 255, .14); --open: rgba(255, 255, 255, .30);
+  --outline-w: 232px;
 }
 html, body { margin: 0; height: 100%; background: var(--water); color: var(--text);
   font: 14px/1.5 system-ui, -apple-system, sans-serif; overflow: hidden; }
@@ -13,7 +14,7 @@ html, body { margin: 0; height: 100%; background: var(--water); color: var(--tex
 #map.dragging { cursor: grabbing; }
 #map.hover { cursor: pointer; }
 
-.chrome { position: fixed; left: 0; display: flex; padding: 16px 20px; pointer-events: none; }
+.chrome { position: fixed; left: var(--outline-w); display: flex; padding: 16px 20px; pointer-events: none; }
 .chrome > * { pointer-events: auto; }
 .top { top: 0; }
 .chrome-stack { display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
@@ -104,3 +105,59 @@ button:focus-visible, textarea:focus-visible, input:focus-visible { outline: 2px
 .foot textarea:disabled { color: var(--muted); }
 .foot .meta { display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); }
 .foot .meta .busy { color: var(--sand); }
+
+/* ---- the outline: Linear rows, Shuttle rail ---- */
+.outline { position: fixed; top: 0; left: 0; bottom: 0; width: var(--outline-w); background: var(--panel); border-right: 1px solid var(--line);
+  display: flex; flex-direction: column; z-index: 2; font-size: 13px; line-height: 1.35; transition: width .18s ease; }
+.outline .oh { position: relative; height: 44px; padding: 0 8px 0 12px; border-bottom: 1px solid var(--line); display: flex; align-items: center; gap: 6px; flex: none; }
+.outline .ws { display: flex; align-items: center; gap: 6px; padding: 4px 6px; border: 0; border-radius: 6px; background: transparent; font: inherit; font-weight: 500;
+  color: var(--text); cursor: pointer; min-width: 0; }
+.outline .ws:hover { background: var(--panel-2); }
+.outline .ws .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.outline .ws .chev { color: var(--muted); font-size: 10px; }
+.outline .sp { flex: 1; }
+.outline .ib { width: 26px; height: 26px; border: 0; background: transparent; color: var(--muted); border-radius: 6px; cursor: pointer; font: 13px system-ui, sans-serif;
+  display: grid; place-items: center; }
+.outline .ib:hover { background: var(--panel-2); color: var(--text); }
+.outline .menu { position: absolute; top: 40px; left: 8px; min-width: 200px; background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, .5); padding: 6px; z-index: 6; display: grid; gap: 2px; }
+.outline .mi { text-align: left; border: 0; background: transparent; color: var(--text); font: inherit; padding: 6px 8px; border-radius: 6px; cursor: pointer; }
+.outline .mi:hover { background: var(--panel-2); }
+.outline .mi.on { background: rgba(245, 194, 66, .12); }
+.outline .sum { padding: 10px 14px 6px; font-size: 11px; color: var(--muted); }
+.outline .sec { padding: 10px 14px 4px; font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+:is(.outline, .peek) .list { list-style: none; margin: 0; padding: 0 8px 8px; overflow: auto; flex: 1; }
+:is(.outline, .peek) .row { display: flex; align-items: center; gap: 8px; height: 28px; padding: 0 8px 0 6px; border-radius: 6px; cursor: pointer; color: var(--text);
+  user-select: none; }
+:is(.outline, .peek) .row:hover { background: var(--panel-2); }
+:is(.outline, .peek) .row.on { background: rgba(245, 194, 66, .12); }
+:is(.outline, .peek) .row.islet { height: 26px; font-size: 12.5px; }
+:is(.outline, .peek) .row .tw { width: 14px; height: 14px; border: 0; background: transparent; color: var(--muted); font-size: 9px; border-radius: 4px; flex: none;
+  display: grid; place-items: center; cursor: pointer; padding: 0; }
+:is(.outline, .peek) .row .tw:hover { background: var(--line); color: var(--text); }
+:is(.outline, .peek) .row .tw.none { visibility: hidden; }
+:is(.outline, .peek) .row .dot { width: 8px; height: 8px; border-radius: 50%; flex: none; border: 1px dashed var(--open); box-sizing: border-box; }
+:is(.outline, .peek) .row.islet .dot { width: 6px; height: 6px; }
+:is(.outline, .peek) .row .dot.lit { border-style: solid; border-color: var(--lamp); }
+:is(.outline, .peek) .row .dot.sandbar { background: var(--sand-fill); border: 0; }
+:is(.outline, .peek) .row .dot.settled, :is(.outline, .peek) .row .dot.mountainous { background: var(--grass); border: 0; }
+:is(.outline, .peek) .row .dot.reef { background: var(--sand-fill); border: 0; box-shadow: inset 0 -2px 0 var(--reef); }
+:is(.outline, .peek) .row .name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+:is(.outline, .peek) .row .name.open { color: var(--muted); }
+:is(.outline, .peek) .row .anchor { color: var(--lamp); font-size: 11px; }
+:is(.outline, .peek) .row .n { font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.outline .ft { padding: 8px 14px; border-top: 1px solid var(--line); font-size: 11px; color: var(--muted); display: flex; justify-content: space-between; flex: none; }
+.outline kbd { font: 10px ui-monospace, Menlo, monospace; border: 1px solid var(--line); border-radius: 4px; padding: 0 4px; color: var(--muted); }
+.outline.rail { width: 44px; }
+.outline.rail .oh { padding: 0; justify-content: center; }
+.outline.rail .ws, .outline.rail .sp, .outline.rail .sum, .outline.rail .sec, .outline.rail .list, .outline.rail .ft { display: none; }
+.outline .dashes { display: none; flex: 1; flex-direction: column; justify-content: center; align-items: flex-start; gap: 7px; padding-left: 14px; }
+.outline.rail .dashes { display: flex; }
+.outline .dash { height: 3px; border-radius: 2px; background: var(--muted); opacity: .35; width: 14px; cursor: pointer; transition: width .15s, opacity .15s; }
+.outline .dash.lit { opacity: .6; width: 18px; background: var(--lamp); }
+.outline .dash.done { opacity: .9; width: 22px; background: var(--grass); }
+.outline .dash.on { opacity: 1; width: 26px; background: var(--lamp); }
+.outline .dash:hover { opacity: 1; }
+.peek { position: fixed; left: 52px; top: 52px; width: 240px; max-height: calc(100vh - 104px); background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, .5); z-index: 5; display: flex; flex-direction: column; font-size: 13px; overflow: hidden; }
+.peek[hidden] { display: none; }
