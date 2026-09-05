@@ -112,3 +112,12 @@ test("the second answer gets a canned ask; picking the first option lights 'shap
   expect(listLandmarks(db2, caching).find((l) => l.slug === "shape")?.unlockedAt).not.toBeNull();
   db2.close();
 });
+
+test("a message containing 'code' gets a reply with a six-line swift fence", async () => {
+  await turn();
+  const { reply } = await turn("show me code");
+  const fence = /```swift\n([\s\S]*?)\n```/.exec(reply);
+  expect(fence).not.toBeNull();
+  expect(fence![1].split("\n")).toHaveLength(6);
+  expect(reply.trim().endsWith("?")).toBe(true);
+});

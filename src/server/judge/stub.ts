@@ -10,7 +10,7 @@ const CANNED = [
  * last message, and writes through the same tool functions the SDK runner uses:
  *   first open on a landmark-less island → set_landmarks (four canned) · "unlock <slug>" → unlock_landmark ·
  *   "the first option" (once asked) → unlock_landmark "shape" · the second answer, unasked → ask_reader (canned) ·
- *   "fail" → throws · "reef" → propose_reef · "settled" → record_verdict settled · else a canned follow-up.
+ *   "fail" → throws · "reef" → propose_reef · "code" → a canned swift fence · "settled" → record_verdict settled · else a canned follow-up.
  */
 export const stubRunner: JudgeRunner = async ({ dbPath, domain, island, emit }) => {
   const deps = { dbPath, domain, island };
@@ -58,6 +58,17 @@ export const stubRunner: JudgeRunner = async ({ dbPath, domain, island, emit }) 
       rationale: "stub: the message contained the word settled",
     });
     return say(`Charted as settled. Where next: ${ctx.nearestOpenWater[0] ?? "nowhere, everything is charted"}.`);
+  }
+  if (text.includes("code")) {
+    const snippet = [
+      "final class Cache<Key: Hashable> {",
+      "  private var store: [Key: Int] = [:]",
+      "  func get(_ key: Key) -> Int? { store[key] }",
+      "  func set(_ key: Key, _ value: Int) { store[key] = value }",
+      "  var count: Int { store.count }",
+      "}",
+    ].join("\n");
+    return say(`Look at how this cache is read and written from two threads.\n\n\`\`\`swift\n${snippet}\n\`\`\`\n\nWhere does it break?`);
   }
   // A second answer that matched none of the keywords above gets a canned ask, once.
   const answers = ctx.thread.filter((m) => m.role === "you" && m.kind === "text").length;
