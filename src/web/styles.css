@@ -1,11 +1,11 @@
 :root {
   /* Contour palette */
-  --sea: #1B3F5B; --line-1: #FFFFFF; --line-07: rgba(255, 255, 255, .7); --line-03: rgba(255, 255, 255, .3);
+  --sea: #1B3F5B; --line-1: #FFFFFF; --line-07: rgba(255, 255, 255, .7); --line-03: rgba(255, 255, 255, .45);
   --lamp: #F5C242; --reef: #D9473A; --sand-fill: #E7D39A; --grass: #6FAF5E; --snow: #F2F4F1;
   /* the chrome's names, aliased onto the palette */
-  --water: var(--sea); --text: rgba(255, 255, 255, .92); --muted: rgba(255, 255, 255, .55);
+  --water: var(--sea); --text: rgba(255, 255, 255, .92); --muted: rgba(255, 255, 255, .65);
   --sand: var(--lamp); --land: var(--grass); --ridge: var(--snow);
-  --panel: #163449; --panel-2: #245069; --line: rgba(255, 255, 255, .14); --open: rgba(255, 255, 255, .30);
+  --panel: #163449; --panel-2: #245069; --line: rgba(255, 255, 255, .14); --open: rgba(255, 255, 255, .40);
   /* code slots; a theme switch changes these six and nothing in the highlighter */
   --code-fg: var(--text); --code-keyword: var(--lamp); --code-string: var(--sand-fill);
   --code-comment: var(--muted); --code-type: var(--snow); --code-number: var(--grass);

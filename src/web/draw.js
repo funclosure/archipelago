@@ -117,7 +117,7 @@ function drawCoast(ctx, node, coast, now) {
   const dotted = () => {
     ctx.setLineDash([1, 5]);
     ctx.lineWidth = 1;
-    ctx.strokeStyle = alpha(PALETTE.line, 0.3);
+    ctx.strokeStyle = alpha(PALETTE.line, 0.45);
     ctx.stroke();
     ctx.setLineDash([]);
   };
@@ -150,7 +150,7 @@ function drawCoast(ctx, node, coast, now) {
       ctx.font = "9px Georgia, 'Times New Roman', serif";
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
-      ctx.fillStyle = alpha(PALETTE.line, 0.3);
+      ctx.fillStyle = alpha(PALETTE.line, 0.45);
       ctx.fillText("?", p.x, p.y);
     }
   });
@@ -176,7 +176,7 @@ function drawLamps(ctx, node, now) {
     } else {
       ctx.beginPath();
       ctx.arc(p.x, p.y, 2.2, 0, Math.PI * 2);
-      ctx.strokeStyle = alpha(PALETTE.line, 0.35);
+      ctx.strokeStyle = alpha(PALETTE.line, 0.5);
       ctx.lineWidth = 1;
       ctx.stroke();
     }
@@ -195,7 +195,7 @@ function drawName(ctx, node) {
   ctx.font = "20px Georgia, 'Times New Roman', serif";
   ctx.textAlign = "center";
   ctx.textBaseline = "top";
-  ctx.fillStyle = alpha(PALETTE.line, node.state === "open" ? 0.6 : 0.9);
+  ctx.fillStyle = alpha(PALETTE.line, node.state === "open" ? 0.75 : 0.9);
   ctx.fillText(node.name, CENTRE, NAME_Y);
 }
 
@@ -257,7 +257,7 @@ export function drawStrait(ctx, link, { dim = false } = {}) {
   };
   if (link.state === "open") {
     ctx.setLineDash([2 * s, 6 * s]);
-    ctx.strokeStyle = alpha(PALETTE.line, 0.3);
+    ctx.strokeStyle = alpha(PALETTE.line, 0.45);
     ctx.lineWidth = 1 * s;
     line(0, 0);
   } else if (link.state === "reef") {
