@@ -8,9 +8,10 @@ const CANNED = [
 /**
  * No-login judge for `serve --stub` and tests. Reads the thread, reacts to a keyword in the reader's
  * last message, and writes through the same tool functions the SDK runner uses:
- *   first open on a landmark-less island → set_landmarks (four canned) · "unlock <slug>" → unlock_landmark ·
- *   "the first option" (once asked) → unlock_landmark "shape" · the second answer, unasked → ask_reader (canned) ·
- *   "fail" → throws · "reef" → propose_reef · "settled" → record_verdict settled · "code" → a canned swift fence · else a canned follow-up.
+ *   first open on a landmark-less island → set_landmarks (four canned) · then, in the order they are tested:
+ *   "unlock <slug>" → unlock_landmark · "the first option" (once asked) → unlock_landmark "shape" · "fail" → throws ·
+ *   "reef" → propose_reef · "settled" → record_verdict settled · "code" → a canned swift fence ·
+ *   the second answer that matched none of those, unasked → ask_reader (canned) · else a canned follow-up.
  */
 export const stubRunner: JudgeRunner = async ({ dbPath, domain, island, emit }) => {
   const deps = { dbPath, domain, island };

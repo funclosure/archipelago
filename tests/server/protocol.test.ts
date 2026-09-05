@@ -16,6 +16,6 @@ test("the protocol names the states, the five tools, the round shape, and the fo
 test("§9 sets the code rule: three shapes, three to twelve lines, one fence per reply, never in the opening", () => {
   const text = readProtocol();
   const nine = text.slice(text.indexOf("## 9. Code"));
-  for (const word of ["predict", "find", "fix", "three to twelve lines", "not both", "Never in the opening turn"]) expect(nine).toContain(word);
+  for (const word of ["predict", "find", "fix", "three to twelve lines", "not both", "Never in the opening turn", "between the nudge and the question"]) expect(nine).toContain(word);
   expect(text).toContain("except one diagram or code fence");
 });

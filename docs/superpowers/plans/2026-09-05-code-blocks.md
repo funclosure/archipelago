@@ -1,5 +1,7 @@
 # Code Blocks Implementation Plan
 
+> **Amended after the final review:** the engine is oniguruma, not the JavaScript regex engine (it mis-tokenized end-of-line comments); `loadHighlighter` warns on failure; see the spec.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** The judge writes fenced code in its replies under a protocol rule, and the page colours it with shiki in Contour's palette, with a language caption and a Copy button.

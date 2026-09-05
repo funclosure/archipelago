@@ -1,7 +1,7 @@
 # Code blocks: the judge writes code, the page colours it
 
 **Date:** 2026-09-05
-**Status:** approved, awaiting plan
+**Status:** implemented (plan: `docs/superpowers/plans/2026-09-05-code-blocks.md`)
 **Builds on:** teacher's tools (`2026-09-04-teachers-tools-design.md`), contour (`2026-09-05-contour-design.md`)
 **Reference:** Shuttle's `app/src/utils/shiki.ts` and `CodeBlock.tsx` (shiki 3, GitHub themes, languages on demand, plain text for an unknown language)
 
@@ -13,7 +13,7 @@ Victor: "one more skill that the teacher should have: not only rendering the flo
 
 | Question | Decision |
 |---|---|
-| Highlighter | shiki 3 (as Shuttle), TextMate grammars, JavaScript regex engine, no wasm. |
+| Highlighter | shiki 3 (as Shuttle), TextMate grammars, oniguruma engine; the wasm is served at `/vendor/onig.wasm`. The JavaScript regex engine was tried first and dropped end-of-line comments in swift and typescript. |
 | Serving | The server bundles shiki once per process with `Bun.build` and serves it at `GET /vendor/shiki.js`. The page's own code stays unbundled. This is the one bundling exception and CLAUDE.md records it. |
 | Colours | Contour's palette. The shiki theme only sorts tokens into six slots with sentinel colours; the real colours are CSS variables beside the palette tokens, so a later theme switch touches one stylesheet block. |
 | Chrome | A caption naming the language and a `Copy` button. Long lines scroll sideways. |
@@ -35,15 +35,15 @@ The stub judge (`src/server/judge/stub.ts`) answers a reader message containing 
 `src/server/vendor/shiki-entry.js`:
 
 ```js
-export { createHighlighterCoreSync } from "shiki/core";
-export { createJavaScriptRegexEngine } from "shiki/engine/javascript";
+export { createHighlighterCore } from "shiki/core";
+export { createOnigurumaEngine } from "shiki/engine/oniguruma";
 export { default as swift } from "@shikijs/langs/swift";
 // … objective-c, kotlin, typescript, tsx, javascript, json, bash, python, sql, yaml
 ```
 
-`src/server/vendor.ts` exports `shikiBundle(): Promise<{ body: string; etag: string }>`: a module-level promise that runs `Bun.build({ entrypoints: [entry], target: "browser", format: "esm", minify: true })` once, hashes the output (`Bun.hash`, hex) for the ETag, and rejects with the build's messages if it fails. `routes.ts` serves `GET /vendor/shiki.js` with `Content-Type: text/javascript`, `Cache-Control: no-cache`, `ETag`, and answers `304` when `If-None-Match` matches. Measured: 29 ms to build, 1.0 MB output.
+`src/server/vendor.ts` exports `shikiBundle(): Promise<{ body: string; etag: string }>`: a module-level promise that runs `Bun.build({ entrypoints: [entry], target: "browser", format: "esm", minify: true })` once, hashes the output (`Bun.hash`, hex) for the ETag, and rejects with the build's messages if it fails. `routes.ts` serves `GET /vendor/shiki.js` with `Content-Type: text/javascript`, `Cache-Control: no-cache`, `ETag`, and answers `304` when `If-None-Match` matches. Measured: 29 ms to build, 1.0 MB output. A second route, `GET /vendor/onig.wasm`, serves the engine's wasm from `shiki/dist/onig.wasm` with `Content-Type: application/wasm` and `Cache-Control: no-cache`; the type matters, because the page hands the `fetch` response straight to the engine, which uses `WebAssembly.instantiateStreaming` when it is right.
 
-`shiki` joins `dependencies` in `package.json`. `bun test` builds it once; the route test asserts the module exports `createHighlighterCoreSync`.
+`shiki` joins `dependencies` in `package.json`. `bun test` builds it once; the route test asserts the module exports `createHighlighterCore` and `createOnigurumaEngine`, and that the wasm route answers with `application/wasm`.
 
 ## Page
 
@@ -59,7 +59,7 @@ export { default as swift } from "@shikijs/langs/swift";
 
 **`src/web/code.js`** (DOM):
 
-- `loadHighlighter()`: `import("/vendor/shiki.js")` once; on resolve builds the highlighter with `createHighlighterCoreSync({ langs, themes: [contourTheme], engine: createJavaScriptRegexEngine({ forgiving: true }) })`, then warms each grammar on `requestIdleCallback` (falling back to `setTimeout`) by tokenizing a three-line snippet per language, since the first real tokenize of a language costs about 150 ms. After the first load it calls `onReady` once so the pane re-renders.
+- `loadHighlighter()`: `import("/vendor/shiki.js")` once; on resolve builds the highlighter with `await createHighlighterCore({ langs, themes: [contourTheme], engine: createOnigurumaEngine(fetch("/vendor/onig.wasm")) })`, then warms each grammar on `requestIdleCallback` (falling back to `setTimeout`) by tokenizing a three-line snippet per language, since the first real tokenize of a language costs about 150 ms. After the first load it calls `onReady` once so the pane re-renders — outside the `catch`, so a throw from the pane's render is not mistaken for a highlighter failure. A failed import or build warns to the console (`code highlighting unavailable:`) and leaves the page plain; a later call may try again.
 - `codeElement(tag, text, closed)`: `<div class="codeblock">` with `<div class="cap">` holding the label and, when `navigator.clipboard` exists, a `Copy` button; then `<pre><code>` with one `<span class="tok-<slot>">` per token (italic tokens also get `tok-i`), lines joined by newline text nodes. Without a highlighter or with an unknown language, `code` holds the text as one node. Closed blocks cache their spans by `lang + "\n" + text` in a `Map` capped at 64 entries (oldest evicted); open blocks tokenize every frame.
 - Copy writes the text; the button reads `Copied` for 1.5 s, then `Copy` again.
 
@@ -74,9 +74,10 @@ export { default as swift } from "@shikijs/langs/swift";
 
 ## Tests
 
-- `tests/server/routes.test.ts`: `/vendor/shiki.js` is served as JavaScript with an ETag; a matching `If-None-Match` gets 304; the body contains `createHighlighterCoreSync`.
+- `tests/server/routes.test.ts`: `/vendor/shiki.js` is served as JavaScript with an ETag; a matching `If-None-Match` gets 304; the body contains `createHighlighterCore` and `createOnigurumaEngine`; `/vendor/onig.wasm` is served as `application/wasm`.
 - `tests/server/protocol.test.ts`: §9 exists and names the fence rule.
 - `tests/server/stub.test.ts`: a reader message with `code` gets a reply with a `swift` fence.
+- `tests/web/code-highlight.test.js`: a real oniguruma highlighter over one short sample per language; every token colour is a sentinel; the typescript and swift end-of-line comments come back whole and italic; json separates its key from its number.
 - `tests/web/code-model.test.js`: `resolveLang` aliases and unknowns; `spansOf` maps sentinels to slots, unknown colours to `fg`, italics; `labelOf`.
 - `tests/web/thread.test.js`: a `objective-c` tag survives; `Swift` lowercases.
 - By hand against the stub: a Swift fence colours while streaming and after; `Copy` reads `Copied`; an unknown language shows plain with its label; a diagram still renders.
