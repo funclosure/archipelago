@@ -90,7 +90,8 @@ function applySnapshot(snapshot) {
     app.placing = new Set(unplaced().map((n) => n.slug));
   }
   // A reload should still show the terminal's focus, without posting a fresh selection.
-  if (isFirstSnapshot) app.selected = snapshot.focus;
+  // Only an island at this scale can be selected; a focus set elsewhere would dim the whole map with nothing to frame.
+  if (isFirstSnapshot && snapshot.islands.some((i) => i.slug === snapshot.focus)) app.selected = snapshot.focus;
   renderChrome();
   for (const fn of app.listeners) fn(snapshot);
   if (!sameScale) frameSelection(); // the listeners have opened or closed the pane; refit home to the map area and frame the selection or go home
