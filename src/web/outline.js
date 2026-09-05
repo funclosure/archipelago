@@ -208,7 +208,7 @@ export function installOutline() {
     if (e.metaKey || e.ctrlKey || e.altKey) return;
     if (e.key === "Escape" && state.menuOpen) {
       closeMenu();
-      e.stopPropagation(); // stops the event before it reaches the target and the bubble-phase deselect
+      e.stopImmediatePropagation(); // no other listener sees this Escape: the menu closes and the island stays selected
       return;
     }
     if (e.key !== "[") return;
