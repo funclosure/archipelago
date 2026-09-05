@@ -10,7 +10,7 @@ const CANNED = [
  * last message, and writes through the same tool functions the SDK runner uses:
  *   first open on a landmark-less island → set_landmarks (four canned) · "unlock <slug>" → unlock_landmark ·
  *   "the first option" (once asked) → unlock_landmark "shape" · the second answer, unasked → ask_reader (canned) ·
- *   "fail" → throws · "reef" → propose_reef · "code" → a canned swift fence · "settled" → record_verdict settled · else a canned follow-up.
+ *   "fail" → throws · "reef" → propose_reef · "settled" → record_verdict settled · "code" → a canned swift fence · else a canned follow-up.
  */
 export const stubRunner: JudgeRunner = async ({ dbPath, domain, island, emit }) => {
   const deps = { dbPath, domain, island };
