@@ -1,7 +1,7 @@
 # Keyboard: one focused region, Linear keys
 
 **Date:** 2026-09-05
-**Status:** approved, awaiting plan
+**Status:** implemented (plan: docs/superpowers/plans/2026-09-05-keyboard.md)
 **Builds on:** outline (`2026-09-04-outline-design.md`), chart-and-log (`2026-09-04-chart-and-log-design.md`), teacher's tools (`2026-09-04-teachers-tools-design.md`)
 
 ## Why
@@ -26,6 +26,8 @@ Victor: "for the left panel, can we support keyboard up and down, and let's thin
 The focused region shows a 1px lamp line along its inner edge: the outline's right edge, the pane's left edge, and for the map a line along the top of the map area between the outline and the pane (`#map-focus`, positioned from `--outline-w` and `--pane-w`). Reduced motion does not matter here; it is a static line. The outline's cursor row draws only while the outline is focused.
 
 Tab and Shift-Tab always move the region (`preventDefault`), even from inside the answer box. Nothing else on the page is a Tab stop except the buttons that already are, which remain reachable by mouse and by the letter keys below; the region cycle is the keyboard's way around.
+
+A region whose container is hidden never keeps focus: the dispatcher steps past it, and deselecting from the pane hands focus to the map.
 
 ## Keys
 
