@@ -1,0 +1,137 @@
+// One keydown listener for the page. Exactly one region (outline, map, pane) has focus; keys go to it.
+// Global keys (Tab, [, ?, /, Escape, Cmd-Enter) are handled here; everything else is the region's.
+import { app } from "./app.js";
+import { select } from "./interactions.js";
+import { REGIONS, nextRegion, isTyping, escapeRung, cheatSheet } from "./keys-model.js";
+
+const handlers = {}; // region name → handler
+let current = "outline";
+let sheetOpen = false;
+
+const containers = () => ({
+  outline: document.querySelector("#outline .list") ?? document.getElementById("outline"),
+  map: document.getElementById("map"),
+  pane: document.getElementById("pane"),
+});
+
+export function registerRegion(name, handler) {
+  handlers[name] = handler;
+}
+
+export function region() {
+  return current;
+}
+
+/** Moves focus to a region: stamps the body, moves DOM focus, tells the regions. */
+export function setRegion(name) {
+  if (!REGIONS.includes(name)) return;
+  const prev = current;
+  current = name;
+  document.body.dataset.focus = name;
+  const c = containers()[name];
+  if (c && document.activeElement !== c && !(c.contains(document.activeElement) && isTyping(document.activeElement))) c.focus({ preventScroll: true });
+  if (prev !== name) handlers[prev]?.onBlur?.();
+  handlers[name]?.onFocus?.();
+  if (sheetOpen) renderSheet();
+}
+
+function el(tag, className, text) {
+  const e = document.createElement(tag);
+  if (className) e.className = className;
+  if (text !== undefined) e.textContent = text;
+  return e;
+}
+
+function renderSheet() {
+  const box = document.getElementById("keys");
+  if (!box) return;
+  box.hidden = !sheetOpen;
+  box.replaceChildren();
+  if (!sheetOpen) return;
+  const card = el("div", "keys-card");
+  card.append(el("div", "lbl", "Keys"));
+  const cols = el("div", "cols");
+  for (const section of cheatSheet(current)) {
+    const col = el("div", "col");
+    col.append(el("div", "sec", section.title));
+    for (const [k, label] of section.keys) {
+      const row = el("div", "krow");
+      row.append(el("kbd", null, k), el("span", null, label));
+      col.append(row);
+    }
+    cols.append(col);
+  }
+  card.append(cols);
+  box.append(card);
+}
+
+function toggleSheet() {
+  sheetOpen = !sheetOpen;
+  renderSheet();
+}
+
+function escape(e) {
+  const rung = escapeRung({
+    sheetOpen,
+    menuOpen: handlers.outline?.menuOpen?.() ?? false,
+    typing: isTyping(e.target),
+    cursor: current === "outline" && (handlers.outline?.hasCursor?.() ?? false),
+    selected: Boolean(app.selected),
+  });
+  if (!rung) return;
+  e.preventDefault();
+  e.stopImmediatePropagation();
+  if (rung === "sheet") toggleSheet();
+  else if (rung === "menu") handlers.outline?.closeMenu?.();
+  else if (rung === "blur") {
+    e.target.blur();
+    containers()[current]?.focus({ preventScroll: true });
+  } else if (rung === "cursor") handlers.outline?.clearCursor?.();
+  else if (rung === "deselect") void select(null);
+}
+
+function onKeydown(e) {
+  if (e.key === "Tab") {
+    e.preventDefault();
+    setRegion(nextRegion(current, e.shiftKey));
+    return;
+  }
+  if (e.key === "Escape") {
+    escape(e);
+    return;
+  }
+  if (e.key === "Enter" && e.metaKey) {
+    if (handlers.pane?.send?.()) e.preventDefault();
+    return;
+  }
+  if (isTyping(e.target)) return; // the field owns its keys
+  if (e.metaKey || e.ctrlKey || e.altKey) return; // browser shortcuts stay the browser's
+  if (e.key === "?") {
+    e.preventDefault();
+    toggleSheet();
+    return;
+  }
+  if (e.key === "[") {
+    e.preventDefault();
+    handlers.outline?.toggleRail?.();
+    return;
+  }
+  if (e.key === "/") {
+    e.preventDefault();
+    setRegion("pane");
+    handlers.pane?.focusAnswer?.();
+    return;
+  }
+  if (sheetOpen) return; // the sheet is modal for region keys
+  if (handlers[current]?.onKey?.(e)) e.preventDefault();
+}
+
+export function installKeys() {
+  window.addEventListener("keydown", onKeydown, { capture: true });
+  for (const [name, c] of Object.entries(containers())) {
+    c?.addEventListener("mousedown", () => setRegion(name));
+  }
+  // The outline list is rebuilt on every render; catch its mousedowns from the aside.
+  document.getElementById("outline")?.addEventListener("mousedown", () => setRegion("outline"));
+  setRegion("outline");
+}

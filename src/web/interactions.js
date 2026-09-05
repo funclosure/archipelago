@@ -104,12 +104,4 @@ export function installInteractions(canvas) {
     },
     { passive: false },
   );
-
-  window.addEventListener("keydown", (e) => {
-    if (e.key !== "Escape") return;
-    const t = e.target;
-    const typing = t && (t.tagName === "INPUT" || t.tagName === "SELECT" || t.tagName === "TEXTAREA" || t.isContentEditable);
-    if (typing) return;
-    void select(null);
-  });
 }

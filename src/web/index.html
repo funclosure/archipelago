@@ -7,7 +7,8 @@
 <link rel="stylesheet" href="/styles.css">
 </head>
 <body>
-<canvas id="map"></canvas>
+<canvas id="map" tabindex="0" aria-label="Map"></canvas>
+<div id="map-focus" class="map-focus" hidden></div>
 <aside id="outline" class="outline" aria-label="Outline"></aside>
 
 <header class="chrome top">
@@ -18,8 +19,9 @@
   </div>
 </header>
 
-<aside id="pane" class="pane" hidden></aside>
+<aside id="pane" class="pane" tabindex="0" hidden></aside>
 <div id="cta" class="cta" hidden></div>
+<div id="keys" class="keys" hidden></div>
 
 <script src="/vendor/mermaid.js"></script>
 <script type="module" src="/app.js"></script>

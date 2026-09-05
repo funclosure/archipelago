@@ -5,6 +5,7 @@ import { clear, drawIsland, drawStrait } from "./draw.js";
 import { installInteractions } from "./interactions.js";
 import { installCard } from "./card.js";
 import { installOutline } from "./outline.js";
+import { installKeys } from "./keys.js";
 
 const canvas = document.getElementById("map");
 const ctx = canvas.getContext("2d");
@@ -307,6 +308,7 @@ async function boot() {
   installInteractions(canvas);
   installCard();
   installOutline();
+  installKeys();
   try {
     await refresh();
   } catch (error) {
