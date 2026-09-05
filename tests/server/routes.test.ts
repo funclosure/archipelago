@@ -345,3 +345,10 @@ test("thread and probe errors, and the cross-site guard on probe", async () => {
   const wrongType = await fetch(base + "/api/probe", { method: "POST", headers: { "content-type": "text/plain" }, body: "{}" });
   expect(wrongType.status).toBe(415);
 });
+
+test("mermaid is served from the vendor route", async () => {
+  const r = await fetch(`${base}/vendor/mermaid.js`);
+  expect(r.status).toBe(200);
+  expect(r.headers.get("content-type")).toContain("javascript");
+  expect((await r.text()).length).toBeGreaterThan(100000);
+});

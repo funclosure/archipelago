@@ -3,7 +3,7 @@ import { readProtocol } from "../../src/server/judge/protocol.ts";
 
 test("the protocol names the states, the five tools, the round shape, and the four-answer rule", () => {
   const text = readProtocol();
-  for (const word of ["sandbar", "settled", "mountainous", "reef", "record_verdict", "propose_reef", "island_context", "set_landmarks", "unlock_landmark"]) {
+  for (const word of ["sandbar", "settled", "mountainous", "reef", "record_verdict", "propose_reef", "island_context", "set_landmarks", "unlock_landmark", "ask_reader", "## 7. Diagrams", "## 8. Asking with options"]) {
     expect(text).toContain(word);
   }
   expect(text).toMatch(/acknowledge/i);

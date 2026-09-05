@@ -1,5 +1,6 @@
 import type { Database } from "bun:sqlite";
 import { normalize, resolve, sep } from "node:path";
+import { fileURLToPath } from "node:url";
 import { z } from "zod";
 import { openDatabase } from "../core/db.ts";
 import { ArchipelagoError, ConflictError, NotFoundError } from "../core/errors.ts";
@@ -21,6 +22,8 @@ import type { JudgeEvent, JudgeRunner } from "./judge/runner.ts";
 
 export type ServerContext = { dbPath?: string; staticRoot: string; runner: JudgeRunner; turnTimeoutMs: number };
 
+const MERMAID_PATH = fileURLToPath(import.meta.resolve("mermaid/dist/mermaid.min.js"));
+
 const PING_MS = 20_000;
 /** How long one judge turn may run before the island is released. Overridable by `ARCHIPELAGO_TURN_TIMEOUT_MS`. */
 export const JUDGE_TURN_TIMEOUT_MS = 180_000;
@@ -38,6 +41,10 @@ export async function handleRequest(req: Request, ctx: ServerContext): Promise<R
       return await handleApi(req, url, ctx);
     }
     if (req.method !== "GET") return json({ error: "method not allowed" }, 405);
+    const route = `${req.method} ${url.pathname}`;
+    if (route === "GET /vendor/mermaid.js") {
+      return new Response(Bun.file(MERMAID_PATH), { headers: { "Content-Type": "text/javascript; charset=utf-8", "Cache-Control": "public, max-age=86400" } });
+    }
     return await serveStatic(url.pathname, ctx.staticRoot);
   } catch (error) {
     return errorResponse(error);
