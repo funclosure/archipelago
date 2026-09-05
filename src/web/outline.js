@@ -1,44 +1,9 @@
 // The outline: the domain's tree on the left. Pure helpers first (tested), then the DOM.
 import { app, setScale, frameSelection } from "./app.js";
 import { select } from "./interactions.js";
+import { FULL_W, RAIL_W, visibleRows, dashClass, countNodes, summaryLine } from "./outline-model.js";
 
-export const FULL_W = 232;
-export const RAIL_W = 44;
-
-/** Whether `slug` is `node` or one of its descendants. */
-function holds(node, slug) {
-  if (!slug) return false;
-  if (node.slug === slug) return true;
-  return node.children.some((c) => holds(c, slug));
-}
-
-/** The rows to draw: each island, and the islets of islands that are expanded or hold the selection. */
-export function visibleRows(islands, expanded, selected, depth = 0) {
-  const rows = [];
-  for (const node of islands) {
-    const hasChildren = node.children.length > 0;
-    const open = hasChildren && (expanded.has(node.slug) || holds(node, selected));
-    rows.push({ node, depth, hasChildren, open });
-    if (open) rows.push(...visibleRows(node.children, expanded, selected, depth + 1));
-  }
-  return rows;
-}
-
-/** The rail dash's class for a top-level island. */
-export function dashClass(node, selected) {
-  if (node.slug === selected) return "dash on";
-  if (node.state !== "open") return "dash done";
-  if (node.landmarks.unlocked > 0) return "dash lit";
-  return "dash";
-}
-
-export function countNodes(islands) {
-  return islands.reduce((n, i) => n + 1 + countNodes(i.children), 0);
-}
-
-export function summaryLine(outline) {
-  return `${outline.charted} of ${countNodes(outline.islands)} charted · ${outline.lit} lit`;
-}
+// app.js imports installOutline from here and this file imports app: fine, because nothing below reads app or select at module evaluation.
 
 // ---- DOM ----
 
@@ -96,7 +61,7 @@ function toggleRail() {
   hidePeek();
   save();
   render();
-  frameSelection();
+  if (matchMedia("(prefers-reduced-motion: reduce)").matches) frameSelection();
 }
 
 function toggleExpanded(slug) {
@@ -134,7 +99,7 @@ function showPeek() {
   if (!peek) {
     peek = el("div", "peek");
     peek.id = "peek";
-    peek.addEventListener("mouseleave", hidePeek);
+    peek.addEventListener("mouseleave", (e) => { if (!(e.relatedTarget && root.contains(e.relatedTarget))) hidePeek(); });
     document.body.append(peek);
   }
   peek.hidden = false;
@@ -222,6 +187,8 @@ export function installOutline() {
   load();
   document.documentElement.style.setProperty("--outline-w", `${state.rail ? RAIL_W : FULL_W}px`);
   root.addEventListener("mouseenter", () => showPeek());
+  root.addEventListener("mouseleave", (e) => { if (!(peek && e.relatedTarget && peek.contains(e.relatedTarget))) hidePeek(); });
+  root.addEventListener("transitionend", (e) => { if (e.propertyName === "width") frameSelection(); });
   window.addEventListener("keydown", (e) => {
     if (e.key !== "[") return;
     const t = e.target;

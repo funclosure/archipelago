@@ -14,7 +14,7 @@ html, body { margin: 0; height: 100%; background: var(--water); color: var(--tex
 #map.dragging { cursor: grabbing; }
 #map.hover { cursor: pointer; }
 
-.chrome { position: fixed; left: var(--outline-w); display: flex; padding: 16px 20px; pointer-events: none; }
+.chrome { position: fixed; left: var(--outline-w); display: flex; padding: 16px 20px; pointer-events: none; transition: left .18s ease; }
 .chrome > * { pointer-events: auto; }
 .top { top: 0; }
 .chrome-stack { display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
@@ -161,3 +161,5 @@ button:focus-visible, textarea:focus-visible, input:focus-visible { outline: 2px
 .peek { position: fixed; left: 52px; top: 52px; width: 240px; max-height: calc(100vh - 104px); background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
   box-shadow: 0 16px 40px rgba(0, 0, 0, .5); z-index: 5; display: flex; flex-direction: column; font-size: 13px; overflow: hidden; }
 .peek[hidden] { display: none; }
+
+@media (prefers-reduced-motion: reduce) { .outline, .chrome { transition: none; } }

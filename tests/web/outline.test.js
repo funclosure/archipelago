@@ -1,19 +1,5 @@
-import { test, expect, mock } from "bun:test";
-
-// outline.js imports app.js and interactions.js for its DOM half; neither is exercised by these
-// pure-function tests, but a static import still evaluates them, and app.js unconditionally
-// touches `document`/`location` and calls `boot()` at module scope (there being no browser here).
-// Stub both before a dynamic import so the pure helpers below load without a DOM.
-mock.module("../../src/web/app.js", () => ({
-  app: { domain: null, scale: null, selected: null, outline: null, listeners: new Set() },
-  setScale: async () => {},
-  frameSelection: () => {},
-}));
-mock.module("../../src/web/interactions.js", () => ({
-  select: async () => {},
-}));
-
-const { visibleRows, dashClass, summaryLine, countNodes } = await import("../../src/web/outline.js");
+import { test, expect } from "bun:test";
+import { visibleRows, dashClass, summaryLine, countNodes } from "../../src/web/outline-model.js";
 
 const node = (slug, extra = {}, children = []) => ({
   slug, name: slug, state: "open", landmarks: { total: 4, unlocked: 0 }, harbour: false, scale: null, children, ...extra,
