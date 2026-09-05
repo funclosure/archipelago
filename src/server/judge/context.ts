@@ -5,11 +5,13 @@ import { listStraits } from "../../core/repositories/straitRepository.ts";
 import { latestVerdict, latestVerdicts, verdictHistory } from "../../core/repositories/verdictRepository.ts";
 import { listMessages, parseProposal } from "../../core/repositories/messageRepository.ts";
 import { listLandmarks } from "../../core/repositories/landmarkRepository.ts";
+import { listAsks } from "../../core/repositories/askRepository.ts";
 import { buildSnapshot } from "../../core/view-model.ts";
-import type { Landmark, Message, ReefProposal, Verdict, VerdictState } from "../../core/types.ts";
+import type { Ask, Landmark, Message, ReefProposal, Verdict, VerdictState } from "../../core/types.ts";
 
 export type JudgeContext = {
   domain: { slug: string; name: string };
+  islandId: number;
   island: { slug: string; name: string; summary: string | null; path: string[] };
   verdict: Verdict | null;
   history: Verdict[];
@@ -24,6 +26,7 @@ export type JudgeContext = {
   pendingReefs: { id: number; proposal: ReefProposal }[];
   thread: Message[];
   landmarks: Landmark[];
+  asks: Ask[];
   /** Reader answers so far: the count of `you` text messages. */
   round: number;
 };
@@ -57,6 +60,7 @@ export function buildJudgeContext(db: Database, domainSlug: string, islandSlug: 
     .filter((p) => p.proposal.status === "pending");
   return {
     domain: { slug: domain.slug, name: domain.name },
+    islandId: island.id,
     island: { slug: island.slug, name: island.name, summary: island.summary, path: islandPath(db, island.id).map((i) => i.slug) },
     verdict: latestVerdict(db, "island", island.id),
     history: verdictHistory(db, "island", island.id),
@@ -66,6 +70,7 @@ export function buildJudgeContext(db: Database, domainSlug: string, islandSlug: 
     pendingReefs,
     thread,
     landmarks: listLandmarks(db, island.id),
+    asks: listAsks(db, island.id),
     round: thread.filter((m) => m.role === "you" && m.kind === "text").length,
   };
 }
@@ -120,11 +125,13 @@ export function renderContext(ctx: JudgeContext): string {
     lines.push(``, `Pending reef proposals (wait for the reader; do not propose again):`);
     for (const p of ctx.pendingReefs) lines.push(`- #${p.id} on ${p.proposal.target}: ${p.proposal.claim} — ${p.proposal.consequence}`);
   }
+  const pending = ctx.asks.find((a) => a.messageId !== null && a.picked === null);
+  if (pending) lines.push(``, `Pending question (wait for the reader's choice; do not ask again): ${pending.question} — options: ${pending.options.join(" | ")}`);
   return lines.join("\n");
 }
 
 /** The stored thread as the turn's prompt. Stateless: the model sees the whole thread every turn. */
-export function renderThreadPrompt(thread: Message[]): string {
+export function renderThreadPrompt(thread: Message[], asks: Ask[] = []): string {
   if (thread.length === 0) return "Open the probe on this island.";
   const lines = thread.map((m) => {
     if (m.kind === "system") return `[map] ${indent(m.body)}`;
@@ -132,7 +139,9 @@ export function renderThreadPrompt(thread: Message[]): string {
       const p = parseProposal(m.body);
       return `[reef proposal #${m.id}, ${p.status}] ${p.claim} — ${p.consequence}`;
     }
-    return `${m.role === "you" ? "Reader" : "Judge"}: ${indent(m.body)}`;
+    const ask = asks.find((a) => a.messageId === m.id);
+    const line = `${m.role === "you" ? "Reader" : "Judge"}: ${indent(m.body)}`;
+    return ask ? `${line}\n  [options: ${ask.options.join(" | ")}]${ask.picked !== null ? ` [picked: ${indent(ask.picked)}]` : ""}` : line;
   });
   return [...lines, "", "Continue as the judge."].join("\n");
 }

@@ -2,12 +2,12 @@ import { z } from "zod";
 import { ArchipelagoError } from "../../core/errors.ts";
 import { readProtocol } from "./protocol.ts";
 import { renderContext, renderThreadPrompt } from "./context.ts";
-import { islandContext, proposeReef, recordVerdict, setLandmarks, unlockLandmark } from "./tools.ts";
+import { askReader, islandContext, proposeReef, recordVerdict, setLandmarks, unlockLandmark } from "./tools.ts";
 import type { JudgeRunner } from "./runner.ts";
 
 export const DEFAULT_MODEL = "claude-opus-5";
 const SERVER = "archipelago";
-const TOOL_NAMES = ["island_context", "record_verdict", "propose_reef", "set_landmarks", "unlock_landmark"];
+const TOOL_NAMES = ["island_context", "record_verdict", "propose_reef", "set_landmarks", "unlock_landmark", "ask_reader"];
 const MAX_TURNS = 16;
 
 async function loadSdk() {
@@ -64,7 +64,7 @@ export const sdkRunner: JudgeRunner = async ({ dbPath, domain, island, emit, sig
   const deps = { dbPath, domain, island };
   const context = islandContext(deps);
   const systemPrompt = `${readProtocol()}\n\n${renderContext(context)}`;
-  const prompt = renderThreadPrompt(context.thread);
+  const prompt = renderThreadPrompt(context.thread, context.asks);
 
   const server = sdk.createSdkMcpServer({
     name: SERVER,
@@ -112,6 +112,12 @@ export const sdkRunner: JudgeRunner = async ({ dbPath, domain, island, emit, sig
         "Light one landmark the reader's latest answer covered: they explained or applied it, not merely named it. Evidence is a verbatim quote from that answer.",
         { slug: z.string(), evidence: z.string() },
         async (args) => guard(() => unlockLandmark(deps, args)),
+      ),
+      sdk.tool(
+        "ask_reader",
+        "Ask the reader to choose: a question and 2–4 short options, one of them what they would say if they already understood. The options appear under your reply; end the reply with the question and stop.",
+        { question: z.string(), options: z.array(z.string()).min(2).max(4) },
+        async (args) => guard(() => askReader(deps, args)),
       ),
     ],
   });

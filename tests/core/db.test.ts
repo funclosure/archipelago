@@ -41,7 +41,7 @@ test("0002 adds nullable island positions", () => {
   expect(cols).toContain("x");
   expect(cols).toContain("y");
   const versions = db.query<{ version: string }, []>("select version from schema_migrations order by version").all().map((r) => r.version);
-  expect(versions).toEqual(["0001_initial", "0002_positions", "0003_threads", "0004_landmarks", "0005_harbour"]);
+  expect(versions).toEqual(["0001_initial", "0002_positions", "0003_threads", "0004_landmarks", "0005_harbour", "0006_asks"]);
 });
 
 test("0002 upgrades a database created with 0001 only", () => {
@@ -61,7 +61,7 @@ test("0002 upgrades a database created with 0001 only", () => {
     .get(domainId)!.version;
 
   const ran = migrateDatabase(db);
-  expect(ran).toEqual(["0002_positions", "0003_threads", "0004_landmarks", "0005_harbour"]);
+  expect(ran).toEqual(["0002_positions", "0003_threads", "0004_landmarks", "0005_harbour", "0006_asks"]);
 
   const island = db.query<{ x: number | null; y: number | null }, []>("select x, y from islands where slug = 'caching'").get();
   expect(island).toEqual({ x: null, y: null });
@@ -120,4 +120,19 @@ test("0005 adds the harbour flag, one per parent", () => {
   db.run("insert into islands (domain_id, parent_id, slug, name, harbour) values (?, ?, 'a-1', 'A1', 1)", [domainId, aId]);
   expect(db.query<{ n: number }, []>("select count(*) as n from islands where harbour = 1").get()!.n).toBe(2);
   expect(db.query<{ harbour: number }, []>("select harbour from islands where slug = 'b'").get()!.harbour).toBe(0);
+});
+
+test("0006 adds asks with insert and update version triggers", () => {
+  const db = openDatabase(":memory:");
+  db.run("insert into domains (slug, name) values ('sd', 'System Design')");
+  const domainId = db.query<{ id: number }, []>("select id from domains where slug = 'sd'").get()!.id;
+  db.run("insert into islands (domain_id, slug, name) values (?, 'caching', 'Caching')", [domainId]);
+  const islandId = db.query<{ id: number }, []>("select id from islands where slug = 'caching'").get()!.id;
+  const version = () => db.query<{ version: number }, [number]>("select version from view_state where domain_id = ?").get(domainId)!.version;
+  const v0 = version();
+  db.run("insert into asks (domain_id, island_id, question, options) values (?, ?, 'which?', '[\"a\",\"b\"]')", [domainId, islandId]);
+  expect(version()).toBe(v0 + 1);
+  db.run("update asks set picked = 'a' where island_id = ?", [islandId]);
+  expect(version()).toBe(v0 + 2);
+  expect(db.query<{ message_id: number | null }, []>("select message_id from asks").get()!.message_id).toBeNull();
 });

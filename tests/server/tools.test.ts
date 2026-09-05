@@ -10,6 +10,7 @@ import { addVerdict, latestVerdict } from "../../src/core/repositories/verdictRe
 import { addMessage, listMessages, parseProposal } from "../../src/core/repositories/messageRepository.ts";
 import { startSession } from "../../src/core/repositories/sessionRepository.ts";
 import { listLandmarks, setLandmarks } from "../../src/core/repositories/landmarkRepository.ts";
+import { listAsks, attachAsks } from "../../src/core/repositories/askRepository.ts";
 import { renderContext, renderThreadPrompt } from "../../src/server/judge/context.ts";
 import {
   islandContext,
@@ -18,6 +19,7 @@ import {
   systemLine,
   setLandmarks as setLandmarksTool,
   unlockLandmark as unlockLandmarkTool,
+  askReader,
 } from "../../src/server/judge/tools.ts";
 
 let dir: string;
@@ -185,4 +187,35 @@ test("set_landmarks writes 4–6 once; unlock_landmark lights one, links the ans
   db2.close();
   expect(() => unlockLandmarkTool(deps(), { slug: "hit-ratio", evidence: "again" })).toThrow(/already lit/);
   expect(() => unlockLandmarkTool(deps(), { slug: "nope", evidence: "x" })).toThrow(/no landmark/);
+});
+
+test("ask_reader records the options unattached and rejects bad option lists", () => {
+  const deps = { dbPath, domain: "sd", island: "caching" };
+  const out = askReader(deps, { question: "Which resource saturates first?", options: [" CPU ", "Memory", "Disk"] });
+  expect(out.askId).toBeGreaterThan(0);
+  expect(out.note).toContain("choosing");
+  const db = openDatabase(dbPath);
+  const asks = listAsks(db, ids.caching);
+  expect(asks).toHaveLength(1);
+  expect(asks[0].options).toEqual(["CPU", "Memory", "Disk"]);
+  expect(asks[0].messageId).toBeNull();
+  expect(listMessages(db, ids.caching).filter((m) => m.role === "judge" && m.body.includes("saturates"))).toHaveLength(0); // the route stores the question with the reply
+  db.close();
+  expect(() => askReader(deps, { question: "?", options: ["only one"] })).toThrow();
+  expect(() => askReader(deps, { question: "?", options: ["a", "a"] })).toThrow();
+  expect(() => askReader(deps, { question: "?", options: ["a", "b", "c", "d", "e"] })).toThrow();
+  expect(() => askReader(deps, { question: "", options: ["a", "b"] })).toThrow();
+});
+
+test("the context carries a pending ask and the thread prompt shows the options after the question", () => {
+  const deps = { dbPath, domain: "sd", island: "caching" };
+  askReader(deps, { question: "Which first?", options: ["a", "b"] });
+  const db = openDatabase(dbPath);
+  const reply = addMessage(db, { domainId: ids.domain, islandId: ids.caching, role: "judge", kind: "text", body: "Which first?" });
+  attachAsks(db, ids.caching, reply.id);
+  db.close();
+  const ctx = islandContext(deps);
+  expect(ctx.asks.map((a) => a.messageId)).toEqual([reply.id]);
+  expect(renderContext(ctx)).toContain("Pending question");
+  expect(renderThreadPrompt(ctx.thread, ctx.asks)).toContain("[options: a | b]");
 });

@@ -11,8 +11,9 @@ import {
   unlockLandmark as unlockLandmarkRow,
   listLandmarks,
 } from "../../core/repositories/landmarkRepository.ts";
+import { addAsk } from "../../core/repositories/askRepository.ts";
 import { resolveVerdictTarget } from "../../core/targets.ts";
-import { judgeVerdictInputSchema, landmarksInputSchema, reefProposalInputSchema, unlockInputSchema } from "../../core/validators.ts";
+import { askInputSchema, judgeVerdictInputSchema, landmarksInputSchema, reefProposalInputSchema, unlockInputSchema } from "../../core/validators.ts";
 import type { ReefProposal, Verdict, VerdictState } from "../../core/types.ts";
 import { buildJudgeContext, type JudgeContext } from "./context.ts";
 
@@ -92,6 +93,17 @@ export function setLandmarks(deps: ToolDeps, input: unknown): { landmarks: strin
     const island = requireIsland(db, domain.id, deps.island);
     if (listLandmarks(db, island.id).length > 0) throw new ArchipelagoError(`island:${island.slug} already has landmarks; they are set once`);
     return { landmarks: setLandmarkRows(db, domain.id, island.id, parsed.items).map((l) => l.slug) };
+  });
+}
+
+/** Records a question with 2–4 options for the reader to choose from. The route attaches it to the reply this turn ends with. */
+export function askReader(deps: ToolDeps, input: unknown): { askId: number; note: string } {
+  const parsed = askInputSchema.parse(input);
+  return withDb(deps.dbPath, (db) => {
+    const domain = requireDomain(db, deps.domain);
+    const island = requireIsland(db, domain.id, deps.island);
+    const ask = addAsk(db, { domainId: domain.id, islandId: island.id, question: parsed.question, options: parsed.options });
+    return { askId: ask.id, note: "the reader is choosing; end your reply with the question and stop" };
   });
 }
 

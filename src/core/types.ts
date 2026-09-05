@@ -100,6 +100,18 @@ export type ReefProposal = {
   status: ReefStatus;
 };
 
+export type Ask = {
+  id: number;
+  domainId: number;
+  islandId: number;
+  messageId: number | null;
+  question: string;
+  options: string[];
+  picked: string | null;
+  pickedAt: string | null;
+  createdAt: string;
+};
+
 export type Landmark = {
   id: number;
   domainId: number;

@@ -120,6 +120,16 @@ export const probeInputSchema = z.object({
   domain: slugSchema,
   island: slugSchema,
   message: z.string().trim().min(1).optional(),
+  askId: numberInput.pipe(z.number().int().positive()).optional(),
+});
+
+export const askInputSchema = z.object({
+  question: z.string().trim().min(1),
+  options: z
+    .array(z.string().trim().min(1))
+    .min(2)
+    .max(4)
+    .refine((o) => new Set(o).size === o.length, { message: "options must be distinct" }),
 });
 
 export const reefAnswerInputSchema = z.object({

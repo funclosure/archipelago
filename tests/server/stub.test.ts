@@ -8,6 +8,7 @@ import { upsertIsland } from "../../src/core/repositories/islandRepository.ts";
 import { latestVerdict } from "../../src/core/repositories/verdictRepository.ts";
 import { addMessage, listMessages } from "../../src/core/repositories/messageRepository.ts";
 import { listLandmarks } from "../../src/core/repositories/landmarkRepository.ts";
+import { listAsks, attachAsks } from "../../src/core/repositories/askRepository.ts";
 import { stubRunner } from "../../src/server/judge/stub.ts";
 import { createRunner, type JudgeEvent } from "../../src/server/judge/runner.ts";
 
@@ -83,4 +84,31 @@ test("'reef' proposes and writes no verdict; 'fail' throws", async () => {
 
 test("createRunner(true) is the stub", () => {
   expect(createRunner(true)).toBe(stubRunner);
+});
+
+test("the second answer gets a canned ask; picking the first option lights 'shape'", async () => {
+  const events: JudgeEvent[] = [];
+  const run = (msg?: string) => {
+    if (msg) {
+      const db = openDatabase(dbPath);
+      addMessage(db, { domainId, islandId: caching, role: "you", kind: "text", body: msg });
+      db.close();
+    }
+    return stubRunner({ dbPath, domain: "sd", island: "caching", emit: (e) => events.push(e) });
+  };
+  await run(); // opening: sets the canned landmarks
+  await run("first answer");
+  const asked = await run("second answer");
+  expect(asked).toBe("Stub check: which of these is true?");
+  const db = openDatabase(dbPath);
+  const asks = listAsks(db, caching);
+  expect(asks).toHaveLength(1);
+  expect(asks[0].options).toEqual(["the first option", "the second option", "the third option"]);
+  addMessage(db, { domainId, islandId: caching, role: "judge", kind: "text", body: asked });
+  attachAsks(db, caching, listMessages(db, caching).at(-1)!.id);
+  db.close();
+  await run("the first option");
+  const db2 = openDatabase(dbPath);
+  expect(listLandmarks(db2, caching).find((l) => l.slug === "shape")?.unlockedAt).not.toBeNull();
+  db2.close();
 });
