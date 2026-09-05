@@ -16,17 +16,17 @@ export function createCamera() {
     get home() {
       return home;
     },
-    /** The framing that fits the whole world into the w − inset by h area, centred, with a margin. */
-    fit(w, h, inset = 0) {
-      const aw = Math.max(1, w - inset);
+    /** The framing that fits the whole world into the area between the insets, centred, with a margin. */
+    fit(w, h, { left = 0, right = 0 } = {}) {
+      const aw = Math.max(1, w - left - right);
       const scale = (Math.min(aw, h) * (1 - 2 * MARGIN)) / WORLD;
-      home = { x: (aw - WORLD * scale) / 2, y: (h - WORLD * scale) / 2, scale };
+      home = { x: left + (aw - WORLD * scale) / 2, y: (h - WORLD * scale) / 2, scale };
       return home;
     },
-    /** The framing at `scale` that puts a world point at the centre of the w − inset by h area. */
-    centreOn(point, w, h, inset = 0, scale = cam.scale) {
-      const aw = Math.max(1, w - inset);
-      return { x: aw / 2 - point.x * scale, y: h / 2 - point.y * scale, scale };
+    /** The framing at `scale` that puts a world point at the centre of the area between the insets. */
+    centreOn(point, w, h, { left = 0, right = 0 } = {}, scale = cam.scale) {
+      const aw = Math.max(1, w - left - right);
+      return { x: left + aw / 2 - point.x * scale, y: h / 2 - point.y * scale, scale };
     },
     /** The select zoom: a step in from home, unless the reader is already closer. */
     closer() {

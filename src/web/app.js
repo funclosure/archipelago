@@ -13,6 +13,7 @@ export const app = {
   domain: params.get("domain"),
   scale: params.get("scale"),
   snapshot: null,
+  outline: null,
   nodes: [],
   links: [],
   hover: null,      // slug under the pointer
@@ -42,7 +43,7 @@ function resize() {
   canvas.height = Math.round(app.size.h * dpr);
   canvas.style.width = app.size.w + "px";
   canvas.style.height = app.size.h + "px";
-  app.camera.fit(app.size.w, app.size.h, paneInset());
+  app.camera.fit(app.size.w, app.size.h, insets());
   if (app.selected) frameSelection();
   else app.camera.snapHome();
 }
@@ -62,7 +63,9 @@ export function setScale(slug) {
 
 export async function refresh() {
   const query = `domain=${encodeURIComponent(app.domain)}${app.scale ? `&scale=${encodeURIComponent(app.scale)}` : ""}`;
-  applySnapshot(await api(`/api/snapshot?${query}`));
+  const [snapshot, outline] = await Promise.all([api(`/api/snapshot?${query}`), api(`/api/outline?domain=${encodeURIComponent(app.domain)}`)]);
+  app.outline = outline;
+  applySnapshot(snapshot);
 }
 
 function samePath(a, b) {
@@ -125,15 +128,25 @@ export function paneInset() {
   return pane && !pane.hidden && pane.offsetWidth < app.size.w ? pane.offsetWidth : 0;
 }
 
+/** How much of the viewport's left edge the outline covers: 0 when it is absent. */
+export function outlineInset() {
+  const outline = document.getElementById("outline");
+  return outline && !outline.hidden ? outline.offsetWidth : 0;
+}
+
+export function insets() {
+  return { left: outlineInset(), right: paneInset() };
+}
+
 const FRAME_MS = 450;
 
 /** Frames the selected island at the centre of the map area beside the pane, or returns home. */
 export function frameSelection() {
   const { w, h } = app.size;
-  const inset = paneInset();
-  app.camera.fit(w, h, inset);
+  const ins = insets();
+  app.camera.fit(w, h, ins);
   const node = app.selected ? app.nodes.find((n) => n.slug === app.selected) : null;
-  if (node) app.camera.animateTo(app.camera.centreOn(node, w, h, inset, app.camera.closer()), FRAME_MS);
+  if (node) app.camera.animateTo(app.camera.centreOn(node, w, h, ins, app.camera.closer()), FRAME_MS);
   else app.camera.animateTo(app.camera.home, FRAME_MS);
 }
 
