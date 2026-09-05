@@ -1,4 +1,5 @@
-import { app, api, hitTest, setScale, postPositions, frameSelection } from "./app.js";
+import { app, api, hitTest, setScale, postPositions, frameSelection, insets } from "./app.js";
+import { registerRegion } from "./keys.js";
 
 const CLICK_SLOP = 4; // px of pointer travel before a press counts as a drag
 
@@ -104,4 +105,45 @@ export function installInteractions(canvas) {
     },
     { passive: false },
   );
+
+  const PAN_PX = 80;
+  const ZOOM = 1.2;
+  /** The centre of the map area between the outline and the pane, in screen px. */
+  const mapCentre = () => {
+    const { left, right } = insets();
+    return { x: left + (app.size.w - left - right) / 2, y: app.size.h / 2 };
+  };
+  const nearestToCentre = () => {
+    const c = app.camera.toWorld(mapCentre().x, mapCentre().y);
+    let best = null;
+    let bestD = Infinity;
+    for (const n of app.nodes) {
+      const d = Math.hypot(n.x - c.x, n.y - c.y);
+      if (d < bestD) {
+        best = n;
+        bestD = d;
+      }
+    }
+    return best;
+  };
+  registerRegion("map", {
+    onKey(e) {
+      switch (e.key) {
+        case "Enter": {
+          const slug = app.hover ?? nearestToCentre()?.slug ?? null;
+          if (slug) void select(slug);
+          return Boolean(slug);
+        }
+        case "ArrowLeft": app.camera.panBy(PAN_PX, 0); return true;
+        case "ArrowRight": app.camera.panBy(-PAN_PX, 0); return true;
+        case "ArrowUp": app.camera.panBy(0, PAN_PX); return true;
+        case "ArrowDown": app.camera.panBy(0, -PAN_PX); return true;
+        case "+":
+        case "=": { const c = mapCentre(); app.camera.zoomAt(c.x, c.y, ZOOM); return true; }
+        case "-": { const c = mapCentre(); app.camera.zoomAt(c.x, c.y, 1 / ZOOM); return true; }
+        case "0": frameSelection(); return true;
+        default: return false;
+      }
+    },
+  });
 }
