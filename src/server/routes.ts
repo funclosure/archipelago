@@ -13,7 +13,7 @@ import { addComment } from "../core/repositories/commentRepository.ts";
 import { addMessage, getMessage, listMessages, parseProposal, setReefStatus } from "../core/repositories/messageRepository.ts";
 import { activeSession } from "../core/repositories/sessionRepository.ts";
 import { getViewState, setFocus } from "../core/repositories/viewStateRepository.ts";
-import { buildSnapshot } from "../core/view-model.ts";
+import { buildOutline, buildSnapshot } from "../core/view-model.ts";
 import { resolveCommentTarget, resolveVerdictTarget } from "../core/targets.ts";
 import { systemLine } from "./judge/tools.ts";
 import type { JudgeEvent, JudgeRunner } from "./judge/runner.ts";
@@ -95,6 +95,11 @@ async function handleApi(req: Request, url: URL, ctx: ServerContext): Promise<Re
     const slug = slugSchema.parse(q("domain"));
     const scale = q("scale");
     return json(withDb(ctx, (db) => buildSnapshot(db, slug, scale ? slugSchema.parse(scale) : null)));
+  }
+
+  if (route === "GET /api/outline") {
+    const slug = slugSchema.parse(q("domain"));
+    return json(withDb(ctx, (db) => buildOutline(db, slug)));
   }
 
   if (route === "GET /api/history") {

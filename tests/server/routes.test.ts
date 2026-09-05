@@ -299,6 +299,15 @@ test("a turn that never answers times out, releases the island, and stores nothi
   }
 });
 
+test("the outline lists the whole tree", async () => {
+  const r = await get("/api/outline?domain=sd");
+  expect(r.status).toBe(200);
+  expect(r.json.domain.slug).toBe("sd");
+  expect(r.json.islands.map((i: any) => [i.slug, i.state, i.scale])).toEqual([["caching", "settled", null], ["databases", "open", null]]);
+  expect(r.json.charted).toBe(1);
+  expect((await get("/api/outline?domain=nope")).status).toBe(404);
+});
+
 test("thread and probe errors, and the cross-site guard on probe", async () => {
   expect((await get("/api/thread?domain=sd&island=nope")).status).toBe(404);
   expect((await get("/api/thread?domain=sd&island=nope")).json).toEqual({ error: 'no island "nope" in this domain', valid: ["caching", "databases"] });

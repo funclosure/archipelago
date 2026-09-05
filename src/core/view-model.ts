@@ -1,5 +1,5 @@
 import type { Database } from "bun:sqlite";
-import type { Comment, CommentTargetType, Landmark, Verdict, VerdictState } from "./types.ts";
+import type { Comment, CommentTargetType, Island, Landmark, Verdict, VerdictState } from "./types.ts";
 import { requireDomain } from "./repositories/domainRepository.ts";
 import { getIslandById, islandPath, listIslands, requireIsland } from "./repositories/islandRepository.ts";
 import { getStraitById, listStraits } from "./repositories/straitRepository.ts";
@@ -39,6 +39,24 @@ export type Snapshot = {
   reefs: string[];
 };
 export type CommentView = Comment & { target: string };
+
+export type OutlineNode = {
+  slug: string;
+  name: string;
+  state: VerdictState | "open";
+  landmarks: { total: number; unlocked: number };
+  harbour: boolean;
+  scale: string | null; // the parent slug the map needs to show this island; null at the top
+  children: OutlineNode[];
+};
+export type Outline = {
+  version: number;
+  domain: { slug: string; name: string };
+  harbour: string | null;
+  charted: number;
+  lit: number;
+  islands: OutlineNode[];
+};
 
 const ELEVATION: Record<VerdictState, number> = { reef: 1, sandbar: 1, settled: 2, mountainous: 3 };
 
@@ -116,6 +134,43 @@ export function buildSnapshot(db: Database, domainSlug: string, scaleSlug: strin
       ...islandViews.filter((i) => i.verdict?.state === "reef").map((i) => `island:${i.slug}`),
       ...straitViews.filter((s) => s.verdict?.state === "reef").map((s) => `strait:${s.from}~${s.to}`),
     ],
+  };
+}
+
+/** The whole domain as a tree, for the outline panel. Islets are few, so one query per level is fine. */
+export function buildOutline(db: Database, domainSlug: string): Outline {
+  const domain = requireDomain(db, domainSlug);
+  let charted = 0;
+  let lit = 0;
+  const level = (parent: Island | null): OutlineNode[] => {
+    const islands = listIslands(db, domain.id, parent ? parent.id : null);
+    const verdicts = latestVerdicts(db, "island", islands.map((i) => i.id));
+    const landmarks = listLandmarksByIsland(db, islands.map((i) => i.id));
+    return islands.map((island) => {
+      const v = verdicts.get(island.id);
+      const items = landmarks.get(island.id) ?? [];
+      const unlocked = items.filter((l) => l.unlockedAt !== null).length;
+      if (v) charted += 1;
+      lit += unlocked;
+      return {
+        slug: island.slug,
+        name: island.name,
+        state: v ? v.state : "open",
+        landmarks: { total: items.length, unlocked },
+        harbour: island.harbour === 1,
+        scale: parent ? parent.slug : null,
+        children: level(island),
+      };
+    });
+  };
+  const islands = level(null);
+  return {
+    version: getViewState(db, domain.id).version,
+    domain: { slug: domain.slug, name: domain.name },
+    harbour: islands.find((i) => i.harbour)?.slug ?? null,
+    charted,
+    lit,
+    islands,
   };
 }
 

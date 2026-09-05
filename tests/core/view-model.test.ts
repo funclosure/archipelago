@@ -8,7 +8,7 @@ import { addVerdict } from "../../src/core/repositories/verdictRepository.ts";
 import { addComment } from "../../src/core/repositories/commentRepository.ts";
 import { setFocus } from "../../src/core/repositories/viewStateRepository.ts";
 import { addMessage } from "../../src/core/repositories/messageRepository.ts";
-import { buildSnapshot, listCommentViews, formatTarget } from "../../src/core/view-model.ts";
+import { buildSnapshot, buildOutline, listCommentViews, formatTarget } from "../../src/core/view-model.ts";
 import { NotFoundError } from "../../src/core/errors.ts";
 import { setLandmarks, unlockLandmark } from "../../src/core/repositories/landmarkRepository.ts";
 
@@ -131,4 +131,31 @@ test("the snapshot names the harbour at its own scale only", () => {
   expect(buildSnapshot(db, "sd", "caching").harbour).toBe("caching-ttl");
   expect(buildSnapshot(db, "sd", null).harbour).toBe("queues");
   expect(ttl.harbour).toBe(0); // the row read before setHarbour is untouched
+});
+
+test("buildOutline nests islets under their parent with the scale the map needs, and counts over the whole tree", () => {
+  const ttl = upsertIsland(db, { domainId, slug: "caching-ttl", name: "TTL", parentId: caching });
+  const deep = upsertIsland(db, { domainId, slug: "caching-ttl-jitter", name: "Jitter", parentId: ttl.id });
+  addVerdict(db, { targetType: "island", targetId: ttl.id, state: "settled", confidence: 0.8, evidence: "e" });
+  addVerdict(db, { targetType: "island", targetId: dbs, state: "reef", confidence: 0.9, evidence: "r" });
+  setLandmarks(db, domainId, caching, [{ slug: "a", name: "A" }, { slug: "b", name: "B" }, { slug: "c", name: "C" }, { slug: "d", name: "D" }]);
+  unlockLandmark(db, caching, "a", "quote", null);
+  setHarbour(db, domainId, "queues");
+  setHarbour(db, domainId, "caching-ttl");
+
+  const o = buildOutline(db, "sd");
+  expect(o.domain).toEqual({ slug: "sd", name: "System Design" });
+  expect(o.islands.map((i) => i.slug)).toEqual(["caching", "queues", "databases"]);
+  const c = o.islands[0];
+  expect(c).toMatchObject({ state: "open", landmarks: { total: 4, unlocked: 1 }, harbour: false, scale: null });
+  expect(c.children.map((i) => i.slug)).toEqual(["caching-ttl"]);
+  expect(c.children[0]).toMatchObject({ state: "settled", harbour: true, scale: "caching", landmarks: { total: 0, unlocked: 0 } });
+  expect(c.children[0].children[0]).toMatchObject({ slug: "caching-ttl-jitter", scale: "caching-ttl", children: [] });
+  expect(o.islands[1]).toMatchObject({ slug: "queues", harbour: true });
+  expect(o.islands[2]).toMatchObject({ slug: "databases", state: "reef" });
+  expect(o.harbour).toBe("queues");
+  expect(o.charted).toBe(2); // ttl and databases
+  expect(o.lit).toBe(1);
+  expect(o.version).toBeGreaterThan(0);
+  expect(() => buildOutline(db, "nope")).toThrow(NotFoundError);
 });
