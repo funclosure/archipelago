@@ -5,6 +5,7 @@ import { renderMarkdown } from "./markdown.js";
 import { loadHighlighter } from "./code.js";
 import { renderCta } from "./cta.js";
 import { select } from "./interactions.js";
+import { registerRegion } from "./keys.js";
 
 const pane = document.getElementById("pane");
 const STICK_PX = 40;            // within this of the bottom, the log follows new content
@@ -51,6 +52,52 @@ export function installCard() {
   }
   app.listeners.add(() => render());
   loadHighlighter(() => render());
+  registerRegion("pane", {
+    focusAnswer: () => focusAnswer(),
+    send() {
+      const form = pane.querySelector("#answer-form");
+      const ta = pane.querySelector("#answer");
+      if (!form || !ta || ta.disabled || !ta.value.trim()) return false;
+      form.requestSubmit();
+      return true;
+    },
+    onKey(e) {
+      const island = app.nodes.find((n) => n.slug === app.selected) ?? null;
+      if (!island || thread.inFlight) return false;
+      const click = (sel) => {
+        const b = pane.querySelector(sel);
+        if (!b || b.disabled) return false;
+        b.click();
+        return true;
+      };
+      switch (e.key) {
+        case "Enter":
+        case "/":
+          return focusAnswer();
+        case "l":
+          return click("#landfall");
+        case "n":
+          return click("#note-toggle");
+        case "c": {
+          const p = thread.loaded ? logItems(thread.messages, island).find((i) => i.kind === "reef_proposal" && i.proposal.status === "pending") : null;
+          if (!p || thread.answering) return false;
+          void answerReef(island.slug, p.id, "confirm");
+          return true;
+        }
+        case "d":
+          return focusAnswer();
+        case "1": case "2": case "3": case "4": {
+          const ask = thread.loaded ? pendingAskOf() : null;
+          const option = ask ? ask.options[Number(e.key) - 1] : undefined;
+          if (!option || thread.answering) return false;
+          answerAsk(island.slug, ask, option);
+          return true;
+        }
+        default:
+          return false;
+      }
+    },
+  });
   render();
 }
 
@@ -312,13 +359,13 @@ function headEl(island) {
   const links = el("span", "links");
   if (island.hasChildren) links.append(button("Sail in", () => setScale(island.slug), "link"));
   else links.append(button("Sail closer", () => sendComment(island, "sail_closer", ""), "link"));
-  links.append(
-    button("Note to cartographer", () => {
-      noteOpen = !noteOpen;
-      render();
-      if (noteOpen) pane.querySelector("#note")?.focus();
-    }, "link"),
-  );
+  const noteToggle = button("Note to cartographer", () => {
+    noteOpen = !noteOpen;
+    render();
+    if (noteOpen) pane.querySelector("#note")?.focus();
+  }, "link");
+  noteToggle.id = "note-toggle";
+  links.append(noteToggle);
   sub.append(links);
   head.append(sub);
 
@@ -420,7 +467,9 @@ function logEl(island) {
     const empty = el("div", "empty");
     if (island.verdict) empty.append(verdictEl(island.verdict));
     empty.append(el("p", "muted", island.verdict ? "No thread yet. The judge asks first." : "Unsurveyed. The judge asks first."));
-    empty.append(button(island.verdict ? "Explore it" : "Make landfall", () => void runTurn(island.slug, null)));
+    const b = button(island.verdict ? "Explore it" : "Make landfall", () => void runTurn(island.slug, null));
+    b.id = "landfall";
+    empty.append(b);
     log.append(empty);
     if (thread.error) log.append(el("div", "error", thread.error));
     return log;
@@ -445,6 +494,7 @@ function logEl(island) {
 function footEl(island) {
   const foot = el("div", "foot");
   const form = el("form");
+  form.id = "answer-form";
   const ta = el("textarea");
   ta.id = "answer";
   ta.rows = 1;
