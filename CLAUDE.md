@@ -15,13 +15,13 @@ bun run src/cli/index.ts serve --stub # judge without a Claude login
 
 ## Architecture
 
-Two brains, one database. Claude in the terminal is the cartographer (skill → CLI → SQLite): it sketches islands, islets, and straits. The judge runs inside the server on the Claude Agent SDK (`src/server/judge/`), one thread per island, and writes verdicts through the same repositories. The browser is the consumer (server → JSON API → canvas page polling `/api/version`) and the judge's chat surface (`POST /api/probe` streaming server-sent events). Comments and focus flow back through the same database.
+Two brains, one database. Claude in the terminal is the cartographer (skill → CLI → SQLite): it sketches islands, islets, and straits. The judge runs inside the server on the Claude Agent SDK (`src/server/judge/`), one thread per island, and writes verdicts through the same repositories. The browser is the consumer (server → JSON API → canvas page polling `/api/version`) and the judge's chat surface (`POST /api/probe` streaming server-sent events). The outline (`outline.js`) reads `GET /api/outline`, the whole tree, refreshed with every snapshot. Comments and focus flow back through the same database.
 
 ```
 src/core/       types.ts, errors.ts, validators.ts, db.ts, migrate.ts, migrations/ (0001_initial.sql, 0002_positions.sql, 0003_threads.sql, 0004_landmarks.sql, 0005_harbour.sql), repositories/, view-model.ts, targets.ts
 src/cli/        index.ts (commander), io.ts
 src/server/     index.ts (startServer), routes.ts (handleRequest), judge/ (PROTOCOL.md, protocol.ts, context.ts, tools.ts, runner.ts, stub.ts, sdk.ts)
-src/web/        index.html, styles.css, app.js, view-model.js, layout.js, camera.js, draw.js, contour.js, interactions.js, card.js, markdown.js, stream.js, thread.js
+src/web/        index.html, styles.css, app.js, view-model.js, layout.js, camera.js, draw.js, contour.js, interactions.js, card.js, outline.js, outline-model.js, markdown.js, stream.js, thread.js
 .claude/skills/archipelago-chart/SKILL.md
 tests/          core/, cli/, server/, web/
 ```
@@ -44,3 +44,4 @@ tests/          core/, cli/, server/, web/
 - `bun test` never spawns the SDK: server tests run with `stub: true`; `sdk.ts` imports the SDK lazily.
 - Landmarks are dark or lit, never a state; unique per island. `set_landmarks` only when an island has none; `unlock_landmark` links the latest reader message and writes the system line `landmark lit: <name>`. The judge's verdict lands when all landmarks are lit, a reef is clear, or after the fourth reader answer.
 - Harbour: `islands.harbour`, at most one per parent (partial unique index); written only by `harbour set` / `clear`. The snapshot carries `harbour` (slug at the current scale); the strip leads with it; the judge never sees it.
+- Outline: 232px expanded, 44px rail (`--outline-w`); the camera frames between `insets()` (outline left, pane right). Cross-scale selection is `await setScale(scale)` then `select(slug)`. Rail and expansion state live in `localStorage` under `outline:<domain>`.

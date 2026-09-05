@@ -38,7 +38,7 @@ Open water is never a low score. A reef is a hatch over an elevation, never a se
 
 ## From the map
 
-Click an island to select it. An anchor under the coast marks the harbour, the island to set out from; the strip at the top leads with it as **Set out from** until it is charted and **Home port** after. The map frames the island beside a pane on the right that holds everything about it: the head (name, state, landmark chips, **Sail closer** or **Sail in**, and **Note to cartographer**), the log, and the answer box. **Make landfall** starts the thread (**Explore it** on an island that already has a verdict); the judge asks first, each answer lights the landmarks it covers as a lit line in the log and a firm arc and a lit lamp on the coastline, and each verdict lands as a card in the log while the island fills in on the map. Messages render as markdown. While a reef proposal is pending the box switches to **Confirm** and **Dispute**, and you answer the proposal — its false claim and its consequence — before the reef is written. Escape closes the pane and pans the map home.
+The outline on the left lists the whole domain as a tree, every island at every scale with its state and lit landmarks; click one to go there, press `[` to collapse it to a rail of dashes that peeks on hover, and use the domain name at its top to switch domains. Click an island to select it. An anchor under the coast marks the harbour, the island to set out from; the strip at the top leads with it as **Set out from** until it is charted and **Home port** after. The map frames the island beside a pane on the right that holds everything about it: the head (name, state, landmark chips, **Sail closer** or **Sail in**, and **Note to cartographer**), the log, and the answer box. **Make landfall** starts the thread (**Explore it** on an island that already has a verdict); the judge asks first, each answer lights the landmarks it covers as a lit line in the log and a firm arc and a lit lamp on the coastline, and each verdict lands as a card in the log while the island fills in on the map. Messages render as markdown. While a reef proposal is pending the box switches to **Confirm** and **Dispute**, and you answer the proposal — its false claim and its consequence — before the reef is written. Escape closes the pane and pans the map home.
 
 Islands keep their place. The map lays out new islands once, around the ones already there, and stores the positions; verdicts never move anything. Drag an island to rearrange, and it stays where you put it. `archipelago island update --domain <slug> --slug <island> --x <0..1000> --y <0..1000>` sets a position by hand.
 
@@ -56,6 +56,8 @@ src/cli/       the archipelago command
 src/server/    Bun.serve JSON API + static files
 src/web/       one-canvas map and the conversation pane, plain ES modules
 src/web/contour.js   the island geometry, box units, pure
+src/web/outline.js   the outline panel; pure row helpers tested
+src/web/outline-model.js  the outline's pure row helpers, tested
 .claude/skills/archipelago-chart/SKILL.md   the cartographer's protocol
 src/server/judge/PROTOCOL.md   the judge's protocol (system prompt), read at runtime
 ```

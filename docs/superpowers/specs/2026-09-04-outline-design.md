@@ -1,7 +1,7 @@
 # Outline: the domain's tree on the left
 
 **Date:** 2026-09-04
-**Status:** approved design, awaiting plan
+**Status:** implemented (plan: docs/superpowers/plans/2026-09-05-outline.md)
 **Builds on:** chart-and-log (`2026-09-04-chart-and-log-design.md`), harbour (`2026-09-04-harbour-design.md`)
 **Prototype:** https://claude.ai/code/artifact/a251c701-2f8a-4bd2-9e1c-090be3cfa9c0 (left panel and rail)
 
