@@ -187,6 +187,7 @@ function render() {
     root.replaceChildren();
     return;
   }
+  if (state.cursor === null && region() === "outline") seedCursor();
   const frag = document.createDocumentFragment();
   frag.append(headerEl(outline));
   frag.append(el("div", "sum", summaryLine(outline)));
@@ -232,14 +233,13 @@ function applyCursor() {
 }
 
 function scrollCursorIntoView() {
-  const row = root.querySelector(".row.cur");
+  const row = root.querySelector(".row.cur, .dash.cur");
   if (row) row.scrollIntoView({ block: "nearest" });
 }
 
 const outlineHandler = {
   onKey(e) {
     if (e.key === "Enter") {
-      if (state.cursor === null) seedCursor(); // a cold Enter selects the seeded row
       const row = cursorRows().find((r) => r.node.slug === state.cursor);
       if (!row) return false;
       void go(row.node);

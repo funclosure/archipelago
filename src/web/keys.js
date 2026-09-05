@@ -91,7 +91,10 @@ function escape(e) {
     e.target.blur();
     containers()[current]?.focus({ preventScroll: true });
   } else if (rung === "cursor") handlers.outline?.clearCursor?.();
-  else if (rung === "deselect") void select(null);
+  else if (rung === "deselect") {
+    void select(null);
+    if (current === "pane") setRegion("map");
+  }
 }
 
 const shown = (name) => {
@@ -107,6 +110,7 @@ function step(from, back) {
 }
 
 function onKeydown(e) {
+  if (!shown(current)) setRegion(step(current, false)); // a hidden region (e.g. the pane, poll-hidden) never keeps focus
   if (e.key === "Tab") {
     e.preventDefault();
     setRegion(step(current, e.shiftKey));
