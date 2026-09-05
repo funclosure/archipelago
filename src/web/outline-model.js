@@ -25,6 +25,7 @@ export function visibleRows(islands, expanded, selected, depth = 0) {
 /** The rail dash's class for a top-level island. */
 export function dashClass(node, selected) {
   if (node.slug === selected) return "dash on";
+  if (node.state === "reef") return "dash reef";
   if (node.state !== "open") return "dash done";
   if (node.landmarks.unlocked > 0) return "dash lit";
   return "dash";

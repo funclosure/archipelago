@@ -140,7 +140,8 @@ button:focus-visible, textarea:focus-visible, input:focus-visible { outline: 2px
 :is(.outline, .peek) .row.islet .dot { width: 6px; height: 6px; }
 :is(.outline, .peek) .row .dot.lit { border-style: solid; border-color: var(--lamp); }
 :is(.outline, .peek) .row .dot.sandbar { background: var(--sand-fill); border: 0; }
-:is(.outline, .peek) .row .dot.settled, :is(.outline, .peek) .row .dot.mountainous { background: var(--grass); border: 0; }
+:is(.outline, .peek) .row .dot.settled { background: var(--grass); border: 0; }
+:is(.outline, .peek) .row .dot.mountainous { background: var(--snow); border: 0; }
 :is(.outline, .peek) .row .dot.reef { background: var(--sand-fill); border: 0; box-shadow: inset 0 -2px 0 var(--reef); }
 :is(.outline, .peek) .row .name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 :is(.outline, .peek) .row .name.open { color: var(--muted); }
@@ -157,8 +158,10 @@ button:focus-visible, textarea:focus-visible, input:focus-visible { outline: 2px
 .outline .dash.lit { opacity: .6; width: 18px; background: var(--lamp); }
 .outline .dash.done { opacity: .9; width: 22px; background: var(--grass); }
 .outline .dash.on { opacity: 1; width: 26px; background: var(--lamp); }
+.outline .dash.reef { opacity: .9; width: 22px; background: var(--reef); }
 .outline .dash:hover { opacity: 1; }
-.peek { position: fixed; left: 52px; top: 52px; width: 240px; max-height: calc(100vh - 104px); background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
+.peek { position: fixed; left: 44px; top: 52px; width: 240px; max-height: calc(100vh - 104px); background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
+  border-left: 8px solid transparent; background-clip: padding-box;
   box-shadow: 0 16px 40px rgba(0, 0, 0, .5); z-index: 5; display: flex; flex-direction: column; font-size: 13px; overflow: hidden; }
 .peek[hidden] { display: none; }
 

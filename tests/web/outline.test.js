@@ -26,6 +26,7 @@ test("dashClass ranks selected over charted over lit over dark", () => {
   expect(dashClass(node("a", { landmarks: { total: 4, unlocked: 1 } }), null)).toBe("dash lit");
   expect(dashClass(node("a", { state: "sandbar", landmarks: { total: 4, unlocked: 4 } }), null)).toBe("dash done");
   expect(dashClass(node("a", { state: "settled" }), "a")).toBe("dash on");
+  expect(dashClass(node("a", { state: "reef" }), null)).toBe("dash reef");
 });
 
 test("summaryLine and countNodes count the whole tree", () => {

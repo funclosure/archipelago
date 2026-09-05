@@ -56,7 +56,7 @@ src/cli/       the archipelago command
 src/server/    Bun.serve JSON API + static files
 src/web/       one-canvas map and the conversation pane, plain ES modules
 src/web/contour.js   the island geometry, box units, pure
-src/web/outline.js   the outline panel; pure row helpers tested
+src/web/outline.js   the outline panel
 src/web/outline-model.js  the outline's pure row helpers, tested
 .claude/skills/archipelago-chart/SKILL.md   the cartographer's protocol
 src/server/judge/PROTOCOL.md   the judge's protocol (system prompt), read at runtime

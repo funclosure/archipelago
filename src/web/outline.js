@@ -110,9 +110,20 @@ function hidePeek() {
   if (peek) peek.hidden = true;
 }
 
+function closeMenu() {
+  state.menuOpen = false;
+  state.domains = null;
+  render();
+}
+
 async function toggleMenu() {
   state.menuOpen = !state.menuOpen;
-  if (state.menuOpen && !state.domains) {
+  if (!state.menuOpen) {
+    state.domains = null;
+    render();
+    return;
+  }
+  if (!state.domains) {
     try {
       const res = await fetch("/api/domains");
       state.domains = (await res.json()).domains;
@@ -120,6 +131,7 @@ async function toggleMenu() {
       state.domains = [];
     }
   }
+  setTimeout(() => document.addEventListener("click", closeMenu, { once: true }), 0);
   render();
 }
 
@@ -178,7 +190,10 @@ function render() {
   hint.append(el("kbd", null, "["), " outline");
   ft.append(hint, el("span", null, `${countNodes(outline.islands)} islands`));
   frag.append(ft);
+  const top = root.querySelector(".list")?.scrollTop ?? 0;
   root.replaceChildren(frag);
+  const list = root.querySelector(".list");
+  if (list) list.scrollTop = top;
   if (peek && !peek.hidden) peek.replaceChildren(listEl(outline));
 }
 
@@ -189,9 +204,15 @@ export function installOutline() {
   root.addEventListener("mouseenter", () => showPeek());
   root.addEventListener("mouseleave", (e) => { if (!(peek && e.relatedTarget && peek.contains(e.relatedTarget))) hidePeek(); });
   window.addEventListener("keydown", (e) => {
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    if (e.key === "Escape" && state.menuOpen) {
+      closeMenu();
+      e.stopPropagation();
+      return;
+    }
     if (e.key !== "[") return;
     const t = e.target;
-    if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable)) return;
+    if (t && (t.tagName === "INPUT" || t.tagName === "SELECT" || t.tagName === "TEXTAREA" || t.isContentEditable)) return;
     e.preventDefault();
     toggleRail();
   });

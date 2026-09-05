@@ -22,7 +22,7 @@ The map shows one scale at a time and has no list. After the React Native chart 
 
 ## Data
 
-`GET /api/outline?domain=<slug>` → `{ version, domain: { slug, name }, harbour, charted, islands: OutlineNode[] }` where
+`GET /api/outline?domain=<slug>` → `{ version, domain: { slug, name }, harbour, charted, lit, islands: OutlineNode[] }` where
 
 ```ts
 type OutlineNode = {
@@ -43,21 +43,21 @@ type OutlineNode = {
 
 **Header row** (44px): the domain name in 13px medium with a chevron; clicking opens a small menu of domains (`/api/domains`) and navigates on pick. On the right, a collapse button (`«` / `»`).
 
-**Summary line**: `2 of 8 charted · 8 lit`, 11px muted, the lit count in sand.
+**Summary line**: `2 of 8 charted · 8 lit`, 11px muted.
 
 **Section label** `Islands`, then the list:
 
-- Rows 28px, 13px sans, 6px radius, hover `--panel-2`, selected `rgba(217,199,163,.12)`.
+- Rows 28px, 13px sans, 6px radius, hover `--panel-2`, selected `rgba(245,194,66,.12)` (the lamp at 12%).
 - Left to right: chevron (`▸` / `▾`, hidden when the island has no islets), state dot (dashed open, solid ring when open with lit landmarks, filled by state, reef with a red underline), name (muted when open), anchor when harbour, count `lit/total` in 11px tabular muted.
 - Islets nest one level per scale, 26px rows, 12.5px, indented 20px per level. An island's islets show when it is expanded or when it or one of its descendants is selected.
-- Clicking a row selects. If the row's `scale` differs from the map's current scale, the page calls `setScale(scale)` and selects the island once the snapshot arrives (`app.pendingSelect`).
+- Clicking a row selects. If the row's `scale` differs from the map's current scale, the page awaits `setScale(scale)` and then calls `select(slug)`.
 - Clicking the chevron toggles expansion without selecting.
 
 **Footer**: `[ outline` with a keycap, and `n islands`.
 
-**Rail**: `[` or the header button toggles `rail`. The panel animates to 44px; the header keeps the button; the list is replaced by a column of dashes centred vertically, one per top-level island: 14px muted when open, 18px sand at 60% when some landmarks are lit, 22px land when charted, 26px sand at 100% when selected. Clicking a dash selects. Hovering the rail opens the peek: the same list in a floating card at `left: 52px`, 240px wide, closed on mouse leave.
+**Rail**: `[` or the header button toggles `rail`. The panel animates to 44px; the header keeps the button; the list is replaced by a column of dashes centred vertically, one per top-level island: 14px muted when open, 18px lamp at 60% when some landmarks are lit, 22px grass when charted (22px reef colour for a reef), 26px lamp at 100% when selected. Clicking a dash selects. Hovering the rail opens the peek: the same list in a floating card at `left: 52px`, 240px wide, closed on mouse leave.
 
-**Map**: `camera.fit(w, h, insets)` and `centreOn(point, w, h, insets, scale)` take `{ left, right }`; `frameSelection` passes the outline's rendered width as `left` and the pane's as `right`. The top chrome (breadcrumb, strip) and the bottom legend move right by the outline width (`--outline-w`). Toggling the rail reframes the map.
+**Map**: `camera.fit(w, h, insets)` and `centreOn(point, w, h, insets, scale)` take `{ left, right }`; `frameSelection` passes the outline's rendered width as `left` and the pane's as `right`. The top chrome (breadcrumb, strip) moves right by the outline width (`--outline-w`). Toggling the rail reframes the map.
 
 **Keyboard**: `[` toggles the rail unless focus is in a text field. Escape still deselects.
 
@@ -72,7 +72,7 @@ type OutlineNode = {
 - `tests/core/view-model.test.ts`: `buildOutline` nests islets under their parent with the right `scale`, reports state and counts, marks the harbour, counts charted and lit over the whole tree.
 - `tests/server/routes.test.ts`: `GET /api/outline` returns the tree; unknown domain 404.
 - `tests/web/camera.test.js`: `fit` and `centreOn` with left and right insets.
-- `tests/web/outline.test.js`: pure helpers in `outline.js` are kept separate from DOM code and tested: `dashClass(node, selected)` and `visibleRows(tree, expanded, selected)` (which islets show).
+- `tests/web/outline.test.js`: pure helpers live in `outline-model.js`, DOM-free, and are tested: `dashClass(node, selected)` and `visibleRows(tree, expanded, selected)` (which islets show).
 - By hand: click an islet in the outline changes scale and selects it; `[` collapses; the peek opens on hover; the domain menu switches domains; the map reframes on toggle.
 
 ## Out of scope
