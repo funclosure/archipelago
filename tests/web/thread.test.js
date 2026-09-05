@@ -65,14 +65,19 @@ test("mdBlocks parses headings, bullet and numbered lists, and fences, closed or
   expect(blocks[0]).toEqual({ type: "h", level: 2, segments: [{ type: "text", text: "Why" }] });
   expect(blocks[1]).toEqual({ type: "list", ordered: false, items: [[{ type: "strong", text: "first" }, { type: "text", text: " point" }], [{ type: "text", text: "second" }]] });
   expect(blocks[2]).toEqual({ type: "list", ordered: true, items: [[{ type: "text", text: "one" }], [{ type: "text", text: "two" }]] });
-  expect(blocks[3]).toEqual({ type: "code", text: "let x = 1;" });
+  expect(blocks[3]).toEqual({ type: "code", lang: "", text: "let x = 1;", closed: true });
   expect(mdBlocks("before\n```js\nstill open")).toEqual([
     { type: "p", lines: [[{ type: "text", text: "before" }]] },
-    { type: "code", text: "still open" },
+    { type: "code", lang: "js", text: "still open", closed: false },
   ]);
   expect(mdBlocks("*emphasis* at the start is not a bullet")).toEqual([
     { type: "p", lines: [[{ type: "em", text: "emphasis" }, { type: "text", text: " at the start is not a bullet" }]] },
   ]);
+});
+
+test("a mermaid fence is a code block with its language, closed only once the fence ends", () => {
+  expect(mdBlocks("```mermaid\nflowchart TB\n  A --> B\n```")).toEqual([{ type: "code", lang: "mermaid", text: "flowchart TB\n  A --> B", closed: true }]);
+  expect(mdBlocks("```mermaid\nflowchart TB").at(-1)).toMatchObject({ lang: "mermaid", closed: false });
 });
 
 test("mdBlocks never loses text on partial input", () => {

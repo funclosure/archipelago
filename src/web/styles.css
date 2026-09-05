@@ -7,6 +7,7 @@
   --sand: var(--lamp); --land: var(--grass); --ridge: var(--snow);
   --panel: #163449; --panel-2: #245069; --line: rgba(255, 255, 255, .14); --open: rgba(255, 255, 255, .30);
   --outline-w: 232px;
+  --pane-w: 480px;
 }
 html, body { margin: 0; height: 100%; background: var(--water); color: var(--text);
   font: 14px/1.5 system-ui, -apple-system, sans-serif; overflow: hidden; }
@@ -32,7 +33,7 @@ html, body { margin: 0; height: 100%; background: var(--water); color: var(--tex
 .strip-label { color: var(--muted); text-transform: uppercase; letter-spacing: .08em; font-size: 10px; }
 
 /* ---- the pane: head, log, foot ---- */
-.pane { position: fixed; top: 0; right: 0; bottom: 0; width: clamp(340px, 38vw, 440px); background: var(--panel);
+.pane { position: fixed; top: 0; right: 0; bottom: 0; width: var(--pane-w); background: var(--panel);
   border-left: 1px solid var(--line); display: flex; flex-direction: column; box-shadow: -12px 0 32px rgba(0, 0, 0, .35); z-index: 2; }
 .pane[hidden] { display: none; }
 @media (max-width: 720px) { .pane { width: 100%; } }
@@ -166,3 +167,38 @@ button:focus-visible, textarea:focus-visible, input:focus-visible { outline: 2px
 .peek[hidden] { display: none; }
 
 @media (prefers-reduced-motion: reduce) { .outline, .chrome { transition: none; } }
+
+/* ---- pane grip ---- */
+.pane .grip { position: absolute; top: 0; bottom: 0; left: -5px; width: 10px; cursor: col-resize; z-index: 3; }
+.pane .grip::after { content: ""; position: absolute; top: 50%; left: 4px; width: 2px; height: 36px; margin-top: -18px; border-radius: 2px; background: var(--line); }
+.pane .grip:hover::after, .pane.resizing .grip::after { background: var(--lamp); }
+.pane .width { position: absolute; top: 8px; left: 12px; font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); pointer-events: none; }
+.pane.resizing { transition: none; user-select: none; }
+
+/* ---- diagrams ---- */
+.diagram { margin: 6px 0 8px; padding: 10px 8px; background: var(--water); border: 1px solid var(--line); border-radius: 8px; overflow-x: auto; }
+.diagram svg { max-width: none; height: auto; display: block; margin: 0 auto; }
+.diagram .cap { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; margin-bottom: 6px; }
+
+/* ---- choices under a judge message ---- */
+.choices { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.choices .q { width: 100%; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; }
+.choice { background: transparent; border: 1px solid var(--lamp); color: var(--lamp); border-radius: 999px; padding: 5px 12px; font: 12px system-ui, sans-serif; cursor: pointer; }
+.choice:hover { background: var(--lamp); color: var(--sea); }
+.choice:disabled { opacity: .4; cursor: default; }
+.choice.picked { background: var(--lamp); color: var(--sea); opacity: 1; }
+
+/* ---- the call to action over the map ---- */
+.cta { position: fixed; bottom: 56px; left: var(--outline-w); right: 0; display: flex; justify-content: center; pointer-events: none; z-index: 1; }
+body.pane-open .cta { right: var(--pane-w); }
+.cta[hidden] { display: none; }
+.cta-card { pointer-events: auto; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; box-shadow: 0 12px 32px rgba(0, 0, 0, .45); max-width: min(560px, 90%); display: grid; gap: 8px; }
+.cta-card .lbl { font-size: 10px; text-transform: uppercase; letter-spacing: .1em; color: var(--lamp); }
+.cta-card .q { font-family: Georgia, serif; font-size: 14px; }
+.cta-card .row { display: flex; flex-wrap: wrap; gap: 6px; }
+.cta-card .row button { background: transparent; border: 1px solid var(--lamp); color: var(--lamp); border-radius: 999px; padding: 6px 12px; font: 12px system-ui, sans-serif; cursor: pointer; }
+.cta-card .row button:hover { background: var(--lamp); color: var(--sea); }
+.cta-card .row button.primary { background: var(--lamp); color: var(--sea); }
+.cta-card .row button.reefy { border-color: var(--reef); color: var(--reef); }
+.cta-card .row button.reefy:hover { background: var(--reef); color: var(--text); }
+.cta-card .row button:disabled { opacity: .5; cursor: default; }

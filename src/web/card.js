@@ -1,7 +1,9 @@
-import { app, api, setScale } from "./app.js";
+import { app, api, setScale, frameSelection } from "./app.js";
 import { streamPost } from "./stream.js";
 import { logItems } from "./thread.js";
 import { renderMarkdown } from "./markdown.js";
+import { renderCta } from "./cta.js";
+import { select } from "./interactions.js";
 
 const pane = document.getElementById("pane");
 const STICK_PX = 40;            // within this of the bottom, the log follows new content
@@ -19,6 +21,7 @@ const thread = {
   slug: null,
   version: null,      // snapshot version the messages were fetched at; null forces a refetch
   messages: [],
+  asks: [],           // questions the judge has posed, with their options and any pick
   loaded: false,
   draft: "",
   live: "",           // the judge's reply as it streams
@@ -30,9 +33,16 @@ const thread = {
   litSeen: null,      // slugs already lit at the last render, so only newly lit chips pulse
   focusPending: false, // a turn ended before the answer box was usable; the next render focuses it
   answering: false,   // a reef answer is in flight: Confirm and Dispute are one-shot
+  stay: false,        // the reader chose Stay here after a verdict: hide the "sail on" card
 };
 
 export function installCard() {
+  try {
+    const saved = localStorage.getItem("pane-w");
+    if (saved) document.documentElement.style.setProperty("--pane-w", saved);
+  } catch {
+    /* storage unavailable */
+  }
   app.listeners.add(() => render());
   render();
 }
@@ -81,8 +91,8 @@ function post(path, body) {
 /** Points the thread at another island, dropping everything from the previous one. */
 function resetThread(slug) {
   Object.assign(thread, {
-    slug, version: null, messages: [], loaded: false, draft: "", live: "", progress: null, inFlight: false, error: null, loadError: null,
-    disputeDraft: "", litSeen: null, focusPending: false, answering: false,
+    slug, version: null, messages: [], asks: [], loaded: false, draft: "", live: "", progress: null, inFlight: false, error: null, loadError: null,
+    disputeDraft: "", litSeen: null, focusPending: false, answering: false, stay: false,
   });
   noteOpen = false;
 }
@@ -91,9 +101,10 @@ async function loadThread(slug) {
   thread.version = app.version;
   const gen = ++loadGen;
   try {
-    const { messages } = await api(`/api/thread?domain=${encodeURIComponent(app.domain)}&island=${encodeURIComponent(slug)}`);
+    const { messages, asks } = await api(`/api/thread?domain=${encodeURIComponent(app.domain)}&island=${encodeURIComponent(slug)}`);
     if (thread.slug !== slug || gen !== loadGen) return;
     thread.messages = messages;
+    thread.asks = asks ?? [];
     thread.loaded = true;
     thread.answering = false; // a reef answer is complete once the stored proposal status is back
     thread.loadError = null; // thread.error belongs to the last turn and stays until the next one
@@ -106,7 +117,7 @@ async function loadThread(slug) {
 }
 
 /** One judge turn. `message` null opens or continues the thread without a new reader message. */
-async function runTurn(slug, message) {
+async function runTurn(slug, message, askId) {
   if (thread.inFlight || thread.slug !== slug) return;
   thread.inFlight = true;
   thread.live = "";
@@ -115,7 +126,7 @@ async function runTurn(slug, message) {
   if (message) thread.messages = [...thread.messages, { id: `local-${Date.now()}`, role: "you", kind: "text", body: message }];
   render();
   try {
-    await streamPost("/api/probe", { domain: app.domain, island: slug, ...(message ? { message } : {}) }, (e) => {
+    await streamPost("/api/probe", { domain: app.domain, island: slug, ...(message ? { message } : {}), ...(askId ? { askId } : {}) }, (e) => {
       if (thread.slug !== slug) return;
       if (e.type === "text") {
         thread.live += e.data.text;
@@ -142,6 +153,15 @@ async function runTurn(slug, message) {
   render();
   // The opening turn renders the box disabled until the refetched thread arrives: focus it then.
   if (!focusAnswer()) thread.focusPending = true;
+}
+
+const pendingAskOf = () => thread.asks.find((a) => a.messageId !== null && a.picked === null) ?? null;
+
+/** The reader chose an option, or typed instead of choosing: either way it is the next message. */
+function answerAsk(slug, ask, body) {
+  if (thread.inFlight || thread.slug !== slug) return;
+  thread.draft = "";
+  void runTurn(slug, body, ask.id);
 }
 
 async function answerReef(slug, id, answer, note) {
@@ -339,6 +359,22 @@ function reefEl(item) {
   return box;
 }
 
+function choicesEl(ask) {
+  const box = el("div", "choices");
+  box.append(el("div", "q", ask.picked !== null ? "you chose" : "choose one, or answer below"));
+  for (const option of ask.options) {
+    const b = button(option, () => answerAsk(thread.slug, ask, option), "choice");
+    if (ask.picked !== null) {
+      b.disabled = true;
+      if (ask.picked === option) b.classList.add("picked");
+    } else if (thread.inFlight) {
+      b.disabled = true;
+    }
+    box.append(b);
+  }
+  return box;
+}
+
 function itemEl(item) {
   if (item.kind === "landmark") return el("div", "lit-line", `◆ ${item.names.join(" · ")}`);
   if (item.kind === "verdict") return verdictEl(item.verdict);
@@ -346,6 +382,8 @@ function itemEl(item) {
   if (item.kind === "reef_proposal") return reefEl(item);
   const m = el("div", `msg ${item.role}`);
   m.append(renderMarkdown(item.text));
+  const ask = item.role === "judge" ? thread.asks.find((a) => a.messageId === item.id) : null;
+  if (ask) m.append(choicesEl(ask));
   return m;
 }
 
@@ -396,6 +434,7 @@ function footEl(island) {
   ta.id = "answer";
   ta.rows = 1;
   const pending = thread.loaded ? logItems(thread.messages, island).find((i) => i.kind === "reef_proposal" && i.proposal.status === "pending") : null;
+  const ask = thread.loaded && !pending ? pendingAskOf() : null;
   const empty = thread.messages.length === 0;
   const busy = thread.inFlight || thread.answering;
   ta.disabled = !thread.loaded || busy || empty;
@@ -405,7 +444,9 @@ function footEl(island) {
       ? "what is wrong with this reef"
       : empty
         ? island.verdict ? "press Explore it to begin" : "press Make landfall to begin"
-        : "your answer";
+        : ask
+          ? "or answer in your own words"
+          : "your answer";
   ta.value = pending ? thread.disputeDraft : thread.draft;
   ta.addEventListener("input", () => {
     if (pending) thread.disputeDraft = ta.value;
@@ -423,9 +464,7 @@ function footEl(island) {
     const dispute = button("Dispute", null, "btn ghost");
     dispute.type = "submit";
     dispute.disabled = busy;
-    const confirm = button("Confirm", () => void answerReef(island.slug, pending.id, "confirm"));
-    confirm.disabled = busy;
-    form.append(dispute, confirm);
+    form.append(dispute);
     form.addEventListener("submit", (e) => {
       e.preventDefault();
       if (busy) return;
@@ -440,13 +479,16 @@ function footEl(island) {
       e.preventDefault();
       const body = ta.value.trim();
       if (!body || thread.inFlight) return;
-      thread.draft = "";
-      void runTurn(island.slug, body);
+      if (ask) answerAsk(island.slug, ask, body);
+      else {
+        thread.draft = "";
+        void runTurn(island.slug, body);
+      }
     });
   }
   foot.append(form);
   const meta = el("div", "meta");
-  meta.append(el("span", null, pending ? "Confirm charts the reef · Dispute sends your objection" : "Enter to send · Shift-Enter for a new line"));
+  meta.append(el("span", null, pending ? "Confirm at the bottom of the map · Dispute sends your objection" : "Enter to send · Shift-Enter for a new line"));
   if (thread.inFlight) meta.append(el("span", "busy", "the judge is answering"));
   foot.append(meta);
   return foot;
@@ -457,10 +499,30 @@ function footEl(island) {
 function render() {
   const s = app.snapshot;
   const island = s && app.selected ? s.islands.find((i) => i.slug === app.selected) : null;
+  document.body.classList.toggle("pane-open", Boolean(island));
   if (!island) {
     pane.hidden = true;
     pane.replaceChildren();
     if (thread.slug !== null) resetThread(null);
+    renderCta({
+      island,
+      pendingReef: island && thread.loaded ? logItems(thread.messages, island).find((i) => i.kind === "reef_proposal" && i.proposal.status === "pending") ?? null : null,
+      verdict: island ? island.verdict : null,
+      inFlight: thread.inFlight,
+      answering: thread.answering,
+      stay: thread.stay,
+      nearest: nearestOpen(),
+      onConfirm: () => {
+        const p = logItems(thread.messages, island).find((i) => i.kind === "reef_proposal" && i.proposal.status === "pending");
+        if (p) void answerReef(island.slug, p.id, "confirm");
+      },
+      onDispute: () => focusAnswer(),
+      onSail: (slug) => void select(slug),
+      onStay: () => {
+        thread.stay = true;
+        render();
+      },
+    });
     return;
   }
   if (thread.slug !== island.slug) {
@@ -478,6 +540,7 @@ function render() {
 
   pane.hidden = false;
   pane.replaceChildren(headEl(island), logEl(island), footEl(island));
+  pane.prepend(gripEl());
   growAnswer(pane.querySelector("#answer"));
   renderLive();
   const log = pane.querySelector(".log");
@@ -493,6 +556,68 @@ function render() {
   // Remember which chips are lit so the next render can pulse only the newly lit ones.
   thread.litSeen = new Set((island.landmarks?.items ?? []).filter((l) => l.lit).map((l) => l.slug));
   void renderHistory(island, ++renderId);
+  renderCta({
+    island,
+    pendingReef: island && thread.loaded ? logItems(thread.messages, island).find((i) => i.kind === "reef_proposal" && i.proposal.status === "pending") ?? null : null,
+    verdict: island ? island.verdict : null,
+    inFlight: thread.inFlight,
+    answering: thread.answering,
+    stay: thread.stay,
+    nearest: nearestOpen(),
+    onConfirm: () => {
+      const p = logItems(thread.messages, island).find((i) => i.kind === "reef_proposal" && i.proposal.status === "pending");
+      if (p) void answerReef(island.slug, p.id, "confirm");
+    },
+    onDispute: () => focusAnswer(),
+    onSail: (slug) => void select(slug),
+    onStay: () => {
+      thread.stay = true;
+      render();
+    },
+  });
+}
+
+/** The first island in nearest open water at this scale, as { slug, name }, or null. */
+function nearestOpen() {
+  const s = app.snapshot;
+  if (!s || !s.nearestOpenWater.length) return null;
+  const slug = s.nearestOpenWater[0];
+  const i = s.islands.find((x) => x.slug === slug);
+  return i ? { slug, name: i.name } : null;
+}
+
+const PANE_MIN = 340;
+const PANE_MAX = 760;
+
+function gripEl() {
+  const grip = el("div", "grip");
+  grip.title = "drag to resize";
+  grip.addEventListener("pointerdown", (e) => {
+    e.preventDefault();
+    pane.classList.add("resizing");
+    const badge = el("div", "width");
+    pane.append(badge);
+    const move = (ev) => {
+      const w = Math.min(PANE_MAX, Math.max(PANE_MIN, window.innerWidth - ev.clientX));
+      document.documentElement.style.setProperty("--pane-w", `${w}px`);
+      badge.textContent = `${Math.round(w)}px`;
+    };
+    const up = () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+      pane.classList.remove("resizing");
+      badge.remove();
+      try {
+        localStorage.setItem("pane-w", getComputedStyle(pane).width);
+      } catch {
+        /* storage unavailable */
+      }
+      frameSelection();
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+  });
+  return grip;
 }
 
 async function renderHistory(island, id) {

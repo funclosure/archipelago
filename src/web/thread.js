@@ -76,15 +76,17 @@ export function mdBlocks(text) {
     const line = raw.trimEnd();
     if (fence) {
       if (/^\s*```/.test(line)) {
+        fence.closed = true;
         blocks.push(fence);
         fence = null;
       } else fence.text += (fence.text ? "\n" : "") + raw;
       continue;
     }
-    if (/^\s*```/.test(line)) {
+    const f = line.match(/^\s*```(\w*)/);
+    if (f) {
       flushPara();
       flushList();
-      fence = { type: "code", text: "" };
+      fence = { type: "code", lang: f[1], text: "", closed: false };
       continue;
     }
     const h = line.match(/^(#{1,3})\s+(.+)/);
