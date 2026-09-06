@@ -271,7 +271,7 @@ function frame(now) {
   clear(ctx, w, h);
   app.camera.apply(ctx, dpr);
 
-  const focusSlug = app.hover || app.selected;
+  const focusSlug = app.selected; // dimming and the halo follow the selection; hover is its own light mark
   const near = new Set();
   if (focusSlug) {
     near.add(focusSlug);
@@ -285,7 +285,7 @@ function frame(now) {
     drawStrait(ctx, l, { dim: Boolean(focusSlug) && !(near.has(l.source.slug) && near.has(l.target.slug)) });
   }
   for (const n of app.nodes) {
-    drawIsland(ctx, n, { dim: Boolean(focusSlug) && !near.has(n.slug), selected: n.slug === focusSlug, now });
+    drawIsland(ctx, n, { dim: Boolean(focusSlug) && !near.has(n.slug), selected: n.slug === focusSlug, hovered: n.slug === app.hover, now });
   }
   requestAnimationFrame(frame);
 }

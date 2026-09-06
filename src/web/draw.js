@@ -191,15 +191,15 @@ function drawAnchor(ctx) {
   ctx.fillText("⚓︎", ANCHOR.x, ANCHOR.y);
 }
 
-function drawName(ctx, node) {
+function drawName(ctx, node, lifted = false) {
   ctx.font = "20px Georgia, 'Times New Roman', serif";
   ctx.textAlign = "center";
   ctx.textBaseline = "top";
-  ctx.fillStyle = alpha(PALETTE.line, node.state === "open" ? 0.75 : 0.9);
+  ctx.fillStyle = alpha(PALETTE.line, lifted || node.state !== "open" ? 0.9 : 0.75);
   ctx.fillText(node.name, CENTRE, NAME_Y);
 }
 
-export function drawIsland(ctx, node, { dim = false, selected = false, now = 0 } = {}) {
+export function drawIsland(ctx, node, { dim = false, selected = false, hovered = false, now = 0 } = {}) {
   const isl = node.island;
   const s = boxScale(node.radius);
   ctx.save();
@@ -218,13 +218,23 @@ export function drawIsland(ctx, node, { dim = false, selected = false, now = 0 }
   drawLamps(ctx, node, now);
   if (isl.harbour) drawAnchor(ctx);
   if (selected) {
+    // The selection: a firm halo. Hover on the selected island adds nothing.
     ctx.beginPath();
     ctx.arc(CENTRE, CENTRE, HALO_R, 0, Math.PI * 2);
-    ctx.strokeStyle = alpha(PALETTE.line, 0.5);
+    ctx.strokeStyle = alpha(PALETTE.line, 0.7);
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+  } else if (hovered) {
+    // Hover: a light dotted halo, so the pointer's island reads without competing with the selection.
+    ctx.beginPath();
+    ctx.arc(CENTRE, CENTRE, HALO_R, 0, Math.PI * 2);
+    ctx.setLineDash([2, 4]);
+    ctx.strokeStyle = alpha(PALETTE.line, 0.35);
     ctx.lineWidth = 1;
     ctx.stroke();
+    ctx.setLineDash([]);
   }
-  drawName(ctx, node);
+  drawName(ctx, node, hovered || selected);
   ctx.restore();
 }
 

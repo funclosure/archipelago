@@ -145,14 +145,42 @@ async function toggleMenu() {
   render();
 }
 
+/** A sidebar icon: a panel with its left column filled while the outline is a rail, hollow while it is open. */
+function panelIcon(rail) {
+  const NS = "http://www.w3.org/2000/svg";
+  const svg = document.createElementNS(NS, "svg");
+  svg.setAttribute("viewBox", "0 0 16 16");
+  svg.setAttribute("width", "16");
+  svg.setAttribute("height", "16");
+  svg.setAttribute("aria-hidden", "true");
+  const frame = document.createElementNS(NS, "rect");
+  frame.setAttribute("x", "1.5"); frame.setAttribute("y", "2.5"); frame.setAttribute("width", "13"); frame.setAttribute("height", "11");
+  frame.setAttribute("rx", "2"); frame.setAttribute("fill", "none"); frame.setAttribute("stroke", "currentColor"); frame.setAttribute("stroke-width", "1.2");
+  svg.append(frame);
+  if (rail) {
+    const fill = document.createElementNS(NS, "rect");
+    fill.setAttribute("x", "1.5"); fill.setAttribute("y", "2.5"); fill.setAttribute("width", "4.5"); fill.setAttribute("height", "11");
+    fill.setAttribute("rx", "1.5"); fill.setAttribute("fill", "currentColor");
+    svg.append(fill);
+  } else {
+    const line = document.createElementNS(NS, "line");
+    line.setAttribute("x1", "6"); line.setAttribute("y1", "2.5"); line.setAttribute("x2", "6"); line.setAttribute("y2", "13.5");
+    line.setAttribute("stroke", "currentColor"); line.setAttribute("stroke-width", "1.2");
+    svg.append(line);
+  }
+  return svg;
+}
+
 function headerEl(outline) {
   const head = el("div", "oh");
   const ws = button("", toggleMenu, "ws");
   ws.append(el("span", "name", outline.domain.name), el("span", "chev", "▾"));
   ws.title = "switch domain";
   head.append(ws, el("span", "sp"));
-  const tog = button(state.rail ? "»" : "«", toggleRail, "ib");
+  const tog = button("", toggleRail, "ib");
+  tog.append(panelIcon(state.rail));
   tog.title = state.rail ? "expand the outline  [" : "collapse to a rail  [";
+  tog.setAttribute("aria-label", tog.title.trim());
   head.append(tog);
   if (state.menuOpen && state.domains) {
     const menu = el("div", "menu");
