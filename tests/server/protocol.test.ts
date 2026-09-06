@@ -1,7 +1,7 @@
 import { test, expect } from "bun:test";
 import { readProtocol } from "../../src/server/judge/protocol.ts";
 
-test("the protocol names the states, the five tools, the round shape, and the four-answer rule", () => {
+test("the protocol names the states, the seven tools, the round shape, and the four-answer rule", () => {
   const text = readProtocol();
   for (const word of ["sandbar", "settled", "mountainous", "reef", "record_verdict", "propose_reef", "island_context", "set_landmarks", "unlock_landmark", "ask_reader", "board_write", "## 7. Diagrams", "## 8. Asking with options", "## 9. Code", "## 10. The board"]) {
     expect(text).toContain(word);

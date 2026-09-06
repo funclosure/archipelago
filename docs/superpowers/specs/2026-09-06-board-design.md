@@ -1,7 +1,7 @@
 # The board: a shared whiteboard over the map
 
 **Date:** 2026-09-06
-**Status:** approved in conversation; plan to follow
+**Status:** implemented (plan: `docs/superpowers/plans/2026-09-06-board.md`)
 **Builds on:** chart-and-log (`2026-09-04-chart-and-log-design.md`), teacher's tools (`2026-09-04-teachers-tools-design.md`), code blocks (`2026-09-05-code-blocks-design.md`), keyboard (`2026-09-05-keyboard-design.md`)
 
 ## Why
