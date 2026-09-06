@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- Archipelago: one Contour island on the sea, one lamp lit. -->
+  <rect width="64" height="64" rx="14" fill="#1B3F5B"/>
+  <path d="M32 13c7 0 12 3 16 8s6 10 4 16-6 9-12 12-12 3-17 0-8-8-9-14 1-12 5-16 7-6 13-6z" fill="rgba(255,255,255,.06)" stroke="#FFFFFF" stroke-opacity=".85" stroke-width="2.4" stroke-linejoin="round"/>
+  <path d="M32 24c4 0 7 2 9 5s2 7 0 10-5 5-9 5-7-2-9-5-2-7 0-10 5-5 9-5z" fill="none" stroke="#FFFFFF" stroke-opacity=".5" stroke-width="1.6"/>
+  <circle cx="49" cy="18" r="4" fill="#F5C242"/>
+  <circle cx="49" cy="18" r="8" fill="#F5C242" fill-opacity=".22"/>
+</svg>

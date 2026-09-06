@@ -281,7 +281,12 @@ function renderLive() {
   const log = pane.querySelector(".log");
   if (!live || !progress || !log) return; // no list on screen yet; the full render at the end of the turn shows everything
   const stuck = atBottom(log);
-  if (thread.live) {
+  if (thread.inFlight && !thread.live) {
+    // Nothing has arrived yet: the reply's own line says so, where the words will land.
+    const thinking = el("span", "thinking", "the Keeper is thinking");
+    thinking.append(el("span", "caret"));
+    live.replaceChildren(thinking);
+  } else if (thread.live) {
     live.replaceChildren(renderMarkdown(thread.live));
     // Descend to the deepest last block (e.g. into a list's last <li>) so the caret
     // follows the last character rather than landing after the whole block; stop
@@ -292,8 +297,8 @@ function renderLive() {
   } else {
     live.replaceChildren();
   }
-  live.hidden = !thread.live;
-  progress.textContent = thread.progress ? `judge: ${thread.progress}` : "";
+  live.hidden = !(thread.live || thread.inFlight);
+  progress.textContent = thread.progress ? `the Keeper: ${thread.progress}` : "";
   progress.hidden = !thread.progress;
   if (stuck) log.scrollTop = log.scrollHeight;
 }
@@ -482,7 +487,7 @@ function logEl(island) {
   if (items.length === 0 && !thread.inFlight) {
     const empty = el("div", "empty");
     if (island.verdict) empty.append(verdictEl(island.verdict));
-    empty.append(el("p", "muted", island.verdict ? "No thread yet. The judge asks first." : "Unsurveyed. The judge asks first."));
+    empty.append(el("p", "muted", island.verdict ? "No thread yet. The Keeper asks first." : "Unsurveyed. The Keeper asks first."));
     const b = button(island.verdict ? "Explore it" : "Make landfall", () => void runTurn(island.slug, null));
     b.id = "landfall";
     empty.append(b);
@@ -519,9 +524,7 @@ function footEl(island) {
   const empty = thread.messages.length === 0;
   const busy = thread.inFlight || thread.answering;
   ta.disabled = !thread.loaded || busy || empty;
-  ta.placeholder = thread.inFlight
-    ? "the judge is thinking…"
-    : pending
+  ta.placeholder = pending
       ? "what is wrong with this reef"
       : empty
         ? island.verdict ? "press Explore it to begin" : "press Make landfall to begin"
@@ -570,7 +573,6 @@ function footEl(island) {
   foot.append(form);
   const meta = el("div", "meta");
   meta.append(el("span", null, pending ? "Confirm at the bottom of the map · Dispute sends your objection" : "Enter to send · Shift-Enter for a new line"));
-  if (thread.inFlight) meta.append(el("span", "busy", "the judge is answering"));
   foot.append(meta);
   return foot;
 }
