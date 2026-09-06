@@ -1,5 +1,5 @@
 import type { JudgeRunner } from "./runner.ts";
-import { askReader, islandContext, proposeReef, recordVerdict, setLandmarks, unlockLandmark } from "./tools.ts";
+import { askReader, boardWrite, islandContext, proposeReef, recordVerdict, setLandmarks, unlockLandmark } from "./tools.ts";
 
 const CANNED = [
   { slug: "shape", name: "Shape" }, { slug: "scale", name: "Scale" }, { slug: "failure", name: "Failure" }, { slug: "tradeoff", name: "Tradeoff" },
@@ -10,8 +10,9 @@ const CANNED = [
  * last message, and writes through the same tool functions the SDK runner uses:
  *   first open on a landmark-less island → set_landmarks (four canned) · then, in the order they are tested:
  *   "unlock <slug>" → unlock_landmark · "the first option" (once asked) → unlock_landmark "shape" · "fail" → throws ·
- *   "reef" → propose_reef · "settled" → record_verdict settled · "code" → a canned swift fence ·
- *   the second answer that matched none of those, unasked → ask_reader (canned) · else a canned follow-up.
+ *   "reef" → propose_reef · "settled" → record_verdict settled · "pin" → board_write (a canned diagram) ·
+ *   "code" → a canned swift fence · the second answer that matched none of those, unasked → ask_reader
+ *   (canned) · else a canned follow-up.
  */
 export const stubRunner: JudgeRunner = async ({ dbPath, domain, island, emit }) => {
   const deps = { dbPath, domain, island };
@@ -59,6 +60,11 @@ export const stubRunner: JudgeRunner = async ({ dbPath, domain, island, emit }) 
       rationale: "stub: the message contained the word settled",
     });
     return say(`Charted as settled. Where next: ${ctx.nearestOpenWater[0] ?? "nowhere, everything is charted"}.`);
+  }
+  if (text.includes("pin")) {
+    emit({ type: "progress", message: "board_write" });
+    boardWrite(deps, { op: "add", kind: "diagram", title: "Request path", body: "flowchart TB\n  app[App] --> cache[Cache]\n  cache --> db[(Database)]" });
+    return say("Pinned Request path to the board. Where on that path does a stale read come from?");
   }
   if (text.includes("code")) {
     const snippet = [

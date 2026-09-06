@@ -5,9 +5,10 @@ import { z } from "zod";
 import { openDatabase } from "../core/db.ts";
 import { ArchipelagoError, ConflictError, NotFoundError } from "../core/errors.ts";
 import {
-  commentInputSchema, focusInputSchema, positionsInputSchema, probeInputSchema, reefAnswerInputSchema, slugSchema,
+  boardPostInputSchema, commentInputSchema, focusInputSchema, positionsInputSchema, probeInputSchema, reefAnswerInputSchema, slugSchema,
 } from "../core/validators.ts";
 import { attachAsks, listAsks, pickAsk, requireAsk } from "../core/repositories/askRepository.ts";
+import { listCards } from "../core/repositories/boardRepository.ts";
 import { listDomains, requireDomain } from "../core/repositories/domainRepository.ts";
 import { getIslandById, requireIsland, setIslandPositions } from "../core/repositories/islandRepository.ts";
 import { addVerdict, verdictHistory } from "../core/repositories/verdictRepository.ts";
@@ -17,7 +18,7 @@ import { activeSession } from "../core/repositories/sessionRepository.ts";
 import { getViewState, setFocus } from "../core/repositories/viewStateRepository.ts";
 import { buildOutline, buildSnapshot } from "../core/view-model.ts";
 import { resolveCommentTarget, resolveVerdictTarget } from "../core/targets.ts";
-import { systemLine } from "./judge/tools.ts";
+import { boardWrite, systemLine } from "./judge/tools.ts";
 import type { JudgeEvent, JudgeRunner } from "./judge/runner.ts";
 import { shikiBundle } from "./vendor.ts";
 
@@ -182,6 +183,26 @@ async function handleApi(req: Request, url: URL, ctx: ServerContext): Promise<Re
         return { island: i.slug, messages: listMessages(db, i.id), asks: listAsks(db, i.id) };
       }),
     );
+  }
+
+  if (route === "GET /api/board") {
+    const slug = slugSchema.parse(q("domain"));
+    const islandSlug = slugSchema.parse(q("island"));
+    return json(
+      withDb(ctx, (db) => {
+        const d = requireDomain(db, slug);
+        const i = requireIsland(db, d.id, islandSlug);
+        return { island: i.slug, cards: listCards(db, i.id) };
+      }),
+    );
+  }
+
+  if (route === "POST /api/board") {
+    const { domain, island, ...write } = boardPostInputSchema.parse(await req.json());
+    // The same function the judge's tool uses, as the reader: the ownership rules live in one place.
+    const result = boardWrite({ dbPath: ctx.dbPath, domain, island }, write, "you");
+    const version = withDb(ctx, (db) => getViewState(db, requireDomain(db, domain).id).version);
+    return json({ ...result, version });
   }
 
   if (route === "POST /api/probe") {

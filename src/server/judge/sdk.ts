@@ -2,12 +2,12 @@ import { z } from "zod";
 import { ArchipelagoError } from "../../core/errors.ts";
 import { readProtocol } from "./protocol.ts";
 import { renderContext, renderThreadPrompt } from "./context.ts";
-import { askReader, islandContext, proposeReef, recordVerdict, setLandmarks, unlockLandmark } from "./tools.ts";
+import { askReader, boardWrite, islandContext, proposeReef, recordVerdict, setLandmarks, unlockLandmark } from "./tools.ts";
 import type { JudgeRunner } from "./runner.ts";
 
 export const DEFAULT_MODEL = "claude-opus-5";
 const SERVER = "archipelago";
-const TOOL_NAMES = ["island_context", "record_verdict", "propose_reef", "set_landmarks", "unlock_landmark", "ask_reader"];
+const TOOL_NAMES = ["island_context", "record_verdict", "propose_reef", "set_landmarks", "unlock_landmark", "ask_reader", "board_write"];
 const MAX_TURNS = 16;
 
 async function loadSdk() {
@@ -72,7 +72,7 @@ export const sdkRunner: JudgeRunner = async ({ dbPath, domain, island, emit, sig
     tools: [
       sdk.tool(
         "island_context",
-        "This island: verdict and history, islets, straits to neighbours, nearest open water, pending reef proposals, and the thread so far. Read fresh.",
+        "This island: verdict and history, islets, straits to neighbours, nearest open water, pending reef proposals, the board, and the thread so far. Read fresh.",
         {},
         async () => guard(() => islandContext(deps)),
       ),
@@ -118,6 +118,19 @@ export const sdkRunner: JudgeRunner = async ({ dbPath, domain, island, emit, sig
         "Ask the reader to choose: a question and 2–4 short options, one of them what they would say if they already understood. The options appear under your reply; end the reply with the question and stop.",
         { question: z.string(), options: z.array(z.string()).min(2).max(4) },
         async (args) => guard(() => askReader(deps, args)),
+      ),
+      sdk.tool(
+        "board_write",
+        "Pin, update, or remove a card on this island's board (§10). op add: kind (diagram | note | code), title (one line), body (mermaid source, markdown, or code), lang for code. op update: id plus the fields to change. op remove: id. You may only update or remove cards you wrote.",
+        {
+          op: z.enum(["add", "update", "remove"]),
+          id: z.number().int().positive().optional(),
+          kind: z.enum(["diagram", "note", "code"]).optional(),
+          title: z.string().optional(),
+          body: z.string().optional(),
+          lang: z.string().optional(),
+        },
+        async (args) => guard(() => boardWrite(deps, args)),
       ),
     ],
   });

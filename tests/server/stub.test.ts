@@ -9,6 +9,7 @@ import { latestVerdict } from "../../src/core/repositories/verdictRepository.ts"
 import { addMessage, listMessages } from "../../src/core/repositories/messageRepository.ts";
 import { listLandmarks } from "../../src/core/repositories/landmarkRepository.ts";
 import { listAsks, attachAsks } from "../../src/core/repositories/askRepository.ts";
+import { listCards } from "../../src/core/repositories/boardRepository.ts";
 import { stubRunner } from "../../src/server/judge/stub.ts";
 import { createRunner, type JudgeEvent } from "../../src/server/judge/runner.ts";
 
@@ -120,4 +121,17 @@ test("a message containing 'code' gets a reply with a six-line swift fence", asy
   expect(fence).not.toBeNull();
   expect(fence![1].split("\n")).toHaveLength(6);
   expect(reply.trim().endsWith("?")).toBe(true);
+});
+
+test("'pin' adds a canned diagram card through the real tool and leaves the system line", async () => {
+  const { events, reply } = await turn("pin the request path please");
+  expect(events[0]).toEqual({ type: "progress", message: "board_write" });
+  expect(reply).toContain("Request path");
+  const db = openDatabase(dbPath);
+  const cards = listCards(db, caching);
+  expect(cards).toHaveLength(1);
+  expect(cards[0]).toMatchObject({ kind: "diagram", title: "Request path", author: "judge" });
+  expect(cards[0].body).toContain("flowchart TB");
+  expect(listMessages(db, caching).at(-1)).toMatchObject({ kind: "system", body: 'board: pinned "Request path"' });
+  db.close();
 });

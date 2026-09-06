@@ -391,3 +391,24 @@ test("shiki is bundled and served from the vendor route with an ETag", async () 
   expect(again.status).toBe(304);
   expect(await again.text()).toBe("");
 });
+
+test("the board is read and written through /api/board; reader writes leave no thread message", async () => {
+  expect((await get("/api/board?domain=sd&island=caching")).json).toEqual({ island: "caching", cards: [] });
+  const v0 = (await get("/api/version?domain=sd")).json.version;
+  const add = await post("/api/board", { domain: "sd", island: "caching", op: "add", kind: "diagram", title: "Request path", body: "flowchart TB\n  a --> b", lang: "swift" });
+  expect(add.status).toBe(200);
+  expect(add.json.card).toMatchObject({ kind: "diagram", title: "Request path", author: "you", lang: null });
+  expect(add.json.version).toBe(v0 + 1);
+  const id = add.json.card.id;
+  const upd = await post("/api/board", { domain: "sd", island: "caching", op: "update", id, title: "Path" });
+  expect(upd.json.card).toMatchObject({ id, title: "Path", body: "flowchart TB\n  a --> b" });
+  expect((await get("/api/board?domain=sd&island=caching")).json.cards.map((c: any) => c.title)).toEqual(["Path"]);
+  expect((await thread("caching")).messages).toEqual([]);
+  expect((await post("/api/board", { domain: "sd", island: "databases", op: "remove", id })).status).toBe(404);
+  expect((await post("/api/board", { domain: "sd", island: "caching", op: "add", kind: "note", title: "t", body: " " })).status).toBe(400);
+  expect((await post("/api/board", { domain: "sd", island: "caching", op: "update", id })).status).toBe(400);
+  const rm = await post("/api/board", { domain: "sd", island: "caching", op: "remove", id });
+  expect(rm.json).toMatchObject({ removed: id, title: "Path" });
+  expect((await get("/api/board?domain=sd&island=caching")).json.cards).toEqual([]);
+  expect((await get("/api/board?domain=sd&island=nope")).status).toBe(404);
+});
