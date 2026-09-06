@@ -292,33 +292,39 @@ body.pane-open .board { right: var(--pane-w); }
 .board .card .diagram, .board .card .codeblock { margin: 0; }
 .board .note-body { display: block; }
 .board .note-body > :first-child { margin-top: 0; }
-.board .editor { background: var(--panel); border: 1px solid var(--lamp); border-radius: 10px; padding: 12px; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-.board .editor.code { grid-template-columns: 1fr; }
-/* code on the board: the log's block rules are scoped to .msg, so the board sets its own */
-.board .codeblock pre { margin: 0; padding: 0; overflow-x: auto; white-space: pre; font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; }
-.board .codeblock code { color: var(--code-fg); }
+/* the editor: a card being written. Head (kind, language, Write | Preview), body, foot (actions, hint, status). */
+.board .editor { background: var(--panel); border: 1px solid var(--line); box-shadow: inset 0 0 0 1px rgba(245, 194, 66, .55); border-radius: 10px; padding: 0; display: flex; flex-direction: column; overflow: hidden; outline: none; }
+.board .editor .ehead { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-bottom: 1px solid var(--line); font-size: 11px; }
+.board .editor .ehead .kind { text-transform: uppercase; letter-spacing: .08em; color: var(--lamp); }
+.board .editor .ehead .spacer { flex: 1; }
+.board .editor .ehead select { background: var(--water); color: var(--text); border: 1px solid var(--line); border-radius: 6px; padding: 2px 6px; font: 11px system-ui, sans-serif; }
+.board .editor .ehead select:focus { outline: none; border-color: var(--lamp); }
+.board .editor .tabs { display: inline-flex; border: 1px solid var(--line-03); border-radius: 999px; padding: 2px; gap: 2px; }
+.board .editor .tabs .tab { height: 20px; padding: 0 10px; border: 0; border-radius: 999px; font-size: 11px; color: var(--muted); }
+.board .editor .tabs .tab:hover { color: var(--text); }
+.board .editor .tabs .tab[aria-selected="true"] { background: var(--lamp); color: var(--sea); }
+.board .editor .ebody { background: var(--water); }
+.board .editor .write { display: block; width: 100%; box-sizing: border-box; min-height: 160px; margin: 0; padding: 12px 14px; border: 0; background: transparent; color: var(--text); resize: none; outline: none; overflow-y: hidden;
+  font: 14px/1.6 system-ui, -apple-system, sans-serif; }
+.board .editor.diagram .write { font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; white-space: pre; overflow-x: auto; }
+.board .editor .write::placeholder { color: var(--muted); }
+.board .editor .write[hidden], .board .editor .preview[hidden] { display: none; }
+.board .editor .preview { padding: 12px 14px; min-height: 160px; box-sizing: border-box; }
+.board .editor .preview .empty { padding: 48px 0; }
+.board .editor .preview .note-body > :first-child { margin-top: 0; }
+.board .editor .preview .diagram { margin: 0; }
+.board .editor .err { color: var(--reef); font-size: 12px; white-space: pre-wrap; padding: 6px 14px 10px; border-top: 1px solid rgba(217, 71, 58, .35); }
+.board .editor .efoot { display: flex; gap: 6px; align-items: center; padding: 8px 12px; border-top: 1px solid var(--line); }
+.board .editor .efoot .hint { margin-left: auto; color: var(--muted); font-size: 11px; }
+.board .editor .efoot .hint kbd { font: 10px ui-monospace, monospace; border: 1px solid var(--line-03); border-radius: 4px; padding: 0 4px; margin: 0 2px; }
+.board .editor .efoot .status { color: var(--muted); font-size: 12px; margin-left: 8px; }
+.board .editor .efoot .status.bad { color: var(--reef); }
+.board .editor .efoot .status:empty { display: none; }
 /* the live code block: a transparent textarea over the highlighted mirror, same metrics */
-.board .live { margin: 0; }
-.board .live .cap select { background: var(--water); color: var(--text); border: 1px solid var(--line); border-radius: 6px; padding: 2px 6px; font: 11px system-ui, sans-serif; text-transform: none; letter-spacing: 0; }
-.board .live .wrap { position: relative; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
-.board .live .wrap:focus-within { border-color: var(--lamp); }
-.board .live pre, .board .live textarea { margin: 0; padding: 8px; font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; white-space: pre; tab-size: 2; box-sizing: border-box; }
-.board .live pre { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
-.board .live textarea { position: relative; display: block; width: 100%; min-height: 180px; border: 0; background: transparent; color: transparent; caret-color: var(--text); resize: vertical; overflow: auto; outline: none; }
-.board .live textarea::placeholder { color: var(--muted); }
-.board .live textarea::selection { background: rgba(245, 194, 66, .3); color: transparent; }
-.board .editor .fields { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
-.board .editor .fields input, .board .editor .fields select, .board .editor .fields textarea { background: var(--water); color: var(--text); border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px;
-  font: 13px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; }
-.board .editor .fields textarea { min-height: 220px; resize: vertical; }
-.board .editor .fields :is(input, select, textarea):focus { outline: none; border-color: var(--lamp); }
-.board .editor .err { color: var(--reef); font-size: 12px; white-space: pre-wrap; }
-.board .editor .preview { min-height: 220px; min-width: 0; overflow: auto; }
-.board .editor .preview .empty { padding: 24px 0; }
-.board .editor .row { grid-column: 1 / -1; display: flex; gap: 6px; align-items: center; }
-.board .editor .status { color: var(--muted); font-size: 12px; margin-left: auto; }
-.board .editor .status.bad { color: var(--reef); }
-@container (max-width: 900px) { .board .editor { grid-template-columns: 1fr; } }
+.board .live { position: relative; }
+.board .live pre, .board .live textarea { margin: 0; padding: 12px 14px; font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; white-space: pre; tab-size: 2; box-sizing: border-box; }
+.board .live textarea { position: relative; display: block; width: 100%; min-height: 160px; border: 0; background: transparent; color: transparent; caret-color: var(--text); resize: none; overflow: auto; outline: none; }
+.board .live code { color: var(--code-fg); }
 .board-toggle { position: fixed; right: 16px; bottom: 16px; z-index: 2; display: flex; gap: 8px; align-items: center; background: var(--panel); border: 1px solid var(--line); color: var(--text);
   border-radius: 999px; padding: 6px 12px; font: 12px system-ui, sans-serif; cursor: pointer; box-shadow: 0 8px 24px rgba(0, 0, 0, .35); transition: right .18s ease; }
 body.pane-open .board-toggle { right: calc(var(--pane-w) + 16px); }

@@ -203,35 +203,22 @@ function cardEl(card) {
 
 const PLACEHOLDER = {
   diagram: "flowchart TB\n  app[App] --> cache[Cache]\n  cache --> db[(Database)]",
-  note: "A claim, a definition, a list: markdown.",
+  note: "Write a note. Markdown is fine: **bold**, lists, > quotes.",
   code: "Three to twelve lines is plenty.",
 };
+const KIND_LABEL = { diagram: "diagram", note: "note", code: "code" };
+const GROW_MIN = 160;   // px, the writing surface never shrinks below this
+const GROW_MAX = 0.6;   // of the viewport, then it scrolls
 
-function renderPreview(ed, preview, err) {
-  const seq = ++previewSeq;
-  err.hidden = true;
-  if (!ed.body.trim()) {
-    preview.replaceChildren(el("div", "empty", "preview"));
-    return;
-  }
-  if (ed.kind === "diagram" && window.mermaid) {
-    window.mermaid
-      .parse(ed.body)
-      .then(() => {
-        if (seq !== previewSeq || state.editor !== ed) return;
-        preview.replaceChildren(bodyEl("diagram", ed.body, null, { cache: false }));
-      })
-      .catch((e) => {
-        if (seq !== previewSeq || state.editor !== ed) return;
-        err.textContent = String(e && e.message ? e.message : e).split("\n").slice(0, 3).join("\n");
-        err.hidden = false; // the last good render stays in the preview
-      });
-    return;
-  }
-  preview.replaceChildren(bodyEl(ed.kind, ed.body, ed.lang === PLAIN ? null : ed.lang, { cache: false }));
+/** Sizes a textarea to its content between the bounds, so the writing surface grows with the note instead of scrolling early. */
+function grow(ta) {
+  ta.style.height = "auto";
+  const max = Math.round(window.innerHeight * GROW_MAX);
+  ta.style.height = `${Math.min(max, Math.max(GROW_MIN, ta.scrollHeight))}px`;
+  ta.style.overflowY = ta.scrollHeight > max ? "auto" : "hidden";
 }
 
-/** The language picker for a code card, in the live block's caption. */
+/** The language picker for a code card, in the editor's head. */
 function langSelect(ed, onChange) {
   const sel = document.createElement("select");
   sel.dataset.field = "lang";
@@ -250,14 +237,30 @@ function langSelect(ed, onChange) {
   return sel;
 }
 
+/** A two-way segmented switch (Write | Preview); `onPick(name)` runs on change. */
+function tabs(names, current, onPick) {
+  const box = el("div", "tabs");
+  box.setAttribute("role", "tablist");
+  const buttons = names.map((name) => {
+    const b = button(name, () => {
+      if (b.getAttribute("aria-selected") === "true") return;
+      for (const other of buttons) other.setAttribute("aria-selected", String(other === b));
+      onPick(name);
+    }, "tab");
+    b.setAttribute("role", "tab");
+    b.setAttribute("aria-selected", String(name === current));
+    return b;
+  });
+  box.append(...buttons);
+  return box;
+}
+
 /**
  * A live code block: a transparent textarea over a highlighted mirror with the same metrics, so the reader
  * types into coloured code. The mirror repaints once per input frame and follows the textarea's scroll.
  */
 function liveCode(ed, onInput) {
-  const box = el("div", "codeblock live");
-  const cap = el("div", "cap");
-  const wrap = el("div", "wrap");
+  const wrap = el("div", "live");
   const pre = document.createElement("pre");
   pre.setAttribute("aria-hidden", "true");
   const code = document.createElement("code");
@@ -281,11 +284,10 @@ function liveCode(ed, onInput) {
       const text = ta.value;
       // a trailing newline would collapse in the mirror and leave the caret's line unpainted
       fillCode(code, ed.lang === PLAIN ? "text" : ed.lang, text.endsWith("\n") ? `${text} ` : text, false);
+      grow(ta);
       follow();
     });
   };
-  cap.append(langSelect(ed, paint));
-  box.append(cap, wrap);
   ta.addEventListener("input", () => {
     ed.body = ta.value;
     onInput();
@@ -300,49 +302,119 @@ function liveCode(ed, onInput) {
     }
   });
   paint();
-  return { box, ta };
+  return { wrap, ta, paint };
 }
 
+/** Renders a note or diagram body into `preview`; a diagram that does not parse shows its error in `err` and keeps the last render. */
+function renderPreview(ed, preview, err) {
+  const seq = ++previewSeq;
+  if (!ed.body.trim()) {
+    preview.replaceChildren(el("div", "empty", "nothing to preview yet"));
+    return;
+  }
+  if (ed.kind === "diagram" && window.mermaid) {
+    window.mermaid
+      .parse(ed.body)
+      .then(() => {
+        if (seq !== previewSeq || state.editor !== ed) return;
+        err.hidden = true;
+        preview.replaceChildren(bodyEl("diagram", ed.body, null, { cache: false }));
+      })
+      .catch((e) => {
+        if (seq !== previewSeq || state.editor !== ed) return;
+        err.textContent = String(e && e.message ? e.message : e).split("\n").slice(0, 3).join("\n");
+        err.hidden = false;
+      });
+    return;
+  }
+  preview.replaceChildren(bodyEl(ed.kind, ed.body, null, { cache: false }));
+}
+
+/**
+ * The editor: a head (kind, language for code, Write | Preview for notes and diagrams), a body, and a foot with the
+ * actions. Notes and diagrams are written in a plain surface that grows with the text; Preview renders it in place.
+ */
 function editorEl(ed) {
-  const box = el("div", `editor ${ed.kind}`);
-  const row = el("div", "row");
+  const box = el("section", `editor ${ed.kind}`);
+  box.tabIndex = -1;
+  box.setAttribute("aria-label", `${ed.id === null ? "new" : "edit"} ${KIND_LABEL[ed.kind]}`);
+  const head = el("div", "ehead");
+  head.append(el("span", "kind", ed.id === null ? `new ${KIND_LABEL[ed.kind]}` : KIND_LABEL[ed.kind]));
+  const body = el("div", "ebody");
+  const foot = el("div", "efoot");
   const save = button("save", () => void saveEditor(), "primary");
-  row.append(save, button("cancel", cancelEditor));
-  if (ed.id !== null) row.append(button("remove", () => void remove(ed.id), "danger"));
+  foot.append(save, button("cancel", cancelEditor));
+  if (ed.id !== null) foot.append(button("remove", () => void remove(ed.id), "danger"));
+  const hint = el("span", "hint");
+  hint.append(el("kbd", null, "⌘↵"), " save ", el("kbd", null, "esc"), " cancel");
   const status = el("span", "status");
-  row.append(status);
+  foot.append(hint, status);
   const updateSave = () => {
     save.disabled = !canSave(ed) || state.saving;
   };
 
   if (ed.kind === "code") {
     const live = liveCode(ed, updateSave);
-    box.append(live.box, row);
+    head.append(el("span", "spacer"), langSelect(ed, live.paint));
+    body.append(live.wrap);
     editorFocus = () => live.ta.focus();
   } else {
-    const fields = el("div", "fields");
     const ta = document.createElement("textarea");
+    ta.className = "write";
     ta.value = ed.body;
     ta.placeholder = PLACEHOLDER[ed.kind];
-    ta.spellcheck = false;
+    ta.spellcheck = ed.kind === "note";
     ta.dataset.field = "body";
+    ta.setAttribute("aria-label", KIND_LABEL[ed.kind]);
+    const preview = el("div", "preview");
+    preview.hidden = true;
     const err = el("div", "err");
     err.hidden = true;
-    fields.append(ta, err);
-    const preview = el("div", "preview");
-    const schedulePreview = () => {
-      clearTimeout(previewTimer);
-      previewTimer = setTimeout(() => renderPreview(ed, preview, err), PREVIEW_MS);
+    const checkDiagram = () => {
+      // while writing, only the error line updates; the drawing waits for Preview
+      if (ed.kind !== "diagram" || !window.mermaid) return;
+      const seq = ++previewSeq;
+      if (!ed.body.trim()) {
+        err.hidden = true;
+        return;
+      }
+      window.mermaid.parse(ed.body).then(() => {
+        if (seq === previewSeq) err.hidden = true;
+      }).catch((e) => {
+        if (seq !== previewSeq) return;
+        err.textContent = String(e && e.message ? e.message : e).split("\n").slice(0, 3).join("\n");
+        err.hidden = false;
+      });
     };
     ta.addEventListener("input", () => {
       ed.body = ta.value;
       updateSave();
-      schedulePreview();
+      grow(ta);
+      clearTimeout(previewTimer);
+      previewTimer = setTimeout(checkDiagram, PREVIEW_MS);
     });
-    box.append(fields, preview, row);
-    renderPreview(ed, preview, err);
-    editorFocus = () => ta.focus();
+    const pick = (name) => {
+      const showing = name === "Preview";
+      ta.hidden = showing;
+      preview.hidden = !showing;
+      if (showing) {
+        renderPreview(ed, preview, err);
+        box.focus({ preventScroll: true }); // Escape now cancels the editor instead of blurring a field
+      } else {
+        ta.focus();
+        grow(ta);
+      }
+    };
+    head.append(el("span", "spacer"), tabs(["Write", "Preview"], "Write", pick));
+    body.append(ta, preview, err);
+    editorFocus = () => {
+      ta.focus();
+      grow(ta);
+    };
+    requestAnimationFrame(() => grow(ta));
+    checkDiagram();
   }
+  box.append(head, body, foot);
   updateSave();
   editorStatus = status;
   return box;
