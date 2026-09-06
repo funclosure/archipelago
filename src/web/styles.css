@@ -5,7 +5,7 @@
   /* the chrome's names, aliased onto the palette */
   --water: var(--sea); --text: rgba(255, 255, 255, .92); --muted: rgba(255, 255, 255, .65);
   --sand: var(--lamp); --land: var(--grass); --ridge: var(--snow);
-  --panel: #163449; --panel-2: #245069; --line: rgba(255, 255, 255, .14); --open: rgba(255, 255, 255, .40);
+  --panel: #0E2233; --panel-2: #245069; --line: rgba(255, 255, 255, .14); --open: rgba(255, 255, 255, .40);
   /* code slots; a theme switch changes these six and nothing in the highlighter */
   --code-fg: var(--text); --code-keyword: var(--lamp); --code-string: var(--sand-fill);
   --code-comment: var(--muted); --code-type: var(--snow); --code-number: var(--grass);
