@@ -1,5 +1,5 @@
 import { test, expect } from "bun:test";
-import { threadItems, proposalFromBody, landmarkFromSystem, inlineSegments, mdBlocks, logItems, askFor } from "../../src/web/thread.js";
+import { questionRuns, threadItems, proposalFromBody, landmarkFromSystem, inlineSegments, mdBlocks, logItems, askFor } from "../../src/web/thread.js";
 
 const proposal = { target: "island:caching", claim: "never stale", consequence: "stale prices", evidence: "q", confidence: 0.7, rationale: "r", status: "pending" };
 
@@ -53,8 +53,8 @@ test("inlineSegments renders strong, em, and code, and leaves unmatched markers 
 
 test("mdBlocks splits paragraphs on blank lines and keeps single newlines as line breaks", () => {
   expect(mdBlocks("one\ntwo\n\nthree\n")).toEqual([
-    { type: "p", lines: [[{ type: "text", text: "one" }], [{ type: "text", text: "two" }]] },
-    { type: "p", lines: [[{ type: "text", text: "three" }]] },
+    { type: "p", lines: [[{ type: "text", text: "one" }], [{ type: "text", text: "two" }]], raw: ["one", "two"] },
+    { type: "p", lines: [[{ type: "text", text: "three" }]], raw: ["three"] },
   ]);
   expect(mdBlocks("")).toEqual([]);
 });
@@ -67,11 +67,11 @@ test("mdBlocks parses headings, bullet and numbered lists, and fences, closed or
   expect(blocks[2]).toEqual({ type: "list", ordered: true, items: [[{ type: "text", text: "one" }], [{ type: "text", text: "two" }]] });
   expect(blocks[3]).toEqual({ type: "code", lang: "", text: "let x = 1;", closed: true });
   expect(mdBlocks("before\n```js\nstill open")).toEqual([
-    { type: "p", lines: [[{ type: "text", text: "before" }]] },
+    { type: "p", lines: [[{ type: "text", text: "before" }]], raw: ["before"] },
     { type: "code", lang: "js", text: "still open", closed: false },
   ]);
   expect(mdBlocks("*emphasis* at the start is not a bullet")).toEqual([
-    { type: "p", lines: [[{ type: "em", text: "emphasis" }, { type: "text", text: " at the start is not a bullet" }]] },
+    { type: "p", lines: [[{ type: "em", text: "emphasis" }, { type: "text", text: " at the start is not a bullet" }]], raw: ["*emphasis* at the start is not a bullet"] },
   ]);
 });
 
@@ -130,4 +130,22 @@ test("askFor finds the ask attached to a message", () => {
 test("askFor returns the latest ask when more than one is attached to the same message", () => {
   const asks = [{ id: 1, messageId: 9, options: ["a", "b"], picked: null }, { id: 2, messageId: 9, options: ["c", "d"], picked: null }];
   expect(askFor(asks, 9).id).toBe(2);
+});
+
+test("questionRuns splits sentences and flags the ones that ask", () => {
+  expect(questionRuns("You got the shape. Where does it break? Say more.")).toEqual([
+    { text: "You got the shape. ", question: false },
+    { text: "Where does it break? ", question: true },
+    { text: "Say more.", question: false },
+  ]);
+  expect(questionRuns("What happens on rotation?")).toEqual([{ text: "What happens on rotation?", question: true }]);
+  expect(questionRuns("no punctuation at all")).toEqual([{ text: "no punctuation at all", question: false }]);
+  expect(questionRuns("Really?! Then what?")).toEqual([{ text: "Really?! ", question: false }, { text: "Then what?", question: true }]);
+});
+
+test("mdBlocks parses blockquotes and keeps raw paragraph lines", () => {
+  expect(mdBlocks("> Where does it break?\n> second line\n\nIt breaks on rotation.")).toEqual([
+    { type: "quote", lines: [[{ type: "text", text: "Where does it break?" }], [{ type: "text", text: "second line" }]] },
+    { type: "p", lines: [[{ type: "text", text: "It breaks on rotation." }]], raw: ["It breaks on rotation."] },
+  ]);
 });

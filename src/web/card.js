@@ -229,6 +229,22 @@ async function runTurn(slug, message, askId) {
   if (!focusAnswer()) thread.focusPending = true;
 }
 
+/** The reader answers one of the Keeper's questions directly: it goes to the top of the draft as a quote. */
+function quoteIntoAnswer(question) {
+  const ta = pane.querySelector("#answer");
+  if (!ta || ta.disabled) return;
+  const line = `> ${question}`;
+  const reef = ta.placeholder === "what is wrong with this reef";
+  const current = reef ? thread.disputeDraft : thread.draft;
+  if (!current.split("\n").includes(line)) {
+    const next = current.trim() ? `${line}\n${current}` : `${line}\n`;
+    if (reef) thread.disputeDraft = next;
+    else thread.draft = next;
+    render();
+  }
+  focusAnswer();
+}
+
 const pendingAskOf = () => [...thread.asks].reverse().find((a) => a.messageId !== null && a.picked === null) ?? null;
 
 /** The reader chose an option, or typed instead of choosing: either way it is the next message. */
@@ -287,7 +303,7 @@ function renderLive() {
     thinking.append(el("span", "caret"));
     live.replaceChildren(thinking);
   } else if (thread.live) {
-    live.replaceChildren(renderMarkdown(thread.live));
+    live.replaceChildren(renderMarkdown(thread.live, { onQuestion: quoteIntoAnswer }));
     // Descend to the deepest last block (e.g. into a list's last <li>) so the caret
     // follows the last character rather than landing after the whole block; stop
     // above inline elements so it trails them instead of nesting inside.
@@ -463,7 +479,7 @@ function itemEl(item, reefPending) {
   if (item.kind === "system") return el("div", "msg system", item.text);
   if (item.kind === "reef_proposal") return reefEl(item);
   const m = el("div", `msg ${item.role}`);
-  m.append(renderMarkdown(item.text));
+  m.append(renderMarkdown(item.text, item.role === "judge" ? { onQuestion: quoteIntoAnswer } : {}));
   const ask = item.role === "judge" ? askFor(thread.asks, item.id) : null;
   if (ask) m.append(choicesEl(ask, reefPending));
   return m;

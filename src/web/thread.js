@@ -70,8 +70,13 @@ export function mdBlocks(text) {
   let list = null;
   let fence = null;
   const flushPara = () => {
-    if (para.length) blocks.push({ type: "p", lines: para.map(inlineSegments) });
+    if (para.length) blocks.push({ type: "p", lines: para.map(inlineSegments), raw: [...para] });
     para = [];
+  };
+  let quote = null;
+  const flushQuote = () => {
+    if (quote) blocks.push(quote);
+    quote = null;
   };
   const flushList = () => {
     if (list) blocks.push(list);
@@ -91,9 +96,19 @@ export function mdBlocks(text) {
     if (f) {
       flushPara();
       flushList();
+      flushQuote();
       fence = { type: "code", lang: f[1].toLowerCase(), text: "", closed: false };
       continue;
     }
+    const q = line.match(/^\s*>\s?(.*)$/);
+    if (q) {
+      flushPara();
+      flushList();
+      if (!quote) quote = { type: "quote", lines: [] };
+      quote.lines.push(inlineSegments(q[1].trim()));
+      continue;
+    }
+    flushQuote();
     const h = line.match(/^(#{1,3})\s+(.+)/);
     if (h) {
       flushPara();
@@ -122,6 +137,7 @@ export function mdBlocks(text) {
   }
   flushPara();
   flushList();
+  flushQuote();
   if (fence) blocks.push(fence);
   return blocks;
 }
@@ -153,4 +169,18 @@ export function logItems(messages, island) {
     out.push(it);
   });
   return out;
+}
+
+/**
+ * A paragraph line as sentence runs: text split after `.`, `!`, or `?` followed by whitespace or the end.
+ * A run whose sentence ends with `?` is a question the reader can answer directly.
+ */
+export function questionRuns(line) {
+  const runs = [];
+  const re = /[^.!?]*[.!?]+(?:\s+|$)|[^.!?]+$/g;
+  for (const m of String(line).matchAll(re)) {
+    if (!m[0]) continue;
+    runs.push({ text: m[0], question: /\?\s*$/.test(m[0]) });
+  }
+  return runs;
 }

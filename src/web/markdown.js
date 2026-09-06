@@ -1,5 +1,5 @@
 // mdBlocks → DOM. Built with createElement and textContent only; never innerHTML.
-import { mdBlocks } from "./thread.js";
+import { mdBlocks, inlineSegments, questionRuns } from "./thread.js";
 import { codeElement } from "./code.js";
 
 const nodeCache = new Map(); // diagram source → parsed SVG node, cloned on repeat appends
@@ -105,17 +105,54 @@ function appendInline(parent, segments) {
   }
 }
 
-/** The rendered blocks of a markdown string, as a fragment ready to append. */
-export function renderMarkdown(text) {
+/** A question sentence the reader can click (or press Enter/Space on) to answer it directly. */
+function askSpan(run, onQuestion) {
+  const span = document.createElement("span");
+  span.className = "ask";
+  span.setAttribute("role", "button");
+  span.tabIndex = 0;
+  span.title = "answer this";
+  appendInline(span, inlineSegments(run.text));
+  const fire = () => onQuestion(run.text.trim());
+  span.addEventListener("click", fire);
+  span.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      e.stopPropagation();
+      fire();
+    }
+  });
+  return span;
+}
+
+/** A paragraph line: plain inline segments, or sentence runs with questions wrapped when a handler is given. */
+function appendLine(p, block, i, onQuestion) {
+  if (!onQuestion) return appendInline(p, block.lines[i]);
+  for (const run of questionRuns(block.raw[i])) {
+    if (run.question) p.append(askSpan(run, onQuestion));
+    else appendInline(p, inlineSegments(run.text));
+  }
+}
+
+/** The rendered blocks of a markdown string, as a fragment ready to append. `onQuestion(text)` makes question sentences clickable. */
+export function renderMarkdown(text, { onQuestion = null } = {}) {
   const frag = document.createDocumentFragment();
   for (const b of mdBlocks(text)) {
     if (b.type === "p") {
       const p = document.createElement("p");
-      b.lines.forEach((segments, i) => {
+      b.lines.forEach((_, i) => {
         if (i) p.append(document.createElement("br"));
-        appendInline(p, segments);
+        appendLine(p, b, i, onQuestion);
       });
       frag.append(p);
+    } else if (b.type === "quote") {
+      const bq = document.createElement("blockquote");
+      for (const segments of b.lines) {
+        const p = document.createElement("p");
+        appendInline(p, segments);
+        bq.append(p);
+      }
+      frag.append(bq);
     } else if (b.type === "h") {
       const h = document.createElement(`h${b.level}`);
       appendInline(h, b.segments);
