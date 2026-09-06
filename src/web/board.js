@@ -309,9 +309,30 @@ function currentEditor() {
   return editorNode;
 }
 
+/** A 12px cross drawn with two strokes, in the button's colour. */
+function closeIcon() {
+  const NS = "http://www.w3.org/2000/svg";
+  const svg = document.createElementNS(NS, "svg");
+  svg.setAttribute("viewBox", "0 0 12 12");
+  svg.setAttribute("width", "12");
+  svg.setAttribute("height", "12");
+  svg.setAttribute("aria-hidden", "true");
+  for (const d of ["M2 2 L10 10", "M10 2 L2 10"]) {
+    const p = document.createElementNS(NS, "path");
+    p.setAttribute("d", d);
+    p.setAttribute("fill", "none");
+    p.setAttribute("stroke", "currentColor");
+    p.setAttribute("stroke-width", "1.5");
+    p.setAttribute("stroke-linecap", "round");
+    svg.append(p);
+  }
+  return svg;
+}
+
 /** The way back: a × at the head's right end; the peeked map and the scrim say where it leads. */
 function close() {
-  const b = button("×", () => setOpen(false), "close");
+  const b = button("", () => setOpen(false), "close");
+  b.append(closeIcon());
   b.title = "back to the map (Esc)";
   b.setAttribute("aria-label", "back to the map");
   return b;

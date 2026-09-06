@@ -267,7 +267,9 @@ body.pane-open .board { right: var(--pane-w); }
 .board .head .name { font-family: Georgia, serif; font-size: 16px; }
 .board .head .count { color: var(--muted); font-size: 12px; }
 .board .head .spacer { flex: 1; }
-.board .head .close { width: 28px; height: 28px; padding: 0; border-radius: 999px; font-size: 16px; line-height: 1; display: inline-flex; align-items: center; justify-content: center; }
+.board .head button { height: 26px; padding: 0 10px; display: inline-flex; align-items: center; justify-content: center; line-height: 1; }
+.board .head .close { width: 26px; padding: 0; }
+.board .head .close svg { display: block; }
 .board button { background: transparent; border: 1px solid var(--line-03); color: var(--text); border-radius: 999px; padding: 4px 10px; font: 12px system-ui, sans-serif; cursor: pointer; }
 .board button:hover { border-color: var(--lamp); color: var(--lamp); }
 .board button.primary { background: var(--lamp); color: var(--sea); border-color: var(--lamp); }
