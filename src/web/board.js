@@ -317,6 +317,32 @@ function close() {
   return b;
 }
 
+let hideTimer = 0;
+const SLIDE_MS = 200; // a touch over the .18s transition
+
+/** Shows or hides the sheet and its scrim with the slide: unhide, then next frame add `in`; on close, hide after the slide. */
+function setVisible(show) {
+  clearTimeout(hideTimer);
+  if (show) {
+    if (board.hidden) {
+      board.hidden = false;
+      scrim.hidden = false;
+      void board.offsetHeight; // commit the hidden position so the slide starts from it
+    }
+    board.classList.add("in");
+    scrim.classList.add("in");
+    return;
+  }
+  if (board.hidden) return;
+  board.classList.remove("in");
+  scrim.classList.remove("in");
+  hideTimer = setTimeout(() => {
+    board.hidden = true;
+    scrim.hidden = true;
+    board.replaceChildren();
+  }, SLIDE_MS);
+}
+
 function headEl(island) {
   const head = el("div", "head");
   head.append(el("span", "name", island.name), el("span", "count", `${state.cards.length} ${state.cards.length === 1 ? "card" : "cards"}`), el("span", "spacer"));
@@ -341,9 +367,7 @@ function render() {
   if (island) toggle.replaceChildren(el("span", null, `board · ${state.cards.length}`), el("kbd", null, "b"));
   const show = Boolean(island) && state.open;
   if (!show) {
-    board.hidden = true;
-    scrim.hidden = true;
-    board.replaceChildren();
+    setVisible(false);
     editorNode = null;
     editorFor = null;
     editorStatus = null;
@@ -352,8 +376,7 @@ function render() {
   const active = document.activeElement;
   const keep = editorNode && editorNode.contains(active) ? active : null;
   const scrollTop = board.querySelector(".column")?.scrollTop ?? 0;
-  board.hidden = false;
-  scrim.hidden = false;
+  setVisible(true);
   board.replaceChildren(headEl(island), columnEl());
   if (!state.editor) {
     editorNode = null;

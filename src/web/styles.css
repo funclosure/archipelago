@@ -249,15 +249,19 @@ body.pane-open .keys { right: var(--pane-w); }
 .keys-card kbd { font: 10px ui-monospace, Menlo, monospace; border: 1px solid var(--line); border-radius: 4px; padding: 0 5px; color: var(--text); min-width: 28px; text-align: center; }
 
 /* ---- board ---- */
-.board-scrim { position: fixed; top: 0; bottom: 0; left: var(--outline-w); right: 0; background: rgba(0, 0, 0, .28); z-index: 2; transition: left .18s ease; }
+.board-scrim { position: fixed; top: 0; bottom: 0; left: var(--outline-w); right: 0; background: rgba(0, 0, 0, .28); z-index: 2; opacity: 0; transition: opacity .18s ease, left .18s ease; }
+.board-scrim.in { opacity: 1; }
 body.pane-open .board-scrim { right: var(--pane-w); }
 .board-scrim[hidden] { display: none; }
 /* a sheet: the breadcrumb and the strip stay in view above it, so the map is visibly still there */
-.board { position: fixed; top: 100px; bottom: 0; left: calc(var(--outline-w) + 12px); right: 12px; background: var(--water); z-index: 2;
-  border: 1px solid var(--line); border-bottom: none; border-radius: 14px 14px 0 0; box-shadow: 0 -12px 40px rgba(0, 0, 0, .45);
-  display: flex; flex-direction: column; overflow: hidden; container-type: inline-size; transition: left .18s ease; }
-body.pane-open .board { right: calc(var(--pane-w) + 12px); }
+.board { position: fixed; top: 100px; bottom: 0; left: var(--outline-w); right: 0; background: var(--water); z-index: 2;
+  border-top: 1px solid var(--line); border-radius: 14px 14px 0 0; box-shadow: 0 -12px 40px rgba(0, 0, 0, .45);
+  display: flex; flex-direction: column; overflow: hidden; container-type: inline-size;
+  transform: translateY(24px); opacity: 0; transition: transform .18s ease, opacity .18s ease, left .18s ease; }
+.board.in { transform: none; opacity: 1; }
+body.pane-open .board { right: var(--pane-w); }
 .board[hidden] { display: none; }
+@media (prefers-reduced-motion: reduce) { .board, .board-scrim { transition: none; } }
 .board:focus { outline: none; }
 .board .head { display: flex; align-items: center; gap: 10px; padding: 12px 20px; border-bottom: 1px solid var(--line); }
 .board .head .name { font-family: Georgia, serif; font-size: 16px; }
