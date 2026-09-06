@@ -67,3 +67,21 @@ test("cheatSheet lists Everywhere and the region's keys", () => {
   expect(cheatSheet("map")[1].title).toBe("Map");
   expect(cheatSheet("pane")[1].keys.some(([k]) => k === "1–4")).toBe(true);
 });
+
+test("escapeRung has editor and board rungs between blur and cursor", () => {
+  const all = { sheetOpen: false, menuOpen: false, typing: false, editor: true, board: true, cursor: true, selected: true };
+  expect(escapeRung({ ...all, typing: true })).toBe("blur");
+  expect(escapeRung(all)).toBe("editor");
+  expect(escapeRung({ ...all, editor: false })).toBe("board");
+  expect(escapeRung({ ...all, editor: false, board: false })).toBe("cursor");
+  expect(escapeRung({ sheetOpen: false, menuOpen: false, typing: false, cursor: false, selected: true })).toBe("deselect");
+});
+
+test("cheatSheet shows the board keys in the map's slot while the board is open", () => {
+  expect(cheatSheet("map")[1].title).toBe("Map");
+  const board = cheatSheet("map", { board: true })[1];
+  expect(board.title).toBe("Board");
+  expect(board.keys.map(([k]) => k)).toEqual(["↓ j", "↑ k", "↵", "d n c", "x", "⌘↵", "b"]);
+  expect(cheatSheet("pane", { board: true })[1].title).toBe("Pane");
+  expect(cheatSheet("map")[0].keys).toContainEqual(["b", "board"]);
+});

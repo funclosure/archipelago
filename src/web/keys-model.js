@@ -14,11 +14,13 @@ export function isTyping(target) {
   return tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || Boolean(target.isContentEditable);
 }
 
-/** The one thing Escape does this press, top rung first. */
-export function escapeRung({ sheetOpen, menuOpen, typing, cursor, selected }) {
+/** The one thing Escape does this press, top rung first. `editor` is the board's editor, `board` the board itself. */
+export function escapeRung({ sheetOpen, menuOpen, typing, editor = false, board = false, cursor, selected }) {
   if (sheetOpen) return "sheet";
   if (menuOpen) return "menu";
   if (typing) return "blur";
+  if (editor) return "editor";
+  if (board) return "board";
   if (cursor) return "cursor";
   if (selected) return "deselect";
   return null;
@@ -61,14 +63,16 @@ export function moveCursor(rows, cursorSlug, key) {
   }
 }
 
-const EVERYWHERE = [["Tab", "next region"], ["⇧Tab", "previous region"], ["[", "outline"], ["/", "answer"], ["?", "keys"], ["Esc", "back"]];
+const EVERYWHERE = [["Tab", "next region"], ["⇧Tab", "previous region"], ["[", "outline"], ["/", "answer"], ["b", "board"], ["?", "keys"], ["Esc", "back"]];
 const REGION_KEYS = {
   outline: { title: "Outline", keys: [["↓ j", "move"], ["↑ k", "move"], ["↵", "select"], ["→ ←", "expand / collapse"], ["Home End", "first / last"]] },
   map: { title: "Map", keys: [["↵", "select"], ["← → ↑ ↓", "pan"], ["+ −", "zoom"], ["0", "home"], ["Esc", "deselect"]] },
   pane: { title: "Pane", keys: [["↵ /", "answer"], ["l", "make landfall"], ["n", "note"], ["1–4", "pick option"], ["c", "confirm reef"], ["d", "dispute"], ["↑ ↓", "scroll"], ["⌘↵", "send"]] },
+  board: { title: "Board", keys: [["↓ j", "move"], ["↑ k", "move"], ["↵", "edit"], ["d n c", "add diagram / note / code"], ["x", "remove"], ["⌘↵", "save"], ["b", "map"]] },
 };
 
-/** The cheat sheet's sections for a region. */
-export function cheatSheet(region) {
-  return [{ title: "Everywhere", keys: EVERYWHERE }, REGION_KEYS[region] ?? REGION_KEYS.outline];
+/** The cheat sheet's sections for a region. With `board`, the map's slot shows the board's keys. */
+export function cheatSheet(region, { board = false } = {}) {
+  const key = region === "map" && board ? "board" : region;
+  return [{ title: "Everywhere", keys: EVERYWHERE }, REGION_KEYS[key] ?? REGION_KEYS.outline];
 }
