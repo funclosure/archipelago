@@ -112,6 +112,23 @@ export type Ask = {
   createdAt: string;
 };
 
+export const boardKinds = ["diagram", "note", "code"] as const;
+export type BoardKind = (typeof boardKinds)[number];
+
+/** One card on an island's board. `lang` is set only on code cards. The author never changes. */
+export type BoardCard = {
+  id: number;
+  domainId: number;
+  islandId: number;
+  kind: BoardKind;
+  title: string;
+  body: string;
+  lang: string | null;
+  author: MessageRole;
+  createdAt: string;
+  updatedAt: string;
+};
+
 export type Landmark = {
   id: number;
   domainId: number;

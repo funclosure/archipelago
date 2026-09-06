@@ -41,7 +41,7 @@ test("0002 adds nullable island positions", () => {
   expect(cols).toContain("x");
   expect(cols).toContain("y");
   const versions = db.query<{ version: string }, []>("select version from schema_migrations order by version").all().map((r) => r.version);
-  expect(versions).toEqual(["0001_initial", "0002_positions", "0003_threads", "0004_landmarks", "0005_harbour", "0006_asks"]);
+  expect(versions).toEqual(["0001_initial", "0002_positions", "0003_threads", "0004_landmarks", "0005_harbour", "0006_asks", "0007_board"]);
 });
 
 test("0002 upgrades a database created with 0001 only", () => {
@@ -61,7 +61,7 @@ test("0002 upgrades a database created with 0001 only", () => {
     .get(domainId)!.version;
 
   const ran = migrateDatabase(db);
-  expect(ran).toEqual(["0002_positions", "0003_threads", "0004_landmarks", "0005_harbour", "0006_asks"]);
+  expect(ran).toEqual(["0002_positions", "0003_threads", "0004_landmarks", "0005_harbour", "0006_asks", "0007_board"]);
 
   const island = db.query<{ x: number | null; y: number | null }, []>("select x, y from islands where slug = 'caching'").get();
   expect(island).toEqual({ x: null, y: null });
