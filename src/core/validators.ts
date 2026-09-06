@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { ArchipelagoError } from "./errors.ts";
-import { commentKinds, commentTargetTypes, verdictStates } from "./types.ts";
+import { boardKinds, commentKinds, commentTargetTypes, verdictStates } from "./types.ts";
 
 export const slugSchema = z
   .string()
@@ -163,3 +163,29 @@ export const unlockInputSchema = z.object({
   slug: slugSchema,
   evidence: z.string().min(1),
 });
+
+const cardId = numberInput.pipe(z.number().int().positive());
+const cardTitle = z
+  .string()
+  .trim()
+  .min(1)
+  .refine((t) => !/\n/.test(t), { message: "a title is one line" });
+/** Not trimmed: code and diagrams keep their whitespace. */
+const cardBody = z.string().refine((b) => b.trim().length > 0, { message: "a body cannot be empty" });
+const cardLang = z.string().trim().min(1).nullable().optional();
+
+const boardAdd = z.object({ op: z.literal("add"), kind: z.enum(boardKinds), title: cardTitle, body: cardBody, lang: cardLang });
+const boardUpdate = z.object({ op: z.literal("update"), id: cardId, title: cardTitle.optional(), body: cardBody.optional(), lang: cardLang });
+const boardRemove = z.object({ op: z.literal("remove"), id: cardId });
+const needsAField = (v: { op: string; title?: string; body?: string; lang?: string | null }) =>
+  v.op !== "update" || v.title !== undefined || v.body !== undefined || v.lang !== undefined;
+const NEEDS_A_FIELD = { message: "an update needs a title, a body, or a lang" };
+
+/** What the judge's board_write tool and the reader's POST /api/board both accept. */
+export const boardWriteInputSchema = z.discriminatedUnion("op", [boardAdd, boardUpdate, boardRemove]).refine(needsAField, NEEDS_A_FIELD);
+export type BoardWriteInput = z.infer<typeof boardWriteInputSchema>;
+
+const boardScope = { domain: slugSchema, island: slugSchema };
+export const boardPostInputSchema = z
+  .discriminatedUnion("op", [boardAdd.extend(boardScope), boardUpdate.extend(boardScope), boardRemove.extend(boardScope)])
+  .refine(needsAField, NEEDS_A_FIELD);

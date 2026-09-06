@@ -12,9 +12,17 @@ import {
   listLandmarks,
 } from "../../core/repositories/landmarkRepository.ts";
 import { addAsk } from "../../core/repositories/askRepository.ts";
+import { addCard, removeCard, requireCard, updateCard } from "../../core/repositories/boardRepository.ts";
 import { resolveVerdictTarget } from "../../core/targets.ts";
-import { askInputSchema, judgeVerdictInputSchema, landmarksInputSchema, reefProposalInputSchema, unlockInputSchema } from "../../core/validators.ts";
-import type { ReefProposal, Verdict, VerdictState } from "../../core/types.ts";
+import {
+  askInputSchema,
+  boardWriteInputSchema,
+  judgeVerdictInputSchema,
+  landmarksInputSchema,
+  reefProposalInputSchema,
+  unlockInputSchema,
+} from "../../core/validators.ts";
+import type { BoardCard, MessageRole, ReefProposal, Verdict, VerdictState } from "../../core/types.ts";
 import { buildJudgeContext, type JudgeContext } from "./context.ts";
 
 /** Where a tool call writes: the database path and the island whose thread this turn belongs to. */
@@ -119,6 +127,46 @@ export function unlockLandmark(deps: ToolDeps, input: unknown): { slug: string; 
       addMessage(db, { domainId: domain.id, islandId: island.id, role: "judge", kind: "system", body: `landmark lit: ${lit.name}` });
       const all = listLandmarks(db, island.id);
       return { slug: lit.slug, name: lit.name, unlocked: all.filter((l) => l.unlockedAt !== null).length, total: all.length };
+    })(),
+  );
+}
+
+export type BoardWriteResult = { card: BoardCard } | { removed: number; title: string };
+
+/**
+ * Adds, updates, or removes a card on this island's board. The SDK tool calls it as the judge, the route as the reader.
+ * The judge may only update or remove its own cards and leaves one system line per write; the reader may edit any card and leaves none.
+ */
+export function boardWrite(deps: ToolDeps, input: unknown, author: MessageRole = "judge"): BoardWriteResult {
+  const parsed = boardWriteInputSchema.parse(input);
+  return withDb(deps.dbPath, (db) =>
+    db.transaction((): BoardWriteResult => {
+      const domain = requireDomain(db, deps.domain);
+      const island = requireIsland(db, domain.id, deps.island);
+      const line = (verb: string, title: string) => {
+        if (author !== "judge") return;
+        addMessage(db, { domainId: domain.id, islandId: island.id, role: "judge", kind: "system", body: `board: ${verb} "${title}"` });
+      };
+      if (parsed.op === "add") {
+        const card = addCard(db, {
+          domainId: domain.id, islandId: island.id, kind: parsed.kind, title: parsed.title, body: parsed.body,
+          lang: parsed.kind === "code" ? parsed.lang ?? null : null, author,
+        });
+        line("pinned", card.title);
+        return { card };
+      }
+      const existing = requireCard(db, island.id, parsed.id);
+      if (author === "judge" && existing.author !== "judge") {
+        throw new ArchipelagoError(`the reader wrote card ${existing.id}; add your own card instead`);
+      }
+      if (parsed.op === "remove") {
+        removeCard(db, existing.id);
+        line("removed", existing.title);
+        return { removed: existing.id, title: existing.title };
+      }
+      const card = updateCard(db, existing.id, { title: parsed.title, body: parsed.body, lang: existing.kind === "code" ? parsed.lang : null });
+      line("updated", card.title);
+      return { card };
     })(),
   );
 }

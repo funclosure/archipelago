@@ -6,8 +6,9 @@ import { latestVerdict, latestVerdicts, verdictHistory } from "../../core/reposi
 import { listMessages, parseProposal } from "../../core/repositories/messageRepository.ts";
 import { listLandmarks } from "../../core/repositories/landmarkRepository.ts";
 import { listAsks } from "../../core/repositories/askRepository.ts";
+import { listCards } from "../../core/repositories/boardRepository.ts";
 import { buildSnapshot } from "../../core/view-model.ts";
-import type { Ask, Landmark, Message, ReefProposal, Verdict, VerdictState } from "../../core/types.ts";
+import type { Ask, BoardCard, Landmark, Message, ReefProposal, Verdict, VerdictState } from "../../core/types.ts";
 
 export type JudgeContext = {
   domain: { slug: string; name: string };
@@ -26,6 +27,7 @@ export type JudgeContext = {
   thread: Message[];
   landmarks: Landmark[];
   asks: Ask[];
+  board: BoardCard[];
   /** Reader answers so far: the count of `you` text messages. */
   round: number;
 };
@@ -69,6 +71,7 @@ export function buildJudgeContext(db: Database, domainSlug: string, islandSlug: 
     thread,
     landmarks: listLandmarks(db, island.id),
     asks: listAsks(db, island.id),
+    board: listCards(db, island.id),
     round: thread.filter((m) => m.role === "you" && m.kind === "text").length,
   };
 }
@@ -125,6 +128,18 @@ export function renderContext(ctx: JudgeContext): string {
   }
   const pending = ctx.asks.findLast((a) => a.messageId !== null && a.picked === null);
   if (pending) lines.push(``, `Pending question (wait for the reader's choice; do not ask again): ${pending.question} — options: ${pending.options.join(" | ")}`);
+  const lastReply = ctx.thread.findLast((m) => m.role === "judge" && m.kind === "text") ?? null;
+  if (ctx.board.length === 0) {
+    lines.push(``, `Board: empty — pin with board_write when a diagram or a claim will be referred to again.`);
+  } else {
+    lines.push(``, `Board (${ctx.board.length} ${ctx.board.length === 1 ? "card" : "cards"}):`);
+    for (const c of ctx.board) {
+      const marks = [c.author === "judge" ? "keeper" : "reader"];
+      if (!lastReply || c.createdAt > lastReply.createdAt) marks.push("new since your last reply");
+      else if (c.updatedAt > lastReply.createdAt) marks.push("edited since your last reply");
+      lines.push(`- #${c.id} ${c.kind}${c.lang ? ` (${c.lang})` : ""} "${indent(c.title)}" [${marks.join(", ")}]:`, `  ${indent(c.body)}`);
+    }
+  }
   return lines.join("\n");
 }
 
