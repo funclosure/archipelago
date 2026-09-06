@@ -293,10 +293,23 @@ body.pane-open .board { right: var(--pane-w); }
 .board .note-body { display: block; }
 .board .note-body > :first-child { margin-top: 0; }
 .board .editor { background: var(--panel); border: 1px solid var(--lamp); border-radius: 10px; padding: 12px; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.board .editor.code { grid-template-columns: 1fr; }
+/* code on the board: the log's block rules are scoped to .msg, so the board sets its own */
+.board .codeblock pre { margin: 0; padding: 0; overflow-x: auto; white-space: pre; font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; }
+.board .codeblock code { color: var(--code-fg); }
+/* the live code block: a transparent textarea over the highlighted mirror, same metrics */
+.board .live { margin: 0; }
+.board .live .cap select { background: var(--water); color: var(--text); border: 1px solid var(--line); border-radius: 6px; padding: 2px 6px; font: 11px system-ui, sans-serif; text-transform: none; letter-spacing: 0; }
+.board .live .wrap { position: relative; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+.board .live .wrap:focus-within { border-color: var(--lamp); }
+.board .live pre, .board .live textarea { margin: 0; padding: 8px; font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; white-space: pre; tab-size: 2; box-sizing: border-box; }
+.board .live pre { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+.board .live textarea { position: relative; display: block; width: 100%; min-height: 180px; border: 0; background: transparent; color: transparent; caret-color: var(--text); resize: vertical; overflow: auto; outline: none; }
+.board .live textarea::placeholder { color: var(--muted); }
+.board .live textarea::selection { background: rgba(245, 194, 66, .3); color: transparent; }
 .board .editor .fields { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
 .board .editor .fields input, .board .editor .fields select, .board .editor .fields textarea { background: var(--water); color: var(--text); border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px;
   font: 13px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; }
-.board .editor .fields input.title { font: 14px system-ui, sans-serif; }
 .board .editor .fields textarea { min-height: 220px; resize: vertical; }
 .board .editor .fields :is(input, select, textarea):focus { outline: none; border-color: var(--lamp); }
 .board .editor .err { color: var(--reef); font-size: 12px; white-space: pre-wrap; }

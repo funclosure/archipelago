@@ -278,6 +278,20 @@ test("board_write validates its input and scopes cards to this island", () => {
   expect(plain.card.lang).toBeNull();
 });
 
+test("a card needs no title: the system line names the kind and the context line omits the quotes", () => {
+  const r = boardWrite(deps(), { op: "add", kind: "note", body: "stale reads come from the cache" });
+  if (!("card" in r)) throw new Error("expected a card");
+  expect(r.card.title).toBe("");
+  const db = openDatabase(dbPath);
+  expect(listMessages(db, ids.caching).at(-1)?.body).toBe("board: pinned a note");
+  db.close();
+  expect(renderContext(islandContext(deps()))).toContain(`- #${r.card.id} note [keeper, new since your last reply]:\n  stale reads come from the cache`);
+  expect(boardWrite(deps(), { op: "remove", id: r.card.id })).toEqual({ removed: r.card.id, title: "" });
+  const db2 = openDatabase(dbPath);
+  expect(listMessages(db2, ids.caching).at(-1)?.body).toBe("board: removed a note");
+  db2.close();
+});
+
 test("the context carries the board and renders it with author marks and what changed since the last reply", () => {
   expect(renderContext(islandContext(deps()))).toContain("Board: empty — pin with board_write");
   const db = openDatabase(dbPath);

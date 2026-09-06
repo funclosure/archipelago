@@ -109,22 +109,28 @@ export function codeElement(tag, text, closed) {
   box.append(cap);
   const pre = document.createElement("pre");
   const code = document.createElement("code");
-  const lang = resolveLang(tag);
-  const lines = highlighter && lang ? tokenize(lang, text, closed) : null;
-  if (!lines) {
-    code.textContent = text;
-  } else {
-    lines.forEach((line, i) => {
-      if (i) code.append("\n");
-      for (const s of line) {
-        const span = document.createElement("span");
-        span.className = s.italic ? `tok-${s.slot} tok-i` : `tok-${s.slot}`;
-        span.textContent = s.text;
-        code.append(span);
-      }
-    });
-  }
+  fillCode(code, tag, text, closed);
   pre.append(code);
   box.append(pre);
   return box;
+}
+
+/** Fills `code` with one span per token, or plain text when the language is unknown or the highlighter is not ready. */
+export function fillCode(code, tag, text, closed) {
+  const lang = resolveLang(tag);
+  const lines = highlighter && lang ? tokenize(lang, text, closed) : null;
+  code.replaceChildren();
+  if (!lines) {
+    code.textContent = text;
+    return;
+  }
+  lines.forEach((line, i) => {
+    if (i) code.append("\n");
+    for (const s of line) {
+      const span = document.createElement("span");
+      span.className = s.italic ? `tok-${s.slot} tok-i` : `tok-${s.slot}`;
+      span.textContent = s.text;
+      code.append(span);
+    }
+  });
 }

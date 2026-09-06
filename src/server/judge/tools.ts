@@ -143,16 +143,18 @@ export function boardWrite(deps: ToolDeps, input: unknown, author: MessageRole =
     db.transaction((): BoardWriteResult => {
       const domain = requireDomain(db, deps.domain);
       const island = requireIsland(db, domain.id, deps.island);
-      const line = (verb: string, title: string) => {
+      // The line names the card by its title, or by its kind when it has none (the reader's cards never do).
+      const line = (verb: string, card: BoardCard) => {
         if (author !== "judge") return;
-        addMessage(db, { domainId: domain.id, islandId: island.id, role: "judge", kind: "system", body: `board: ${verb} "${title}"` });
+        const what = card.title ? `"${card.title}"` : `a ${card.kind}`;
+        addMessage(db, { domainId: domain.id, islandId: island.id, role: "judge", kind: "system", body: `board: ${verb} ${what}` });
       };
       if (parsed.op === "add") {
         const card = addCard(db, {
-          domainId: domain.id, islandId: island.id, kind: parsed.kind, title: parsed.title, body: parsed.body,
+          domainId: domain.id, islandId: island.id, kind: parsed.kind, title: parsed.title ?? "", body: parsed.body,
           lang: parsed.kind === "code" ? parsed.lang ?? null : null, author,
         });
-        line("pinned", card.title);
+        line("pinned", card);
         return { card };
       }
       const existing = requireCard(db, island.id, parsed.id);
@@ -161,11 +163,11 @@ export function boardWrite(deps: ToolDeps, input: unknown, author: MessageRole =
       }
       if (parsed.op === "remove") {
         removeCard(db, existing.id);
-        line("removed", existing.title);
+        line("removed", existing);
         return { removed: existing.id, title: existing.title };
       }
       const card = updateCard(db, existing.id, { title: parsed.title, body: parsed.body, lang: existing.kind === "code" ? parsed.lang : null });
-      line("updated", card.title);
+      line("updated", card);
       return { card };
     })(),
   );

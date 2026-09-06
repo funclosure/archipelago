@@ -121,7 +121,7 @@ export const sdkRunner: JudgeRunner = async ({ dbPath, domain, island, emit, sig
       ),
       sdk.tool(
         "board_write",
-        "Pin, update, or remove a card on this island's board (§10). op add: kind (diagram | note | code), title (one line), body (mermaid source, markdown, or code), lang for code. op update: id plus the fields to change. op remove: id. You may only update or remove cards you wrote.",
+        "Pin, update, or remove a card on this island's board (§10). op add: kind (diagram | note | code), body (mermaid source, markdown, or code), lang for code, and an optional one-line title. op update: id plus the fields to change. op remove: id. You may only update or remove cards you wrote.",
         {
           op: z.enum(["add", "update", "remove"]),
           id: z.number().int().positive().optional(),

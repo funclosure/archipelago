@@ -9,22 +9,22 @@ export const PLAIN = "plain";
 
 /** A fresh editor for a new card of `kind`. Code cards start in Swift; other kinds carry no lang. */
 export function startAdd(kind) {
-  return { id: null, kind, title: "", body: "", lang: kind === "code" ? DEFAULT_LANG : null };
+  return { id: null, kind, body: "", lang: kind === "code" ? DEFAULT_LANG : null };
 }
 
 /** An editor over an existing card. */
 export function startEdit(card) {
-  return { id: card.id, kind: card.kind, title: card.title, body: card.body, lang: card.kind === "code" ? card.lang ?? PLAIN : null };
+  return { id: card.id, kind: card.kind, body: card.body, lang: card.kind === "code" ? card.lang ?? PLAIN : null };
 }
 
-/** A card needs a title and a body. */
+/** A card needs a body; titles are the Keeper's to give, never the reader's. */
 export function canSave(editor) {
-  return editor.title.trim().length > 0 && editor.body.trim().length > 0;
+  return editor.body.trim().length > 0;
 }
 
-/** The write for POST /api/board (without domain and island). lang travels only for code; plain becomes null. */
+/** The write for POST /api/board (without domain and island). No title; lang travels only for code; plain becomes null. */
 export function writeOf(editor) {
-  const base = { title: editor.title.trim(), body: editor.body };
+  const base = { body: editor.body };
   if (editor.kind === "code") base.lang = editor.lang === PLAIN ? null : editor.lang;
   return editor.id === null ? { op: "add", kind: editor.kind, ...base } : { op: "update", id: editor.id, ...base };
 }

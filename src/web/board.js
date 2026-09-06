@@ -2,7 +2,7 @@
 // this module owns #board, #board-toggle, the editor with its live preview, and the board's key handler.
 import { app, api } from "./app.js";
 import { renderMarkdown, diagramElement } from "./markdown.js";
-import { codeElement } from "./code.js";
+import { codeElement, fillCode } from "./code.js";
 import { LANGS } from "./code-model.js";
 import { registerRegion, setRegion, region } from "./keys.js";
 import { startAdd, startEdit, canSave, writeOf, moveCard, keepCursor, KIND_KEYS, PLAIN } from "./board-model.js";
@@ -187,11 +187,9 @@ function cardEl(card) {
   const box = el("article", `card${card.id === state.cursor ? " cur" : ""}`);
   box.dataset.id = String(card.id);
   const cap = el("div", "cap");
-  cap.append(
-    el("span", "kind", card.kind + (card.lang ? ` · ${card.lang}` : "")),
-    el("span", "title", card.title),
-    el("span", "who", card.author === "judge" ? "the Keeper" : "you"),
-  );
+  cap.append(el("span", "kind", card.kind + (card.lang ? ` · ${card.lang}` : "")));
+  if (card.title) cap.append(el("span", "title", card.title)); // the Keeper may name a card; the reader never has to
+  cap.append(el("span", "who", card.author === "judge" ? "the Keeper" : "you"));
   const acts = el("span", "acts");
   acts.append(button("edit", () => edit(card)), button("remove", () => void remove(card.id)));
   cap.append(acts);
@@ -233,70 +231,120 @@ function renderPreview(ed, preview, err) {
   preview.replaceChildren(bodyEl(ed.kind, ed.body, ed.lang === PLAIN ? null : ed.lang, { cache: false }));
 }
 
-function editorEl(ed) {
-  const box = el("div", "editor");
-  const fields = el("div", "fields");
-  const title = document.createElement("input");
-  title.type = "text";
-  title.className = "title";
-  title.placeholder = "title";
-  title.value = ed.title;
-  title.dataset.field = "title";
-  fields.append(title);
-  let lang = null;
-  if (ed.kind === "code") {
-    lang = document.createElement("select");
-    lang.dataset.field = "lang";
-    for (const l of [...LANGS, PLAIN]) {
-      const o = document.createElement("option");
-      o.value = l;
-      o.textContent = l;
-      o.selected = l === ed.lang;
-      lang.append(o);
-    }
-    fields.append(lang);
+/** The language picker for a code card, in the live block's caption. */
+function langSelect(ed, onChange) {
+  const sel = document.createElement("select");
+  sel.dataset.field = "lang";
+  sel.setAttribute("aria-label", "language");
+  for (const l of [...LANGS, PLAIN]) {
+    const o = document.createElement("option");
+    o.value = l;
+    o.textContent = l;
+    o.selected = l === ed.lang;
+    sel.append(o);
   }
+  sel.addEventListener("change", () => {
+    ed.lang = sel.value;
+    onChange();
+  });
+  return sel;
+}
+
+/**
+ * A live code block: a transparent textarea over a highlighted mirror with the same metrics, so the reader
+ * types into coloured code. The mirror repaints once per input frame and follows the textarea's scroll.
+ */
+function liveCode(ed, onInput) {
+  const box = el("div", "codeblock live");
+  const cap = el("div", "cap");
+  const wrap = el("div", "wrap");
+  const pre = document.createElement("pre");
+  pre.setAttribute("aria-hidden", "true");
+  const code = document.createElement("code");
+  pre.append(code);
   const ta = document.createElement("textarea");
   ta.value = ed.body;
-  ta.placeholder = PLACEHOLDER[ed.kind];
+  ta.placeholder = PLACEHOLDER.code;
   ta.spellcheck = false;
+  ta.wrap = "off";
   ta.dataset.field = "body";
-  const err = el("div", "err");
-  err.hidden = true;
-  fields.append(ta, err);
-  const preview = el("div", "preview");
+  ta.setAttribute("aria-label", "code");
+  wrap.append(pre, ta);
+  let frame = 0;
+  const follow = () => {
+    pre.scrollLeft = ta.scrollLeft;
+    pre.scrollTop = ta.scrollTop;
+  };
+  const paint = () => {
+    cancelAnimationFrame(frame);
+    frame = requestAnimationFrame(() => {
+      const text = ta.value;
+      // a trailing newline would collapse in the mirror and leave the caret's line unpainted
+      fillCode(code, ed.lang === PLAIN ? "text" : ed.lang, text.endsWith("\n") ? `${text} ` : text, false);
+      follow();
+    });
+  };
+  cap.append(langSelect(ed, paint));
+  box.append(cap, wrap);
+  ta.addEventListener("input", () => {
+    ed.body = ta.value;
+    onInput();
+    paint();
+  });
+  ta.addEventListener("scroll", follow);
+  ta.addEventListener("keydown", (e) => {
+    if (e.key === "Tab" && !e.shiftKey && !e.metaKey && !e.ctrlKey && !e.altKey) { // two spaces, like the Keeper's fences; Shift-Tab still leaves
+      e.preventDefault();
+      ta.setRangeText("  ", ta.selectionStart, ta.selectionEnd, "end");
+      ta.dispatchEvent(new Event("input", { bubbles: true }));
+    }
+  });
+  paint();
+  return { box, ta };
+}
+
+function editorEl(ed) {
+  const box = el("div", `editor ${ed.kind}`);
   const row = el("div", "row");
   const save = button("save", () => void saveEditor(), "primary");
   row.append(save, button("cancel", cancelEditor));
   if (ed.id !== null) row.append(button("remove", () => void remove(ed.id), "danger"));
   const status = el("span", "status");
   row.append(status);
-  box.append(fields, preview, row);
-
   const updateSave = () => {
     save.disabled = !canSave(ed) || state.saving;
   };
-  const schedulePreview = () => {
-    clearTimeout(previewTimer);
-    previewTimer = setTimeout(() => renderPreview(ed, preview, err), PREVIEW_MS);
-  };
-  title.addEventListener("input", () => {
-    ed.title = title.value;
-    updateSave();
-  });
-  lang?.addEventListener("change", () => {
-    ed.lang = lang.value;
-    schedulePreview();
-  });
-  ta.addEventListener("input", () => {
-    ed.body = ta.value;
-    updateSave();
-    schedulePreview();
-  });
+
+  if (ed.kind === "code") {
+    const live = liveCode(ed, updateSave);
+    box.append(live.box, row);
+    editorFocus = () => live.ta.focus();
+  } else {
+    const fields = el("div", "fields");
+    const ta = document.createElement("textarea");
+    ta.value = ed.body;
+    ta.placeholder = PLACEHOLDER[ed.kind];
+    ta.spellcheck = false;
+    ta.dataset.field = "body";
+    const err = el("div", "err");
+    err.hidden = true;
+    fields.append(ta, err);
+    const preview = el("div", "preview");
+    const schedulePreview = () => {
+      clearTimeout(previewTimer);
+      previewTimer = setTimeout(() => renderPreview(ed, preview, err), PREVIEW_MS);
+    };
+    ta.addEventListener("input", () => {
+      ed.body = ta.value;
+      updateSave();
+      schedulePreview();
+    });
+    box.append(fields, preview, row);
+    renderPreview(ed, preview, err);
+    editorFocus = () => ta.focus();
+  }
   updateSave();
-  renderPreview(ed, preview, err);
   editorStatus = status;
-  editorFocus = () => (ed.title ? ta : title).focus();
   return box;
 }
 

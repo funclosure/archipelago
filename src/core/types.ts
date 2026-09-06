@@ -119,7 +119,7 @@ export type BoardKind = (typeof boardKinds)[number];
 export const codeLangs = ["swift", "objective-c", "kotlin", "typescript", "tsx", "javascript", "json", "bash", "python", "sql", "yaml"] as const;
 export type CodeLang = (typeof codeLangs)[number];
 
-/** One card on an island's board. `lang` is set only on code cards. The author never changes. */
+/** One card on an island's board. `title` is "" when the card has none (the reader's never do); `lang` is set only on code cards. The author never changes. */
 export type BoardCard = {
   id: number;
   domainId: number;

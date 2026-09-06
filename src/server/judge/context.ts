@@ -137,7 +137,7 @@ export function renderContext(ctx: JudgeContext): string {
       const marks = [c.author === "judge" ? "keeper" : "reader"];
       if (!lastReply || c.createdAt > lastReply.createdAt) marks.push("new since your last reply");
       else if (c.updatedAt > lastReply.createdAt) marks.push("edited since your last reply");
-      lines.push(`- #${c.id} ${c.kind}${c.lang ? ` (${c.lang})` : ""} "${indent(c.title)}" [${marks.join(", ")}]:`, `  ${indent(c.body)}`);
+      lines.push(`- #${c.id} ${c.kind}${c.lang ? ` (${c.lang})` : ""}${c.title ? ` "${indent(c.title)}"` : ""} [${marks.join(", ")}]:`, `  ${indent(c.body)}`);
     }
   }
   return lines.join("\n");
