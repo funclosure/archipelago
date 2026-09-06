@@ -6,6 +6,7 @@ export const SENTINELS = SLOTS.map((_, i) => `#00000${i + 1}`);
 const slotOf = new Map(SENTINELS.map((hex, i) => [hex, SLOTS[i]]));
 
 /** The eleven bundled grammars (see src/server/vendor/shiki-entry.js). */
+// Mirrors codeLangs in src/core/types.ts; keep the two lists identical.
 export const LANGS = ["swift", "objective-c", "kotlin", "typescript", "tsx", "javascript", "json", "bash", "python", "sql", "yaml"];
 
 const ALIASES = {

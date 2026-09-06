@@ -128,7 +128,7 @@ export const sdkRunner: JudgeRunner = async ({ dbPath, domain, island, emit, sig
           kind: z.enum(["diagram", "note", "code"]).optional(),
           title: z.string().optional(),
           body: z.string().optional(),
-          lang: z.string().optional(),
+          lang: z.string().nullable().optional(),
         },
         async (args) => guard(() => boardWrite(deps, args)),
       ),

@@ -115,6 +115,10 @@ export type Ask = {
 export const boardKinds = ["diagram", "note", "code"] as const;
 export type BoardKind = (typeof boardKinds)[number];
 
+/** The code tags the page can colour (mirrored by LANGS in src/web/code-model.js; keep the two lists identical). */
+export const codeLangs = ["swift", "objective-c", "kotlin", "typescript", "tsx", "javascript", "json", "bash", "python", "sql", "yaml"] as const;
+export type CodeLang = (typeof codeLangs)[number];
+
 /** One card on an island's board. `lang` is set only on code cards. The author never changes. */
 export type BoardCard = {
   id: number;

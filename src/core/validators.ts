@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { ArchipelagoError } from "./errors.ts";
-import { boardKinds, commentKinds, commentTargetTypes, verdictStates } from "./types.ts";
+import { boardKinds, codeLangs, commentKinds, commentTargetTypes, verdictStates } from "./types.ts";
 
 export const slugSchema = z
   .string()
@@ -169,10 +169,10 @@ const cardTitle = z
   .string()
   .trim()
   .min(1)
-  .refine((t) => !/\n/.test(t), { message: "a title is one line" });
+  .refine((t) => !/[\r\n\u2028\u2029]/.test(t), { message: "a title is one line" });
 /** Not trimmed: code and diagrams keep their whitespace. */
 const cardBody = z.string().refine((b) => b.trim().length > 0, { message: "a body cannot be empty" });
-const cardLang = z.string().trim().min(1).nullable().optional();
+const cardLang = z.enum(codeLangs).nullable().optional();
 
 const boardAdd = z.object({ op: z.literal("add"), kind: z.enum(boardKinds), title: cardTitle, body: cardBody, lang: cardLang });
 const boardUpdate = z.object({ op: z.literal("update"), id: cardId, title: cardTitle.optional(), body: cardBody.optional(), lang: cardLang });

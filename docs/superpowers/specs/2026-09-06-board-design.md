@@ -52,11 +52,11 @@ Type `BoardCard = { id, domainId, islandId, kind: BoardKind, title, body, lang: 
 - `update`: `id`, and any of `title`, `body`, `lang`, at least one.
 - `remove`: `id`.
 
-`update` and `remove` refuse a card that is not on this thread's island (`NotFoundError`). When the author is `judge`, they also refuse a card the reader wrote (`ArchipelagoError`: "the reader wrote this card; add your own"). Returns `{ card }` for add and update, `{ removed: id, title }` for remove. A `judge` write also adds one `system` message to the thread: `board: pinned "<title>"`, `board: updated "<title>"`, or `board: removed "<title>"`. A `you` write adds no message.
+`update` and `remove` refuse a card that is not on this thread's island (`NotFoundError`). When the author is `judge`, they also refuse a card the reader wrote (`ArchipelagoError`: "the reader wrote card <id>; add your own card instead"). Returns `{ card }` for add and update, `{ removed: id, title }` for remove. A `judge` write also adds one `system` message to the thread: `board: pinned "<title>"`, `board: updated "<title>"`, or `board: removed "<title>"`. A `you` write adds no message.
 
 The route reuses the same function with author `you`, so the rules live in one place.
 
-`island_context` gains `board: BoardCard[]`, and `renderContext` renders a `Board` section after the pending asks: `Board: empty — pin with board_write when a diagram or a claim will be referred to again.` or, per card, `- #<id> <kind> "<title>" [keeper|reader]<, new since your last reply | , edited since your last reply>:` followed by the body indented under it (through `indent`, so a reader's body can never forge a `Judge:` or `[map]` line). "Since your last reply" compares `updated_at` with the latest `judge` text message; with no reply yet, every card is new. The whole board is rendered; nothing is summarised.
+`island_context` gains `board: BoardCard[]`, and `renderContext` renders a `Board` section after the pending asks: `Board: empty — pin with board_write when a diagram or a claim will be referred to again.` or, per card, `- #<id> <kind>[ (<lang>)] "<title>" [keeper|reader]<, new since your last reply | , edited since your last reply>:` followed by the body indented under it (through `indent`, so a reader's body can never forge a `Judge:` or `[map]` line). "Since your last reply" compares `updated_at` with the latest `judge` text message; with no reply yet, every card is new. The whole board is rendered; nothing is summarised.
 
 ## Protocol
 

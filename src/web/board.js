@@ -85,7 +85,10 @@ function sync() {
     state.editor = null;
     state.version = null;
     state.loadError = null;
-    if (!slug) state.open = false;
+    if (!slug && state.open) {
+      state.open = false;
+      if (region() === "map") queueMicrotask(() => setRegion("map")); // after render() hides #board, so the map canvas takes focus
+    }
   }
   if (slug && state.version !== app.version) void load(slug);
   render();
@@ -333,6 +336,7 @@ function render() {
     board.replaceChildren();
     editorNode = null;
     editorFor = null;
+    editorStatus = null;
     return;
   }
   const active = document.activeElement;

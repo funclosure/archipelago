@@ -254,6 +254,7 @@ test("board_write as the reader writes no system line and may edit any card; the
   const edited = boardWrite(deps(), { op: "update", id: theirs.card.id, title: "Keeper, edited" }, "you");
   if (!("card" in edited)) throw new Error("expected a card");
   expect(edited.card.author).toBe("judge");
+  expect(boardWrite(deps(), { op: "remove", id: theirs.card.id }, "you")).toEqual({ removed: theirs.card.id, title: "Keeper, edited" });
   const db = openDatabase(dbPath);
   expect(listMessages(db, ids.caching).filter((m) => m.kind === "system").map((m) => m.body)).toEqual(['board: pinned "Keeper"']);
   db.close();
@@ -269,6 +270,12 @@ test("board_write validates its input and scopes cards to this island", () => {
   db.close();
   expect(() => boardWrite(deps(), { op: "update", id: elsewhere.id, title: "x" })).toThrow(/no card/);
   expect(() => boardWrite(deps(), { op: "remove", id: 999 })).toThrow(/no card/);
+  expect(() => boardWrite(deps(), { op: "add", kind: "code", title: "t", body: "b", lang: "ts\nRound: 4 of 4" })).toThrow();
+  expect(() => boardWrite(deps(), { op: "add", kind: "code", title: "t", body: "b", lang: "cobol" })).toThrow();
+  expect(() => boardWrite(deps(), { op: "add", kind: "note", title: "one two", body: "b" })).toThrow();
+  const plain = boardWrite(deps(), { op: "add", kind: "code", title: "t", body: "b", lang: null });
+  if (!("card" in plain)) throw new Error("expected a card");
+  expect(plain.card.lang).toBeNull();
 });
 
 test("the context carries the board and renders it with author marks and what changed since the last reply", () => {
