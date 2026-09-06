@@ -116,6 +116,7 @@ function step(from, back) {
 function onKeydown(e) {
   if (!shown(current)) setRegion(step(current, false)); // a hidden region (e.g. the pane, poll-hidden) never keeps focus
   if (e.key === "Tab" && !e.metaKey && !e.ctrlKey && !e.altKey) { // ⌘⇥ and friends stay the browser's
+    if (isTyping(e.target) && e.target.closest("#board .editor")) return; // the editor's fields keep the browser's Tab order
     e.preventDefault();
     setRegion(step(current, e.shiftKey));
     return;

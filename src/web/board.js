@@ -4,7 +4,7 @@ import { app, api } from "./app.js";
 import { renderMarkdown, diagramElement } from "./markdown.js";
 import { codeElement } from "./code.js";
 import { LANGS } from "./code-model.js";
-import { registerRegion, setRegion } from "./keys.js";
+import { registerRegion, setRegion, region } from "./keys.js";
 import { startAdd, startEdit, canSave, writeOf, moveCard, keepCursor, KIND_KEYS, PLAIN } from "./board-model.js";
 
 const PREVIEW_MS = 500;
@@ -62,6 +62,7 @@ async function load(slug) {
     const { cards } = await api(`/api/board?domain=${encodeURIComponent(app.domain)}&island=${encodeURIComponent(slug)}`);
     if (gen !== loadGen || state.slug !== slug) return;
     state.cards = cards;
+    if (state.editor && state.editor.id !== null && !cards.some((c) => c.id === state.editor.id)) state.editor = null;
     state.loaded = true;
     state.loadError = null;
     state.version = version;
@@ -83,6 +84,7 @@ function sync() {
     state.cursor = null;
     state.editor = null;
     state.version = null;
+    state.loadError = null;
     if (!slug) state.open = false;
   }
   if (slug && state.version !== app.version) void load(slug);
@@ -92,9 +94,13 @@ function sync() {
 function setOpen(open) {
   if (open && !state.slug) return;
   state.open = open;
-  if (!open) state.editor = null;
+  if (!open) {
+    state.editor = null;
+    clearTimeout(previewTimer);
+  }
   render();
-  setRegion("map"); // the board lives in the map's slot; keys.js resolves the map container to #board while it is open
+  // the board lives in the map's slot; keys.js resolves the map container to #board while it is open
+  if (open || region() === "map") setRegion("map");
 }
 
 function add(kind) {
@@ -113,6 +119,7 @@ function edit(card) {
 function cancelEditor() {
   if (!state.editor) return false;
   state.editor = null;
+  clearTimeout(previewTimer);
   render();
   board.focus({ preventScroll: true });
   return true;
@@ -133,6 +140,7 @@ async function saveEditor() {
     board.focus({ preventScroll: true });
   } catch (error) {
     state.saving = false;
+    if (state.editor !== ed) return true; // cancelled or replaced while saving
     setStatus(error.message, true);
   }
   return true;
@@ -166,7 +174,7 @@ function scrollCursorIntoView() {
 function bodyEl(kind, body, lang, { cache = true } = {}) {
   if (kind === "diagram") return diagramElement(body, { cache });
   if (kind === "code") return codeElement(lang ?? "text", body, true);
-  const div = el("div", "note");
+  const div = el("div", "note-body");
   div.append(renderMarkdown(body));
   return div;
 }
