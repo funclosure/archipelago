@@ -10,6 +10,7 @@ import { startAdd, startEdit, canSave, writeOf, moveCard, keepCursor, KIND_KEYS,
 const PREVIEW_MS = 500;
 const board = document.getElementById("board");
 const toggle = document.getElementById("board-toggle");
+const scrim = document.getElementById("board-scrim");
 
 const state = {
   slug: null,       // the island the cards belong to
@@ -308,10 +309,18 @@ function currentEditor() {
   return editorNode;
 }
 
+/** The way back: a × at the head's right end; the peeked map and the scrim say where it leads. */
+function close() {
+  const b = button("×", () => setOpen(false), "close");
+  b.title = "back to the map (Esc)";
+  b.setAttribute("aria-label", "back to the map");
+  return b;
+}
+
 function headEl(island) {
   const head = el("div", "head");
   head.append(el("span", "name", island.name), el("span", "count", `${state.cards.length} ${state.cards.length === 1 ? "card" : "cards"}`), el("span", "spacer"));
-  head.append(button("+ diagram", () => add("diagram")), button("+ note", () => add("note")), button("+ code", () => add("code")), button("map", () => setOpen(false)));
+  head.append(button("+ diagram", () => add("diagram")), button("+ note", () => add("note")), button("+ code", () => add("code")), close());
   return head;
 }
 
@@ -333,6 +342,7 @@ function render() {
   const show = Boolean(island) && state.open;
   if (!show) {
     board.hidden = true;
+    scrim.hidden = true;
     board.replaceChildren();
     editorNode = null;
     editorFor = null;
@@ -343,6 +353,7 @@ function render() {
   const keep = editorNode && editorNode.contains(active) ? active : null;
   const scrollTop = board.querySelector(".column")?.scrollTop ?? 0;
   board.hidden = false;
+  scrim.hidden = false;
   board.replaceChildren(headEl(island), columnEl());
   if (!state.editor) {
     editorNode = null;
@@ -356,6 +367,7 @@ function render() {
 export function installBoard() {
   app.listeners.add(sync);
   toggle.addEventListener("click", () => setOpen(true));
+  scrim.addEventListener("click", () => setOpen(false)); // clicking the peeked map goes back to it
   registerRegion("board", {
     isOpen: () => boardOpen(),
     editing: () => Boolean(state.editor),

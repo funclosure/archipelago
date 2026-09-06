@@ -73,11 +73,11 @@ The stub judge gains a keyword: a reader message containing `pin` adds a canned 
 
 ## Page
 
-`src/web/board.js` (DOM) and `src/web/board-model.js` (pure). `#board` is a fixed layer over the map area: `top: 0; bottom: 0; left: var(--outline-w); right: 0`, `right: var(--pane-w)` when the pane is open, above the chrome and the cta card, below the cheat sheet. Hidden by default; the canvas keeps its loop but skips drawing while the board is up.
+`src/web/board.js` (DOM) and `src/web/board-model.js` (pure). `#board` is a sheet over the map area, not a cover: it starts 100px down, below the breadcrumb and the strip, inset 12px from the sides (`right: calc(var(--pane-w) + 12px)` when the pane is open), with rounded top corners, a border, and a shadow, over a faint scrim (`#board-scrim`) that dims the peeked map and the chrome. The map keeps drawing behind it, so "back" is spatial: the map is visibly still there. Clicking the scrim closes the sheet. Victor chose the sheet over a segmented `Map | Board` switch and a back link, 2026-09-06: "it's not clear the map can go back". Above the cta card, below the cheat sheet.
 
-**Toggle.** `#board-toggle`, a button at the bottom-right of the map area (`right: 16px; bottom: 16px`, shifted by the pane width when the pane is open), shown only while an island is selected, labelled `board` with the card count and a `b` key hint. It hides while the board is open; the board's head has a `map` button that closes it. The key `b` (global, dead in text fields) toggles the board and moves focus to the map region. Deselecting closes the board.
+**Toggle.** `#board-toggle`, a button at the bottom-right of the map area (`right: 16px; bottom: 16px`, shifted by the pane width when the pane is open), shown only while an island is selected, labelled `board` with the card count and a `b` key hint. It hides while the sheet is up (the sheet covers that corner); the sheet's head ends in a `×` titled "back to the map (Esc)". The key `b` (global, dead in text fields) toggles the board and moves focus to the map region. Deselecting closes the board.
 
-**Head.** The island name, the card count, three add buttons (`+ diagram`, `+ note`, `+ code`), and `map`.
+**Head.** The island name, the card count, three add buttons (`+ diagram`, `+ note`, `+ code`), and `×`.
 
 **Cards.** A scrolling column, max width 760px, centred. Each card: a caption row (kind, title, author mark `the Keeper` or `you`, and `edit` / `remove` buttons), then the rendered body. Diagrams render through `diagramElement`, notes through `renderMarkdown` (no question spans), code through `codeElement` with its language caption and Copy. An empty board says `Nothing pinned yet. The Keeper pins what you keep pointing at; you can add a diagram, a note, or code.`
 

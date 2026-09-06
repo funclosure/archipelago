@@ -249,15 +249,21 @@ body.pane-open .keys { right: var(--pane-w); }
 .keys-card kbd { font: 10px ui-monospace, Menlo, monospace; border: 1px solid var(--line); border-radius: 4px; padding: 0 5px; color: var(--text); min-width: 28px; text-align: center; }
 
 /* ---- board ---- */
-.board { position: fixed; top: 0; bottom: 0; left: var(--outline-w); right: 0; background: var(--water); z-index: 2;
+.board-scrim { position: fixed; top: 0; bottom: 0; left: var(--outline-w); right: 0; background: rgba(0, 0, 0, .28); z-index: 2; transition: left .18s ease; }
+body.pane-open .board-scrim { right: var(--pane-w); }
+.board-scrim[hidden] { display: none; }
+/* a sheet: the breadcrumb and the strip stay in view above it, so the map is visibly still there */
+.board { position: fixed; top: 100px; bottom: 0; left: calc(var(--outline-w) + 12px); right: 12px; background: var(--water); z-index: 2;
+  border: 1px solid var(--line); border-bottom: none; border-radius: 14px 14px 0 0; box-shadow: 0 -12px 40px rgba(0, 0, 0, .45);
   display: flex; flex-direction: column; overflow: hidden; container-type: inline-size; transition: left .18s ease; }
-body.pane-open .board { right: var(--pane-w); }
+body.pane-open .board { right: calc(var(--pane-w) + 12px); }
 .board[hidden] { display: none; }
 .board:focus { outline: none; }
 .board .head { display: flex; align-items: center; gap: 10px; padding: 12px 20px; border-bottom: 1px solid var(--line); }
 .board .head .name { font-family: Georgia, serif; font-size: 16px; }
 .board .head .count { color: var(--muted); font-size: 12px; }
 .board .head .spacer { flex: 1; }
+.board .head .close { width: 28px; height: 28px; padding: 0; border-radius: 999px; font-size: 16px; line-height: 1; display: inline-flex; align-items: center; justify-content: center; }
 .board button { background: transparent; border: 1px solid var(--line-03); color: var(--text); border-radius: 999px; padding: 4px 10px; font: 12px system-ui, sans-serif; cursor: pointer; }
 .board button:hover { border-color: var(--lamp); color: var(--lamp); }
 .board button.primary { background: var(--lamp); color: var(--sea); border-color: var(--lamp); }
