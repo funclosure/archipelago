@@ -6,6 +6,7 @@ import { installInteractions } from "./interactions.js";
 import { installCard } from "./card.js";
 import { installOutline } from "./outline.js";
 import { installKeys } from "./keys.js";
+import { installBoard, boardOpen } from "./board.js";
 
 const canvas = document.getElementById("map");
 const ctx = canvas.getContext("2d");
@@ -266,6 +267,10 @@ function frame(now) {
   const moving = app.sim.tick();
   if (!moving && app.placing.size > 0 && !app.placementInFlight) void persistPlacement();
   app.camera.tick(now);
+  if (boardOpen()) { // the board covers the map: keep the loop, skip the drawing
+    requestAnimationFrame(frame);
+    return;
+  }
   const { w, h, dpr } = app.size;
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   clear(ctx, w, h);
@@ -307,6 +312,7 @@ async function boot() {
   window.addEventListener("resize", resize);
   installInteractions(canvas);
   installCard();
+  installBoard();
   installOutline();
   installKeys();
   try {

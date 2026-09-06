@@ -10,7 +10,7 @@ let sheetOpen = false;
 
 const containers = () => ({
   outline: document.getElementById("outline"),
-  map: document.getElementById("map"),
+  map: (handlers.board?.isOpen?.() ? document.getElementById("board") : null) ?? document.getElementById("map"),
   pane: document.getElementById("pane"),
 });
 
@@ -55,7 +55,7 @@ function renderSheet() {
   const card = el("div", "keys-card");
   card.append(el("div", "lbl", "Keys"));
   const cols = el("div", "cols");
-  for (const section of cheatSheet(current)) {
+  for (const section of cheatSheet(current, { board: handlers.board?.isOpen?.() ?? false })) {
     const col = el("div", "col");
     col.append(el("div", "sec", section.title));
     for (const [k, label] of section.keys) {
@@ -79,6 +79,8 @@ function escape(e) {
     sheetOpen,
     menuOpen: handlers.outline?.menuOpen?.() ?? false,
     typing: isTyping(e.target),
+    editor: handlers.board?.editing?.() ?? false,
+    board: handlers.board?.isOpen?.() ?? false,
     cursor: current === "outline" && (handlers.outline?.hasCursor?.() ?? false),
     selected: Boolean(app.selected),
   });
@@ -90,7 +92,9 @@ function escape(e) {
   else if (rung === "blur") {
     e.target.blur();
     containers()[current]?.focus({ preventScroll: true });
-  } else if (rung === "cursor") handlers.outline?.clearCursor?.();
+  } else if (rung === "editor") handlers.board?.cancelEditor?.();
+  else if (rung === "board") handlers.board?.close?.();
+  else if (rung === "cursor") handlers.outline?.clearCursor?.();
   else if (rung === "deselect") {
     void select(null);
     if (current === "pane") setRegion("map");
@@ -120,8 +124,9 @@ function onKeydown(e) {
     escape(e);
     return;
   }
-  if (e.key === "Enter" && e.metaKey && current === "pane") {
-    if (handlers.pane?.send?.()) {
+  if (e.key === "Enter" && e.metaKey) {
+    const sent = current === "pane" ? handlers.pane?.send?.() : current === "map" ? handlers.board?.save?.() : false;
+    if (sent) {
       e.preventDefault();
       e.stopPropagation(); // the textarea's own Enter handler must not submit as well
     }
@@ -139,6 +144,11 @@ function onKeydown(e) {
     handlers.outline?.toggleRail?.();
     return;
   }
+  if (e.key === "b") {
+    e.preventDefault();
+    if (app.selected) handlers.board?.toggle?.();
+    return;
+  }
   if (e.key === "/") {
     e.preventDefault();
     if (!shown("pane")) return;
@@ -147,7 +157,8 @@ function onKeydown(e) {
     return;
   }
   if (sheetOpen) return; // the sheet is modal for region keys
-  if (handlers[current]?.onKey?.(e)) e.preventDefault();
+  const target = current === "map" && handlers.board?.isOpen?.() ? handlers.board : handlers[current];
+  if (target?.onKey?.(e)) e.preventDefault();
 }
 
 export function installKeys() {
@@ -155,5 +166,6 @@ export function installKeys() {
   for (const [name, c] of Object.entries(containers())) {
     c?.addEventListener("mousedown", () => setRegion(name));
   }
+  document.getElementById("board")?.addEventListener("mousedown", () => setRegion("map")); // the loop registered the canvas; the board is the map's container only while open
   setRegion("outline");
 }

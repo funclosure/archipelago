@@ -48,8 +48,8 @@ function sourceBlock(text) {
   return pre;
 }
 
-/** A closed mermaid fence: rendered once per source, cached, with the source as the fallback. */
-function diagramElement(source) {
+/** A closed mermaid fence: rendered once per source and cached, with the source as the fallback. `cache: false` for a live preview. */
+export function diagramElement(source, { cache = true } = {}) {
   const box = document.createElement("div");
   box.className = "diagram";
   const cap = document.createElement("div");
@@ -58,7 +58,7 @@ function diagramElement(source) {
   box.append(cap);
   const holder = document.createElement("div");
   box.append(holder);
-  if (nodeCache.has(source)) {
+  if (cache && nodeCache.has(source)) {
     holder.append(nodeCache.get(source).cloneNode(true));
     return box;
   }
@@ -67,7 +67,7 @@ function diagramElement(source) {
     return box;
   }
   holder.textContent = "drawing a diagram…";
-  let p = pending.get(source);
+  let p = cache ? pending.get(source) : undefined;
   if (!p) {
     p = window.mermaid
       .render(`diagram-${++diagramSeq}`, source)
@@ -79,7 +79,7 @@ function diagramElement(source) {
         pending.delete(source);
         throw e;
       });
-    pending.set(source, p);
+    if (cache) pending.set(source, p);
   }
   p.then((svg) => {
     const node = svgNode(svg);
@@ -87,7 +87,7 @@ function diagramElement(source) {
       holder.replaceChildren(sourceBlock(source));
       return;
     }
-    nodeCache.set(source, node);
+    if (cache) nodeCache.set(source, node);
     holder.replaceChildren(node);
   }).catch(() => holder.replaceChildren(sourceBlock(source)));
   return box;
