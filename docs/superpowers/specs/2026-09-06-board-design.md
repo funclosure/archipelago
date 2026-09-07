@@ -102,6 +102,6 @@ The stub judge gains a keyword: a reader message containing `pin` adds a canned 
 ## Out of scope
 
 - Freehand drawing or tldraw. Reordering cards. Per-domain boards.
-- A CLI for the board; the cartographer's skill does not mention it.
+- A CLI that writes to the board. The cartographer reads it with `board list` (`2026-09-07-board-cli-design.md`).
 - Undo after remove. Conflict detection between the Keeper and the reader editing one card at once.
 - Persisting the open state across reloads.
