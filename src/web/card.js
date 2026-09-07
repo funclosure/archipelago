@@ -140,10 +140,12 @@ const pct = (v) => `${Math.round(v * 100)}%`;
 const atBottom = (log) => log.scrollHeight - log.scrollTop - log.clientHeight < STICK_PX;
 const roundOf = (messages) => messages.filter((m) => m.role === "you" && m.kind === "text").length;
 
+// Requests go to the cartographer (Claude in the terminal), never to the Keeper: say where they are read.
 const SENT_TEXT = {
-  sail_closer: "Asked Claude to chart this island's coastline.",
-  note: "Note sent. Claude reads it at the start of the next turn.",
+  sail_closer: "Asked the cartographer to sketch this island's islets. It reads requests in the terminal: run /archipelago-chart there.",
+  note: "Note sent to the cartographer. It reads notes in the terminal at the start of its next charting turn: run /archipelago-chart there. The Keeper never sees it.",
 };
+const NOTE_HELP = "For the cartographer, Claude in the terminal, who sketches the map: a wrong summary, a split you want, where to sail next. The Keeper never sees it.";
 
 async function sendComment(island, kind, body) {
   try {
@@ -360,7 +362,7 @@ function noteForm(island) {
   const form = el("form", "note");
   const input = el("input");
   input.id = "note";
-  input.placeholder = "a note for Claude in the terminal";
+  input.placeholder = "a note for the cartographer";
   input.value = noteDraft;
   input.addEventListener("input", () => (noteDraft = input.value));
   const send = button("Send", null);
@@ -421,7 +423,7 @@ function headEl(island) {
   earlier.id = "earlier";
   earlier.hidden = true; // filled by renderHistory when the island has more than one verdict
   head.append(earlier);
-  if (noteOpen) head.append(noteForm(island));
+  if (noteOpen) head.append(noteForm(island), el("p", "note-help", NOTE_HELP));
   if (lastSent && lastSent.slug === island.slug) head.append(el("div", "sent", lastSent.text));
   return head;
 }

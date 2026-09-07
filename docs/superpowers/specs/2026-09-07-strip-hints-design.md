@@ -42,6 +42,10 @@ export function stripItems(snapshot) // → [{ label, value, hint }]
 
 `app.js` `renderStrip` maps `stripItems(app.snapshot)` to cells. A cell is `div.strip-item` with the label, the value, and `div.hint` holding the sentence; a click on the cell toggles `.open`. `styles.css`: `.strip-item { position: relative; cursor: help; }`, `.strip-item .hint { display: none; position: absolute; top: calc(100% + 8px); left: 0; width: 260px; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; box-shadow: 0 8px 24px var(--shadow); font-size: 12px; line-height: 1.45; color: var(--text); text-transform: none; letter-spacing: 0; z-index: 4; }`, shown by `.strip-item:hover .hint, .strip-item.open .hint { display: block; }`; the last cell's card hangs from its right edge.
 
+## The pane's requests
+
+The same words at the point of sending. The note field's placeholder is `a note for the cartographer`, and a line under the open form says who reads it: "For the cartographer, Claude in the terminal, who sketches the map: a wrong summary, a split you want, where to sail next. The Keeper never sees it." The confirmations after sending name where the request is read: for a note, "Note sent to the cartographer. It reads notes in the terminal at the start of its next charting turn: run /archipelago-chart there. The Keeper never sees it."; for Sail closer, "Asked the cartographer to sketch this island's islets. It reads requests in the terminal: run /archipelago-chart there."
+
 ## Tests
 
 - `tests/core/view-model.test.ts`: `snap.unread` equals `[{ kind: "probe_me", target: "island:queues" }]` beside the count.
