@@ -168,7 +168,7 @@ button:focus-visible, textarea:focus-visible, input:focus-visible { outline: 2px
 :is(.outline, .peek) .row .dot.lit { border-style: solid; border-color: var(--lamp); }
 :is(.outline, .peek) .row .dot.sandbar { background: var(--sand-fill); border: 0; }
 :is(.outline, .peek) .row .dot.settled { background: var(--grass); border: 0; }
-:is(.outline, .peek) .row .dot.mountainous { background: var(--snow); border: 0; }
+:is(.outline, .peek) .row .dot.mountainous { background: var(--ridge); border: 1px solid var(--line-07); } /* a summit: snow ringed by the coast line, so it reads on paper too */
 :is(.outline, .peek) .row .dot.reef { background: var(--sand-fill); border: 0; box-shadow: inset 0 -2px 0 var(--reef); }
 :is(.outline, .peek) .row .name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 :is(.outline, .peek) .row .name.open { color: var(--text-2); }

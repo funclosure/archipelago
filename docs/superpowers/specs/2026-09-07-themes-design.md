@@ -1,7 +1,7 @@
 # Themes: named looks the user picks
 
 **Date:** 2026-09-07
-**Status:** approved
+**Status:** implemented (plan: `docs/superpowers/plans/2026-09-07-themes.md`)
 **Builds on:** Contour (`2026-09-05-contour-design.md`), code blocks (`2026-09-05-code-blocks-design.md`), keyboard (`2026-09-05-keyboard-design.md`), the board (`2026-09-06-board-design.md`)
 
 ## Why
