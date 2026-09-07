@@ -1,7 +1,7 @@
 # The cartographer reads the board
 
 **Date:** 2026-09-07
-**Status:** approved
+**Status:** implemented (plan: `docs/superpowers/plans/2026-09-07-board-cli.md`)
 **Builds on:** the board (`2026-09-06-board-design.md`)
 
 ## Why
