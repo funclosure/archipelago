@@ -530,6 +530,7 @@ function render() {
 
 export function installBoard() {
   app.listeners.add(sync);
+  document.addEventListener("theme", render); // cards are rebuilt; the diagram cache was cleared
   toggle.addEventListener("click", () => setOpen(true));
   scrim.addEventListener("click", () => setOpen(false)); // clicking the peeked map goes back to it
   registerRegion("board", {

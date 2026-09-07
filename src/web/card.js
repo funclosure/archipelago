@@ -49,6 +49,11 @@ const thread = {
 };
 
 export function installCard() {
+  document.addEventListener("theme", () => {
+    if (!thread.slug) return;
+    thread.version = null; // refetch: the log is rebuilt and its diagrams render in the new colours
+    render();
+  });
   try {
     const saved = parseFloat(localStorage.getItem("pane-w"));
     if (Number.isFinite(saved)) {

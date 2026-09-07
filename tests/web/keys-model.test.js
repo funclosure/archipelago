@@ -61,6 +61,7 @@ test("moveCursor: Right expands a collapsed parent, then descends; Left ascends,
 
 test("cheatSheet lists Everywhere and the region's keys", () => {
   const sheet = cheatSheet("outline");
+  expect(sheet[0].keys.some(([k, what]) => k === "t" && what === "theme")).toBe(true);
   expect(sheet.map((s) => s.title)).toEqual(["Everywhere", "Outline"]);
   expect(sheet[0].keys.some(([k]) => k === "Tab")).toBe(true);
   expect(sheet[1].keys.some(([k, label]) => k === "↓ j" && label === "move")).toBe(true);

@@ -3,6 +3,7 @@
 import { app } from "./app.js";
 import { select } from "./interactions.js";
 import { REGIONS, nextRegion, isTyping, escapeRung, cheatSheet } from "./keys-model.js";
+import { cycleTheme } from "./theme.js";
 
 const handlers = {}; // region name → handler
 let current = "outline";
@@ -148,6 +149,11 @@ function onKeydown(e) {
   if (e.key === "b") {
     e.preventDefault();
     if (app.selected) handlers.board?.toggle?.();
+    return;
+  }
+  if (e.key === "t") {
+    e.preventDefault();
+    cycleTheme();
     return;
   }
   if (e.key === "/") {

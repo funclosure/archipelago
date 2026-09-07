@@ -148,6 +148,8 @@ button:focus-visible, textarea:focus-visible, input:focus-visible { outline: 2px
 .outline .mi { text-align: left; border: 0; background: transparent; color: var(--text); font: inherit; padding: 6px 8px; border-radius: 6px; cursor: pointer; }
 .outline .mi:hover { background: var(--panel-2); }
 .outline .mi.on { background: var(--lamp-tint); }
+.outline .menu .sep { border-top: 1px solid var(--line); margin: 4px 0; }
+.outline .menu .ml { font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); padding: 4px 8px 2px; }
 .outline .sum { padding: 10px 14px 6px; font-size: 11px; color: var(--muted); }
 .outline .sec { padding: 12px 14px 6px; font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
 :is(.outline, .peek) .list { list-style: none; margin: 0; padding: 0 8px 8px; overflow: auto; flex: 1; }

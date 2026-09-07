@@ -4,6 +4,8 @@ import { select } from "./interactions.js";
 import { FULL_W, RAIL_W, visibleRows, collapsible, dashClass, countNodes, summaryLine } from "./outline-model.js";
 import { registerRegion, region } from "./keys.js";
 import { moveCursor } from "./keys-model.js";
+import { THEMES } from "./theme-model.js";
+import { applyTheme, currentTheme } from "./theme.js";
 
 // app.js imports installOutline from here and this file imports app: fine, because nothing below reads app or select at module evaluation.
 
@@ -192,6 +194,11 @@ function headerEl(outline) {
         location.href = url.toString();
       }, `mi${d.slug === app.domain ? " on" : ""}`);
       menu.append(item);
+    }
+    menu.append(el("div", "sep"), el("div", "ml", "Theme"));
+    const cur = currentTheme();
+    for (const t of THEMES) {
+      menu.append(button(t.name, () => { applyTheme(t.id); closeMenu(); }, `mi${t.id === cur ? " on" : ""}`));
     }
     head.append(menu);
   }
