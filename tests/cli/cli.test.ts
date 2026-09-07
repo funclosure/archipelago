@@ -7,6 +7,7 @@ import { requireDomain } from "../../src/core/repositories/domainRepository.ts";
 import { requireIsland } from "../../src/core/repositories/islandRepository.ts";
 import { addComment } from "../../src/core/repositories/commentRepository.ts";
 import { addMessage } from "../../src/core/repositories/messageRepository.ts";
+import { addCard } from "../../src/core/repositories/boardRepository.ts";
 
 const ROOT = resolve(import.meta.dir, "../..");
 let dir: string;
@@ -178,6 +179,27 @@ test("thread show prints an island's messages in order", () => {
   expect(shown.json.island).toBe("caching");
   expect(shown.json.messages.map((m: any) => [m.role, m.body])).toEqual([["judge", "Explain caching."], ["you", "hot data close to readers"]]);
   const missing = cli(["thread", "show", "--domain", "sd", "--island", "nope"]);
+  expect(missing.code).toBe(1);
+  expect(missing.json).toEqual({ error: 'no island "nope" in this domain', valid: ["caching"] });
+});
+
+test("board list prints an island's cards in order", () => {
+  cli(["domain", "add", "--slug", "sd", "--name", "System Design"]);
+  cli(["island", "add", "--domain", "sd", "--slug", "caching", "--name", "Caching"]);
+  const db = openDatabase(dbPath);
+  const d = requireDomain(db, "sd");
+  const i = requireIsland(db, d.id, "caching");
+  addCard(db, { domainId: d.id, islandId: i.id, kind: "diagram", title: "Read path", body: "flowchart TB\n  A --> B", author: "judge" });
+  addCard(db, { domainId: d.id, islandId: i.id, kind: "note", title: "", body: "the cache is checked first", author: "you" });
+  db.close();
+  const shown = cli(["board", "list", "--domain", "sd", "--island", "caching"]);
+  expect(shown.code).toBe(0);
+  expect(shown.json.island).toBe("caching");
+  expect(shown.json.cards.map((c: any) => [c.kind, c.author, c.title, c.body, c.lang])).toEqual([
+    ["diagram", "judge", "Read path", "flowchart TB\n  A --> B", null],
+    ["note", "you", "", "the cache is checked first", null],
+  ]);
+  const missing = cli(["board", "list", "--domain", "sd", "--island", "nope"]);
   expect(missing.code).toBe(1);
   expect(missing.json).toEqual({ error: 'no island "nope" in this domain', valid: ["caching"] });
 });

@@ -17,6 +17,7 @@ import { addVerdict, latestVerdict, latestVerdicts, verdictHistory } from "../co
 import { activeSession, endSession, listSessions, startSession } from "../core/repositories/sessionRepository.ts";
 import { markCommentsRead } from "../core/repositories/commentRepository.ts";
 import { listMessages } from "../core/repositories/messageRepository.ts";
+import { listCards } from "../core/repositories/boardRepository.ts";
 import { listLandmarks, upsertLandmark } from "../core/repositories/landmarkRepository.ts";
 import { getViewState, setFocus } from "../core/repositories/viewStateRepository.ts";
 import { buildSnapshot, listCommentViews } from "../core/view-model.ts";
@@ -350,6 +351,18 @@ common(thread.command("show").option("--domain <slug>").option("--island <slug>"
       const d = requireDomain(db, slugSchema.parse(o.domain));
       const i = requireIsland(db, d.id, slugSchema.parse(o.island));
       return { island: i.slug, messages: listMessages(db, i.id) };
+    }),
+  ),
+);
+
+// ---- board ----
+const board = program.command("board").description("The island's whiteboard: cards the reader and the judge pinned");
+common(board.command("list").option("--domain <slug>").option("--island <slug>")).action(
+  run((o) =>
+    withDb((db) => {
+      const d = requireDomain(db, slugSchema.parse(o.domain));
+      const i = requireIsland(db, d.id, slugSchema.parse(o.island));
+      return { island: i.slug, cards: listCards(db, i.id) };
     }),
   ),
 );
