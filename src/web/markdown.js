@@ -1,4 +1,5 @@
 // mdBlocks → DOM. Built with createElement and textContent only; never innerHTML.
+import { THEMES, TOKEN_NAMES, storedTheme, mermaidVariables } from "./theme-model.js";
 import { mdBlocks, inlineSegments, questionRuns } from "./thread.js";
 import { codeElement } from "./code.js";
 
@@ -8,21 +9,29 @@ let mermaidReady = false;
 let diagramSeq = 0;
 
 function mermaidInit() {
-  if (typeof window === "undefined" || !window.mermaid) return false;
   if (mermaidReady) return true;
+  if (typeof window === "undefined" || !window.mermaid || typeof document === "undefined") return false;
+  // Before theme.js has applied a theme (or when a fence renders first), read the tokens the page resolves now.
+  const style = getComputedStyle(document.documentElement);
+  const tokens = {};
+  for (const n of TOKEN_NAMES) tokens[n] = style.getPropertyValue(n).trim();
+  const id = storedTheme(document.documentElement.dataset.theme);
+  return applyMermaidTheme(mermaidVariables(tokens, THEMES.find((t) => t.id === id)?.dark ?? true));
+}
+
+/** Re-initialises mermaid for a theme and forgets every rendered diagram, so the next append renders in the new colours. */
+export function applyMermaidTheme(themeVariables) {
+  if (typeof window === "undefined" || !window.mermaid) return false;
   window.mermaid.initialize({
     startOnLoad: false,
     securityLevel: "strict",
-    theme: "dark",
+    theme: "base",
     flowchart: { htmlLabels: false, useMaxWidth: false },
     sequence: { useMaxWidth: false },
-    themeVariables: {
-      background: "#1B3F5B", primaryColor: "#245069", primaryTextColor: "#FFFFFF", primaryBorderColor: "rgba(255,255,255,.3)",
-      lineColor: "#F5C242", secondaryColor: "#163449", tertiaryColor: "#163449", noteBkgColor: "#245069", noteTextColor: "#FFFFFF",
-      actorBkg: "#245069", actorBorder: "rgba(255,255,255,.3)", actorTextColor: "#FFFFFF", signalColor: "#F5C242", signalTextColor: "#FFFFFF",
-      edgeLabelBackground: "#1B3F5B", fontFamily: "system-ui, sans-serif", fontSize: "13px",
-    },
+    themeVariables,
   });
+  nodeCache.clear();
+  pending.clear();
   mermaidReady = true;
   return true;
 }

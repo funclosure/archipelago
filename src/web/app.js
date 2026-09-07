@@ -7,6 +7,7 @@ import { installCard } from "./card.js";
 import { installOutline } from "./outline.js";
 import { installKeys } from "./keys.js";
 import { installBoard } from "./board.js";
+import { installTheme } from "./theme.js";
 
 const canvas = document.getElementById("map");
 const ctx = canvas.getContext("2d");
@@ -307,6 +308,7 @@ async function boot() {
   resize();
   window.addEventListener("resize", resize);
   installInteractions(canvas);
+  installTheme(); // first: the canvas palette and mermaid read the stamped theme's tokens
   installCard();
   installBoard();
   installOutline();

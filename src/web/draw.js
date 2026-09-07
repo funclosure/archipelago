@@ -26,6 +26,11 @@ function progress(since, ms, now) {
   return Math.min(1, (now - since) / ms);
 }
 
+/** The theme pushes its seven canvas tokens here; every draw call reads PALETTE at draw time. */
+export function setPalette(p) {
+  Object.assign(PALETTE, p);
+}
+
 function alpha(hex, a) {
   const n = parseInt(hex.slice(1), 16);
   return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, ${a})`;
