@@ -106,3 +106,38 @@ export function buildLinks(snapshot, nodes) {
     .filter((s) => bySlug.has(s.from) && bySlug.has(s.to))
     .map((s) => ({ source: bySlug.get(s.from), target: bySlug.get(s.to), strait: s, state: s.verdict ? s.verdict.state : "open" }));
 }
+
+// ---- the strip: what the chrome says about this scale, each cell with a hint that explains it ----
+export const KIND_WORDS = { sail_closer: "sail closer", note: "note", probe_me: "probe", dispute: "dispute" };
+export const HINTS = {
+  harbour: "The harbour: where to set out from at this scale. The cartographer sets it; the anchor marks it on the map.",
+  homePort: "The harbour, already charted. Sail on from here to the nearest open water.",
+  openWater: "Islands with no verdict yet, nearest first. Select one and make landfall to chart it with the Keeper.",
+  reefs: "A reef is a confident claim the Keeper found wrong. Open the island and answer the Keeper to clear it.",
+  cartographer: "Requests waiting for the cartographer, Claude in the terminal, who sketches the islands. Open a terminal in this project and run /archipelago-chart: it reads these first and marks them read.",
+};
+
+/** The strip's cells for a snapshot: `[{ label, value, hint }]`. */
+export function stripItems(s) {
+  const nameOf = (slug) => s.islands.find((i) => i.slug === slug)?.name ?? slug;
+  const items = [];
+  if (s.harbour) {
+    const h = s.islands.find((i) => i.slug === s.harbour);
+    const charted = Boolean(h && h.verdict);
+    items.push({ label: charted ? "Home port" : "Set out from", value: nameOf(s.harbour), hint: charted ? HINTS.homePort : HINTS.harbour });
+  }
+  const open = s.nearestOpenWater.slice(0, 4).map(nameOf);
+  items.push({ label: "Nearest open water", value: open.length ? open.join(" · ") : "none at this scale", hint: HINTS.openWater });
+  const reefs = s.reefs.map((r) => (r.startsWith("island:") ? nameOf(r.slice(7)) : r.replace("strait:", "strait ")));
+  items.push({ label: "Reefs", value: reefs.length ? reefs.join(" · ") : "none charted", hint: HINTS.reefs });
+  const unread = s.unread ?? [];
+  if (unread.length) {
+    const words = unread.map((c) => {
+      const kind = KIND_WORDS[c.kind] ?? c.kind;
+      return c.target.startsWith("island:") ? `${kind} · ${nameOf(c.target.slice(7))}` : kind;
+    });
+    const value = words.slice(0, 2).join(" · ") + (words.length > 2 ? ` +${words.length - 2}` : "");
+    items.push({ label: "For the cartographer", value, hint: HINTS.cartographer });
+  }
+  return items;
+}

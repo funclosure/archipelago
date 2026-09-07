@@ -1,5 +1,5 @@
 import { test, expect } from "bun:test";
-import { hashSeed, seededRandom, islandRadius, buildNodes, buildLinks, WORLD } from "../../src/web/view-model.js";
+import { hashSeed, seededRandom, islandRadius, buildNodes, buildLinks, WORLD, stripItems, HINTS } from "../../src/web/view-model.js";
 
 const island = (slug, verdict = null, pos = { x: null, y: null }, byState = { sandbar: 0, settled: 0, mountainous: 0, reef: 0, open: 0 }) => ({
   slug, name: slug, summary: null, hasChildren: Object.values(byState).some(Boolean), verdict, x: pos.x, y: pos.y,
@@ -86,4 +86,27 @@ test("nodes remember when each landmark lit and when the state changed; nothing 
   const third = buildNodes(snapshot([withLm("caching", ["a", "b"], { state: "settled", confidence: 0.8, evidence: "e", rationale: null, at: "2026-09-05" })]), prev2);
   expect(third[0].stateAt).toBeGreaterThan(0);
   expect(third[0].litAt.get("b")).toBe(second[0].litAt.get("b")); // unchanged lamps keep their time
+});
+
+test("stripItems: harbour, open water, reefs, and the cartographer's requests, each with a hint", () => {
+  const verdict = { state: "settled", confidence: 0.8 };
+  const base = snapshot([island("caching", verdict), island("queues"), island("db")]);
+  const plain = stripItems({ ...base, harbour: null, nearestOpenWater: ["queues"], reefs: [], unread: [] });
+  expect(plain.map((i) => i.label)).toEqual(["Nearest open water", "Reefs"]);
+  expect(plain[0].value).toBe("queues");
+  expect(plain[1].value).toBe("none charted");
+  expect(plain.every((i) => typeof i.hint === "string" && i.hint.length > 20)).toBe(true);
+
+  const charted = stripItems({ ...base, harbour: "caching", nearestOpenWater: [], reefs: ["island:db", "strait:caching~db"], unread: [] });
+  expect(charted[0]).toEqual({ label: "Home port", value: "caching", hint: HINTS.homePort });
+  expect(charted[1].value).toBe("none at this scale");
+  expect(charted[2].value).toBe("db · strait caching~db");
+  expect(stripItems({ ...base, harbour: "queues", nearestOpenWater: [], reefs: [], unread: [] })[0]).toEqual({ label: "Set out from", value: "queues", hint: HINTS.harbour });
+
+  const one = stripItems({ ...base, harbour: null, nearestOpenWater: [], reefs: [], unread: [{ kind: "sail_closer", target: "island:caching" }] });
+  expect(one[2]).toEqual({ label: "For the cartographer", value: "sail closer · caching", hint: HINTS.cartographer });
+  const three = stripItems({ ...base, harbour: null, nearestOpenWater: [], reefs: [], unread: [
+    { kind: "sail_closer", target: "island:caching" }, { kind: "note", target: "domain:sd" }, { kind: "dispute", target: "island:db" },
+  ] });
+  expect(three[2].value).toBe("sail closer · caching · note +1");
 });

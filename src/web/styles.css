@@ -48,7 +48,11 @@ html, body { margin: 0; height: 100%; background: var(--water); color: var(--tex
 .status.off { color: var(--reef); }
 
 .strip { display: flex; gap: 24px; font-size: 12px; }
-.strip-item { display: flex; flex-direction: column; gap: 2px; }
+.strip-item { display: flex; flex-direction: column; gap: 2px; position: relative; cursor: help; }
+.strip-item .hint { display: none; position: absolute; top: calc(100% + 8px); left: 0; width: 260px; background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
+  padding: 8px 10px; box-shadow: 0 8px 24px var(--shadow); font-size: 12px; line-height: 1.45; color: var(--text); text-transform: none; letter-spacing: 0; z-index: 4; }
+.strip-item:last-child .hint { left: auto; right: 0; }
+.strip-item:hover .hint, .strip-item.open .hint { display: block; }
 .strip-label { color: var(--muted); text-transform: uppercase; letter-spacing: .08em; font-size: 10px; }
 
 /* ---- the pane: head, log, foot ---- */

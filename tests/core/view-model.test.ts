@@ -79,6 +79,7 @@ test("focus, unread count, version, and target formatting", () => {
   const snap = buildSnapshot(db, "sd", null);
   expect(snap.focus).toBe("queues");
   expect(snap.unreadComments).toBe(1);
+  expect(snap.unread).toEqual([{ kind: "probe_me", target: "island:queues" }]);
   expect(snap.version).toBeGreaterThan(0);
   const views = listCommentViews(db, domainId, true);
   expect(views[0]).toMatchObject({ kind: "probe_me", target: "island:queues" });

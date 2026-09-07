@@ -1,4 +1,4 @@
-import { buildNodes, buildLinks, WORLD } from "./view-model.js";
+import { buildNodes, buildLinks, WORLD, stripItems } from "./view-model.js";
 import { createSimulation } from "./layout.js";
 import { createCamera } from "./camera.js";
 import { clear, drawIsland, drawStrait } from "./draw.js";
@@ -226,7 +226,7 @@ function renderBreadcrumb() {
   });
 }
 
-function stripItem(label, value) {
+function stripItem({ label, value, hint }) {
   const el = document.createElement("div");
   el.className = "strip-item";
   const l = document.createElement("span");
@@ -234,28 +234,18 @@ function stripItem(label, value) {
   l.textContent = label;
   const v = document.createElement("span");
   v.textContent = value;
-  el.append(l, v);
+  const h = document.createElement("div");
+  h.className = "hint";
+  h.textContent = hint;
+  el.append(l, v, h);
+  el.addEventListener("click", () => el.classList.toggle("open")); // hover shows the hint; a click (or a tap) pins it
   return el;
 }
 
 function renderStrip() {
   const strip = document.getElementById("strip");
-  const s = app.snapshot;
-  if (!s) return;
-  const nameOf = (slug) => s.islands.find((i) => i.slug === slug)?.name ?? slug;
-  const open = s.nearestOpenWater.slice(0, 4).map(nameOf);
-  const reefs = s.reefs.map((r) => (r.startsWith("island:") ? nameOf(r.slice(7)) : r.replace("strait:", "strait ")));
-  const items = [];
-  if (s.harbour) {
-    const h = s.islands.find((i) => i.slug === s.harbour);
-    items.push(stripItem(h && h.verdict ? "Home port" : "Set out from", nameOf(s.harbour)));
-  }
-  items.push(
-    stripItem("Nearest open water", open.length ? open.join(" · ") : "none at this scale"),
-    stripItem("Reefs", reefs.length ? reefs.join(" · ") : "none charted"),
-  );
-  if (s.unreadComments) items.push(stripItem("Unread", `${s.unreadComments} for Claude`));
-  strip.replaceChildren(...items);
+  if (!app.snapshot) return;
+  strip.replaceChildren(...stripItems(app.snapshot).map(stripItem));
 }
 
 function renderStatus() {

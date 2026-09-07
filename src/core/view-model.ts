@@ -1,5 +1,5 @@
 import type { Database } from "bun:sqlite";
-import type { Comment, CommentTargetType, Island, Landmark, Verdict, VerdictState } from "./types.ts";
+import type { Comment, CommentTargetType, Island, Landmark, Verdict, VerdictState, CommentKind } from "./types.ts";
 import { requireDomain } from "./repositories/domainRepository.ts";
 import { getIslandById, islandPath, listIslands, requireIsland } from "./repositories/islandRepository.ts";
 import { getStraitById, listStraits } from "./repositories/straitRepository.ts";
@@ -35,6 +35,7 @@ export type Snapshot = {
   focus: string | null;
   harbour: string | null;
   unreadComments: number;
+  unread: { kind: CommentKind; target: string }[];
   nearestOpenWater: string[];
   reefs: string[];
 };
@@ -129,6 +130,7 @@ export function buildSnapshot(db: Database, domainSlug: string, scaleSlug: strin
     focus: focusIsland ? focusIsland.slug : null,
     harbour: islandViews.find((i) => i.harbour)?.slug ?? null,
     unreadComments: listComments(db, domain.id, { unreadOnly: true }).length,
+    unread: listCommentViews(db, domain.id, true).map((c) => ({ kind: c.kind, target: c.target })),
     nearestOpenWater: nearestOpenWater(islandViews, straitViews),
     reefs: [
       ...islandViews.filter((i) => i.verdict?.state === "reef").map((i) => `island:${i.slug}`),
