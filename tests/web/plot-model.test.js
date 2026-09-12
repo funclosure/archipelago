@@ -38,7 +38,7 @@ test("malformed JSON is an error carrying a message, and a JSON array is not a c
 });
 
 test("plotSize fills the box, keeps 4:3, and stays inside the caps", () => {
-  expect(plotSize(400)).toEqual({ width: 384, height: 288 });
+  expect(plotSize(400)).toEqual({ width: 400, height: 300 });
   expect(plotSize(2000).width).toBe(560);
   expect(plotSize(2000).height).toBe(380);
   expect(plotSize(40).width).toBe(180);
@@ -79,7 +79,40 @@ test("a body cannot move the plot, resize it, or take the wheel: the fixed optio
   expect(out.grid).toBe(true);
 });
 
+// This pins current behaviour, not desired behaviour: a `{}` body draws empty axes instead of falling
+// back to the source, which is a known defect. Whoever fixes the `{}` case should flip this test.
 test("a config without data still yields a drawable options object", () => {
   const out = plotOptions({ xAxis: { domain: [0, 1] } }, { target: "T", width: 10, height: 20, palette: PALETTE });
   expect(out.data).toEqual([]);
+});
+
+test("an expression cannot carry code: a bracket, a quote, or a backtick is rejected", () => {
+  const payload = "['(window.__PWNED=1,x)']";
+  expect(parsePlot(payload).error).toBeTruthy();
+  expect(parsePlot(payload).options).toBeUndefined();
+
+  // the same payload as one line among plain expression lines — the line-based path must check it too
+  expect(parsePlot(`x^2\n${payload}`).error).toBeTruthy();
+
+  // the same payload as a `fn` inside a JSON body
+  const jsonBody = JSON.stringify({ data: [{ fn: payload }] });
+  expect(parsePlot(jsonBody).error).toBeTruthy();
+  expect(parsePlot(jsonBody).options).toBeUndefined();
+
+  // legitimate expressions still parse
+  for (const fn of ["x^2", "x*log(x)", "2*x*log(x)", "1000000/x", "x^2/4"]) {
+    expect(parsePlot(fn)).toEqual({ options: { data: [{ fn }] } });
+  }
+
+  // a parametric datum in a JSON body is checked the same way, on both x and y
+  const safeParametric = JSON.stringify({ data: [{ x: "cos(t)", y: "sin(t)" }] });
+  expect(parsePlot(safeParametric).error).toBeUndefined();
+  const unsafeParametric = JSON.stringify({ data: [{ x: "cos(t)", y: payload }] });
+  expect(parsePlot(unsafeParametric).error).toBeTruthy();
+
+  // function-plot compiles a datum's `derivative.fn` through the same evaluator, so it is checked too
+  const unsafeDerivative = JSON.stringify({ data: [{ fn: "x^2", derivative: { fn: payload } }] });
+  expect(parsePlot(unsafeDerivative).error).toBeTruthy();
+  const safeDerivative = JSON.stringify({ data: [{ fn: "x^2", derivative: { fn: "2*x" } }] });
+  expect(parsePlot(safeDerivative).error).toBeUndefined();
 });

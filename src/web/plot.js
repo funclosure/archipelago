@@ -105,6 +105,13 @@ function observe(box, holder, source, options) {
 export function plotElement(source) {
   const box = document.createElement("div");
   box.className = "plot";
+  // function-plot binds d3-zoom to its own rect regardless of disableZoom, and d3-zoom's wheel handler
+  // calls stopImmediatePropagation() before any code reads that flag — so the pane's log and a board
+  // column never see the scroll. Capture phase on the box runs first: stopping propagation here keeps
+  // d3-zoom's own listener from ever seeing the event, so it neither cancels the scroll nor rescales the
+  // plot. No preventDefault(): the page's scroll must still happen. Bound once here, not in draw(), so it
+  // survives every redraw of the holder's contents.
+  box.addEventListener("wheel", (e) => e.stopPropagation(), { capture: true });
   const cap = document.createElement("div");
   cap.className = "cap";
   cap.textContent = "plot";
