@@ -568,11 +568,14 @@ Expected: PASS, `tests/web/theme-tokens.test.js` included — it fails if any li
 
 - [ ] **Step 5: Check it by hand in the browser**
 
-There is no DOM in `bun test`, so the drawing is checked the way the canvas and the pane are. Start the server against the DSA domain:
+There is no DOM in `bun test`, so the drawing is checked the way the canvas and the pane are. Never hand-check against the real database: copy it and point the server at the copy with `ARCHIPELAGO_DB_PATH`, on the spare port, exactly as the themes and board slices did.
 
 ```bash
-bun run src/cli/index.ts serve --domain data-structures-algorithms --stub
+cp .archipelago/archipelago.sqlite /tmp/plots.sqlite
+ARCHIPELAGO_DB_PATH=/tmp/plots.sqlite bun run src/cli/index.ts serve --port 4499 --domain data-structures-algorithms --stub
 ```
+
+Leave whatever runs on 4480 alone; it is the reader's own map and its process predates this branch.
 
 Select an island, press **Make landfall**, and in the answer box send this reader message, which renders through the same markdown path:
 
@@ -593,7 +596,6 @@ Confirm, in order:
 4. A windowed body draws in its window: send ```` ```plot ```` with `{ "data": [{ "fn": "x^2" }], "xAxis": { "domain": [1, 50] } }`.
 5. A broken body shows the message above its own source, and the rest of the log is unharmed: send a fence containing `{ "data": [ }`, then one containing `x^^2`.
 6. Widen and narrow the window: the plot redraws to the pane's width without clipping.
-7. An unclosed fence, mid-stream, reads `drawing a plot…` and never a half-expression.
 
 - [ ] **Step 6: Commit**
 
@@ -647,13 +649,14 @@ Expected: PASS. No test asserts the protocol's text, so this step is a regressio
 
 - [ ] **Step 5: Check the real judge draws one**
 
-The stub judge never writes a plot, so this needs the real one. Run:
+The stub judge never writes a plot, so this needs the real one. Copy the database first and serve the copy, so a hand-check never writes into the real chart:
 
 ```bash
-bun run src/cli/index.ts serve --domain data-structures-algorithms
+cp .archipelago/archipelago.sqlite /tmp/plots-judge.sqlite
+ARCHIPELAGO_DB_PATH=/tmp/plots-judge.sqlite bun run src/cli/index.ts serve --port 4499 --domain data-structures-algorithms
 ```
 
-Make landfall on `sorting-and-searching` or `complexity` and answer twice in a way that invites a curve, for instance claiming that "n log n is always faster than n²". Confirm the Keeper's plot fence renders as a drawing, that the reply carries no second fence beside it, and that its question asks you to read the curve.
+Make landfall on `sorting-and-searching` or `complexity` and answer twice in a way that invites a curve, for instance claiming that "n log n is always faster than n²". Confirm four things: the Keeper's plot fence renders as a drawing; while the reply streams, the unclosed fence reads `drawing a plot…` and never a half-written expression; the reply carries no second fence beside the plot; and its question asks the reader to read the curve.
 
 - [ ] **Step 6: Commit**
 
