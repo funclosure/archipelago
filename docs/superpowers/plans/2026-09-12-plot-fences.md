@@ -658,7 +658,7 @@ with:
 Append this paragraph to the end of §9, above the `## 10. The board` heading:
 
 ```markdown
-**A plot** when the claim is a curve rather than a structure: how two costs diverge, what a recurrence grows like, where the threshold between two approaches actually sits. Fence it as `plot`, with one expression per line (`x^2`, `x*log(x)`, `x*x/2`) or a JSON body when the window matters (`{"data":[{"fn":"x^2"}],"xAxis":{"domain":[1,50]}}`). Use `x` as the variable; the plot is static, so choose the domain yourself rather than inviting the reader to zoom. One sentence before it says what to look at, and the question that follows asks the reader to read the curve — where they cross, what happens past the crossing — never "what do you see". A plot instead of a code block or a diagram, not beside one.
+**A plot** when the claim is a curve rather than a structure: how two costs diverge, what a recurrence grows like, where the threshold between two approaches actually sits. Fence it as `plot`, with one expression per line (`x^2`, `x*log(x)`, `x*x/2`) or a JSON body when the window matters (`{"data":[{"fn":"x^2"}],"xAxis":{"domain":[1,50]}}`). Use `x` as the variable; the plot is static, so choose the domain yourself rather than inviting the reader to zoom. One sentence before it says what to look at, and the question that follows asks the reader to read the curve — where they cross, what happens past the crossing — never "what do you see". Never in the opening turn. The fence does not count toward the 120 words of §2. A plot instead of a code block or a diagram, not beside one.
 ```
 
 - [ ] **Step 3: Record the convention**
