@@ -2,6 +2,8 @@
 import { THEMES, TOKEN_NAMES, storedTheme, mermaidVariables } from "./theme-model.js";
 import { mdBlocks, inlineSegments, questionRuns } from "./thread.js";
 import { codeElement } from "./code.js";
+import { plotElement } from "./plot.js";
+import { PLOT_LANGS } from "./plot-model.js";
 
 const nodeCache = new Map(); // diagram source → parsed SVG node, cloned on repeat appends
 const pending = new Map(); // diagram source → in-flight render promise, shared across frames
@@ -178,6 +180,10 @@ export function renderMarkdown(text, { onQuestion = null } = {}) {
       frag.append(diagramElement(b.text));
     } else if (b.type === "code" && b.lang === "mermaid") {
       frag.append(sourceBlock("drawing a diagram…"));
+    } else if (b.type === "code" && PLOT_LANGS.has(b.lang) && b.closed) {
+      frag.append(plotElement(b.text));
+    } else if (b.type === "code" && PLOT_LANGS.has(b.lang)) {
+      frag.append(sourceBlock("drawing a plot…"));
     } else if (b.type === "code") {
       frag.append(codeElement(b.lang, b.text, b.closed));
     }

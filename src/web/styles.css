@@ -211,6 +211,11 @@ button:focus-visible, textarea:focus-visible, input:focus-visible { outline: 2px
 .diagram svg { max-width: none; height: auto; display: block; margin: 0 auto; }
 .diagram .cap { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; margin-bottom: 6px; }
 
+.plot { margin: 6px 0 8px; padding: 10px 8px; background: var(--water); border: 1px solid var(--line); border-radius: 8px; overflow-x: auto; }
+.plot svg { display: block; margin: 0 auto; }
+.plot .cap { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; margin-bottom: 6px; }
+.plot .error { margin-bottom: 6px; }
+
 /* ---- code blocks ---- */
 .codeblock { margin: 6px 0 8px; padding: 8px 10px 10px; background: var(--water); border: 1px solid var(--line); border-radius: 8px; }
 .codeblock .cap { display: flex; justify-content: space-between; align-items: center; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; margin-bottom: 6px; }
@@ -312,7 +317,7 @@ body.pane-open .board { right: var(--pane-w); }
 .board .card > .cap .who { color: var(--lamp); }
 .board .card > .cap .acts { margin-left: auto; display: flex; gap: 6px; }
 .board .card > .cap .acts button { padding: 2px 8px; font-size: 11px; }
-.board .card .diagram, .board .card .codeblock { margin: 0; }
+.board .card .diagram, .board .card .codeblock, .board .card .plot { margin: 0; }
 .board .note-body { display: block; }
 .board .note-body > :first-child { margin-top: 0; }
 /* the editor: a card being written. Head (kind, language, Write | Preview), body, foot (actions, hint, status). */
