@@ -392,6 +392,20 @@ test("shiki is bundled and served from the vendor route with an ETag", async () 
   expect(await again.text()).toBe("");
 });
 
+test("function-plot is bundled and served from the vendor route with an ETag", async () => {
+  const r = await fetch(`${base}/vendor/plot.js`);
+  expect(r.status).toBe(200);
+  expect(r.headers.get("content-type")).toContain("javascript");
+  const etag = r.headers.get("etag");
+  expect(etag).toMatch(/^"[0-9a-f]+"$/);
+  const body = await r.text();
+  expect(body.length).toBeGreaterThan(100000);
+  expect(body).toContain("functionPlot");
+  const again = await fetch(`${base}/vendor/plot.js`, { headers: { "if-none-match": etag! } });
+  expect(again.status).toBe(304);
+  expect(await again.text()).toBe("");
+});
+
 test("the board is read and written through /api/board; reader writes leave no thread message", async () => {
   expect((await get("/api/board?domain=sd&island=caching")).json).toEqual({ island: "caching", cards: [] });
   const v0 = (await get("/api/version?domain=sd")).json.version;

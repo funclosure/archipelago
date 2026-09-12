@@ -20,7 +20,7 @@ import { buildOutline, buildSnapshot } from "../core/view-model.ts";
 import { resolveCommentTarget, resolveVerdictTarget } from "../core/targets.ts";
 import { boardWrite, systemLine } from "./judge/tools.ts";
 import type { JudgeEvent, JudgeRunner } from "./judge/runner.ts";
-import { shikiBundle } from "./vendor.ts";
+import { vendorBundle, type VendorName } from "./vendor.ts";
 
 export type ServerContext = { dbPath?: string; staticRoot: string; runner: JudgeRunner; turnTimeoutMs: number };
 
@@ -32,6 +32,14 @@ const PING_MS = 20_000;
 export const JUDGE_TURN_TIMEOUT_MS = 180_000;
 /** Islands with a judge turn running, as `<domain>/<island>`. One turn per island at a time. */
 const inFlight = new Set<string>();
+
+/** A bundled library: built on first request, then an ETag the page can revalidate against. */
+async function vendorResponse(req: Request, name: VendorName): Promise<Response> {
+  const { body, etag } = await vendorBundle(name);
+  const headers = { "Content-Type": "text/javascript; charset=utf-8", "Cache-Control": "no-cache", ETag: etag };
+  if (req.headers.get("if-none-match") === etag) return new Response(null, { status: 304, headers });
+  return new Response(body, { headers });
+}
 
 export async function handleRequest(req: Request, ctx: ServerContext): Promise<Response> {
   const url = new URL(req.url);
@@ -51,12 +59,8 @@ export async function handleRequest(req: Request, ctx: ServerContext): Promise<R
     if (route === "GET /vendor/onig.wasm") {
       return new Response(Bun.file(ONIG_WASM_PATH), { headers: { "Content-Type": "application/wasm", "Cache-Control": "no-cache" } });
     }
-    if (route === "GET /vendor/shiki.js") {
-      const { body, etag } = await shikiBundle();
-      const headers = { "Content-Type": "text/javascript; charset=utf-8", "Cache-Control": "no-cache", ETag: etag };
-      if (req.headers.get("if-none-match") === etag) return new Response(null, { status: 304, headers });
-      return new Response(body, { headers });
-    }
+    if (route === "GET /vendor/shiki.js") return await vendorResponse(req, "shiki");
+    if (route === "GET /vendor/plot.js") return await vendorResponse(req, "plot");
     return await serveStatic(url.pathname, ctx.staticRoot);
   } catch (error) {
     return errorResponse(error);
