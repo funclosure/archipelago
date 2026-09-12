@@ -1,7 +1,7 @@
 # Plot fences: the Keeper can draw a curve
 
 **Date:** 2026-09-12
-**Status:** approved, not implemented
+**Status:** implemented
 **Builds on:** code blocks (`2026-09-05-code-blocks-design.md`), themes (`2026-09-07-themes-design.md`), board (`2026-09-06-board-design.md`)
 **Reference:** shuttle's `plot` fence, `~/Documents/Workspace/Projects/shuttle-worktree/shuttle/app/src/components/FunctionPlot.tsx`
 
