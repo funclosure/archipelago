@@ -18,7 +18,7 @@ Shuttle already reads a `plot` fence, so the format is not ours to invent. Takin
 | Format | Shuttle's, unchanged. A fence tagged `plot`, `function-plot` or `math-plot`; the body is one expression per line, with blank lines and `//` or `#` comments dropped, or a function-plot options object when the body starts with `{`. |
 | Renderer | `function-plot`, pinned to `1.25.3`. It ships no browser-ready file, so a second `Bun.build` entry beside shiki, served at `/vendor/plot.js` with an ETag, dynamic-imported by the page the way `code.js` imports shiki. Measured on 2026-09-12: 216 KB minified, 65 KB gzipped. |
 | Interaction | Static: `disableZoom: true`. The pane's log is the only scroll region and a plot must not eat the wheel. Interactivity is a later slice and this flag is the only thing it turns. |
-| Colours | The seven canvas tokens through `PALETTE`, never a literal. Sea is the ground, line draws axes and grid, and series take lamp, grass, snow, reef in order and then wrap. A plot re-renders on the `theme` event with its cache cleared, exactly as a diagram does. |
+| Colours | The seven canvas tokens through `PALETTE`, never a literal. Sea is the ground, line draws axes and grid at alphas, and series take lamp, grass, snow, reef in order and then wrap. Every draw reads `PALETTE`, and a theme switch already rebuilds the pane and the board, so plots come back in the new tokens with nothing to invalidate. |
 | Where a plot appears | Wherever `renderMarkdown` runs: the pane's log, and the body of a board note card, so a plot fence inside a note draws from day one. A plot *card*, with its own kind and preview, is the next slice, and `plotElement` takes `diagramElement`'s signature so that slice adds one branch to `bodyEl` rather than a second machinery. |
 | An unclosed fence | `drawing a plot…`, matching the mermaid placeholder. A half-typed expression is never handed to the library. |
 | The judge | PROTOCOL §9 widens to one fence per reply: code, a diagram, **or** a plot. A plot earns its place for a growth curve or two costs compared, never for decoration. |
@@ -34,7 +34,7 @@ Shuttle already reads a `plot` fence, so the format is not ours to invent. Takin
 
 `src/web/plot.js` — DOM, checked by hand.
 
-- `plotElement(body, { cache = true } = {})` returns an element at once and fills it when the bundle resolves. The bundle is imported once per page. Renders are cached by source, and the cache is cleared on `theme` so the next render takes the new tokens. A `ResizeObserver` on the element re-renders at the new width and disconnects when the element leaves the document. `cache: false` is the live-preview door the board slice will use.
+- `plotElement(body)` returns an element at once and fills it when the bundle resolves. The bundle is imported once per page. There is no render cache, unlike diagrams: a draw is a synchronous pass over a few hundred samples, so a plot is redrawn rather than cloned, which is what makes resize and a theme switch fall out for free. A `ResizeObserver` redraws at the new width and disconnects when the element leaves the document. The board slice calls the same function; a live preview redraws per keystroke, which costs nothing.
 
 `src/server/vendor.ts` — from one bundle to a bundle per entry: `vendorBundle("shiki" | "plot")`, each name mapping to an entry under `src/server/vendor/`. `plot-entry.js` imports function-plot's default and re-exports it as a named export, since the page imports an ES module.
 
