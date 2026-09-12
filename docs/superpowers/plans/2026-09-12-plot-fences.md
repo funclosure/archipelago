@@ -289,8 +289,14 @@ Create `src/server/vendor/plot-entry.js`:
 // spans eleven packages (a d3 subset, an interval-arithmetic evaluator), which is why it is bundled at all.
 import functionPlot from "function-plot";
 
-export { functionPlot };
+// function-plot's main is CommonJS whose exports object is itself a transpiled ESM namespace,
+// so the default import is that namespace and the callable is its `default`. Unwrap here, once.
+const plot = functionPlot.default ?? functionPlot;
+
+export { plot as functionPlot };
 ```
+
+The unwrap is not optional: without it the page imports the namespace object, `plotter(...)` is not a function, and nothing draws. This was found in the browser, not by any test.
 
 - [ ] **Step 5: Generalise the bundler from one library to a named set**
 
@@ -421,6 +427,11 @@ function load() {
   if (!loading) {
     loading = import("/vendor/plot.js")
       .then((m) => {
+        if (typeof m.functionPlot !== "function") {
+          console.warn("plots unavailable: bundle export is not callable");
+          loading = null;
+          return false;
+        }
         plotter = m.functionPlot;
         return true;
       })
@@ -453,7 +464,8 @@ function paint(target, colours) {
   if (!svg) return;
   svg.style.backgroundColor = colours.ground;
   for (const el of svg.querySelectorAll(".axis path, .axis line")) el.style.stroke = colours.axis;
-  for (const el of svg.querySelectorAll(".grid line, .grid path")) el.style.stroke = colours.grid;
+  for (const el of svg.querySelectorAll(".axis .tick line")) el.style.stroke = colours.grid; // the gridlines: ticks, not a .grid layer
+  for (const el of svg.querySelectorAll(".tip-x-line, .tip-y-line")) el.style.stroke = colours.grid; // the hover crosshair
   for (const el of svg.querySelectorAll("text")) el.style.fill = colours.text;
 }
 
@@ -469,20 +481,36 @@ function draw(holder, source, options) {
   }
 }
 
-/** Redraws at a new width. Disconnects itself once the plot has left the document. */
+// One observer for the whole page, not one per plot. A detached target is dropped from the browser's
+// "gather active observations" pass, so a callback bound to it via closure would never fire again and
+// disconnecting from inside it would leak; instead every firing sweeps the records for dead ones, so a
+// later plot's resize cleans up any plot whose pane or board went away in the meantime.
+const records = new Set();
+const ro =
+  typeof ResizeObserver === "function"
+    ? new ResizeObserver(() => {
+        for (const record of records) {
+          try {
+            if (!record.box.isConnected) {
+              ro.unobserve(record.holder);
+              records.delete(record);
+              continue;
+            }
+            const now = record.holder.clientWidth;
+            if (Math.abs(now - record.last) < 8) continue; // a redraw changes the height, never the width
+            record.last = now;
+            draw(record.holder, record.source, record.options);
+          } catch (e) {
+            console.warn("plot resize failed:", e); // one bad record must not stop the rest of the sweep
+          }
+        }
+      })
+    : null;
+
+/** Redraws at a new width. The shared observer sweeps this record away once the plot has left the document. */
 function observe(box, holder, source, options) {
-  if (typeof ResizeObserver !== "function") return;
-  let last = holder.clientWidth;
-  const ro = new ResizeObserver(() => {
-    if (!box.isConnected) {
-      ro.disconnect();
-      return;
-    }
-    const now = holder.clientWidth;
-    if (Math.abs(now - last) < 8) return; // a redraw changes the height, never the width
-    last = now;
-    draw(holder, source, options);
-  });
+  if (!ro) return;
+  records.add({ box, holder, source, options, last: holder.clientWidth });
   ro.observe(holder);
 }
 
@@ -509,11 +537,10 @@ export function plotElement(source) {
       holder.replaceChildren(fallback(source, "plots unavailable"));
       return;
     }
-    // A frame later: the element is in the document by then, so the first draw already has the pane's width.
-    requestAnimationFrame(() => {
-      draw(holder, source, parsed.options);
-      observe(box, holder, source, parsed.options);
-    });
+    // A background tab never fires rAF, so draw straight away; the ResizeObserver corrects
+    // the width on its first callback once layout settles.
+    draw(holder, source, parsed.options);
+    observe(box, holder, source, parsed.options);
   });
   return box;
 }

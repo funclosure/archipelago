@@ -34,7 +34,7 @@ Shuttle already reads a `plot` fence, so the format is not ours to invent. Takin
 
 `src/web/plot.js` — DOM, checked by hand.
 
-- `plotElement(body)` returns an element at once and fills it when the bundle resolves. The bundle is imported once per page. There is no render cache, unlike diagrams: a draw is a synchronous pass over a few hundred samples, so a plot is redrawn rather than cloned, which is what makes resize and a theme switch fall out for free. A `ResizeObserver` redraws at the new width and disconnects when the element leaves the document. The board slice calls the same function; a live preview redraws per keystroke, which costs nothing.
+- `plotElement(body)` returns an element at once and fills it when the bundle resolves. The bundle is imported once per page. There is no render cache, unlike diagrams: a draw is a synchronous pass over a few hundred samples, so a plot is redrawn rather than cloned, which is what makes resize and a theme switch fall out for free. One `ResizeObserver` for the page redraws plots at a new width, and every firing sweeps away the records whose element has left the document. A per-element observer cannot do this: a detached target is skipped by the browser's observation pass, so an observer that disconnects itself from inside its own callback never runs again and leaks. The board slice calls the same function; a live preview redraws per keystroke, which costs nothing.
 
 `src/server/vendor.ts` — from one bundle to a bundle per entry: `vendorBundle("shiki" | "plot")`, each name mapping to an entry under `src/server/vendor/`. `plot-entry.js` imports function-plot's default and re-exports it as a named export, since the page imports an ES module.
 
