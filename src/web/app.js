@@ -65,9 +65,13 @@ export function setScale(slug) {
   return refresh();
 }
 
+let refreshGen = 0;
+
 export async function refresh() {
+  const gen = ++refreshGen;
   const query = `domain=${encodeURIComponent(app.domain)}${app.scale ? `&scale=${encodeURIComponent(app.scale)}` : ""}`;
   const [snapshot, outline] = await Promise.all([api(`/api/snapshot?${query}`), api(`/api/outline?domain=${encodeURIComponent(app.domain)}`)]);
+  if (gen !== refreshGen) return; // a later refresh (a scale change, a newer version) owns the map now
   app.outline = outline;
   applySnapshot(snapshot);
 }
@@ -100,13 +104,19 @@ function applySnapshot(snapshot) {
   if (!sameScale) frameSelection(); // the listeners have opened or closed the pane; refit home to the map area and frame the selection or go home
 }
 
+let polling = false;
+
 async function poll() {
+  if (polling) return; // a slow refresh must not stack another behind it
+  polling = true;
   try {
     const { version } = await api(`/api/version?domain=${encodeURIComponent(app.domain)}`);
     app.connected = true;
     if (version !== app.version) await refresh();
   } catch {
     app.connected = false;
+  } finally {
+    polling = false;
   }
   renderStatus();
 }
