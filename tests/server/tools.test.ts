@@ -352,3 +352,16 @@ test("the round restarts after this island is charted, and the fourth answer sin
   // four answers since the last charting: the forcing line fires even though the island already has a verdict line
   expect(renderContext(islandContext(deps()))).toContain("This is the fourth answer: decide now");
 });
+
+test("a verdict written outside the thread restarts the round without a charted-as line", () => {
+  const db = openDatabase(dbPath);
+  const say = (body: string) => addMessage(db, { domainId: ids.domain, islandId: ids.caching, role: "you", kind: "text", body });
+  for (const n of [1, 2, 3, 4]) say(`answer ${n}`);
+  Bun.sleepSync(2);
+  addVerdict(db, { targetType: "island", targetId: ids.caching, state: "settled", confidence: 0.8, evidence: "set from the CLI" });
+  Bun.sleepSync(2);
+  say("one more");
+  db.close();
+  expect(islandContext(deps()).round).toBe(1);
+  expect(renderContext(islandContext(deps()))).not.toContain("decide now");
+});

@@ -73,14 +73,18 @@ export function buildJudgeContext(db: Database, domainSlug: string, islandSlug: 
     landmarks: listLandmarks(db, island.id),
     asks: listAsks(db, island.id),
     board: listCards(db, island.id),
-    round: roundOf(thread),
+    round: roundOf(thread, latestVerdict(db, "island", island.id)?.createdAt ?? null),
   };
 }
 
-/** Reader text messages after the last `charted as …` line: a re-probe starts its own four answers. */
-export function roundOf(thread: Message[]): number {
+/**
+ * Reader text messages after the last `charted as …` line: a re-probe starts its own four answers.
+ * A verdict written outside the thread (the CLI repair path) leaves no such line, so when `verdictAt`
+ * is given only answers newer than it count.
+ */
+export function roundOf(thread: Message[], verdictAt: string | null = null): number {
   const last = thread.findLast((m) => m.kind === "system" && m.body.startsWith(CHARTED_PREFIX));
-  return thread.filter((m) => m.role === "you" && m.kind === "text" && (!last || m.id > last.id)).length;
+  return thread.filter((m) => m.role === "you" && m.kind === "text" && (!last || m.id > last.id) && (!verdictAt || m.createdAt > verdictAt)).length;
 }
 
 const stateOf = (state: VerdictState | null) => state ?? "open water";
