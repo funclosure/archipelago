@@ -66,14 +66,20 @@ export function setScale(slug) {
 }
 
 let refreshGen = 0;
+/** The newest refresh: a superseded one waits for it, so `await setScale(…)` resolves only once the new scale is on the map. */
+let latestRefresh = Promise.resolve();
 
-export async function refresh() {
+export function refresh() {
   const gen = ++refreshGen;
-  const query = `domain=${encodeURIComponent(app.domain)}${app.scale ? `&scale=${encodeURIComponent(app.scale)}` : ""}`;
-  const [snapshot, outline] = await Promise.all([api(`/api/snapshot?${query}`), api(`/api/outline?domain=${encodeURIComponent(app.domain)}`)]);
-  if (gen !== refreshGen) return; // a later refresh (a scale change, a newer version) owns the map now
-  app.outline = outline;
-  applySnapshot(snapshot);
+  const run = (async () => {
+    const query = `domain=${encodeURIComponent(app.domain)}${app.scale ? `&scale=${encodeURIComponent(app.scale)}` : ""}`;
+    const [snapshot, outline] = await Promise.all([api(`/api/snapshot?${query}`), api(`/api/outline?domain=${encodeURIComponent(app.domain)}`)]);
+    if (gen !== refreshGen) return latestRefresh; // a later refresh owns the map now: resolve when it has painted
+    app.outline = outline;
+    applySnapshot(snapshot);
+  })();
+  latestRefresh = run;
+  return run;
 }
 
 function samePath(a, b) {
