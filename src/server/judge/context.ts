@@ -28,7 +28,7 @@ export type JudgeContext = {
   landmarks: Landmark[];
   asks: Ask[];
   board: BoardCard[];
-  /** Reader answers so far: the count of `you` text messages. */
+  /** Reader answers since this island was last charted in this thread (all of them if it never was). */
   round: number;
 };
 
@@ -72,8 +72,14 @@ export function buildJudgeContext(db: Database, domainSlug: string, islandSlug: 
     landmarks: listLandmarks(db, island.id),
     asks: listAsks(db, island.id),
     board: listCards(db, island.id),
-    round: thread.filter((m) => m.role === "you" && m.kind === "text").length,
+    round: roundOf(thread),
   };
+}
+
+/** Reader text messages after the last `charted as …` line: a re-probe starts its own four answers. */
+export function roundOf(thread: Message[]): number {
+  const last = thread.findLast((m) => m.kind === "system" && m.body.startsWith("charted as "));
+  return thread.filter((m) => m.role === "you" && m.kind === "text" && (!last || m.id > last.id)).length;
 }
 
 const stateOf = (state: VerdictState | null) => state ?? "open water";
@@ -108,10 +114,10 @@ export function renderContext(ctx: JudgeContext): string {
       lines.push(`- ${l.name} (${l.slug}): ${l.unlockedAt ? `lit — "${indent(l.evidence ?? "")}"` : "dark"}`);
     }
   }
-  if (ctx.round >= 4 && !ctx.verdict) {
+  if (ctx.round >= 4) {
     lines.push(`Round: ${ctx.round} of 4. This is the fourth answer: decide now with record_verdict or propose_reef before writing anything else.`);
   } else {
-    lines.push(`Round: ${ctx.round} of 4 (reader answers so far; the verdict lands after the fourth at the latest)`);
+    lines.push(`Round: ${ctx.round} of 4 (reader answers since this island was last charted here; the verdict lands after the fourth at the latest)`);
   }
   lines.push(``, `Islets (${ctx.islets.length}):`);
   if (ctx.islets.length === 0) lines.push(`- none`);

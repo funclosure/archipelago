@@ -335,3 +335,20 @@ test("propose_reef and record_verdict refuse another island and a strait that do
   // straits store the lower island id first, so the label is caching~databases however the caller names it
   expect(proposeReef(deps(), reef("strait:databases~caching")).target).toBe("strait:caching~databases");
 });
+
+test("the round restarts after this island is charted, and the fourth answer since then forces a decision", () => {
+  const db = openDatabase(dbPath);
+  const say = (role: "you" | "judge", kind: "text" | "system", body: string) =>
+    addMessage(db, { domainId: ids.domain, islandId: ids.caching, role, kind, body });
+  for (const n of [1, 2, 3, 4]) say("you", "text", `answer ${n}`);
+  say("judge", "system", "charted as sandbar");
+  say("you", "text", "a new probe, answer 1");
+  db.close();
+  expect(islandContext(deps()).round).toBe(1);
+  expect(renderContext(islandContext(deps()))).toContain("Round: 1 of 4");
+  const db2 = openDatabase(dbPath);
+  for (const n of [2, 3, 4]) addMessage(db2, { domainId: ids.domain, islandId: ids.caching, role: "you", kind: "text", body: `answer ${n}` });
+  db2.close();
+  // four answers since the last charting: the forcing line fires even though the island already has a verdict line
+  expect(renderContext(islandContext(deps()))).toContain("This is the fourth answer: decide now");
+});
