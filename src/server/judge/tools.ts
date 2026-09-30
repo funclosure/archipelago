@@ -22,7 +22,7 @@ import {
   reefProposalInputSchema,
   unlockInputSchema,
 } from "../../core/validators.ts";
-import type { BoardCard, MessageRole, ReefProposal, Verdict, VerdictState } from "../../core/types.ts";
+import type { BoardCard, Island, MessageRole, ReefProposal, Verdict, VerdictState } from "../../core/types.ts";
 import { buildJudgeContext, type JudgeContext } from "./context.ts";
 
 /** Where a tool call writes: the database path and the island whose thread this turn belongs to. */
@@ -48,6 +48,22 @@ export function islandContext(deps: ToolDeps): JudgeContext {
   return withDb(deps.dbPath, (db) => buildJudgeContext(db, deps.domain, deps.island));
 }
 
+/** A thread charts its own island, and a strait only when this island is one of its two ends. */
+function requireOwnTarget(db: Database, domainId: number, island: Island, target: string, tool: string) {
+  const resolved = resolveVerdictTarget(db, domainId, target);
+  const own =
+    resolved.targetType === "island"
+      ? resolved.targetId === island.id
+      : (() => {
+          const s = db.query<{ from: number; to: number }, [number]>(
+            "select from_island_id as \"from\", to_island_id as \"to\" from straits where id = ?",
+          ).get(resolved.targetId)!;
+          return s.from === island.id || s.to === island.id;
+        })();
+  if (!own) throw new ArchipelagoError(`this thread charts island:${island.slug}; ${tool} cannot chart ${resolved.label}`);
+  return resolved;
+}
+
 /** Writes a sandbar/settled/mountainous verdict and the system line, in one transaction. Reefs are rejected by the schema. */
 export function recordVerdict(deps: ToolDeps, input: unknown): { verdict: Verdict; target: string } {
   const parsed = judgeVerdictInputSchema.parse(input);
@@ -55,11 +71,7 @@ export function recordVerdict(deps: ToolDeps, input: unknown): { verdict: Verdic
     db.transaction(() => {
       const domain = requireDomain(db, deps.domain);
       const island = requireIsland(db, domain.id, deps.island);
-      const target = resolveVerdictTarget(db, domain.id, parsed.target);
-      // A thread charts its own island. Straits are exempt: they legitimately name two islands.
-      if (target.targetType === "island" && target.targetId !== island.id) {
-        throw new ArchipelagoError(`this thread charts island:${deps.island}; record_verdict cannot chart another island`);
-      }
+      const target = requireOwnTarget(db, domain.id, island, parsed.target, "record_verdict");
       const session = activeSession(db, domain.id);
       const verdict = addVerdict(db, {
         targetType: target.targetType, targetId: target.targetId, state: parsed.state, confidence: parsed.confidence,
@@ -80,7 +92,7 @@ export function proposeReef(deps: ToolDeps, input: unknown): { id: number; targe
   return withDb(deps.dbPath, (db) => {
     const domain = requireDomain(db, deps.domain);
     const island = requireIsland(db, domain.id, deps.island);
-    const target = resolveVerdictTarget(db, domain.id, parsed.target);
+    const target = requireOwnTarget(db, domain.id, island, parsed.target, "propose_reef");
     const proposal: ReefProposal = {
       target: target.label, claim: parsed.claim, consequence: parsed.consequence, evidence: parsed.evidence,
       confidence: parsed.confidence, rationale: parsed.rationale, status: "pending",
