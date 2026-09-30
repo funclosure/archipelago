@@ -426,3 +426,73 @@ test("the board is read and written through /api/board; reader writes leave no t
   expect((await get("/api/board?domain=sd&island=caching")).json.cards).toEqual([]);
   expect((await get("/api/board?domain=sd&island=nope")).status).toBe(404);
 });
+
+test("a reader who leaves mid-turn aborts the runner and frees the island", async () => {
+  let aborted = false;
+  const hung: JudgeRunner = ({ signal }) =>
+    new Promise<string>((_resolve, reject) => {
+      signal?.addEventListener("abort", () => {
+        aborted = true;
+        reject(new Error("aborted"));
+      });
+    });
+  const other = startServer({ port: 0, dbPath: join(dir, "test.sqlite"), staticRoot: dir, runner: hung });
+  const otherBase = `http://127.0.0.1:${other.port}`;
+  const client = new AbortController();
+  try {
+    const res = await fetch(otherBase + "/api/probe", {
+      method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ domain: "sd", island: "databases" }), signal: client.signal,
+    });
+    expect(res.status).toBe(200);
+    client.abort();
+    for (let i = 0; i < 50 && !aborted; i++) await Bun.sleep(20);
+    expect(aborted).toBe(true);
+    await Bun.sleep(20);
+    const again = await fetch(otherBase + "/api/probe", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ domain: "sd", island: "databases" }) });
+    expect(again.status).toBe(200);
+    again.body?.cancel();
+  } finally {
+    other.stop(true);
+  }
+});
+
+test("after a timeout the island stays locked until the runner has actually stopped", async () => {
+  let settled = false;
+  const slowToStop: JudgeRunner = ({ signal }) =>
+    new Promise<string>((resolve) => {
+      signal?.addEventListener("abort", () => setTimeout(() => { settled = true; resolve(""); }, 150));
+    });
+  const other = startServer({ port: 0, dbPath: join(dir, "test.sqlite"), staticRoot: dir, runner: slowToStop, turnTimeoutMs: 50 });
+  const otherBase = `http://127.0.0.1:${other.port}`;
+  try {
+    const first = await fetch(otherBase + "/api/probe", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ domain: "sd", island: "databases" }) });
+    const events = parseSse(await first.text()); // the stream closes only once the lock is released
+    expect(events.map((e) => e.type)).toEqual(["error"]);
+    expect(settled).toBe(true);
+  } finally {
+    other.stop(true);
+  }
+});
+
+test("a reef cannot be confirmed while a turn is running on its island", async () => {
+  await probe({ domain: "sd", island: "databases", message: "reef: indexes make every write faster" });
+  const proposal = (await thread("databases")).messages.find((m: any) => m.kind === "reef_proposal");
+  let release!: () => void;
+  const slow: JudgeRunner = () => new Promise((resolve) => { release = () => resolve("ok"); });
+  const other = startServer({ port: 0, dbPath: join(dir, "test.sqlite"), staticRoot: dir, runner: slow });
+  const otherBase = `http://127.0.0.1:${other.port}`;
+  const postTo = (path: string, body: unknown) =>
+    fetch(otherBase + path, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+  try {
+    const turn = await postTo("/api/probe", { domain: "sd", island: "databases", message: "more" });
+    const confirm = await postTo("/api/probe/reef", { domain: "sd", id: proposal.id, answer: "confirm" });
+    expect(confirm.status).toBe(409);
+    expect(await confirm.json()).toEqual({ error: "a turn is running on this island; answer when it ends" });
+    release();
+    await turn.text();
+    expect((await postTo("/api/probe/reef", { domain: "sd", id: proposal.id, answer: "confirm" })).status).toBe(200);
+  } finally {
+    release?.();
+    other.stop(true);
+  }
+});

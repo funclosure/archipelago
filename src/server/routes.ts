@@ -28,6 +28,8 @@ const MERMAID_PATH = fileURLToPath(import.meta.resolve("mermaid/dist/mermaid.min
 const ONIG_WASM_PATH = fileURLToPath(import.meta.resolve("shiki/dist/onig.wasm"));
 
 const PING_MS = 20_000;
+/** After a timeout or a departed reader, how long the island stays locked waiting for the runner to stop. */
+const TURN_SETTLE_MS = 5_000;
 /** How long one judge turn may run before the island is released. Overridable by `ARCHIPELAGO_TURN_TIMEOUT_MS`. */
 export const JUDGE_TURN_TIMEOUT_MS = 180_000;
 /** Islands with a judge turn running, as `<domain>/<island>`. One turn per island at a time. */
@@ -228,10 +230,11 @@ async function handleApi(req: Request, url: URL, ctx: ServerContext): Promise<Re
       })();
     });
     inFlight.add(key);
+    const abort = new AbortController();
     return sseResponse(async (emit) => {
       // A hung turn would wedge this island until the server restarts: cap it, and cancel the runner.
       const ms = ctx.turnTimeoutMs;
-      const abort = new AbortController();
+      let turn: Promise<string> | undefined;
       let timer: ReturnType<typeof setTimeout> | undefined;
       const expiry = new Promise<never>((_, reject) => {
         timer = setTimeout(() => {
@@ -242,8 +245,9 @@ async function handleApi(req: Request, url: URL, ctx: ServerContext): Promise<Re
         }, ms);
       });
       try {
-        const turn = ctx.runner({ dbPath: ctx.dbPath, domain: input.domain, island: input.island, emit, signal: abort.signal });
+        turn = ctx.runner({ dbPath: ctx.dbPath, domain: input.domain, island: input.island, emit, signal: abort.signal });
         const reply = (await Promise.race([turn, expiry])).trim();
+        if (abort.signal.aborted) return; // the reader left: a reply nobody asked to keep is not stored
         withDb(ctx, (db) => {
           const d = requireDomain(db, input.domain);
           const i = requireIsland(db, d.id, input.island);
@@ -261,9 +265,11 @@ async function handleApi(req: Request, url: URL, ctx: ServerContext): Promise<Re
         emit({ type: "error", message: error instanceof Error ? error.message : String(error) });
       } finally {
         clearTimeout(timer);
+        // An abandoned runner can still land tool writes: keep the island until it has stopped, within a bound.
+        if (turn) await Promise.race([turn.then(() => {}, () => {}), Bun.sleep(TURN_SETTLE_MS)]);
         inFlight.delete(key);
       }
-    });
+    }, () => abort.abort());
   }
 
   if (route === "POST /api/probe/reef") {
@@ -278,6 +284,7 @@ async function handleApi(req: Request, url: URL, ctx: ServerContext): Promise<Re
         const proposal = parseProposal(message.body);
         if (proposal.status !== "pending") throw new ConflictError(`reef proposal ${input.id} is already ${proposal.status}`);
         const island = getIslandById(db, message.islandId)!;
+        if (inFlight.has(`${input.domain}/${island.slug}`)) throw new ConflictError("a turn is running on this island; answer when it ends");
         if (input.answer === "confirm") {
           const target = resolveVerdictTarget(db, d.id, proposal.target);
           const session = activeSession(db, d.id);
@@ -325,7 +332,7 @@ async function serveStatic(pathname: string, staticRoot: string): Promise<Respon
  * A server-sent-event response driven by `run`. Events are `event: <type>\ndata: <json>\n\n`; a `: ping`
  * comment every 20 s keeps the connection alive through Bun's idle timeout. The stream closes when `run` settles.
  */
-function sseResponse(run: (emit: (event: JudgeEvent) => void) => Promise<void>): Response {
+function sseResponse(run: (emit: (event: JudgeEvent) => void) => Promise<void>, onCancel?: () => void): Response {
   const encoder = new TextEncoder();
   let open = true;
   let ping: ReturnType<typeof setInterval> | undefined;
@@ -356,9 +363,10 @@ function sseResponse(run: (emit: (event: JudgeEvent) => void) => Promise<void>):
         .catch(() => {});
     },
     cancel() {
-      // the client went away: stop the keep-alive now rather than at the end of the turn
+      // the client went away: stop the keep-alive now, and tell the turn so it stops spending
       open = false;
       clearInterval(ping);
+      onCancel?.();
     },
   });
   return new Response(stream, {

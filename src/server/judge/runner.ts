@@ -11,7 +11,7 @@ export type JudgeTurn = {
   domain: string;
   island: string;
   emit: (event: JudgeEvent) => void;
-  /** Aborted when the turn runs past the server's timeout; the SDK runner cancels on it, the stub ignores it. */
+  /** Aborted when the turn times out or the reader disconnects; the SDK runner cancels on it, the stub ignores it. */
   signal?: AbortSignal;
 };
 
