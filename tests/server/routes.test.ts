@@ -496,3 +496,13 @@ test("a reef cannot be confirmed while a turn is running on its island", async (
     other.stop(true);
   }
 });
+
+test("a read through a rebinding hostname is refused", async () => {
+  const { handleRequest } = await import("../../src/server/routes.ts");
+  const req = new Request(base + "/api/domains", { headers: { host: "evil.example" } });
+  const res = await handleRequest(req, { dbPath: join(dir, "test.sqlite"), staticRoot: dir, runner: async () => "", turnTimeoutMs: 1000 });
+  expect(res.status).toBe(403);
+  expect(await res.json()).toEqual({ error: "unknown host" });
+  const okRes = await fetch(base.replace("127.0.0.1", "localhost") + "/api/domains");
+  expect(okRes.status).toBe(200);
+});

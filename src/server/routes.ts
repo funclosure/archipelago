@@ -47,6 +47,8 @@ export async function handleRequest(req: Request, ctx: ServerContext): Promise<R
   const url = new URL(req.url);
   try {
     if (url.pathname.startsWith("/api/")) {
+      const host = hostGuard(req);
+      if (host) return host;
       if (req.method === "POST") {
         const guard = crossSitePostGuard(req, url);
         if (guard) return guard;
@@ -69,9 +71,22 @@ export async function handleRequest(req: Request, ctx: ServerContext): Promise<R
   }
 }
 
+/** DNS rebinding: a page on another name that resolves here must not read the threads. */
+function hostGuard(req: Request): Response | null {
+  const host = req.headers.get("host");
+  if (host === null) return null;
+  let hostname: string;
+  try {
+    hostname = new URL(`http://${host}`).hostname;
+  } catch {
+    return json({ error: "unknown host" }, 403);
+  }
+  return hostname === "127.0.0.1" || hostname === "localhost" ? null : json({ error: "unknown host" }, 403);
+}
+
 /**
- * Blocks cross-site writes: a POST must carry an `application/json` body, and if it names an
- * Origin or Host, that must point at this server (127.0.0.1/localhost on the request's own port).
+ * Blocks cross-site writes: a POST must carry an application/json body, and if it names an Origin,
+ * that must be this server (127.0.0.1/localhost on the request's own port).
  */
 function crossSitePostGuard(req: Request, url: URL): Response | null {
   const contentType = req.headers.get("content-type") ?? "";
@@ -83,16 +98,6 @@ function crossSitePostGuard(req: Request, url: URL): Response | null {
   if (origin !== null) {
     const allowed = new Set([`http://127.0.0.1:${url.port}`, `http://localhost:${url.port}`]);
     if (!allowed.has(origin)) return denied();
-  }
-  const host = req.headers.get("host");
-  if (host !== null) {
-    let hostname: string;
-    try {
-      hostname = new URL(`http://${host}`).hostname;
-    } catch {
-      return denied();
-    }
-    if (hostname !== "127.0.0.1" && hostname !== "localhost") return denied();
   }
   return null;
 }
