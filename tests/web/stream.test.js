@@ -34,10 +34,12 @@ test("a refused request throws the server's error, so the caller can give the dr
 
 test("a stream that breaks after opening throws marked midStream", async () => {
   const realFetch = globalThis.fetch;
+  let pulls = 0;
   const body = new ReadableStream({
-    start(c) {
-      c.enqueue(new TextEncoder().encode('event: text\ndata: {"type":"text","text":"Hi"}\n\n'));
-      c.error(new Error("connection reset"));
+    pull(c) {
+      // error() discards queued chunks, so the break comes on the second read, after the first was delivered
+      if (pulls++ === 0) c.enqueue(new TextEncoder().encode('event: text\ndata: {"type":"text","text":"Hi"}\n\n'));
+      else c.error(new Error("connection reset"));
     },
   });
   globalThis.fetch = async () => new Response(body, { status: 200, headers: { "content-type": "text/event-stream" } });
