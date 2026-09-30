@@ -19,11 +19,15 @@ export function migrateDatabase(db: Database): string[] {
     const version = file.replace(/\.sql$/, "");
     if (applied.has(version)) continue;
     const sql = readFileSync(join(MIGRATIONS_DIR, file), "utf8");
-    db.transaction(() => {
+    // Immediate: take the write lock first, then re-check, so a server and a CLI opening together
+    // cannot both run the same migration.
+    const ranNow = db.transaction(() => {
+      if (db.query("select 1 from schema_migrations where version = ?").get(version)) return false;
       db.exec(sql);
       db.run("insert into schema_migrations (version) values (?)", [version]);
-    })();
-    ran.push(version);
+      return true;
+    }).immediate();
+    if (ranNow) ran.push(version);
   }
   return ran;
 }

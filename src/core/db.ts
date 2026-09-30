@@ -16,6 +16,8 @@ export function openDatabase(override?: string): Database {
   if (path !== ":memory:") mkdirSync(dirname(path), { recursive: true });
   const db = new Database(path, { create: true });
   db.exec("pragma foreign_keys = on;");
+  // The CLI and the server write the same file; wait for the other writer rather than fail with "database is locked".
+  db.exec("pragma busy_timeout = 5000;");
   if (path !== ":memory:") db.exec("pragma journal_mode = wal;");
   migrateDatabase(db);
   return db;

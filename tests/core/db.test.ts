@@ -1,6 +1,8 @@
 import { test, expect } from "bun:test";
 import { Database } from "bun:sqlite";
-import { readFileSync } from "node:fs";
+import { readFileSync, mkdtempSync, rmSync } from "node:fs";
+import { join } from "node:path";
+import { tmpdir } from "node:os";
 import { openDatabase } from "../../src/core/db.ts";
 import { migrateDatabase } from "../../src/core/migrate.ts";
 
@@ -135,4 +137,25 @@ test("0006 adds asks with insert and update version triggers", () => {
   db.run("update asks set picked = 'a' where island_id = ?", [islandId]);
   expect(version()).toBe(v0 + 2);
   expect(db.query<{ message_id: number | null }, []>("select message_id from asks").get()!.message_id).toBeNull();
+});
+
+test("every connection waits on a busy database instead of failing at once", () => {
+  const db = openDatabase(":memory:");
+  expect(db.query<{ timeout: number }, []>("pragma busy_timeout").get()!.timeout).toBe(5000);
+  db.close();
+});
+
+test("a migration another connection applied first is skipped, not run twice", () => {
+  const dir = mkdtempSync(join(tmpdir(), "archipelago-mig-"));
+  const path = join(dir, "t.sqlite");
+  try {
+    const a = openDatabase(path);
+    const b = openDatabase(path);
+    // b's pass sees everything applied by a and runs nothing
+    expect(migrateDatabase(b)).toEqual([]);
+    a.close();
+    b.close();
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
 });
