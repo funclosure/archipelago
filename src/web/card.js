@@ -1,6 +1,6 @@
 import { app, api, setScale, frameSelection } from "./app.js";
 import { streamPost } from "./stream.js";
-import { logItems, askFor } from "./thread.js";
+import { logItems, askFor, roundOf } from "./thread.js";
 import { renderMarkdown } from "./markdown.js";
 import { loadHighlighter } from "./code.js";
 import { renderCta } from "./cta.js";
@@ -140,7 +140,6 @@ function button(label, onClick, className = "btn") {
 
 const pct = (v) => `${Math.round(v * 100)}%`;
 const atBottom = (log) => log.scrollHeight - log.scrollTop - log.clientHeight < STICK_PX;
-const roundOf = (messages) => messages.filter((m) => m.role === "you" && m.kind === "text").length;
 
 // Requests go to the cartographer (Claude in the terminal), never to the Keeper: say where they are read.
 const SENT_TEXT = {
@@ -408,7 +407,7 @@ function headEl(island) {
   const parts = [];
   if (hasLandmarks) parts.push(`${island.landmarks.unlocked} of ${island.landmarks.total} charted`);
   const round = roundOf(thread.messages);
-  if (!v && round > 0) parts.push(`round ${Math.min(round, ROUNDS)} of ${ROUNDS}`); // the opening turn is not a round yet
+  if (round > 0) parts.push(`round ${Math.min(round, ROUNDS)} of ${ROUNDS}`); // the opening turn is not a round yet
   sub.append(el("span", null, parts.join(" · ")));
   const links = el("span", "links");
   if (island.hasChildren) links.append(button("Sail in", () => setScale(island.slug), "link"));

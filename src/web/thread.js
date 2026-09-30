@@ -144,6 +144,12 @@ export function mdBlocks(text) {
 
 const CHARTED_PREFIX = "charted as "; // the server keeps its own copy: CHARTED_PREFIX in src/server/judge/tools.ts
 
+/** Reader text messages after the last own-island "charted as" line: the judge's round, as the server counts it. */
+export function roundOf(messages) {
+  const last = messages.findLastIndex((m) => m.kind === "system" && m.body.startsWith(CHARTED_PREFIX));
+  return messages.filter((m, i) => i > last && m.role === "you" && m.kind === "text").length;
+}
+
 /**
  * What the log renders: threadItems, with consecutive landmark items merged into one lit line and the
  * last "charted as" system line turned into a verdict card when the island has a verdict to show.

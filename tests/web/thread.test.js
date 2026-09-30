@@ -1,5 +1,5 @@
 import { test, expect } from "bun:test";
-import { questionRuns, threadItems, proposalFromBody, landmarkFromSystem, inlineSegments, mdBlocks, logItems, askFor } from "../../src/web/thread.js";
+import { questionRuns, threadItems, proposalFromBody, landmarkFromSystem, inlineSegments, mdBlocks, logItems, askFor, roundOf } from "../../src/web/thread.js";
 
 const proposal = { target: "island:caching", claim: "never stale", consequence: "stale prices", evidence: "q", confidence: 0.7, rationale: "r", status: "pending" };
 
@@ -149,3 +149,16 @@ test("mdBlocks parses blockquotes and keeps raw paragraph lines", () => {
     { type: "p", lines: [[{ type: "text", text: "It breaks on rotation." }]], raw: ["It breaks on rotation."] },
   ]);
 });
+
+{
+  const m = (role, kind, body) => ({ role, kind, body });
+  test("roundOf counts every reader answer when nothing is charted", () => {
+    expect(roundOf([m("you", "text", "a"), m("judge", "text", "q"), m("you", "text", "b")])).toBe(2);
+  });
+  test("roundOf restarts after a charted-as line", () => {
+    expect(roundOf([m("you", "text", "a"), m("judge", "system", "charted as sandbar"), m("you", "text", "b")])).toBe(1);
+  });
+  test("roundOf ignores a strait's charted-as line", () => {
+    expect(roundOf([m("you", "text", "a"), m("judge", "system", "strait a~b charted as settled"), m("you", "text", "b")])).toBe(2);
+  });
+}
