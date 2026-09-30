@@ -34,6 +34,7 @@ const TURN_SETTLE_MS = 5_000;
 export const JUDGE_TURN_TIMEOUT_MS = 180_000;
 /** Islands with a judge turn running, as `<domain>/<island>`. One turn per island at a time. */
 const inFlight = new Set<string>();
+const turnKey = (domain: string, island: string) => `${domain}/${island}`;
 
 /** A bundled library: built on first request, then an ETag the page can revalidate against. */
 async function vendorResponse(req: Request, name: VendorName): Promise<Response> {
@@ -218,7 +219,7 @@ async function handleApi(req: Request, url: URL, ctx: ServerContext): Promise<Re
 
   if (route === "POST /api/probe") {
     const input = probeInputSchema.parse(await req.json());
-    const key = `${input.domain}/${input.island}`;
+    const key = turnKey(input.domain, input.island);
     if (inFlight.has(key)) throw new ConflictError("a turn is already running for this island");
     if (input.askId !== undefined && !input.message) throw new ArchipelagoError("a pick needs a message");
     const askFloor = withDb(ctx, (db) => {
@@ -289,7 +290,7 @@ async function handleApi(req: Request, url: URL, ctx: ServerContext): Promise<Re
         const proposal = parseProposal(message.body);
         if (proposal.status !== "pending") throw new ConflictError(`reef proposal ${input.id} is already ${proposal.status}`);
         const island = getIslandById(db, message.islandId)!;
-        if (inFlight.has(`${input.domain}/${island.slug}`)) throw new ConflictError("a turn is running on this island; answer when it ends");
+        if (inFlight.has(turnKey(input.domain, island.slug))) throw new ConflictError("a turn is running on this island; answer when it ends");
         if (input.answer === "confirm") {
           const target = resolveVerdictTarget(db, d.id, proposal.target);
           const session = activeSession(db, d.id);

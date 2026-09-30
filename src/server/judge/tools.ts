@@ -38,9 +38,12 @@ function withDb<T>(dbPath: string | undefined, fn: (db: Database) => T): T {
   }
 }
 
+/** The system line that opens a thread's next round; src/web/thread.js keeps its own copy of this prefix. */
+export const CHARTED_PREFIX = "charted as ";
+
 /** The one-line record the thread shows after a verdict. Names the target unless it is this thread's island. */
 export function systemLine(target: string, state: VerdictState, threadIsland: string): string {
-  if (target === `island:${threadIsland}`) return `charted as ${state}`;
+  if (target === `island:${threadIsland}`) return `${CHARTED_PREFIX}${state}`;
   return `${target.replace(/^island:/, "island ").replace(/^strait:/, "strait ")} charted as ${state}`;
 }
 

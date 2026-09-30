@@ -7,6 +7,7 @@ import { listMessages, parseProposal } from "../../core/repositories/messageRepo
 import { listLandmarks } from "../../core/repositories/landmarkRepository.ts";
 import { listAsks } from "../../core/repositories/askRepository.ts";
 import { listCards } from "../../core/repositories/boardRepository.ts";
+import { CHARTED_PREFIX } from "./tools.ts";
 import { buildSnapshot } from "../../core/view-model.ts";
 import type { Ask, BoardCard, Landmark, Message, ReefProposal, Verdict, VerdictState } from "../../core/types.ts";
 
@@ -78,7 +79,7 @@ export function buildJudgeContext(db: Database, domainSlug: string, islandSlug: 
 
 /** Reader text messages after the last `charted as …` line: a re-probe starts its own four answers. */
 export function roundOf(thread: Message[]): number {
-  const last = thread.findLast((m) => m.kind === "system" && m.body.startsWith("charted as "));
+  const last = thread.findLast((m) => m.kind === "system" && m.body.startsWith(CHARTED_PREFIX));
   return thread.filter((m) => m.role === "you" && m.kind === "text" && (!last || m.id > last.id)).length;
 }
 

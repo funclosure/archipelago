@@ -142,7 +142,7 @@ export function mdBlocks(text) {
   return blocks;
 }
 
-const CHARTED_PREFIX = "charted as ";
+const CHARTED_PREFIX = "charted as "; // the server keeps its own copy: CHARTED_PREFIX in src/server/judge/tools.ts
 
 /**
  * What the log renders: threadItems, with consecutive landmark items merged into one lit line and the
