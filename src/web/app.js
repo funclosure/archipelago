@@ -73,7 +73,13 @@ export function refresh() {
   const gen = ++refreshGen;
   const run = (async () => {
     const query = `domain=${encodeURIComponent(app.domain)}${app.scale ? `&scale=${encodeURIComponent(app.scale)}` : ""}`;
-    const [snapshot, outline] = await Promise.all([api(`/api/snapshot?${query}`), api(`/api/outline?domain=${encodeURIComponent(app.domain)}`)]);
+    let snapshot, outline;
+    try {
+      [snapshot, outline] = await Promise.all([api(`/api/snapshot?${query}`), api(`/api/outline?domain=${encodeURIComponent(app.domain)}`)]);
+    } catch (err) {
+      if (gen !== refreshGen) return latestRefresh; // superseded: the winner's outcome is the one that counts
+      throw err;
+    }
     if (gen !== refreshGen) return latestRefresh; // a later refresh owns the map now: resolve when it has painted
     app.outline = outline;
     applySnapshot(snapshot);
