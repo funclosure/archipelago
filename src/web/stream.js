@@ -27,7 +27,11 @@ export function parseSseBuffer(buffer) {
   return { events, rest: buffer };
 }
 
-/** POSTs JSON and calls onEvent({ type, data }) for each SSE event as it arrives. Resolves when the stream ends. */
+/**
+ * POSTs JSON and calls onEvent({ type, data }) for each SSE event as it arrives. Resolves when the stream ends.
+ * Throws when the server refused the request (nothing was stored), and throws with `midStream` set when the
+ * connection broke after the stream opened (the message may be stored).
+ */
 export async function streamPost(url, body, onEvent) {
   const res = await fetch(url, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
   if (!res.ok || !res.body) {
@@ -38,19 +42,24 @@ export async function streamPost(url, body, onEvent) {
     } catch {
       // not JSON; keep the status message
     }
-    onEvent({ type: "error", data: { type: "error", message } });
-    return;
+    throw new Error(message);
   }
   const reader = res.body.getReader();
   const decoder = new TextDecoder();
   let buffer = "";
-  for (;;) {
-    const { value, done } = await reader.read();
-    if (done) break;
-    buffer += decoder.decode(value, { stream: true });
-    const { events, rest } = parseSseBuffer(buffer);
-    buffer = rest;
-    for (const e of events) onEvent(e);
+  try {
+    for (;;) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const { events, rest } = parseSseBuffer(buffer);
+      buffer = rest;
+      for (const e of events) onEvent(e);
+    }
+  } catch (error) {
+    const broken = error instanceof Error ? error : new Error(String(error));
+    broken.midStream = true;
+    throw broken;
   }
   buffer += decoder.decode(); // flush any bytes the decoder held back mid-character
   const { events } = parseSseBuffer(buffer);

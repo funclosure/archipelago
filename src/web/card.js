@@ -5,7 +5,7 @@ import { renderMarkdown } from "./markdown.js";
 import { loadHighlighter } from "./code.js";
 import { renderCta } from "./cta.js";
 import { select } from "./interactions.js";
-import { registerRegion } from "./keys.js";
+import { registerRegion, region } from "./keys.js";
 
 const pane = document.getElementById("pane");
 const STICK_PX = 40;            // within this of the bottom, the log follows new content
@@ -26,6 +26,8 @@ let noteOpen = false;     // the "Note to cartographer" field is showing
 let lastSent = null;      // { slug, text } shown under the head
 let renderId = 0;         // guards async appends against stale renders
 let loadGen = 0;          // monotonic across islands, so a slow load can never overwrite a newer one
+/** Bumped whenever the thread is reset or a turn starts: a stream only writes into the turn that started it. */
+let turnGen = 0;
 let liveFrame = 0;        // pending animation frame for the streaming reply
 
 // The one thread the page shows: the selected island's stored messages plus the turn in flight.
@@ -167,6 +169,7 @@ function post(path, body) {
 
 /** Points the thread at another island, dropping everything from the previous one. */
 function resetThread(slug) {
+  turnGen += 1; // a stream still running from an earlier visit to this island is no longer ours
   Object.assign(thread, {
     slug, version: null, messages: [], asks: [], loaded: false, draft: "", live: "", progress: null, inFlight: false, error: null, loadError: null,
     disputeDraft: "", litSeen: null, focusPending: false, answering: false, stay: false,
@@ -196,6 +199,9 @@ async function loadThread(slug) {
 /** One judge turn. `message` null opens or continues the thread without a new reader message. */
 async function runTurn(slug, message, askId) {
   if (thread.inFlight || thread.slug !== slug) return;
+  const gen = ++turnGen;
+  const mine = () => thread.slug === slug && gen === turnGen;
+  const regionAtSend = region();
   thread.inFlight = true;
   thread.live = "";
   thread.progress = null;
@@ -208,7 +214,7 @@ async function runTurn(slug, message, askId) {
   }
   try {
     await streamPost("/api/probe", { domain: app.domain, island: slug, ...(message ? { message } : {}), ...(askId ? { askId } : {}) }, (e) => {
-      if (thread.slug !== slug) return;
+      if (!mine()) return;
       if (e.type === "text") {
         thread.live += e.data.text;
         thread.progress = null;
@@ -221,17 +227,21 @@ async function runTurn(slug, message, askId) {
       }
     });
   } catch (error) {
-    if (thread.slug !== slug) return; // the reader is on another island; nothing here is theirs
+    if (!mine()) return; // the reader moved on; nothing here is theirs
     thread.error = error.message;
-    if (message) thread.draft = message; // the fetch never reached the server, so the message is not stored: give it back
+    // Refused or never sent: the server stored nothing, so the words go back in the box.
+    // Broken mid-stream: the server may have stored them, and the refetch will show it.
+    if (message && !error.midStream) thread.draft = message;
   }
-  if (thread.slug !== slug) return;
+  if (!mine()) return;
   cancelLive();
   thread.inFlight = false;
   thread.live = "";
   thread.progress = null;
   thread.version = null; // the stored reply and any system lines come back with the refetch
   render();
+  // Focus the answer only if the reader is still where they sent from; Tab away mid-turn is a choice.
+  if (region() !== regionAtSend) return;
   // The opening turn renders the box disabled until the refetched thread arrives: focus it then.
   if (!focusAnswer()) thread.focusPending = true;
 }
