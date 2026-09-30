@@ -147,6 +147,13 @@ test("comment mark-read requires --id or --all", () => {
   expect(result.json.error).toContain("--all");
 });
 
+test("comment mark-read refuses an id that is not a positive integer", () => {
+  cli(["domain", "add", "--slug", "sd", "--name", "System Design"]);
+  const r = cli(["comment", "mark-read", "--domain", "sd", "--id", "abc"]);
+  expect(r.code).toBe(1);
+  expect(r.json.error).toBe("--id takes positive integers, got abc");
+});
+
 test("--stdin merges a JSON object under the flags", () => {
   cli(["domain", "add", "--slug", "sd", "--name", "System Design"]);
   const result = cli(["island", "add", "--domain", "sd", "--stdin"], { slug: "queues", name: "Queues", summary: "Async work." });

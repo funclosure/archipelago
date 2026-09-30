@@ -336,7 +336,10 @@ common(
   run((o) =>
     withDb((db) => {
       const d = requireDomain(db, slugSchema.parse(o.domain));
-      const ids = o.all ? ("all" as const) : (o.id as string[] | undefined)?.map(Number) ?? [];
+      const raw = (o.id as string[] | undefined) ?? [];
+      const bad = raw.find((s) => !/^[1-9]\d*$/.test(s));
+      if (!o.all && bad !== undefined) throw new ArchipelagoError(`--id takes positive integers, got ${bad}`);
+      const ids = o.all ? ("all" as const) : raw.map(Number);
       if (!o.all && ids.length === 0) throw new ArchipelagoError("pass --id <n> ... or --all");
       return { marked: markCommentsRead(db, d.id, ids) };
     }),
