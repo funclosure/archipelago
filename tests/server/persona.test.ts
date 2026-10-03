@@ -2,7 +2,7 @@ import { test, expect } from "bun:test";
 import { judge, mentor, personaFor, renderJudgeContext, renderJudgeThreadPrompt, renderMentorContext, renderMentorThreadPrompt } from "../../src/server/judge/persona.ts";
 import { readProtocol } from "../../src/server/judge/protocol.ts";
 import { judgeStubTurn, mentorStubTurn } from "../../src/server/judge/stub.ts";
-import { allowedToolsFor } from "../../src/server/judge/sdk.ts";
+import { allowedToolsFor, toolDescriptionsFor } from "../../src/server/judge/sdk.ts";
 
 test("the judge persona: PROTOCOL.md, its seven tools, its renderers, its stub", () => {
   expect(judge.id).toBe("judge");
@@ -36,4 +36,16 @@ test("the mentor persona: MENTOR.md, its five tools and no verdict tool, its ren
     "mcp__archipelago__island_context", "mcp__archipelago__set_landmarks", "mcp__archipelago__mark_explored",
     "mcp__archipelago__ask_reader", "mcp__archipelago__board_write",
   ]);
+});
+
+test("tool descriptions speak the persona: the mentor's say nothing of reefs or a reader who already understood", () => {
+  const m = toolDescriptionsFor(mentor);
+  expect(Object.keys(m)).toEqual([...mentor.toolNames]);
+  for (const d of Object.values(m)) for (const phrase of ["reef", "verdict", "already understood", "lit"]) expect(d).not.toContain(phrase);
+  expect(m.island_context).toContain("Who the reader is");
+  expect(m.ask_reader).toContain("check-in");
+  const j = toolDescriptionsFor(judge);
+  expect(Object.keys(j)).toEqual([...judge.toolNames]);
+  expect(j.island_context).toContain("pending reef proposals");
+  expect(j.ask_reader).toContain("what they would say if they already understood");
 });

@@ -65,20 +65,46 @@ export function allowedToolsFor(persona: Persona): string[] {
   return persona.toolNames.map((t) => `mcp__${SERVER}__${t}`);
 }
 
+/** The judge's wording for each tool; the mentor overrides what reads differently in its mode. */
+const JUDGE_DESCRIPTIONS: Record<ToolName, string> = {
+  island_context: "This island: verdict and history, islets, straits to neighbours, nearest open water, pending reef proposals, the board, and the thread so far. Read fresh.",
+  record_verdict: "Write a sandbar, settled, or mountainous verdict on island:<slug> or strait:<a>~<b>. Evidence is a verbatim quote from the reader. Reefs are not accepted here; use propose_reef.",
+  propose_reef: "Show the reader a reef: the specific false claim and the concrete consequence. The reef is written only if they confirm it.",
+  set_landmarks: "Name this island's 4–6 landmarks (key concepts) once, when the context says it has none. Slugs are lowercase-kebab; names are short.",
+  unlock_landmark: "Light one landmark the reader's latest answer covered: they explained or applied it, not merely named it. Evidence is a verbatim quote from that answer.",
+  ask_reader: "Ask the reader to choose: a question and 2–4 short options, one of them what they would say if they already understood. The options appear under your reply; end the reply with the question and stop.",
+  board_write: "Pin, update, or remove a card on this island's board (see the board section of your protocol). op add: kind (diagram | note | code), body (mermaid source, markdown, or code), lang for code, and an optional one-line title. op update: id plus the fields to change. op remove: id. You may only update or remove cards you wrote.",
+  mark_explored: "Mark one landmark explored: the reader engaged it in their own words (asked about it, restated it, or tried it on an example). Evidence is a verbatim quote of at least two words from the reader's latest message; anything else is refused. Marking it again changes nothing.",
+};
+
+const MENTOR_DESCRIPTIONS: Partial<Record<ToolName, string>> = {
+  island_context:
+    "Who the reader is (their ground, the claims to avoid building on, their note), this island, its landmarks explored or not, the board, and the mentor thread so far. Read fresh.",
+  ask_reader:
+    "Ask the reader a check-in: a question and 2–4 short options, all plausible. The options appear under your reply; end the reply with the question and stop.",
+};
+
+/** Each of the persona's tools with the description it sees, in the persona's tool order. */
+export function toolDescriptionsFor(persona: Persona): Partial<Record<ToolName, string>> {
+  const own = persona.id === "mentor" ? MENTOR_DESCRIPTIONS : {};
+  return Object.fromEntries(persona.toolNames.map((name) => [name, own[name] ?? JUDGE_DESCRIPTIONS[name]]));
+}
+
 /** Every tool the server knows, each built only when the persona names it. */
 function toolsFor(sdk: Sdk, deps: ToolDeps, persona: Persona): SdkMcpToolDefinition<any>[] {
+  const describe = toolDescriptionsFor(persona) as Record<ToolName, string>;
   const build: Record<ToolName, () => SdkMcpToolDefinition<any>> = {
     island_context: () =>
       sdk.tool(
         "island_context",
-        "This island: verdict and history, islets, straits to neighbours, nearest open water, pending reef proposals, the board, and the thread so far. Read fresh.",
+        describe.island_context,
         {},
         async () => guard(() => islandContext(deps)),
       ),
     record_verdict: () =>
       sdk.tool(
         "record_verdict",
-        "Write a sandbar, settled, or mountainous verdict on island:<slug> or strait:<a>~<b>. Evidence is a verbatim quote from the reader. Reefs are not accepted here; use propose_reef.",
+        describe.record_verdict,
         {
           target: z.string(),
           state: z.enum(["sandbar", "settled", "mountainous"]),
@@ -91,7 +117,7 @@ function toolsFor(sdk: Sdk, deps: ToolDeps, persona: Persona): SdkMcpToolDefinit
     propose_reef: () =>
       sdk.tool(
         "propose_reef",
-        "Show the reader a reef: the specific false claim and the concrete consequence. The reef is written only if they confirm it.",
+        describe.propose_reef,
         {
           target: z.string(),
           claim: z.string(),
@@ -105,28 +131,28 @@ function toolsFor(sdk: Sdk, deps: ToolDeps, persona: Persona): SdkMcpToolDefinit
     set_landmarks: () =>
       sdk.tool(
         "set_landmarks",
-        "Name this island's 4–6 landmarks (key concepts) once, when the context says it has none. Slugs are lowercase-kebab; names are short.",
+        describe.set_landmarks,
         { items: z.array(z.object({ slug: z.string(), name: z.string() })).min(4).max(6) },
         async (args) => guard(() => setLandmarks(deps, args)),
       ),
     unlock_landmark: () =>
       sdk.tool(
         "unlock_landmark",
-        "Light one landmark the reader's latest answer covered: they explained or applied it, not merely named it. Evidence is a verbatim quote from that answer.",
+        describe.unlock_landmark,
         { slug: z.string(), evidence: z.string() },
         async (args) => guard(() => unlockLandmark(deps, args)),
       ),
     ask_reader: () =>
       sdk.tool(
         "ask_reader",
-        "Ask the reader to choose: a question and 2–4 short options, one of them what they would say if they already understood. The options appear under your reply; end the reply with the question and stop.",
+        describe.ask_reader,
         { question: z.string(), options: z.array(z.string()).min(2).max(4) },
         async (args) => guard(() => askReader(deps, args)),
       ),
     board_write: () =>
       sdk.tool(
         "board_write",
-        "Pin, update, or remove a card on this island's board (see the board section of your protocol). op add: kind (diagram | note | code), body (mermaid source, markdown, or code), lang for code, and an optional one-line title. op update: id plus the fields to change. op remove: id. You may only update or remove cards you wrote.",
+        describe.board_write,
         {
           op: z.enum(["add", "update", "remove"]),
           id: z.number().int().positive().optional(),
@@ -140,7 +166,7 @@ function toolsFor(sdk: Sdk, deps: ToolDeps, persona: Persona): SdkMcpToolDefinit
     mark_explored: () =>
       sdk.tool(
         "mark_explored",
-        "Mark one landmark explored: the reader engaged it in their own words (asked about it, restated it, or tried it on an example). Evidence is a verbatim quote of at least two words from the reader's latest message; anything else is refused. Marking it again changes nothing.",
+        describe.mark_explored,
         { slug: z.string(), evidence: z.string() },
         async (args) => guard(() => markExplored(deps, args)),
       ),
