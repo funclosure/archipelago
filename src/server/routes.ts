@@ -319,12 +319,12 @@ async function handleApi(req: Request, url: URL, ctx: ServerContext): Promise<Re
               sessionId: session ? session.id : null,
             });
             setReefStatus(db, message.id, "confirmed");
-            addMessage(db, { domainId: d.id, islandId: island.id, role: "judge", kind: "system", body: systemLine(target.label, "reef", island.slug) });
+            addMessage(db, { domainId: d.id, islandId: island.id, role: "judge", kind: "system", body: systemLine(target.label, "reef", island.slug), mode: "judge" });
           })();
         } else {
           db.transaction(() => {
             setReefStatus(db, message.id, "disputed");
-            addMessage(db, { domainId: d.id, islandId: island.id, role: "you", kind: "text", body: input.note ?? "I dispute this." });
+            addMessage(db, { domainId: d.id, islandId: island.id, role: "you", kind: "text", body: input.note ?? "I dispute this.", mode: "judge" });
           })();
         }
         return { id: message.id, status: input.answer === "confirm" ? "confirmed" : "disputed", version: getViewState(db, d.id).version };

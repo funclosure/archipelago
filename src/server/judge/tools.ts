@@ -83,7 +83,7 @@ export function recordVerdict(deps: ToolDeps, input: unknown): { verdict: Verdic
       });
       addMessage(db, {
         domainId: domain.id, islandId: island.id, role: "judge", kind: "system",
-        body: systemLine(target.label, parsed.state, island.slug),
+        body: systemLine(target.label, parsed.state, island.slug), mode: "judge",
       });
       return { verdict, target: target.label };
     })(),
@@ -102,7 +102,7 @@ export function proposeReef(deps: ToolDeps, input: unknown): { id: number; targe
       confidence: parsed.confidence, rationale: parsed.rationale, status: "pending",
     };
     const message = addMessage(db, {
-      domainId: domain.id, islandId: island.id, role: "judge", kind: "reef_proposal", body: JSON.stringify(proposal),
+      domainId: domain.id, islandId: island.id, role: "judge", kind: "reef_proposal", body: JSON.stringify(proposal), mode: "judge",
     });
     return { id: message.id, target: target.label };
   });
@@ -138,9 +138,9 @@ export function unlockLandmark(deps: ToolDeps, input: unknown): { slug: string; 
     db.transaction(() => {
       const domain = requireDomain(db, deps.domain);
       const island = requireIsland(db, domain.id, deps.island);
-      const answer = [...listMessages(db, island.id)].reverse().find((m) => m.role === "you" && m.kind === "text") ?? null;
+      const answer = [...listMessages(db, island.id, "judge")].reverse().find((m) => m.role === "you" && m.kind === "text") ?? null;
       const lit = unlockLandmarkRow(db, island.id, parsed.slug, parsed.evidence, answer ? answer.id : null);
-      addMessage(db, { domainId: domain.id, islandId: island.id, role: "judge", kind: "system", body: `landmark lit: ${lit.name}` });
+      addMessage(db, { domainId: domain.id, islandId: island.id, role: "judge", kind: "system", body: `landmark lit: ${lit.name}`, mode: "judge" });
       const all = listLandmarks(db, island.id);
       return { slug: lit.slug, name: lit.name, unlocked: all.filter((l) => l.unlockedAt !== null).length, total: all.length };
     })(),
