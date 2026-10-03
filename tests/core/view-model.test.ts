@@ -10,7 +10,7 @@ import { setFocus } from "../../src/core/repositories/viewStateRepository.ts";
 import { addMessage } from "../../src/core/repositories/messageRepository.ts";
 import { buildSnapshot, buildOutline, listCommentViews, formatTarget } from "../../src/core/view-model.ts";
 import { NotFoundError } from "../../src/core/errors.ts";
-import { setLandmarks, unlockLandmark } from "../../src/core/repositories/landmarkRepository.ts";
+import { exploreLandmark, setLandmarks, unlockLandmark } from "../../src/core/repositories/landmarkRepository.ts";
 
 let db: Database;
 let domainId: number;
@@ -105,19 +105,20 @@ test("snapshot counts each island's thread", () => {
   expect(snap.islands.map((i) => [i.slug, i.messages])).toEqual([["caching", 2], ["queues", 0], ["databases", 0]]);
 });
 
-test("snapshot carries each island's landmarks with lit state and evidence", () => {
+test("snapshot carries each island's landmarks with lit state, evidence, and when each was explored", () => {
   setLandmarks(db, domainId, caching, [{ slug: "hit-ratio", name: "Hit ratio" }, { slug: "invalidation", name: "Invalidation" }]);
   unlockLandmark(db, caching, "hit-ratio", "most reads never reach the database", null);
+  const explored = exploreLandmark(db, caching, "invalidation", "like NSCache", null).landmark.exploredAt;
   const snap = buildSnapshot(db, "sd", null);
   const c = snap.islands.find((i) => i.slug === "caching")!;
   expect(c.landmarks).toEqual({
-    total: 2, unlocked: 1,
+    total: 2, unlocked: 1, explored: 1,
     items: [
-      { slug: "hit-ratio", name: "Hit ratio", lit: true, evidence: "most reads never reach the database" },
-      { slug: "invalidation", name: "Invalidation", lit: false, evidence: null },
+      { slug: "hit-ratio", name: "Hit ratio", lit: true, evidence: "most reads never reach the database", exploredAt: null },
+      { slug: "invalidation", name: "Invalidation", lit: false, evidence: null, exploredAt: explored },
     ],
   });
-  expect(snap.islands.find((i) => i.slug === "queues")!.landmarks).toEqual({ total: 0, unlocked: 0, items: [] });
+  expect(snap.islands.find((i) => i.slug === "queues")!.landmarks).toEqual({ total: 0, unlocked: 0, explored: 0, items: [] });
 });
 
 test("the snapshot names the harbour at its own scale only", () => {

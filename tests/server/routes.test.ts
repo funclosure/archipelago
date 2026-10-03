@@ -519,3 +519,101 @@ test("/api/learner reads and writes the one learner note; the write reaches ever
   expect(long.status).toBe(400);
   expect(long.json).toEqual({ error: "note: a note is at most 1000 characters" });
 });
+
+const mentorThread = async (island: string) => (await get(`/api/thread?domain=sd&island=${island}&mode=mentor`)).json;
+
+test("mode passes through: a mentor turn writes the mentor thread only, and an explored landmark reaches the snapshot", async () => {
+  const opening = await probe({ domain: "sd", island: "databases", mode: "mentor" });
+  expect(opening.status).toBe(200);
+  expect(opening.events.map((e) => e.type)).toEqual(["progress", "text", "done"]);
+  expect(opening.events[1]!.data.text).toContain("Where do you want to start?");
+  const r = await probe({ domain: "sd", island: "databases", mode: "mentor", message: "so it is a ledger: explore shape" });
+  expect(r.events[0]!.data.message).toBe("mark_explored");
+  const t = await mentorThread("databases");
+  expect(t.mode).toBe("mentor");
+  expect(t.messages.map((m: any) => [m.role, m.kind, m.mode])).toEqual([
+    ["mentor", "text", "mentor"], ["you", "text", "mentor"], ["mentor", "system", "mentor"], ["mentor", "text", "mentor"],
+  ]);
+  expect(t.messages[2].body).toBe("landmark explored: Shape");
+  const judgeThread = await thread("databases");
+  expect(judgeThread.mode).toBe("judge");
+  expect(judgeThread.messages).toEqual([]);
+  const view = await islandView("databases");
+  expect(view.landmarks.explored).toBe(1);
+  expect(view.landmarks.unlocked).toBe(0);
+  expect(view.landmarks.items.find((l: any) => l.slug === "shape").exploredAt).not.toBeNull();
+  expect(view.verdict).toBeNull(); // the mentor never writes one
+  expect((await get("/api/thread?domain=sd&island=databases&mode=tutor")).status).toBe(400);
+  expect((await probe({ domain: "sd", island: "databases", mode: "tutor" })).status).toBe(400);
+});
+
+test("one turn per island across both modes: a mentor turn makes a judge turn 409", async () => {
+  let release!: () => void;
+  const seen: (string | undefined)[] = [];
+  const slow: JudgeRunner = ({ mode }) => {
+    seen.push(mode);
+    return new Promise((resolve) => {
+      release = () => resolve("ok");
+    });
+  };
+  const other = startServer({ port: 0, dbPath: join(dir, "test.sqlite"), staticRoot: dir, runner: slow });
+  const otherBase = `http://127.0.0.1:${other.port}`;
+  const start = (mode: string) =>
+    fetch(otherBase + "/api/probe", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ domain: "sd", island: "databases", mode }) });
+  try {
+    const mentorTurn = await start("mentor");
+    expect(mentorTurn.status).toBe(200);
+    const judgeTurn = await start("judge");
+    expect(judgeTurn.status).toBe(409);
+    expect(await judgeTurn.json()).toEqual({ error: "a turn is already running for this island" });
+    release();
+    expect(await mentorTurn.text()).toContain("event: done");
+    expect(seen).toEqual(["mentor"]);
+    expect((await mentorThread("databases")).messages.map((m: any) => [m.role, m.mode, m.body])).toEqual([["mentor", "mentor", "ok"]]);
+    expect((await thread("databases")).messages).toEqual([]);
+  } finally {
+    release?.();
+    other.stop(true);
+  }
+});
+
+test("an ask in the judge's thread is not pickable from the mentor's pane, nor listed there", async () => {
+  // the judge stub asks on the second answer
+  await probe({ domain: "sd", island: "databases" });
+  await probe({ domain: "sd", island: "databases", message: "one" });
+  await probe({ domain: "sd", island: "databases", message: "two" });
+  const ask = (await thread("databases")).asks[0];
+  expect(ask.messageId).not.toBeNull();
+  const wrong = await probe({ domain: "sd", island: "databases", mode: "mentor", message: "the first option", askId: ask.id });
+  expect(wrong.status).toBe(404);
+  expect(wrong.json).toEqual({ error: `no ask ${ask.id} in the mentor thread of island:databases` });
+  expect((await mentorThread("databases")).asks).toEqual([]);
+  expect((await thread("databases")).asks[0].picked).toBeNull();
+});
+
+test("a mentor turn that asks: the reply is stored as the mentor's and the ask attaches in the mentor thread", async () => {
+  const dbPath = join(dir, "test.sqlite");
+  const asking: JudgeRunner = async ({ domain, island }) => {
+    const db = openDatabase(dbPath);
+    const d = upsertDomain(db, { slug: domain, name: "System Design" });
+    const i = upsertIsland(db, { domainId: d.id, slug: island, name: "Databases" });
+    addAsk(db, { domainId: d.id, islandId: i.id, question: "Which sounds closer?", options: ["a ledger", "a pantry"] });
+    db.close();
+    return "Let me check where you are.";
+  };
+  const other = startServer({ port: 0, dbPath, staticRoot: dir, runner: asking });
+  const otherBase = `http://127.0.0.1:${other.port}`;
+  try {
+    const res = await fetch(otherBase + "/api/probe", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ domain: "sd", island: "databases", mode: "mentor" }) });
+    expect(await res.text()).toContain("event: done");
+  } finally {
+    other.stop(true);
+  }
+  const mt = await mentorThread("databases");
+  expect(mt.messages.map((m: any) => [m.role, m.mode])).toEqual([["mentor", "mentor"]]);
+  expect(mt.asks).toHaveLength(1);
+  expect(mt.asks[0].messageId).toBe(mt.messages[0].id);
+  const jt = await thread("databases");
+  expect(jt.messages).toEqual([]);
+  expect(jt.asks).toEqual([]);
+});

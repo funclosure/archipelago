@@ -5,7 +5,7 @@ import { z } from "zod";
 import { openDatabase } from "../core/db.ts";
 import { ArchipelagoError, ConflictError, NotFoundError } from "../core/errors.ts";
 import {
-  boardPostInputSchema, commentInputSchema, focusInputSchema, learnerInputSchema, positionsInputSchema, probeInputSchema, reefAnswerInputSchema, slugSchema,
+  boardPostInputSchema, commentInputSchema, focusInputSchema, learnerInputSchema, modeSchema, positionsInputSchema, probeInputSchema, reefAnswerInputSchema, slugSchema,
 } from "../core/validators.ts";
 import { attachAsks, listAsks, pickAsk, requireAsk } from "../core/repositories/askRepository.ts";
 import { listCards } from "../core/repositories/boardRepository.ts";
@@ -33,7 +33,7 @@ const PING_MS = 20_000;
 const TURN_SETTLE_MS = 5_000;
 /** How long one judge turn may run before the island is released. Overridable by `ARCHIPELAGO_TURN_TIMEOUT_MS`. */
 export const JUDGE_TURN_TIMEOUT_MS = 180_000;
-/** Islands with a judge turn running, as `<domain>/<island>`. One turn per island at a time. */
+/** Islands with a turn running (judge or mentor), as `<domain>/<island>`. One turn per island at a time. */
 const inFlight = new Set<string>();
 const turnKey = (domain: string, island: string) => `${domain}/${island}`;
 
@@ -189,11 +189,16 @@ async function handleApi(req: Request, url: URL, ctx: ServerContext): Promise<Re
   if (route === "GET /api/thread") {
     const slug = slugSchema.parse(q("domain"));
     const islandSlug = slugSchema.parse(q("island"));
+    const mode = modeSchema.parse(q("mode") ?? "judge");
     return json(
       withDb(ctx, (db) => {
         const d = requireDomain(db, slug);
         const i = requireIsland(db, d.id, islandSlug);
-        return { island: i.slug, messages: listMessages(db, i.id), asks: listAsks(db, i.id) };
+        const messages = listMessages(db, i.id, mode);
+        const inThread = new Set(messages.map((m) => m.id));
+        // An ask rides on one thread's reply; an unattached one belongs to no thread yet and is listed in both.
+        const asks = listAsks(db, i.id).filter((a) => a.messageId === null || inThread.has(a.messageId));
+        return { island: i.slug, mode, messages, asks };
       }),
     );
   }
@@ -227,6 +232,8 @@ async function handleApi(req: Request, url: URL, ctx: ServerContext): Promise<Re
 
   if (route === "POST /api/probe") {
     const input = probeInputSchema.parse(await req.json());
+    const mode = input.mode;
+    // One turn per island across both modes: the judge and the mentor never write the same island at once.
     const key = turnKey(input.domain, input.island);
     if (inFlight.has(key)) throw new ConflictError("a turn is already running for this island");
     if (input.askId !== undefined && !input.message) throw new ArchipelagoError("a pick needs a message");
@@ -235,11 +242,13 @@ async function handleApi(req: Request, url: URL, ctx: ServerContext): Promise<Re
       const i = requireIsland(db, d.id, input.island);
       return db.transaction(() => {
         if (input.askId !== undefined) {
-          // An ask belongs to one island's thread; a pick from another island's pane is not this ask.
-          if (requireAsk(db, d.id, input.askId).islandId !== i.id) throw new NotFoundError(`no ask ${input.askId} on island:${i.slug}`);
+          // An ask belongs to one island's thread in one mode; a pick from another pane is not this ask.
+          const ask = requireAsk(db, d.id, input.askId);
+          const inThread = ask.islandId === i.id && (ask.messageId === null || getMessage(db, ask.messageId)?.mode === mode);
+          if (!inThread) throw new NotFoundError(`no ask ${input.askId} in the ${mode} thread of island:${i.slug}`);
           pickAsk(db, d.id, input.askId, input.message!);
         }
-        if (input.message) addMessage(db, { domainId: d.id, islandId: i.id, role: "you", kind: "text", body: input.message });
+        if (input.message) addMessage(db, { domainId: d.id, islandId: i.id, role: "you", kind: "text", body: input.message, mode });
         return listAsks(db, i.id).at(-1)?.id ?? 0;
       })();
     });
@@ -254,12 +263,12 @@ async function handleApi(req: Request, url: URL, ctx: ServerContext): Promise<Re
         timer = setTimeout(() => {
           // Reject before aborting: a runner that rejects on abort would otherwise win the race and
           // report its own cancellation instead of the timeout the reader needs to see.
-          reject(new ArchipelagoError(`the judge did not answer within ${ms / 1000} s`));
+          reject(new ArchipelagoError(`the ${mode} did not answer within ${ms / 1000} s`));
           abort.abort();
         }, ms);
       });
       try {
-        turn = ctx.runner({ dbPath: ctx.dbPath, domain: input.domain, island: input.island, emit, signal: abort.signal });
+        turn = ctx.runner({ dbPath: ctx.dbPath, domain: input.domain, island: input.island, mode, emit, signal: abort.signal });
         const reply = (await Promise.race([turn, expiry])).trim();
         if (abort.signal.aborted) return; // the reader left: a reply nobody asked to keep is not stored
         withDb(ctx, (db) => {
@@ -271,7 +280,8 @@ async function handleApi(req: Request, url: URL, ctx: ServerContext): Promise<Re
           const unattached = listAsks(db, i.id).find((a) => a.messageId === null && a.id > askFloor);
           const body = reply || (unattached ? unattached.question : "");
           if (!body) return;
-          const stored = addMessage(db, { domainId: d.id, islandId: i.id, role: "judge", kind: "text", body });
+          // The reply is the persona's, in its own thread.
+          const stored = addMessage(db, { domainId: d.id, islandId: i.id, role: mode, kind: "text", body, mode });
           attachAsks(db, i.id, stored.id, askFloor);
         });
         emit({ type: "done" });

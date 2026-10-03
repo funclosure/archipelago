@@ -119,6 +119,8 @@ export const reefProposalInputSchema = z.object({
 export const probeInputSchema = z.object({
   domain: slugSchema,
   island: slugSchema,
+  /** Whose turn: the judge's (default) or the mentor's. */
+  mode: z.enum(messageModes).default("judge"),
   message: z.string().trim().min(1).optional(),
   askId: numberInput.pipe(z.number().int().positive()).optional(),
 });

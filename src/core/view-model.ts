@@ -11,7 +11,7 @@ import { listLandmarksByIsland } from "./repositories/landmarkRepository.ts";
 
 export type VerdictView = { state: VerdictState; confidence: number; evidence: string; rationale: string | null; at: string };
 export type RollupState = Record<VerdictState | "open", number>;
-export type LandmarkView = { slug: string; name: string; lit: boolean; evidence: string | null };
+export type LandmarkView = { slug: string; name: string; lit: boolean; evidence: string | null; exploredAt: string | null };
 export type IslandView = {
   slug: string;
   name: string;
@@ -23,7 +23,7 @@ export type IslandView = {
   y: number | null;
   harbour: boolean;
   messages: number;
-  landmarks: { total: number; unlocked: number; items: LandmarkView[] };
+  landmarks: { total: number; unlocked: number; explored: number; items: LandmarkView[] };
 };
 export type StraitView = { from: string; to: string; name: string | null; verdict: VerdictView | null };
 export type Snapshot = {
@@ -69,9 +69,14 @@ function emptyRollup(): RollupState {
   return { sandbar: 0, settled: 0, mountainous: 0, reef: 0, open: 0 };
 }
 
-function landmarkView(list: Landmark[]): { total: number; unlocked: number; items: LandmarkView[] } {
-  const items = list.map((l) => ({ slug: l.slug, name: l.name, lit: l.unlockedAt !== null, evidence: l.evidence }));
-  return { total: items.length, unlocked: items.filter((i) => i.lit).length, items };
+function landmarkView(list: Landmark[]): { total: number; unlocked: number; explored: number; items: LandmarkView[] } {
+  const items = list.map((l) => ({ slug: l.slug, name: l.name, lit: l.unlockedAt !== null, evidence: l.evidence, exploredAt: l.exploredAt }));
+  return {
+    total: items.length,
+    unlocked: items.filter((i) => i.lit).length,
+    explored: items.filter((i) => i.exploredAt !== null).length,
+    items,
+  };
 }
 
 export function buildSnapshot(db: Database, domainSlug: string, scaleSlug: string | null): Snapshot {
