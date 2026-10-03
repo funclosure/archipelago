@@ -22,10 +22,10 @@ test("joins multi-line data, tolerates missing event names and non-JSON data", (
 
 test("a refused request throws the server's error, so the caller can give the draft back", async () => {
   const realFetch = globalThis.fetch;
-  globalThis.fetch = async () => new Response(JSON.stringify({ error: "a turn is already running for this island" }), { status: 409 });
+  globalThis.fetch = async () => new Response(JSON.stringify({ error: "the Keeper is answering on this island; try again when it ends" }), { status: 409 });
   try {
     const events = [];
-    await expect(streamPost("/api/probe", {}, (e) => events.push(e))).rejects.toThrow("a turn is already running for this island");
+    await expect(streamPost("/api/probe", {}, (e) => events.push(e))).rejects.toThrow("the Keeper is answering on this island; try again when it ends");
     expect(events).toEqual([]);
   } finally {
     globalThis.fetch = realFetch;

@@ -258,7 +258,7 @@ test("a second turn on the same island while one runs is 409, and the lock clear
     expect(first.status).toBe(200);
     const second = await start();
     expect(second.status).toBe(409);
-    expect(await second.json()).toEqual({ error: "a turn is already running for this island" });
+    expect(await second.json()).toEqual({ error: "the Keeper is answering on this island; try again when it ends" });
     release();
     expect(await first.text()).toContain("event: done");
     const third = await start();
@@ -565,7 +565,7 @@ test("one turn per island across both modes: a mentor turn makes a judge turn 40
     expect(mentorTurn.status).toBe(200);
     const judgeTurn = await start("judge");
     expect(judgeTurn.status).toBe(409);
-    expect(await judgeTurn.json()).toEqual({ error: "a turn is already running for this island" });
+    expect(await judgeTurn.json()).toEqual({ error: "the mentor is answering on this island; try again when it ends" });
     release();
     expect(await mentorTurn.text()).toContain("event: done");
     expect(seen).toEqual(["mentor"]);

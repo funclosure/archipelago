@@ -1,4 +1,5 @@
 import type { Database } from "bun:sqlite";
+import type { MessageMode } from "../core/types.ts";
 import { normalize, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { z } from "zod";
@@ -33,8 +34,10 @@ const PING_MS = 20_000;
 const TURN_SETTLE_MS = 5_000;
 /** How long one judge turn may run before the island is released. Overridable by `ARCHIPELAGO_TURN_TIMEOUT_MS`. */
 export const JUDGE_TURN_TIMEOUT_MS = 180_000;
-/** Islands with a turn running (judge or mentor), as `<domain>/<island>`. One turn per island at a time. */
-const inFlight = new Set<string>();
+/** Islands with a turn running, as `<domain>/<island>`, and whose turn it is. One turn per island at a time. */
+const inFlight = new Map<string, MessageMode>();
+/** What the page calls each persona, for the 409 that names who is answering. */
+const SPEAKER_NAME: Record<MessageMode, string> = { judge: "the Keeper", mentor: "the mentor" };
 const turnKey = (domain: string, island: string) => `${domain}/${island}`;
 
 /** A bundled library: built on first request, then an ETag the page can revalidate against. */
@@ -235,7 +238,8 @@ async function handleApi(req: Request, url: URL, ctx: ServerContext): Promise<Re
     const mode = input.mode;
     // One turn per island across both modes: the judge and the mentor never write the same island at once.
     const key = turnKey(input.domain, input.island);
-    if (inFlight.has(key)) throw new ConflictError("a turn is already running for this island");
+    const running = inFlight.get(key);
+    if (running) throw new ConflictError(`${SPEAKER_NAME[running]} is answering on this island; try again when it ends`);
     if (input.askId !== undefined && !input.message) throw new ArchipelagoError("a pick needs a message");
     const askFloor = withDb(ctx, (db) => {
       const d = requireDomain(db, input.domain);
@@ -252,7 +256,7 @@ async function handleApi(req: Request, url: URL, ctx: ServerContext): Promise<Re
         return listAsks(db, i.id).at(-1)?.id ?? 0;
       })();
     });
-    inFlight.add(key);
+    inFlight.set(key, mode);
     const abort = new AbortController();
     return sseResponse(async (emit) => {
       // A hung turn would wedge this island until the server restarts: cap it, and cancel the runner.
