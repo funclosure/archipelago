@@ -8,6 +8,7 @@ export const NOTE_MAX = 1000;
 const state = { open: false, draft: "", saving: false, error: null, loaded: false };
 let opener = "outline"; // the region that held focus when the editor opened
 let root = null;
+let loadGen = 0; // one per load; closing bumps it too, so a GET from an earlier opening can never overwrite newer typing
 
 function el(tag, className, text) {
   const e = document.createElement(tag);
@@ -24,16 +25,18 @@ function button(label, onClick, className) {
 }
 
 async function load() {
+  const gen = ++loadGen;
+  const stale = () => !state.open || gen !== loadGen;
   state.error = null;
   state.loaded = false;
   render();
   try {
     const { note } = await api("/api/learner");
-    if (!state.open) return;
+    if (stale()) return;
     state.draft = note;
     state.loaded = true;
   } catch (error) {
-    if (!state.open) return;
+    if (stale()) return;
     state.error = `could not read the note: ${error.message}`;
   }
   render();
@@ -54,6 +57,7 @@ export function openAbout() {
 
 function close() {
   state.open = false;
+  loadGen++;
   render();
   setRegion(opener);
 }
