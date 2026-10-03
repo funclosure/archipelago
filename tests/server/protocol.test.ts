@@ -54,3 +54,21 @@ test("the mentor's rules: opening, every turn, explored, misconceptions, asking,
 test("the judge's protocol says explored landmarks are not evidence", () => {
   expect(readProtocol()).toContain("Exploring is not evidence");
 });
+
+test("the fence rules do not drift: mermaid types, code language tags, and the plot fence appear in both protocols", () => {
+  const judgeText = readProtocol();
+  const mentor = mentorText();
+  const tags = ["swift", "objective-c", "kotlin", "typescript", "tsx", "javascript", "json", "bash", "python", "sql", "yaml"];
+  for (const word of ["`mermaid`", "`flowchart TB`", "`sequenceDiagram`", "`stateDiagram-v2`", ...tags.map((t) => `\`${t}\``), "`plot`", "xAxis", "yAxis"]) {
+    expect(judgeText).toContain(word);
+    expect(mentor).toContain(word);
+  }
+});
+
+test("the mentor carries its own fence rules and never points at the judge's protocol", () => {
+  const text = mentorText();
+  expect(text).not.toContain("PROTOCOL");
+  for (const rule of ["at most eight nodes", "three to twelve lines", "One fence per reply", "never two", "does not count toward the 200 words", "choose the window yourself"]) {
+    expect(text).toContain(rule);
+  }
+});
