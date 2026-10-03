@@ -140,7 +140,7 @@ function toolsFor(sdk: Sdk, deps: ToolDeps, persona: Persona): SdkMcpToolDefinit
     mark_explored: () =>
       sdk.tool(
         "mark_explored",
-        "Mark one landmark explored: the reader engaged it in their own words (asked about it, restated it, or tried it on an example). Evidence is a verbatim quote from the reader's latest message; anything else is refused. Marking it again changes nothing.",
+        "Mark one landmark explored: the reader engaged it in their own words (asked about it, restated it, or tried it on an example). Evidence is a verbatim quote of at least two words from the reader's latest message; anything else is refused. Marking it again changes nothing.",
         { slug: z.string(), evidence: z.string() },
         async (args) => guard(() => markExplored(deps, args)),
       ),

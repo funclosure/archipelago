@@ -151,18 +151,27 @@ export function unlockLandmark(deps: ToolDeps, input: unknown): { slug: string; 
  * Marks one landmark explored from the reader's latest message in the mentor thread. The quote is checked
  * here, in code, not left to the prose. A repeat changes nothing and writes no line.
  */
+// A quote must be one the reader could recognise as theirs, so a space, a letter, or a lone word is not one.
+const QUOTE_MIN_CHARS = 12;
+const QUOTE_MIN_WORDS = 2;
+
 export function markExplored(deps: ToolDeps, input: unknown): { slug: string; name: string; explored: number; total: number; already: boolean } {
   const parsed = unlockInputSchema.parse(input);
+  const evidence = parsed.evidence.trim();
+  if (evidence.length < QUOTE_MIN_CHARS || evidence.split(/\s+/).length < QUOTE_MIN_WORDS) {
+    throw new ArchipelagoError(`evidence must quote at least two words (${QUOTE_MIN_CHARS}+ characters) of the reader's latest message`);
+  }
   return withDb(deps.dbPath, (db) =>
     db.transaction(() => {
       const domain = requireDomain(db, deps.domain);
       const island = requireIsland(db, domain.id, deps.island);
+      // The mentor's tool: it always reads and writes the mentor thread.
       const answer = listMessages(db, island.id, "mentor").findLast((m) => m.role === "you" && m.kind === "text");
       if (!answer) throw new ArchipelagoError("no reader message in the mentor thread to quote");
-      if (!answer.body.includes(parsed.evidence)) {
+      if (!answer.body.includes(evidence)) {
         throw new ArchipelagoError("evidence must be a verbatim quote from the reader's latest message in this thread");
       }
-      const { landmark, changed } = exploreLandmarkRow(db, island.id, parsed.slug, parsed.evidence, answer.id);
+      const { landmark, changed } = exploreLandmarkRow(db, island.id, parsed.slug, evidence, answer.id);
       if (changed) {
         addMessage(db, { domainId: domain.id, islandId: island.id, role: "mentor", kind: "system", body: `landmark explored: ${landmark.name}`, mode: "mentor" });
       }

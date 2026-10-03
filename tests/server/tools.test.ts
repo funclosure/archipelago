@@ -393,10 +393,36 @@ const landmarkItems = [
   { slug: "eviction", name: "Eviction" }, { slug: "stampede", name: "Stampede" },
 ];
 
+test("mark_explored refuses a token quote (a space, a letter, one word) and trims a real one", () => {
+  setLandmarksTool(deps(), { items: landmarkItems });
+  const mentorDeps = { ...deps(), mode: "mentor" as const };
+  const db = openDatabase(dbPath);
+  addMessage(db, { domainId: ids.domain, islandId: ids.caching, role: "you", kind: "text", body: "eviction is like NSCache dropping things under memory pressure", mode: "mentor" });
+  db.close();
+  const state = () => {
+    const d = openDatabase(dbPath);
+    const out = {
+      explored: listLandmarks(d, ids.caching).filter((l) => l.exploredAt !== null).length,
+      system: listMessages(d, ids.caching, "mentor").filter((m) => m.kind === "system").length,
+    };
+    d.close();
+    return out;
+  };
+  for (const evidence of [" ", "e", "NSCache", "   is   "]) {
+    expect(() => markExplored(mentorDeps, { slug: "eviction", evidence })).toThrow(/at least two words \(12\+ characters\)/);
+    expect(state()).toEqual({ explored: 0, system: 0 });
+  }
+  const out = markExplored(mentorDeps, { slug: "eviction", evidence: "  NSCache dropping things  " });
+  expect(out).toMatchObject({ slug: "eviction", explored: 1, already: false });
+  const db2 = openDatabase(dbPath);
+  expect(listLandmarks(db2, ids.caching).find((l) => l.slug === "eviction")).toMatchObject({ exploredEvidence: "NSCache dropping things" });
+  db2.close();
+});
+
 test("mark_explored marks a landmark on this island from a verbatim quote of the reader's latest mentor message, once", () => {
   setLandmarksTool(deps(), { items: landmarkItems });
   const mentorDeps = { ...deps(), mode: "mentor" as const };
-  expect(() => markExplored(mentorDeps, { slug: "eviction", evidence: "anything" })).toThrow("no reader message in the mentor thread to quote");
+  expect(() => markExplored(mentorDeps, { slug: "eviction", evidence: "anything at all" })).toThrow("no reader message in the mentor thread to quote");
   const db = openDatabase(dbPath);
   setLandmarks(db, ids.domain, ids.databases, [{ slug: "rows", name: "Rows" }]);
   addMessage(db, { domainId: ids.domain, islandId: ids.caching, role: "you", kind: "text", body: "eviction is NSCache under memory pressure", mode: "mentor" });
@@ -407,10 +433,10 @@ test("mark_explored marks a landmark on this island from a verbatim quote of the
     "evidence must be a verbatim quote from the reader's latest message in this thread",
   );
   expect(() => markExplored(mentorDeps, { slug: "eviction", evidence: "NSCache evicts" })).toThrow(/verbatim quote/);
-  expect(() => markExplored(mentorDeps, { slug: "rows", evidence: "NSCache" })).toThrow(/no landmark "rows" on this island/); // own island only
+  expect(() => markExplored(mentorDeps, { slug: "rows", evidence: "NSCache under" })).toThrow(/no landmark "rows" on this island/); // own island only
   const out = markExplored(mentorDeps, { slug: "eviction", evidence: "NSCache under memory pressure" });
   expect(out).toEqual({ slug: "eviction", name: "Eviction", explored: 1, total: 4, already: false });
-  expect(markExplored(mentorDeps, { slug: "eviction", evidence: "NSCache" })).toEqual({ slug: "eviction", name: "Eviction", explored: 1, total: 4, already: true });
+  expect(markExplored(mentorDeps, { slug: "eviction", evidence: "NSCache under memory" })).toEqual({ slug: "eviction", name: "Eviction", explored: 1, total: 4, already: true });
   const db2 = openDatabase(dbPath);
   expect(listLandmarks(db2, ids.caching).find((l) => l.slug === "eviction")).toMatchObject({ unlockedAt: null, exploredEvidence: "NSCache under memory pressure" });
   expect(listMessages(db2, ids.caching, "mentor").filter((m) => m.kind === "system").map((m) => [m.role, m.body])).toEqual([
