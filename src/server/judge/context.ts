@@ -7,9 +7,14 @@ import { listMessages, parseProposal } from "../../core/repositories/messageRepo
 import { listLandmarks } from "../../core/repositories/landmarkRepository.ts";
 import { listAsks } from "../../core/repositories/askRepository.ts";
 import { listCards } from "../../core/repositories/boardRepository.ts";
+import { confirmedReefClaims, getLearner, learnerGround, type GroundItem, type ReefClaim } from "../../core/repositories/learnerRepository.ts";
+import { NOTE_MAX } from "../../core/validators.ts";
 import { CHARTED_PREFIX } from "./tools.ts";
 import { buildSnapshot } from "../../core/view-model.ts";
 import type { Ask, BoardCard, Landmark, Message, MessageMode, MessageRole, ReefProposal, Verdict, VerdictState } from "../../core/types.ts";
+
+/** What the mentor knows about the reader beyond this island. */
+export type LearnerView = { note: string; ground: GroundItem[]; reefs: ReefClaim[] };
 
 export type JudgeContext = {
   /** Whose turn this context is for. */
@@ -35,6 +40,8 @@ export type JudgeContext = {
   board: BoardCard[];
   /** The judge's round: reader answers since this island was last charted in its thread (all of them if it never was). 0 for the mentor. */
   round: number;
+  /** The mentor's learner block; null on the judge's turn, which never reads it. */
+  learner: LearnerView | null;
 };
 
 /** Everything a persona sees about one island. Read fresh from the database; never cached. */
@@ -80,6 +87,7 @@ export function buildJudgeContext(db: Database, domainSlug: string, islandSlug: 
     asks: listAsks(db, island.id).filter((a) => a.messageId === null || inThread.has(a.messageId)),
     board: listCards(db, island.id),
     round: mode === "judge" ? roundOf(thread, latestVerdict(db, "island", island.id)?.createdAt ?? null) : 0,
+    learner: mode === "mentor" ? { note: getLearner(db).note, ground: learnerGround(db), reefs: confirmedReefClaims(db) } : null,
   };
 }
 
@@ -117,6 +125,30 @@ export function renderIslandHead(ctx: JudgeContext): string[] {
   if (ctx.history.length > 1) {
     lines.push(`Earlier verdicts: ${ctx.history.slice(1).map((v) => `${v.state} on ${v.createdAt.slice(0, 10)}`).join(", ")}`);
   }
+  return lines;
+}
+
+/** `## The learner`: the note, solid ground in every domain, and the claims never to build on. */
+export function renderLearner(learner: LearnerView): string[] {
+  const lines = [`## The learner`, ``];
+  const note = learner.note.slice(0, NOTE_MAX).trim();
+  lines.push(note ? `Note: ${indent(note)}` : `Note: none`, ``);
+  if (learner.ground.length === 0) {
+    lines.push(`Ground: none yet — use an everyday analogy and say so.`);
+  } else {
+    lines.push(`Ground (settled or mountainous, in every domain; mountainous first):`);
+    for (const g of learner.ground) {
+      lines.push(`- ${g.domain} › ${g.island} (${g.state})${g.summary ? `: ${indent(g.summary)}` : ""}${g.lit.length ? ` — lit: ${g.lit.join(", ")}` : ""}`);
+    }
+  }
+  lines.push(``);
+  if (learner.reefs.length === 0) {
+    lines.push(`Avoid building on: none`);
+  } else {
+    lines.push(`Avoid building on (claims the reader once held that the judge found wrong):`);
+    for (const r of learner.reefs) lines.push(`- ${r.domain} › ${r.island}: ${indent(r.claim)}`);
+  }
+  lines.push(``, `Left out: sandbars, open water, and anything only explored with you. Exploring is not demonstrating; never rest an analogy on it.`);
   return lines;
 }
 

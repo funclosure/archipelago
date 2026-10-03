@@ -9,7 +9,7 @@ import { upsertStrait } from "../../src/core/repositories/straitRepository.ts";
 import { addVerdict, latestVerdict } from "../../src/core/repositories/verdictRepository.ts";
 import { addMessage, listMessages, parseProposal } from "../../src/core/repositories/messageRepository.ts";
 import { startSession } from "../../src/core/repositories/sessionRepository.ts";
-import { listLandmarks, setLandmarks } from "../../src/core/repositories/landmarkRepository.ts";
+import { listLandmarks, setLandmarks, exploreLandmark } from "../../src/core/repositories/landmarkRepository.ts";
 import { listAsks, attachAsks } from "../../src/core/repositories/askRepository.ts";
 import { addCard, listCards } from "../../src/core/repositories/boardRepository.ts";
 import { renderJudgeContext as renderContext, renderJudgeThreadPrompt as renderThreadPrompt } from "../../src/server/judge/persona.ts";
@@ -364,4 +364,25 @@ test("a verdict written outside the thread restarts the round without a charted-
   db.close();
   expect(islandContext(deps()).round).toBe(1);
   expect(renderContext(islandContext(deps()))).not.toContain("decide now");
+});
+
+test("the judge sees which landmarks were explored, never the mentor's messages", () => {
+  const db = openDatabase(dbPath);
+  setLandmarks(db, ids.domain, ids.caching, [
+    { slug: "invalidation", name: "Invalidation" }, { slug: "eviction", name: "Eviction" }, { slug: "hit-ratio", name: "Hit ratio" },
+  ]);
+  addMessage(db, { domainId: ids.domain, islandId: ids.caching, role: "you", kind: "text", body: "eviction is NSCache dropping things", mode: "mentor" });
+  addMessage(db, { domainId: ids.domain, islandId: ids.caching, role: "mentor", kind: "text", body: "Mentor secret: you have this one", mode: "mentor" });
+  exploreLandmark(db, ids.caching, "invalidation", "q", null);
+  exploreLandmark(db, ids.caching, "eviction", "NSCache dropping things", null);
+  db.close();
+  const ctx = islandContext(deps());
+  expect(ctx.thread).toEqual([]);
+  const text = renderContext(ctx);
+  expect(text).toContain("Explored with the mentor: *Invalidation, Eviction*. Exploring is not evidence; probe these like any other landmark.");
+  expect(text).toContain("- Eviction (eviction): dark"); // explored is not lit
+  expect(text).not.toContain("Mentor secret");
+  expect(text).not.toContain("NSCache");
+  expect(renderThreadPrompt(ctx.thread, ctx.asks)).toBe("Open the probe on this island.");
+  expect(renderContext(islandContext({ ...deps(), island: "databases" }))).not.toContain("Explored with the mentor");
 });
