@@ -9,9 +9,11 @@ import { listAsks } from "../../core/repositories/askRepository.ts";
 import { listCards } from "../../core/repositories/boardRepository.ts";
 import { CHARTED_PREFIX } from "./tools.ts";
 import { buildSnapshot } from "../../core/view-model.ts";
-import type { Ask, BoardCard, Landmark, Message, ReefProposal, Verdict, VerdictState } from "../../core/types.ts";
+import type { Ask, BoardCard, Landmark, Message, MessageMode, MessageRole, ReefProposal, Verdict, VerdictState } from "../../core/types.ts";
 
 export type JudgeContext = {
+  /** Whose turn this context is for. */
+  mode: MessageMode;
   domain: { slug: string; name: string };
   island: { slug: string; name: string; summary: string | null; path: string[] };
   verdict: Verdict | null;
@@ -25,16 +27,18 @@ export type JudgeContext = {
   }[];
   nearestOpenWater: string[];
   pendingReefs: { id: number; proposal: ReefProposal }[];
+  /** This mode's thread only: the judge never sees the mentor's, nor the mentor the judge's. */
   thread: Message[];
   landmarks: Landmark[];
+  /** Asks attached to this thread's messages, plus any not attached yet. */
   asks: Ask[];
   board: BoardCard[];
-  /** Reader answers since this island was last charted in this thread (all of them if it never was). */
+  /** The judge's round: reader answers since this island was last charted in its thread (all of them if it never was). 0 for the mentor. */
   round: number;
 };
 
-/** Everything the judge sees about one island. Read fresh from the database; never cached. */
-export function buildJudgeContext(db: Database, domainSlug: string, islandSlug: string): JudgeContext {
+/** Everything a persona sees about one island. Read fresh from the database; never cached. */
+export function buildJudgeContext(db: Database, domainSlug: string, islandSlug: string, mode: MessageMode = "judge"): JudgeContext {
   const domain = requireDomain(db, domainSlug);
   const island = requireIsland(db, domain.id, islandSlug);
   const islets = listIslands(db, domain.id, island.id);
@@ -55,12 +59,14 @@ export function buildJudgeContext(db: Database, domainSlug: string, islandSlug: 
     };
   });
   const parent = island.parentId === null ? null : getIslandById(db, island.parentId)!;
-  const thread = listMessages(db, island.id);
+  const thread = listMessages(db, island.id, mode);
+  const inThread = new Set(thread.map((m) => m.id));
   const pendingReefs = thread
     .filter((m) => m.kind === "reef_proposal")
     .map((m) => ({ id: m.id, proposal: parseProposal(m.body) }))
     .filter((p) => p.proposal.status === "pending");
   return {
+    mode,
     domain: { slug: domain.slug, name: domain.name },
     island: { slug: island.slug, name: island.name, summary: island.summary, path: islandPath(db, island.id).map((i) => i.slug) },
     verdict: latestVerdict(db, "island", island.id),
@@ -71,9 +77,9 @@ export function buildJudgeContext(db: Database, domainSlug: string, islandSlug: 
     pendingReefs,
     thread,
     landmarks: listLandmarks(db, island.id),
-    asks: listAsks(db, island.id),
+    asks: listAsks(db, island.id).filter((a) => a.messageId === null || inThread.has(a.messageId)),
     board: listCards(db, island.id),
-    round: roundOf(thread, latestVerdict(db, "island", island.id)?.createdAt ?? null),
+    round: mode === "judge" ? roundOf(thread, latestVerdict(db, "island", island.id)?.createdAt ?? null) : 0,
   };
 }
 
@@ -87,18 +93,19 @@ export function roundOf(thread: Message[], verdictAt: string | null = null): num
   return thread.filter((m) => m.role === "you" && m.kind === "text" && (!last || m.id > last.id) && (!verdictAt || m.createdAt > verdictAt)).length;
 }
 
-const stateOf = (state: VerdictState | null) => state ?? "open water";
+export const stateOf = (state: VerdictState | null) => state ?? "open water";
 
 /**
  * Indents the continuation lines of a stored body. Text the reader wrote is replayed inside a
  * line-oriented transcript, so an embedded newline must not be able to forge a `Judge:` or `[map]` line.
  */
-const indent = (body: string) => body.replace(/\r?\n/g, "\n  ");
+export const indent = (body: string) => body.replace(/\r?\n/g, "\n  ");
 
-/** The island block appended to the protocol as the system prompt. */
-export function renderContext(ctx: JudgeContext): string {
-  const lines: string[] = [];
-  lines.push(`# This island`, ``);
+// ---- line renderers: each returns lines; a persona (persona.ts) composes them ----
+
+/** The island's name, place, and verdict: the head both personas see. */
+export function renderIslandHead(ctx: JudgeContext): string[] {
+  const lines = [`# This island`, ``];
   lines.push(`Domain: ${ctx.domain.name} (${ctx.domain.slug})`);
   lines.push(`Island: ${ctx.island.name} (island:${ctx.island.slug}), at ${ctx.island.path.join(" › ")}`);
   if (ctx.island.summary) lines.push(`Summary: ${indent(ctx.island.summary)}`);
@@ -110,21 +117,12 @@ export function renderContext(ctx: JudgeContext): string {
   if (ctx.history.length > 1) {
     lines.push(`Earlier verdicts: ${ctx.history.slice(1).map((v) => `${v.state} on ${v.createdAt.slice(0, 10)}`).join(", ")}`);
   }
-  const lit = ctx.landmarks.filter((l) => l.unlockedAt !== null).length;
-  if (ctx.landmarks.length === 0) {
-    lines.push(``, `Landmarks: none yet — call set_landmarks with 4–6 before your opening question.`);
-  } else {
-    lines.push(``, `Landmarks (${lit} of ${ctx.landmarks.length} lit):`);
-    for (const l of ctx.landmarks) {
-      lines.push(`- ${l.name} (${l.slug}): ${l.unlockedAt ? `lit — "${indent(l.evidence ?? "")}"` : "dark"}`);
-    }
-  }
-  if (ctx.round >= 4) {
-    lines.push(`Round: ${ctx.round} of 4. This is the fourth answer: decide now with record_verdict or propose_reef before writing anything else.`);
-  } else {
-    lines.push(`Round: ${ctx.round} of 4 (reader answers since this island was last charted here; the verdict lands after the fourth at the latest)`);
-  }
-  lines.push(``, `Islets (${ctx.islets.length}):`);
+  return lines;
+}
+
+/** Islets, straits to neighbours, and the nearest open water at this scale. */
+export function renderSurroundings(ctx: JudgeContext): string[] {
+  const lines = [``, `Islets (${ctx.islets.length}):`];
   if (ctx.islets.length === 0) lines.push(`- none`);
   for (const i of ctx.islets) lines.push(`- ${i.name} (${i.slug}): ${stateOf(i.state)}`);
   lines.push(``, `Straits to neighbours:`);
@@ -133,43 +131,53 @@ export function renderContext(ctx: JudgeContext): string {
     lines.push(`- ${s.target}${s.name ? ` "${s.name}"` : ""}: ${stateOf(s.state)}; neighbour ${s.neighbour.name} is ${stateOf(s.neighbour.state)}`);
   }
   lines.push(``, `Nearest open water at this scale, in order: ${ctx.nearestOpenWater.length ? ctx.nearestOpenWater.join(", ") : "none"}`);
-  if (ctx.pendingReefs.length) {
-    lines.push(``, `Pending reef proposals (wait for the reader; do not propose again):`);
-    for (const p of ctx.pendingReefs) lines.push(`- #${p.id} on ${p.proposal.target}: ${p.proposal.claim} — ${p.proposal.consequence}`);
-  }
-  const pending = ctx.asks.findLast((a) => a.messageId !== null && a.picked === null);
-  if (pending) lines.push(``, `Pending question (wait for the reader's choice; do not ask again): ${pending.question} — options: ${pending.options.join(" | ")}`);
-  const lastReply = ctx.thread.findLast((m) => m.role === "judge" && m.kind === "text") ?? null;
-  if (ctx.board.length === 0) {
-    lines.push(``, `Board: empty — pin with board_write when a diagram or a claim will be referred to again.`);
-  } else {
-    lines.push(``, `Board (${ctx.board.length} ${ctx.board.length === 1 ? "card" : "cards"}):`);
-    for (const c of ctx.board) {
-      const marks = [c.author === "judge" ? "keeper" : "reader"];
-      if (!lastReply || c.createdAt > lastReply.createdAt) marks.push("new since your last reply");
-      else if (c.updatedAt > lastReply.createdAt) marks.push("edited since your last reply");
-      lines.push(`- #${c.id} ${c.kind}${c.lang ? ` (${c.lang})` : ""}${c.title ? ` "${indent(c.title)}"` : ""} [${marks.join(", ")}]:`, `  ${indent(c.body)}`);
-    }
-  }
-  return lines.join("\n");
+  return lines;
 }
 
-/** The stored thread as the turn's prompt. Stateless: the model sees the whole thread every turn. */
-export function renderThreadPrompt(thread: Message[], asks: Ask[] = []): string {
-  if (thread.length === 0) return "Open the probe on this island.";
-  const lines = thread.map((m) => {
+export function renderPendingReefs(ctx: JudgeContext): string[] {
+  if (!ctx.pendingReefs.length) return [];
+  const lines = [``, `Pending reef proposals (wait for the reader; do not propose again):`];
+  for (const p of ctx.pendingReefs) lines.push(`- #${p.id} on ${p.proposal.target}: ${p.proposal.claim} — ${p.proposal.consequence}`);
+  return lines;
+}
+
+export function renderPendingAsk(ctx: JudgeContext): string[] {
+  const pending = ctx.asks.findLast((a) => a.messageId !== null && a.picked === null);
+  return pending ? [``, `Pending question (wait for the reader's choice; do not ask again): ${pending.question} — options: ${pending.options.join(" | ")}`] : [];
+}
+
+const AUTHOR_MARK: Record<MessageRole, string> = { judge: "keeper", mentor: "mentor", you: "reader" };
+
+/** The board, each card marked by its author and by what changed since `self`'s last reply in this thread. */
+export function renderBoard(ctx: JudgeContext, self: MessageRole, emptyHint: string): string[] {
+  if (ctx.board.length === 0) return [``, `Board: empty — ${emptyHint}`];
+  const lastReply = ctx.thread.findLast((m) => m.role === self && m.kind === "text") ?? null;
+  const lines = [``, `Board (${ctx.board.length} ${ctx.board.length === 1 ? "card" : "cards"}):`];
+  for (const c of ctx.board) {
+    const marks = [AUTHOR_MARK[c.author]];
+    if (!lastReply || c.createdAt > lastReply.createdAt) marks.push("new since your last reply");
+    else if (c.updatedAt > lastReply.createdAt) marks.push("edited since your last reply");
+    lines.push(`- #${c.id} ${c.kind}${c.lang ? ` (${c.lang})` : ""}${c.title ? ` "${indent(c.title)}"` : ""} [${marks.join(", ")}]:`, `  ${indent(c.body)}`);
+  }
+  return lines;
+}
+
+const SPEAKER: Record<MessageRole, string> = { you: "Reader", judge: "Judge", mentor: "Mentor" };
+
+/** The stored thread as transcript lines. Stateless: the model sees the whole thread every turn. */
+export function renderReplay(thread: Message[], asks: Ask[]): string[] {
+  return thread.map((m) => {
     if (m.kind === "system") return `[map] ${indent(m.body)}`;
     if (m.kind === "reef_proposal") {
       const p = parseProposal(m.body);
       return `[reef proposal #${m.id}, ${p.status}] ${p.claim} — ${p.consequence}`;
     }
     const ask = asks.find((a) => a.messageId === m.id);
-    const line = `${m.role === "you" ? "Reader" : "Judge"}: ${indent(m.body)}`;
+    const line = `${SPEAKER[m.role]}: ${indent(m.body)}`;
     if (!ask) return line;
     // The markers sit at column 0: a reader's indented continuation lines (see `indent`) can never forge them.
     const markers = [`[options] ${ask.options.join(" | ")}`];
     if (ask.picked !== null) markers.push(`[picked] ${indent(ask.picked)}`);
     return [line, ...markers].join("\n");
   });
-  return [...lines, "", "Continue as the judge."].join("\n");
 }

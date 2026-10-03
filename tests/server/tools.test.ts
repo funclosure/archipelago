@@ -12,7 +12,7 @@ import { startSession } from "../../src/core/repositories/sessionRepository.ts";
 import { listLandmarks, setLandmarks } from "../../src/core/repositories/landmarkRepository.ts";
 import { listAsks, attachAsks } from "../../src/core/repositories/askRepository.ts";
 import { addCard, listCards } from "../../src/core/repositories/boardRepository.ts";
-import { renderContext, renderThreadPrompt } from "../../src/server/judge/context.ts";
+import { renderJudgeContext as renderContext, renderJudgeThreadPrompt as renderThreadPrompt } from "../../src/server/judge/persona.ts";
 import {
   islandContext,
   recordVerdict,

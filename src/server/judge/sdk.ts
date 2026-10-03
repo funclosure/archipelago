@@ -1,13 +1,13 @@
 import { z } from "zod";
+import type { SdkMcpToolDefinition } from "@anthropic-ai/claude-agent-sdk";
 import { ArchipelagoError } from "../../core/errors.ts";
 import { readProtocol } from "./protocol.ts";
-import { renderContext, renderThreadPrompt } from "./context.ts";
-import { askReader, boardWrite, islandContext, proposeReef, recordVerdict, setLandmarks, unlockLandmark } from "./tools.ts";
+import { askReader, boardWrite, islandContext, proposeReef, recordVerdict, setLandmarks, unlockLandmark, type ToolDeps } from "./tools.ts";
+import { personaFor, type Persona, type ToolName } from "./persona.ts";
 import type { JudgeRunner } from "./runner.ts";
 
 export const DEFAULT_MODEL = "claude-opus-5";
 const SERVER = "archipelago";
-const TOOL_NAMES = ["island_context", "record_verdict", "propose_reef", "set_landmarks", "unlock_landmark", "ask_reader", "board_write"];
 const MAX_TURNS = 16;
 
 async function loadSdk() {
@@ -17,6 +17,8 @@ async function loadSdk() {
     throw new ArchipelagoError("the Claude Agent SDK is not installed: run `bun install` in the archipelago folder");
   }
 }
+
+type Sdk = Awaited<ReturnType<typeof loadSdk>>;
 
 /** One actionable sentence for each way a judge turn can end early. */
 export function describeSdkError(code: string): string {
@@ -58,24 +60,22 @@ function guard(fn: () => unknown): ToolResult {
   }
 }
 
-/** One stateless judge turn on the Agent SDK, through the user's Claude Code login. */
-export const sdkRunner: JudgeRunner = async ({ dbPath, domain, island, emit, signal }) => {
-  const sdk = await loadSdk();
-  const deps = { dbPath, domain, island };
-  const context = islandContext(deps);
-  const systemPrompt = `${readProtocol()}\n\n${renderContext(context)}`;
-  const prompt = renderThreadPrompt(context.thread, context.asks);
+/** The tool names the SDK may call for a persona: its own, and nothing else (`tools: []` closes the built-ins). */
+export function allowedToolsFor(persona: Persona): string[] {
+  return persona.toolNames.map((t) => `mcp__${SERVER}__${t}`);
+}
 
-  const server = sdk.createSdkMcpServer({
-    name: SERVER,
-    version: "0.1.0",
-    tools: [
+/** Every tool the server knows, each built only when the persona names it. */
+function toolsFor(sdk: Sdk, deps: ToolDeps, persona: Persona): SdkMcpToolDefinition<any>[] {
+  const build: Record<ToolName, () => SdkMcpToolDefinition<any>> = {
+    island_context: () =>
       sdk.tool(
         "island_context",
         "This island: verdict and history, islets, straits to neighbours, nearest open water, pending reef proposals, the board, and the thread so far. Read fresh.",
         {},
         async () => guard(() => islandContext(deps)),
       ),
+    record_verdict: () =>
       sdk.tool(
         "record_verdict",
         "Write a sandbar, settled, or mountainous verdict on island:<slug> or strait:<a>~<b>. Evidence is a verbatim quote from the reader. Reefs are not accepted here; use propose_reef.",
@@ -88,6 +88,7 @@ export const sdkRunner: JudgeRunner = async ({ dbPath, domain, island, emit, sig
         },
         async (args) => guard(() => recordVerdict(deps, args)),
       ),
+    propose_reef: () =>
       sdk.tool(
         "propose_reef",
         "Show the reader a reef: the specific false claim and the concrete consequence. The reef is written only if they confirm it.",
@@ -101,27 +102,31 @@ export const sdkRunner: JudgeRunner = async ({ dbPath, domain, island, emit, sig
         },
         async (args) => guard(() => proposeReef(deps, args)),
       ),
+    set_landmarks: () =>
       sdk.tool(
         "set_landmarks",
         "Name this island's 4–6 landmarks (key concepts) once, when the context says it has none. Slugs are lowercase-kebab; names are short.",
         { items: z.array(z.object({ slug: z.string(), name: z.string() })).min(4).max(6) },
         async (args) => guard(() => setLandmarks(deps, args)),
       ),
+    unlock_landmark: () =>
       sdk.tool(
         "unlock_landmark",
         "Light one landmark the reader's latest answer covered: they explained or applied it, not merely named it. Evidence is a verbatim quote from that answer.",
         { slug: z.string(), evidence: z.string() },
         async (args) => guard(() => unlockLandmark(deps, args)),
       ),
+    ask_reader: () =>
       sdk.tool(
         "ask_reader",
         "Ask the reader to choose: a question and 2–4 short options, one of them what they would say if they already understood. The options appear under your reply; end the reply with the question and stop.",
         { question: z.string(), options: z.array(z.string()).min(2).max(4) },
         async (args) => guard(() => askReader(deps, args)),
       ),
+    board_write: () =>
       sdk.tool(
         "board_write",
-        "Pin, update, or remove a card on this island's board (§10). op add: kind (diagram | note | code), body (mermaid source, markdown, or code), lang for code, and an optional one-line title. op update: id plus the fields to change. op remove: id. You may only update or remove cards you wrote.",
+        "Pin, update, or remove a card on this island's board (see the board section of your protocol). op add: kind (diagram | note | code), body (mermaid source, markdown, or code), lang for code, and an optional one-line title. op update: id plus the fields to change. op remove: id. You may only update or remove cards you wrote.",
         {
           op: z.enum(["add", "update", "remove"]),
           id: z.number().int().positive().optional(),
@@ -130,10 +135,22 @@ export const sdkRunner: JudgeRunner = async ({ dbPath, domain, island, emit, sig
           body: z.string().optional(),
           lang: z.string().nullable().optional(),
         },
-        async (args) => guard(() => boardWrite(deps, args)),
+        async (args) => guard(() => boardWrite(deps, args, persona.id)),
       ),
-    ],
-  });
+  };
+  return persona.toolNames.map((name) => build[name]());
+}
+
+/** One stateless turn on the Agent SDK, through the user's Claude Code login, as the turn's persona. */
+export const sdkRunner: JudgeRunner = async ({ dbPath, domain, island, mode = "judge", emit, signal }) => {
+  const sdk = await loadSdk();
+  const persona = personaFor(mode);
+  const deps: ToolDeps = { dbPath, domain, island, mode };
+  const context = islandContext(deps);
+  const systemPrompt = `${readProtocol(persona)}\n\n${persona.renderContext(context)}`;
+  const prompt = persona.renderThreadPrompt(context.thread, context.asks);
+
+  const server = sdk.createSdkMcpServer({ name: SERVER, version: "0.1.0", tools: toolsFor(sdk, deps, persona) });
 
   // The caller cancels a hung turn through `signal`; the SDK stops on its own AbortController.
   const abortController = new AbortController();
@@ -151,7 +168,7 @@ export const sdkRunner: JudgeRunner = async ({ dbPath, domain, island, emit, sig
       includePartialMessages: true,
       mcpServers: { [SERVER]: server },
       tools: [],
-      allowedTools: TOOL_NAMES.map((t) => `mcp__${SERVER}__${t}`),
+      allowedTools: allowedToolsFor(persona),
       disallowedTools: ["Bash", "Read", "Write", "Edit", "Glob", "Grep", "Agent", "WebFetch", "WebSearch", "NotebookEdit", "TodoWrite"],
       permissionMode: "bypassPermissions",
       allowDangerouslySkipPermissions: true,

@@ -22,11 +22,11 @@ import {
   reefProposalInputSchema,
   unlockInputSchema,
 } from "../../core/validators.ts";
-import type { BoardCard, Island, MessageRole, ReefProposal, Verdict, VerdictState } from "../../core/types.ts";
+import type { BoardCard, Island, MessageMode, MessageRole, ReefProposal, Verdict, VerdictState } from "../../core/types.ts";
 import { buildJudgeContext, type JudgeContext } from "./context.ts";
 
-/** Where a tool call writes: the database path and the island whose thread this turn belongs to. */
-export type ToolDeps = { dbPath?: string; domain: string; island: string };
+/** Where a tool call writes: the database path, the island whose threads this turn belongs to, and whose turn it is. */
+export type ToolDeps = { dbPath?: string; domain: string; island: string; mode?: MessageMode };
 
 /** Each tool call opens and closes the database, like every request. */
 function withDb<T>(dbPath: string | undefined, fn: (db: Database) => T): T {
@@ -48,7 +48,7 @@ export function systemLine(target: string, state: VerdictState, threadIsland: st
 }
 
 export function islandContext(deps: ToolDeps): JudgeContext {
-  return withDb(deps.dbPath, (db) => buildJudgeContext(db, deps.domain, deps.island));
+  return withDb(deps.dbPath, (db) => buildJudgeContext(db, deps.domain, deps.island, deps.mode ?? "judge"));
 }
 
 /** A thread charts its own island, and a strait only when this island is one of its two ends. */

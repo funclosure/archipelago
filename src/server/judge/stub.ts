@@ -1,9 +1,13 @@
-import type { JudgeRunner } from "./runner.ts";
+import type { JudgeRunner, JudgeTurn } from "./runner.ts";
+import { personaFor } from "./persona.ts";
 import { askReader, boardWrite, islandContext, proposeReef, recordVerdict, setLandmarks, unlockLandmark } from "./tools.ts";
 
 const CANNED = [
   { slug: "shape", name: "Shape" }, { slug: "scale", name: "Scale" }, { slug: "failure", name: "Failure" }, { slug: "tradeoff", name: "Tradeoff" },
 ];
+
+/** The stub for whichever persona the turn is for: the judge's unless the turn says mentor. */
+export const stubRunner: JudgeRunner = (turn) => personaFor(turn.mode ?? "judge").stubTurn(turn);
 
 /**
  * No-login judge for `serve --stub` and tests. Reads the thread, reacts to a keyword in the reader's
@@ -13,8 +17,9 @@ const CANNED = [
  *   "reef" → propose_reef · "settled" → record_verdict settled · "pin" → board_write (a canned diagram) ·
  *   "code" → a canned swift fence · the second answer that matched none of those, unasked → ask_reader
  *   (canned) · else a canned follow-up.
+ * A function declaration, not a const: persona.ts imports it while this module may still be evaluating.
  */
-export const stubRunner: JudgeRunner = async ({ dbPath, domain, island, emit }) => {
+export async function judgeStubTurn({ dbPath, domain, island, emit }: JudgeTurn): Promise<string> {
   const deps = { dbPath, domain, island };
   let ctx = islandContext(deps);
   const say = (text: string) => {
@@ -85,4 +90,4 @@ export const stubRunner: JudgeRunner = async ({ dbPath, domain, island, emit }) 
     return say("Stub check: which of these is true?");
   }
   return say(`Say more about ${ctx.island.name}.`);
-};
+}

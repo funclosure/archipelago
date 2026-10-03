@@ -1,3 +1,4 @@
+import type { MessageMode } from "../../core/types.ts";
 import { stubRunner } from "./stub.ts";
 
 export type JudgeEvent =
@@ -10,6 +11,8 @@ export type JudgeTurn = {
   dbPath?: string;
   domain: string;
   island: string;
+  /** Whose turn: the judge's (default) or the mentor's. Picks the persona and the thread. */
+  mode?: MessageMode;
   emit: (event: JudgeEvent) => void;
   /** Aborted when the turn times out or the reader disconnects; the SDK runner cancels on it, the stub ignores it. */
   signal?: AbortSignal;
