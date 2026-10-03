@@ -28,6 +28,19 @@ export function escapeRung({ sheetOpen, about = false, menuOpen, typing, editor 
 }
 
 /**
+ * What a key does while the About you editor is open (it is modal for page keys):
+ * "escape" runs the Escape ladder, "save" is Cmd-Enter, "native" leaves Tab to the browser inside the editor,
+ * "enter" pulls focus into the editor, "ignore" leaves browser shortcuts alone, "block" stops region keys.
+ */
+export function aboutKey({ key, meta = false, ctrl = false, alt = false, inAbout = false }) {
+  if (key === "Escape") return "escape";
+  if (key === "Enter" && meta) return "save";
+  if (key === "Tab" && !meta && !ctrl && !alt) return inAbout ? "native" : "enter";
+  if (key === "Tab" || meta || alt) return "ignore";
+  return "block";
+}
+
+/**
  * The outline cursor after `key`, over the rows `visibleRows` produced.
  * Returns { cursor: slug } to move, { toggle: slug } to expand or collapse, or null for nothing.
  */

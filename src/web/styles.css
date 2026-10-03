@@ -383,4 +383,5 @@ body.pane-open .board-toggle { right: calc(var(--pane-w) + 16px); }
 .about-card textarea { resize: vertical; background: var(--water); border: 1px solid var(--line); border-radius: 6px; color: var(--text);
   padding: 8px 10px; font: inherit; font-size: 13px; line-height: 1.4; }
 .about-card .count { font-size: 11px; color: var(--muted); text-align: right; }
+.about-card .count.at-limit { color: var(--reef); }
 .about-card .row { display: flex; gap: 6px; }

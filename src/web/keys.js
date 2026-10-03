@@ -2,7 +2,7 @@
 // Global keys (Tab, [, ?, /, Escape, Cmd-Enter) are handled here; everything else is the region's.
 import { app, toggleMode } from "./app.js";
 import { select } from "./interactions.js";
-import { REGIONS, nextRegion, isTyping, escapeRung, cheatSheet } from "./keys-model.js";
+import { REGIONS, nextRegion, isTyping, escapeRung, aboutKey, cheatSheet } from "./keys-model.js";
 import { cycleTheme } from "./theme.js";
 
 const handlers = {}; // region name → handler
@@ -118,6 +118,19 @@ function step(from, back) {
 
 function onKeydown(e) {
   if (!shown(current)) setRegion(step(current, false)); // a hidden region (e.g. the pane, poll-hidden) never keeps focus
+  if (handlers.about?.isOpen?.()) { // the About you editor is modal for page keys
+    const act = aboutKey({ key: e.key, meta: e.metaKey, ctrl: e.ctrlKey, alt: e.altKey, inAbout: Boolean(e.target?.closest?.("#about")) });
+    if (act === "escape") escape(e);
+    else if (act === "save") {
+      e.preventDefault();
+      e.stopPropagation();
+      handlers.about.save?.();
+    } else if (act === "enter") {
+      e.preventDefault();
+      handlers.about.focusIn?.();
+    } else if (act === "block") e.stopPropagation();
+    return;
+  }
   if (e.key === "Tab" && !e.metaKey && !e.ctrlKey && !e.altKey) { // ⌘⇥ and friends stay the browser's
     if (isTyping(e.target) && e.target.closest("#board .editor, #about")) return; // these fields keep the browser's Tab order
     e.preventDefault();

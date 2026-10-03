@@ -1,5 +1,5 @@
 import { test, expect } from "bun:test";
-import { REGIONS, nextRegion, isTyping, escapeRung, moveCursor, cheatSheet } from "../../src/web/keys-model.js";
+import { REGIONS, nextRegion, isTyping, escapeRung, aboutKey, moveCursor, cheatSheet } from "../../src/web/keys-model.js";
 import { visibleRows } from "../../src/web/outline-model.js";
 
 const lm = { total: 0, unlocked: 0 };
@@ -97,4 +97,15 @@ test("escapeRung closes the About you editor right after the sheet, even while t
   expect(escapeRung(all)).toBe("about");
   expect(escapeRung({ ...all, about: false })).toBe("menu");
   expect(escapeRung({ sheetOpen: false, menuOpen: false, typing: false, cursor: false, selected: false })).toBeNull(); // about defaults to closed
+});
+
+test("aboutKey: the open About editor is modal; only Escape, Cmd-Enter and Tab act", () => {
+  const k = (key, o = {}) => aboutKey({ key, ...o });
+  expect(k("Escape")).toBe("escape");
+  expect(k("Enter", { meta: true })).toBe("save");
+  expect(k("Tab", { inAbout: true })).toBe("native"); // the browser's Tab order inside the editor
+  expect(k("Tab", { inAbout: false })).toBe("enter"); // Tab from outside pulls focus into it, never to another region
+  expect(k("Tab", { meta: true })).toBe("ignore");
+  for (const key of ["t", "m", "b", "j", "k", "Enter", "?", "[", "/", "ArrowDown"]) expect(k(key)).toBe("block");
+  expect(k("Enter", { ctrl: true })).toBe("block");
 });
