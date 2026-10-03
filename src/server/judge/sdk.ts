@@ -2,7 +2,7 @@ import { z } from "zod";
 import type { SdkMcpToolDefinition } from "@anthropic-ai/claude-agent-sdk";
 import { ArchipelagoError } from "../../core/errors.ts";
 import { readProtocol } from "./protocol.ts";
-import { askReader, boardWrite, islandContext, proposeReef, recordVerdict, setLandmarks, unlockLandmark, type ToolDeps } from "./tools.ts";
+import { askReader, boardWrite, islandContext, markExplored, proposeReef, recordVerdict, setLandmarks, unlockLandmark, type ToolDeps } from "./tools.ts";
 import { personaFor, type Persona, type ToolName } from "./persona.ts";
 import type { JudgeRunner } from "./runner.ts";
 
@@ -136,6 +136,13 @@ function toolsFor(sdk: Sdk, deps: ToolDeps, persona: Persona): SdkMcpToolDefinit
           lang: z.string().nullable().optional(),
         },
         async (args) => guard(() => boardWrite(deps, args, persona.id)),
+      ),
+    mark_explored: () =>
+      sdk.tool(
+        "mark_explored",
+        "Mark one landmark explored: the reader engaged it in their own words (asked about it, restated it, or tried it on an example). Evidence is a verbatim quote from the reader's latest message; anything else is refused. Marking it again changes nothing.",
+        { slug: z.string(), evidence: z.string() },
+        async (args) => guard(() => markExplored(deps, args)),
       ),
   };
   return persona.toolNames.map((name) => build[name]());

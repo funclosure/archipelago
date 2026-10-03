@@ -1,6 +1,6 @@
 import type { JudgeRunner, JudgeTurn } from "./runner.ts";
 import { personaFor } from "./persona.ts";
-import { askReader, boardWrite, islandContext, proposeReef, recordVerdict, setLandmarks, unlockLandmark } from "./tools.ts";
+import { askReader, boardWrite, islandContext, markExplored, proposeReef, recordVerdict, setLandmarks, unlockLandmark } from "./tools.ts";
 
 const CANNED = [
   { slug: "shape", name: "Shape" }, { slug: "scale", name: "Scale" }, { slug: "failure", name: "Failure" }, { slug: "tradeoff", name: "Tradeoff" },
@@ -90,4 +90,46 @@ export async function judgeStubTurn({ dbPath, domain, island, emit }: JudgeTurn)
     return say("Stub check: which of these is true?");
   }
   return say(`Say more about ${ctx.island.name}.`);
+}
+
+/**
+ * No-login mentor for `serve --stub` and tests, through the same tools: first open on a landmark-less island →
+ * set_landmarks (the same four) · then "explore <slug>" → mark_explored, quoting the whole message ·
+ * "fail" → throws · "pin" → board_write as the mentor (a canned note) · else a canned follow-up.
+ * A function declaration, not a const: persona.ts imports it while this module may still be evaluating.
+ */
+export async function mentorStubTurn({ dbPath, domain, island, emit }: JudgeTurn): Promise<string> {
+  const deps = { dbPath, domain, island, mode: "mentor" as const };
+  let ctx = islandContext(deps);
+  const say = (text: string) => {
+    emit({ type: "text", text });
+    return text;
+  };
+  const last = ctx.thread.findLast((m) => m.role === "you" && m.kind === "text");
+  if (!last) {
+    if (ctx.landmarks.length === 0) {
+      emit({ type: "progress", message: "set_landmarks" });
+      setLandmarks(deps, { items: CANNED });
+      ctx = islandContext(deps);
+    }
+    const names = ctx.landmarks.map((l) => l.slug).join(", ");
+    return say(
+      `Here the coastline has ${ctx.landmarks.length} points: ${names}. One way in, from everyday life since I do not know your ground yet: ${ctx.island.name} is like a pantry by the stove. Where do you want to start?`,
+    );
+  }
+  const text = last.body.toLowerCase();
+  // `explore` is tested before `fail`, so `explore failure` marks the canned Failure landmark instead of throwing.
+  const explore = /explore\s+([a-z0-9-]+)/.exec(text);
+  if (explore) {
+    emit({ type: "progress", message: "mark_explored" });
+    const out = markExplored(deps, { slug: explore[1], evidence: last.body });
+    return say(`That's ${out.name} explored: ${out.explored} of ${out.total}. Want to try it on an example of your own?`);
+  }
+  if (text.includes("fail")) throw new Error("stub failure");
+  if (text.includes("pin")) {
+    emit({ type: "progress", message: "board_write" });
+    boardWrite(deps, { op: "add", kind: "note", title: "Analogy", body: `${ctx.island.name} is a pantry by the stove: close, small, and sometimes stale.` }, "mentor");
+    return say("Pinned the analogy to the board. Where does it break for you?");
+  }
+  return say(`Here is more on ${ctx.island.name}, in plain terms. Try it on an example of your own.`);
 }

@@ -9,6 +9,7 @@ import { addMessage, listMessages } from "../../core/repositories/messageReposit
 import {
   setLandmarks as setLandmarkRows,
   unlockLandmark as unlockLandmarkRow,
+  exploreLandmark as exploreLandmarkRow,
   listLandmarks,
 } from "../../core/repositories/landmarkRepository.ts";
 import { addAsk } from "../../core/repositories/askRepository.ts";
@@ -146,11 +147,37 @@ export function unlockLandmark(deps: ToolDeps, input: unknown): { slug: string; 
   );
 }
 
+/**
+ * Marks one landmark explored from the reader's latest message in the mentor thread. The quote is checked
+ * here, in code, not left to the prose. A repeat changes nothing and writes no line.
+ */
+export function markExplored(deps: ToolDeps, input: unknown): { slug: string; name: string; explored: number; total: number; already: boolean } {
+  const parsed = unlockInputSchema.parse(input);
+  return withDb(deps.dbPath, (db) =>
+    db.transaction(() => {
+      const domain = requireDomain(db, deps.domain);
+      const island = requireIsland(db, domain.id, deps.island);
+      const answer = listMessages(db, island.id, "mentor").findLast((m) => m.role === "you" && m.kind === "text");
+      if (!answer) throw new ArchipelagoError("no reader message in the mentor thread to quote");
+      if (!answer.body.includes(parsed.evidence)) {
+        throw new ArchipelagoError("evidence must be a verbatim quote from the reader's latest message in this thread");
+      }
+      const { landmark, changed } = exploreLandmarkRow(db, island.id, parsed.slug, parsed.evidence, answer.id);
+      if (changed) {
+        addMessage(db, { domainId: domain.id, islandId: island.id, role: "mentor", kind: "system", body: `landmark explored: ${landmark.name}`, mode: "mentor" });
+      }
+      const all = listLandmarks(db, island.id);
+      return { slug: landmark.slug, name: landmark.name, explored: all.filter((l) => l.exploredAt !== null).length, total: all.length, already: !changed };
+    })(),
+  );
+}
+
 export type BoardWriteResult = { card: BoardCard } | { removed: number; title: string };
 
 /**
- * Adds, updates, or removes a card on this island's board. The SDK tool calls it as the judge, the route as the reader.
- * The judge may only update or remove its own cards and leaves one system line per write; the reader may edit any card and leaves none.
+ * Adds, updates, or removes a card on this island's board. The SDK tool calls it as its persona (judge or mentor),
+ * the route as the reader. A persona may only update or remove its own cards and leaves one system line per write
+ * in its own thread; the reader may edit any card and leaves none.
  */
 export function boardWrite(deps: ToolDeps, input: unknown, author: MessageRole = "judge"): BoardWriteResult {
   const parsed = boardWriteInputSchema.parse(input);
@@ -160,9 +187,9 @@ export function boardWrite(deps: ToolDeps, input: unknown, author: MessageRole =
       const island = requireIsland(db, domain.id, deps.island);
       // The line names the card by its title, or by its kind when it has none (the reader's cards never do).
       const line = (verb: string, card: BoardCard) => {
-        if (author !== "judge") return;
+        if (author === "you") return;
         const what = card.title ? `"${card.title}"` : `a ${card.kind}`;
-        addMessage(db, { domainId: domain.id, islandId: island.id, role: "judge", kind: "system", body: `board: ${verb} ${what}` });
+        addMessage(db, { domainId: domain.id, islandId: island.id, role: author, kind: "system", body: `board: ${verb} ${what}`, mode: author });
       };
       if (parsed.op === "add") {
         const card = addCard(db, {
@@ -173,8 +200,9 @@ export function boardWrite(deps: ToolDeps, input: unknown, author: MessageRole =
         return { card };
       }
       const existing = requireCard(db, island.id, parsed.id);
-      if (author === "judge" && existing.author !== "judge") {
-        throw new ArchipelagoError(`the reader wrote card ${existing.id}; add your own card instead`);
+      if (author !== "you" && existing.author !== author) {
+        const owner = existing.author === "you" ? "the reader" : `the ${existing.author}`;
+        throw new ArchipelagoError(`${owner} wrote card ${existing.id}; add your own card instead`);
       }
       if (parsed.op === "remove") {
         removeCard(db, existing.id);

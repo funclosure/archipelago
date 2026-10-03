@@ -135,3 +135,32 @@ test("'pin' adds a canned diagram card through the real tool and leaves the syst
   expect(listMessages(db, caching).at(-1)).toMatchObject({ kind: "system", body: 'board: pinned "Request path"' });
   db.close();
 });
+
+test("the mentor stub opens with the coastline, marks a landmark explored from a quote, and pins as the mentor", async () => {
+  const events: JudgeEvent[] = [];
+  const run = (msg?: string) => {
+    if (msg) {
+      const db = openDatabase(dbPath);
+      addMessage(db, { domainId, islandId: caching, role: "you", kind: "text", body: msg, mode: "mentor" });
+      db.close();
+    }
+    return stubRunner({ dbPath, domain: "sd", island: "caching", mode: "mentor", emit: (e) => events.push(e) });
+  };
+  const opening = await run();
+  expect(events[0]).toEqual({ type: "progress", message: "set_landmarks" });
+  expect(opening).toContain("Where do you want to start?");
+  const explored = await run("so it is a pantry by the stove: explore scale");
+  expect(explored).toContain("Scale explored: 1 of 4");
+  const db = openDatabase(dbPath);
+  expect(listLandmarks(db, caching).find((l) => l.slug === "scale")).toMatchObject({
+    unlockedAt: null, exploredEvidence: "so it is a pantry by the stove: explore scale",
+  });
+  expect(listMessages(db, caching, "mentor").at(-1)).toMatchObject({ role: "mentor", kind: "system", body: "landmark explored: Scale" });
+  expect(listMessages(db, caching)).toEqual([]); // nothing in the judge's thread
+  db.close();
+  await run("pin that analogy");
+  const db2 = openDatabase(dbPath);
+  expect(listCards(db2, caching).map((c) => c.author)).toEqual(["mentor"]);
+  db2.close();
+  await expect(run("please fail")).rejects.toThrow("stub failure");
+});

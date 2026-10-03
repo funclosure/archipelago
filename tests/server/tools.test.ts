@@ -22,6 +22,7 @@ import {
   unlockLandmark as unlockLandmarkTool,
   askReader,
   boardWrite,
+  markExplored,
 } from "../../src/server/judge/tools.ts";
 
 let dir: string;
@@ -385,4 +386,54 @@ test("the judge sees which landmarks were explored, never the mentor's messages"
   expect(text).not.toContain("NSCache");
   expect(renderThreadPrompt(ctx.thread, ctx.asks)).toBe("Open the probe on this island.");
   expect(renderContext(islandContext({ ...deps(), island: "databases" }))).not.toContain("Explored with the mentor");
+});
+
+const landmarkItems = [
+  { slug: "hit-ratio", name: "Hit ratio" }, { slug: "invalidation", name: "Invalidation" },
+  { slug: "eviction", name: "Eviction" }, { slug: "stampede", name: "Stampede" },
+];
+
+test("mark_explored marks a landmark on this island from a verbatim quote of the reader's latest mentor message, once", () => {
+  setLandmarksTool(deps(), { items: landmarkItems });
+  const mentorDeps = { ...deps(), mode: "mentor" as const };
+  expect(() => markExplored(mentorDeps, { slug: "eviction", evidence: "anything" })).toThrow("no reader message in the mentor thread to quote");
+  const db = openDatabase(dbPath);
+  setLandmarks(db, ids.domain, ids.databases, [{ slug: "rows", name: "Rows" }]);
+  addMessage(db, { domainId: ids.domain, islandId: ids.caching, role: "you", kind: "text", body: "eviction is NSCache under memory pressure", mode: "mentor" });
+  // an answer in the judge's thread is never the mentor's quote
+  addMessage(db, { domainId: ids.domain, islandId: ids.caching, role: "you", kind: "text", body: "stampede is a thundering herd" });
+  db.close();
+  expect(() => markExplored(mentorDeps, { slug: "stampede", evidence: "thundering herd" })).toThrow(
+    "evidence must be a verbatim quote from the reader's latest message in this thread",
+  );
+  expect(() => markExplored(mentorDeps, { slug: "eviction", evidence: "NSCache evicts" })).toThrow(/verbatim quote/);
+  expect(() => markExplored(mentorDeps, { slug: "rows", evidence: "NSCache" })).toThrow(/no landmark "rows" on this island/); // own island only
+  const out = markExplored(mentorDeps, { slug: "eviction", evidence: "NSCache under memory pressure" });
+  expect(out).toEqual({ slug: "eviction", name: "Eviction", explored: 1, total: 4, already: false });
+  expect(markExplored(mentorDeps, { slug: "eviction", evidence: "NSCache" })).toEqual({ slug: "eviction", name: "Eviction", explored: 1, total: 4, already: true });
+  const db2 = openDatabase(dbPath);
+  expect(listLandmarks(db2, ids.caching).find((l) => l.slug === "eviction")).toMatchObject({ unlockedAt: null, exploredEvidence: "NSCache under memory pressure" });
+  expect(listMessages(db2, ids.caching, "mentor").filter((m) => m.kind === "system").map((m) => [m.role, m.body])).toEqual([
+    ["mentor", "landmark explored: Eviction"],
+  ]);
+  expect(listMessages(db2, ids.caching).filter((m) => m.kind === "system")).toEqual([]);
+  db2.close();
+});
+
+test("board_write as the mentor writes its line in the mentor thread and touches only the mentor's cards", () => {
+  const mentorDeps = { ...deps(), mode: "mentor" as const };
+  const pinned = boardWrite(mentorDeps, { op: "add", kind: "note", title: "Analogy", body: "eviction is NSCache under memory pressure" }, "mentor");
+  if (!("card" in pinned)) throw new Error("expected a card");
+  expect(pinned.card.author).toBe("mentor");
+  const keeper = boardWrite(deps(), { op: "add", kind: "note", title: "Claim", body: "caches never go stale" });
+  if (!("card" in keeper)) throw new Error("expected a card");
+  expect(() => boardWrite(mentorDeps, { op: "update", id: keeper.card.id, body: "y" }, "mentor")).toThrow(
+    `the judge wrote card ${keeper.card.id}; add your own card instead`,
+  );
+  expect(() => boardWrite(deps(), { op: "remove", id: pinned.card.id })).toThrow(`the mentor wrote card ${pinned.card.id}; add your own card instead`);
+  const db = openDatabase(dbPath);
+  expect(listMessages(db, ids.caching, "mentor").map((m) => [m.role, m.body])).toEqual([["mentor", 'board: pinned "Analogy"']]);
+  expect(listMessages(db, ids.caching).map((m) => m.body)).toEqual(['board: pinned "Claim"']);
+  db.close();
+  expect(renderContext(islandContext(deps()))).toContain('note "Analogy" [mentor');
 });

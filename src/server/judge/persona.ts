@@ -1,14 +1,15 @@
 // A persona is everything that differs between the judge and the mentor: the protocol file, the closed
 // tool list, how the context and the thread are rendered, and the stub turn. One runner serves both.
 import type { Ask, Message, MessageMode } from "../../core/types.ts";
-import { ArchipelagoError } from "../../core/errors.ts";
 import {
   indent, renderBoard, renderIslandHead, renderLearner, renderPendingAsk, renderPendingReefs, renderReplay, renderSurroundings, type JudgeContext,
 } from "./context.ts";
 import type { JudgeRunner } from "./runner.ts";
-import { judgeStubTurn } from "./stub.ts";
+import { judgeStubTurn, mentorStubTurn } from "./stub.ts";
 
-export const TOOL_NAMES = ["island_context", "record_verdict", "propose_reef", "set_landmarks", "unlock_landmark", "ask_reader", "board_write"] as const;
+export const TOOL_NAMES = [
+  "island_context", "record_verdict", "propose_reef", "set_landmarks", "unlock_landmark", "ask_reader", "board_write", "mark_explored",
+] as const;
 export type ToolName = (typeof TOOL_NAMES)[number];
 
 export type Persona = {
@@ -101,16 +102,24 @@ export function renderMentorThreadPrompt(thread: Message[], asks: Ask[] = []): s
 export const judge: Persona = {
   id: "judge",
   protocolFile: "PROTOCOL.md",
-  toolNames: TOOL_NAMES,
+  toolNames: ["island_context", "record_verdict", "propose_reef", "set_landmarks", "unlock_landmark", "ask_reader", "board_write"],
   renderContext: renderJudgeContext,
   renderThreadPrompt: renderJudgeThreadPrompt,
   stubTurn: judgeStubTurn,
 };
 
-const PERSONAS: Partial<Record<MessageMode, Persona>> = { judge };
+export const mentor: Persona = {
+  id: "mentor",
+  protocolFile: "MENTOR.md",
+  // No verdict tools: the mentor never writes a verdict, never lights a landmark, never proposes a reef.
+  toolNames: ["island_context", "set_landmarks", "mark_explored", "ask_reader", "board_write"],
+  renderContext: renderMentorContext,
+  renderThreadPrompt: renderMentorThreadPrompt,
+  stubTurn: mentorStubTurn,
+};
+
+const PERSONAS: Record<MessageMode, Persona> = { judge, mentor };
 
 export function personaFor(mode: MessageMode): Persona {
-  const persona = PERSONAS[mode];
-  if (!persona) throw new ArchipelagoError(`no persona for mode ${mode}`);
-  return persona;
+  return PERSONAS[mode];
 }
