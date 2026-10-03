@@ -1,5 +1,5 @@
 import { test, expect } from "bun:test";
-import { visibleRows, collapsible, dashClass, summaryLine, countNodes } from "../../src/web/outline-model.js";
+import { visibleRows, collapsible, dashClass, summaryLine, countNodes, rowMarks } from "../../src/web/outline-model.js";
 
 const node = (slug, extra = {}, children = []) => ({
   slug, name: slug, state: "open", landmarks: { total: 4, unlocked: 0 }, harbour: false, scale: null, children, ...extra,
@@ -41,4 +41,25 @@ test("dashClass ranks selected over charted over lit over dark", () => {
 test("summaryLine and countNodes count the whole tree", () => {
   expect(countNodes(tree)).toBe(4);
   expect(summaryLine({ charted: 1, lit: 3, islands: tree })).toBe("1 of 4 charted · 3 lit");
+});
+
+test("in the mentor lens a row shows what was explored, never a verdict", () => {
+  const settled = node("a", { state: "settled", landmarks: { total: 5, unlocked: 5, explored: 0 } });
+  expect(rowMarks(settled, "judge")).toEqual({ dot: "dot settled", open: false, count: "5/5" });
+  expect(rowMarks(settled, "mentor")).toEqual({ dot: "dot open", open: true, count: "0/5" }); // nothing explored is open water
+  const some = node("b", { state: "reef", landmarks: { total: 4, unlocked: 0, explored: 2 } });
+  expect(rowMarks(some, "mentor")).toEqual({ dot: "dot explored", open: false, count: "2/4" });
+  const all = node("c", { landmarks: { total: 4, unlocked: 1, explored: 4 } });
+  expect(rowMarks(all, "mentor")).toEqual({ dot: "dot explored all", open: false, count: "4/4" });
+  expect(rowMarks(node("d", { landmarks: { total: 4, unlocked: 1, explored: 0 } }), "judge")).toEqual({ dot: "dot open lit", open: true, count: "1/4" });
+});
+
+test("the rail dash and the summary follow the lens", () => {
+  const n = node("a", { state: "settled", landmarks: { total: 4, unlocked: 4, explored: 1 } });
+  expect(dashClass(n, null)).toBe("dash done");
+  expect(dashClass(n, null, "mentor")).toBe("dash explored");
+  expect(dashClass(node("b", { state: "reef" }), null, "mentor")).toBe("dash"); // a reef is the Keeper's
+  expect(dashClass(n, "a", "mentor")).toBe("dash on");
+  expect(summaryLine({ charted: 1, lit: 3, explored: 2, exploredIslands: 1, islands: tree }, "mentor")).toBe("1 of 4 explored · 2 landmarks");
+  expect(summaryLine({ charted: 1, lit: 3, explored: 2, exploredIslands: 1, islands: tree }, "judge")).toBe("1 of 4 charted · 3 lit");
 });

@@ -1,7 +1,7 @@
 // The outline: the domain's tree on the left. Pure helpers first (tested), then the DOM.
 import { app, setScale, frameSelection } from "./app.js";
 import { select } from "./interactions.js";
-import { FULL_W, RAIL_W, visibleRows, collapsible, dashClass, countNodes, summaryLine } from "./outline-model.js";
+import { FULL_W, RAIL_W, visibleRows, collapsible, dashClass, countNodes, summaryLine, rowMarks } from "./outline-model.js";
 import { registerRegion, region } from "./keys.js";
 import { moveCursor } from "./keys-model.js";
 import { THEMES } from "./theme-model.js";
@@ -95,11 +95,11 @@ function listEl(outline, { ids = true } = {}) {
       toggleExpanded(row.node.slug);
     }, `tw${row.hasChildren ? "" : " none"}`);
     r.append(tw);
-    const lit = row.node.landmarks.unlocked;
-    r.append(el("span", `dot ${row.node.state}${row.node.state === "open" && lit ? " lit" : ""}`));
-    r.append(el("span", `name${row.node.state === "open" ? " open" : ""}`, row.node.name));
+    const marks = rowMarks(row.node, app.mode); // the outline follows the map's lens
+    r.append(el("span", marks.dot));
+    r.append(el("span", `name${marks.open ? " open" : ""}`, row.node.name));
     if (row.node.harbour) r.append(el("span", "anchor", "⚓︎"));
-    r.append(el("span", "n", `${lit}/${row.node.landmarks.total}`));
+    r.append(el("span", "n", marks.count));
     r.addEventListener("click", () => void go(row.node));
     li.append(r);
     ul.append(li);
@@ -210,7 +210,7 @@ function headerEl(outline) {
 function railEl(outline) {
   const dashes = el("div", "dashes");
   for (const node of outline.islands) {
-    const d = el("div", `${dashClass(node, app.selected)}${node.slug === state.cursor ? " cur" : ""}`);
+    const d = el("div", `${dashClass(node, app.selected, app.mode)}${node.slug === state.cursor ? " cur" : ""}`);
     d.dataset.slug = node.slug;
     d.title = node.name;
     d.addEventListener("click", () => void go(node));
@@ -231,7 +231,7 @@ function render() {
   if (state.cursor === null && !state.cursorCleared && region() === "outline") seedCursor();
   const frag = document.createDocumentFragment();
   frag.append(headerEl(outline));
-  frag.append(el("div", "sum", summaryLine(outline)));
+  frag.append(el("div", "sum", summaryLine(outline, app.mode)));
   frag.append(el("div", "sec", "Islands"));
   frag.append(listEl(outline));
   frag.append(railEl(outline));

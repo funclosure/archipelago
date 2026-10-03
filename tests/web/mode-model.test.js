@@ -1,5 +1,5 @@
 import { test, expect } from "bun:test";
-import { MODES, DEFAULT_MODE, PERSONA_NAMES, MODE_LABELS, MODE_HINTS, modeKey, storedMode, nextMode } from "../../src/web/mode-model.js";
+import { MODES, DEFAULT_MODE, PERSONA_NAMES, MODE_LABELS, MODE_HINTS, modeKey, storedMode, nextMode, headPill } from "../../src/web/mode-model.js";
 
 test("two modes, the judge's first and the default, each named and explained", () => {
   expect(MODES).toEqual(["judge", "mentor"]);
@@ -19,4 +19,15 @@ test("the stored mode is per domain, and anything unknown falls back to the judg
   expect(storedMode("tutor")).toBe("judge");
   expect(nextMode("judge")).toBe("mentor");
   expect(nextMode("mentor")).toBe("judge");
+});
+
+test("the head pill is the verdict in the Keeper's lens and what was explored in the mentor's", () => {
+  const island = (extra) => ({ verdict: null, children: { total: 0 }, landmarks: { total: 5, unlocked: 5, explored: 0 }, ...extra });
+  const settled = island({ verdict: { state: "settled", confidence: 0.82 } });
+  expect(headPill(settled, "judge")).toEqual({ cls: "pill", text: "settled · 82%" });
+  expect(headPill(island({ verdict: { state: "reef", confidence: 0.9 } }), "judge")).toEqual({ cls: "pill reef", text: "reef · 90%" });
+  expect(headPill(island({ children: { total: 3 } }), "judge")).toEqual({ cls: "pill open", text: "open water · islets below" });
+  expect(headPill(settled, "mentor")).toEqual({ cls: "pill open", text: "open water" }); // the verdict never shows here
+  expect(headPill(island({ verdict: { state: "settled", confidence: 0.82 }, landmarks: { total: 5, unlocked: 5, explored: 2 } }), "mentor"))
+    .toEqual({ cls: "pill explore", text: "explored · 2 of 5" });
 });

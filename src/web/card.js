@@ -2,7 +2,7 @@ import { app, api, setScale, frameSelection, setMode } from "./app.js";
 import { streamPost } from "./stream.js";
 import { logItems, askFor, roundOf } from "./thread.js";
 import { landmarkLit, allExplored } from "./view-model.js";
-import { PERSONA_NAMES } from "./mode-model.js";
+import { PERSONA_NAMES, headPill } from "./mode-model.js";
 import { renderMarkdown } from "./markdown.js";
 import { loadHighlighter } from "./code.js";
 import { renderCta } from "./cta.js";
@@ -402,10 +402,9 @@ function headEl(island) {
   const head = el("div", "head");
   const row = el("div", "row");
   row.append(el("h2", null, island.name));
-  const v = island.verdict;
-  const pillText = v ? `${v.state} · ${pct(v.confidence)}` : island.children.total ? "open water · islets below" : "open water";
+  const pill = headPill(island, thread.mode);
   const pills = el("span", "pills");
-  pills.append(el("span", `pill${v ? (v.state === "reef" ? " reef" : "") : " open"}`, pillText));
+  pills.append(el("span", pill.cls, pill.text));
   if (island.harbour) pills.append(el("span", "pill harbour", "harbour"));
   // The head names who answers here.
   pills.append(el("span", `pill mode ${thread.mode}`, thread.mode === "mentor" ? "with the mentor" : "with the Keeper"));

@@ -45,7 +45,7 @@ export type OutlineNode = {
   slug: string;
   name: string;
   state: VerdictState | "open";
-  landmarks: { total: number; unlocked: number };
+  landmarks: { total: number; unlocked: number; explored: number };
   harbour: boolean;
   scale: string | null; // the parent slug the map needs to show this island; null at the top
   children: OutlineNode[];
@@ -56,6 +56,9 @@ export type Outline = {
   harbour: string | null;
   charted: number;
   lit: number;
+  /** Landmarks explored with the mentor, and islands with any, over the whole tree: the mentor lens's counts. */
+  explored: number;
+  exploredIslands: number;
   islands: OutlineNode[];
 };
 
@@ -149,6 +152,8 @@ export function buildOutline(db: Database, domainSlug: string): Outline {
   const domain = requireDomain(db, domainSlug);
   let charted = 0;
   let lit = 0;
+  let explored = 0;
+  let exploredIslands = 0;
   const level = (parent: Island | null): OutlineNode[] => {
     const islands = listIslands(db, domain.id, parent ? parent.id : null);
     const verdicts = latestVerdicts(db, "island", islands.map((i) => i.id));
@@ -157,13 +162,16 @@ export function buildOutline(db: Database, domainSlug: string): Outline {
       const v = verdicts.get(island.id);
       const items = landmarks.get(island.id) ?? [];
       const unlocked = items.filter((l) => l.unlockedAt !== null).length;
+      const exploredHere = items.filter((l) => l.exploredAt !== null).length;
       if (v) charted += 1;
       lit += unlocked;
+      explored += exploredHere;
+      if (exploredHere) exploredIslands += 1;
       return {
         slug: island.slug,
         name: island.name,
         state: v ? v.state : "open",
-        landmarks: { total: items.length, unlocked },
+        landmarks: { total: items.length, unlocked, explored: exploredHere },
         harbour: island.harbour === 1,
         scale: parent ? parent.slug : null,
         children: level(island),
@@ -177,6 +185,8 @@ export function buildOutline(db: Database, domainSlug: string): Outline {
     harbour: islands.find((i) => i.harbour)?.slug ?? null,
     charted,
     lit,
+    explored,
+    exploredIslands,
     islands,
   };
 }

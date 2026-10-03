@@ -33,9 +33,23 @@ export function collapsible(islands, expanded, selected, slug) {
   return visibleRows(islands, without, selected).length !== visibleRows(islands, expanded, selected).length;
 }
 
+/**
+ * One row's marks in a lens. The Keeper's lens shows the verdict and lit landmarks; the mentor's shows
+ * only what was explored, so nothing explored reads as open water whatever the verdict is.
+ */
+export function rowMarks(node, lens = "judge") {
+  const { total, unlocked, explored = 0 } = node.landmarks;
+  if (lens === "mentor") {
+    const dot = explored === 0 ? "dot open" : explored === total ? "dot explored all" : "dot explored";
+    return { dot, open: explored === 0, count: `${explored}/${total}` };
+  }
+  return { dot: `dot ${node.state}${node.state === "open" && unlocked ? " lit" : ""}`, open: node.state === "open", count: `${unlocked}/${total}` };
+}
+
 /** The rail dash's class for a top-level island. */
-export function dashClass(node, selected) {
+export function dashClass(node, selected, lens = "judge") {
   if (node.slug === selected) return "dash on";
+  if (lens === "mentor") return node.landmarks.explored ? "dash explored" : "dash";
   if (node.state === "reef") return "dash reef";
   if (node.state !== "open") return "dash done";
   if (node.landmarks.unlocked > 0) return "dash lit";
@@ -46,6 +60,7 @@ export function countNodes(islands) {
   return islands.reduce((n, i) => n + 1 + countNodes(i.children), 0);
 }
 
-export function summaryLine(outline) {
+export function summaryLine(outline, lens = "judge") {
+  if (lens === "mentor") return `${outline.exploredIslands} of ${countNodes(outline.islands)} explored · ${outline.explored} landmarks`;
   return `${outline.charted} of ${countNodes(outline.islands)} charted · ${outline.lit} lit`;
 }

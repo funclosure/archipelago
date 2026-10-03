@@ -21,3 +21,19 @@ export function storedMode(raw) {
 export function nextMode(mode) {
   return mode === "mentor" ? "judge" : "mentor";
 }
+
+const pct = (v) => `${Math.round(v * 100)}%`;
+
+/**
+ * The first pill in the pane's head. The Keeper's lens names the verdict; the mentor's names only what
+ * was explored, so a verdict never shows in the mentor's lens and nothing explored is open water.
+ */
+export function headPill(island, lens) {
+  if (lens === "mentor") {
+    const { total, explored = 0 } = island.landmarks ?? { total: 0 };
+    return explored ? { cls: "pill explore", text: `explored · ${explored} of ${total}` } : { cls: "pill open", text: "open water" };
+  }
+  const v = island.verdict;
+  if (v) return { cls: `pill${v.state === "reef" ? " reef" : ""}`, text: `${v.state} · ${pct(v.confidence)}` };
+  return { cls: "pill open", text: island.children?.total ? "open water · islets below" : "open water" };
+}

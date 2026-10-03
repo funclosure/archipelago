@@ -83,6 +83,7 @@ body[data-mode="mentor"] .mode-switch .seg.on { color: var(--explore); }
 .chip.lit { background: var(--sand); border: 1px solid var(--sand); color: var(--water); }
 .chip.just-lit { animation: lit-pulse .8s ease-out 1; }
 .chip.explored { background: var(--explore); border: 1px solid var(--explore); color: var(--water); }
+.pill.explore { background: transparent; border: 1px solid var(--explore); color: var(--explore); }
 .pill.mode { background: transparent; border: 1px solid var(--line); color: var(--muted); }
 .pill.mode.mentor { border-color: var(--explore); color: var(--explore); }
 @keyframes lit-pulse { 0% { box-shadow: 0 0 0 0 var(--lamp-pulse); } 100% { box-shadow: 0 0 0 10px transparent; } }
@@ -183,6 +184,8 @@ button:focus-visible, textarea:focus-visible, input:focus-visible { outline: 2px
 :is(.outline, .peek) .row .dot { width: 8px; height: 8px; border-radius: 50%; flex: none; border: 1px dashed var(--open); box-sizing: border-box; }
 :is(.outline, .peek) .row.islet .dot { width: 6px; height: 6px; }
 :is(.outline, .peek) .row .dot.lit { border-style: solid; border-color: var(--lamp); }
+:is(.outline, .peek) .row .dot.explored { border-style: solid; border-color: var(--explore); }
+:is(.outline, .peek) .row .dot.explored.all { background: var(--explore); border: 0; }
 :is(.outline, .peek) .row .dot.sandbar { background: var(--sand-fill); border: 0; }
 :is(.outline, .peek) .row .dot.settled { background: var(--grass); border: 0; }
 :is(.outline, .peek) .row .dot.mountainous { background: var(--ridge); border: 1px solid var(--line-07); } /* a summit: snow ringed by the coast line, so it reads on paper too */
@@ -200,6 +203,7 @@ button:focus-visible, textarea:focus-visible, input:focus-visible { outline: 2px
 .outline.rail .dashes { display: flex; }
 .outline .dash { height: 3px; border-radius: 2px; background: var(--muted); opacity: .35; width: 14px; cursor: pointer; transition: width .15s, opacity .15s; }
 .outline .dash.lit { opacity: .6; width: 18px; background: var(--lamp); }
+.outline .dash.explored { opacity: .7; width: 18px; background: var(--explore); }
 .outline .dash.done { opacity: .9; width: 22px; background: var(--grass); }
 .outline .dash.on { opacity: 1; width: 26px; background: var(--lamp); }
 .outline .dash.reef { opacity: .9; width: 22px; background: var(--reef); }

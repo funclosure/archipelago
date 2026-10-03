@@ -142,6 +142,8 @@ test("buildOutline nests islets under their parent with the scale the map needs,
   addVerdict(db, { targetType: "island", targetId: dbs, state: "reef", confidence: 0.9, evidence: "r" });
   setLandmarks(db, domainId, caching, [{ slug: "a", name: "A" }, { slug: "b", name: "B" }, { slug: "c", name: "C" }, { slug: "d", name: "D" }]);
   unlockLandmark(db, caching, "a", "quote", null);
+  exploreLandmark(db, caching, "b", "asked about b", null);
+  exploreLandmark(db, caching, "c", "restated c", null);
   setHarbour(db, domainId, "queues");
   setHarbour(db, domainId, "caching-ttl");
 
@@ -149,7 +151,7 @@ test("buildOutline nests islets under their parent with the scale the map needs,
   expect(o.domain).toEqual({ slug: "sd", name: "System Design" });
   expect(o.islands.map((i) => i.slug)).toEqual(["caching", "queues", "databases"]);
   const c = o.islands[0];
-  expect(c).toMatchObject({ state: "open", landmarks: { total: 4, unlocked: 1 }, harbour: false, scale: null });
+  expect(c).toMatchObject({ state: "open", landmarks: { total: 4, unlocked: 1, explored: 2 }, harbour: false, scale: null });
   expect(c.children.map((i) => i.slug)).toEqual(["caching-ttl"]);
   expect(c.children[0]).toMatchObject({ state: "settled", harbour: true, scale: "caching", landmarks: { total: 0, unlocked: 0 } });
   expect(c.children[0].children[0]).toMatchObject({ slug: "caching-ttl-jitter", scale: "caching-ttl", children: [] });
@@ -158,6 +160,8 @@ test("buildOutline nests islets under their parent with the scale the map needs,
   expect(o.harbour).toBe("queues");
   expect(o.charted).toBe(2); // ttl and databases
   expect(o.lit).toBe(1);
+  expect(o.explored).toBe(2); // landmarks explored with the mentor, over the whole tree
+  expect(o.exploredIslands).toBe(1); // islands with anything explored: caching
   expect(o.version).toBeGreaterThan(0);
   expect(() => buildOutline(db, "nope")).toThrow(NotFoundError);
 });
