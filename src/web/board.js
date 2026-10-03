@@ -5,7 +5,7 @@ import { renderMarkdown, diagramElement } from "./markdown.js";
 import { codeElement, fillCode } from "./code.js";
 import { LANGS } from "./code-model.js";
 import { registerRegion, setRegion, region } from "./keys.js";
-import { startAdd, startEdit, canSave, writeOf, moveCard, keepCursor, KIND_KEYS, PLAIN } from "./board-model.js";
+import { startAdd, startEdit, canSave, writeOf, moveCard, keepCursor, authorLabel, KIND_KEYS, PLAIN } from "./board-model.js";
 
 const PREVIEW_MS = 500;
 const board = document.getElementById("board");
@@ -189,7 +189,7 @@ function cardEl(card) {
   const cap = el("div", "cap");
   cap.append(el("span", "kind", card.kind + (card.lang ? ` · ${card.lang}` : "")));
   if (card.title) cap.append(el("span", "title", card.title)); // the Keeper may name a card; the reader never has to
-  cap.append(el("span", "who", card.author === "judge" ? "the Keeper" : "you"));
+  cap.append(el("span", `who ${card.author}`, authorLabel(card.author)));
   const acts = el("span", "acts");
   acts.append(button("edit", () => edit(card)), button("remove", () => void remove(card.id)));
   cap.append(acts);

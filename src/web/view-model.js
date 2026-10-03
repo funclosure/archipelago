@@ -71,6 +71,12 @@ export function lensMarks(island, lens = "judge") {
   return { total: items.length, items };
 }
 
+/** Every landmark on the island explored with the mentor: the moment to hand off to the Keeper. False with no landmarks. */
+export function allExplored(island) {
+  const items = island?.landmarks?.items ?? [];
+  return items.length > 0 && items.every((l) => landmarkLit(l, "mentor"));
+}
+
 /** When each lit mark lit: 0 for those already lit when the page first saw the island in this lens, now() for ones lit since. */
 function litTimes(marks, prev) {
   const litAt = new Map(prev ? prev.litAt : []);

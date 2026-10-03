@@ -18,6 +18,13 @@ export function landmarkFromSystem(body) {
   return typeof body === "string" && body.startsWith(LANDMARK_PREFIX) ? body.slice(LANDMARK_PREFIX.length) : null;
 }
 
+const EXPLORED_PREFIX = "landmark explored: ";
+
+/** The landmark name carried by a mentor's `landmark explored: <name>` system line, or null. */
+export function exploredFromSystem(body) {
+  return typeof body === "string" && body.startsWith(EXPLORED_PREFIX) ? body.slice(EXPLORED_PREFIX.length) : null;
+}
+
 /** The latest ask attached to a message, matched by messageId, or null. */
 export function askFor(asks, messageId) {
   return asks.filter((a) => a.messageId === messageId).at(-1) ?? null;
@@ -29,6 +36,8 @@ export function threadItems(messages) {
     if (m.kind === "system") {
       const name = landmarkFromSystem(m.body);
       if (name) return { id: m.id, role: m.role, kind: "landmark", text: name, proposal: null };
+      const explored = exploredFromSystem(m.body);
+      if (explored) return { id: m.id, role: m.role, kind: "explored", text: explored, proposal: null };
     }
     if (m.kind === "reef_proposal") {
       const proposal = proposalFromBody(m.body);
@@ -151,7 +160,7 @@ export function roundOf(messages) {
 }
 
 /**
- * What the log renders: threadItems, with consecutive landmark items merged into one lit line and the
+ * What the log renders: threadItems, with consecutive landmark items, and consecutive explored items, merged into one line, and the
  * last "charted as" system line turned into a verdict card when the island has a verdict to show.
  */
 export function logItems(messages, island) {
@@ -162,10 +171,10 @@ export function logItems(messages, island) {
   });
   const out = [];
   items.forEach((it, i) => {
-    if (it.kind === "landmark") {
+    if (it.kind === "landmark" || it.kind === "explored") {
       const prev = out[out.length - 1];
-      if (prev && prev.kind === "landmark") prev.names.push(it.text);
-      else out.push({ id: it.id, role: it.role, kind: "landmark", names: [it.text], text: it.text, proposal: null });
+      if (prev && prev.kind === it.kind) prev.names.push(it.text);
+      else out.push({ id: it.id, role: it.role, kind: it.kind, names: [it.text], text: it.text, proposal: null });
       return;
     }
     if (i === lastCharted && island && island.verdict) {

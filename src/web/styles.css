@@ -82,6 +82,9 @@ body[data-mode="mentor"] .mode-switch .seg.on { color: var(--explore); }
 .chip { font-size: 11px; padding: 2px 8px; border-radius: 999px; border: 1px dashed var(--muted); color: var(--muted); }
 .chip.lit { background: var(--sand); border: 1px solid var(--sand); color: var(--water); }
 .chip.just-lit { animation: lit-pulse .8s ease-out 1; }
+.chip.explored { background: var(--explore); border: 1px solid var(--explore); color: var(--water); }
+.pill.mode { background: transparent; border: 1px solid var(--line); color: var(--muted); }
+.pill.mode.mentor { border-color: var(--explore); color: var(--explore); }
 @keyframes lit-pulse { 0% { box-shadow: 0 0 0 0 var(--lamp-pulse); } 100% { box-shadow: 0 0 0 10px transparent; } }
 .sub { display: flex; justify-content: space-between; gap: 10px; font-size: 12px; color: var(--muted); }
 .sub .links { display: flex; gap: 10px; }
@@ -109,11 +112,13 @@ body[data-mode="mentor"] .mode-switch .seg.on { color: var(--explore); }
 .msg blockquote p { margin: 0; }
 .msg code { font-family: ui-monospace, Menlo, monospace; font-size: 12px; background: var(--water); padding: 1px 4px; border-radius: 3px; }
 .msg pre code { background: none; padding: 0; }
-.msg.judge { font-family: Georgia, serif; font-size: 14.5px; }
+.msg.judge, .msg.mentor { font-family: Georgia, serif; font-size: 14.5px; }
 .msg.you { align-self: flex-end; max-width: 88%; background: var(--panel-2); border-radius: 10px 10px 2px 10px; padding: 8px 12px; }
 .msg.system { font-size: 11px; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); text-align: center; }
 .lit-line { display: flex; align-items: center; gap: 8px; font-size: 11px; color: var(--sand); }
 .lit-line::before, .lit-line::after { content: ""; flex: 1; border-top: 1px solid var(--line); }
+.explored-line { display: flex; align-items: center; gap: 8px; font-size: 11px; color: var(--explore); }
+.explored-line::before, .explored-line::after { content: ""; flex: 1; border-top: 1px solid var(--line); }
 .verdict-card { border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; background: var(--panel-2); display: grid; gap: 6px; }
 .verdict-card .row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .verdict-card .conf { font-size: 11px; color: var(--muted); }
@@ -322,6 +327,7 @@ body.pane-open .board { right: var(--pane-w); }
 .board .card > .cap .kind { text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
 .board .card > .cap .title { font-family: Georgia, serif; font-size: 14px; color: var(--text); }
 .board .card > .cap .who { color: var(--lamp); }
+.board .card > .cap .who.mentor { color: var(--explore); }
 .board .card > .cap .acts { margin-left: auto; display: flex; gap: 6px; }
 .board .card > .cap .acts button { padding: 2px 8px; font-size: 11px; }
 .board .card .diagram, .board .card .codeblock, .board .card .plot { margin: 0; }

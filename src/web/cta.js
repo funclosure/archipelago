@@ -19,11 +19,12 @@ function button(label, onClick, className = "") {
 export function renderCta(model) {
   const wrap = document.getElementById("cta");
   if (!wrap) return;
-  const { island, pendingReef, verdict, inFlight, answering, stay, nearest } = model;
+  const { island, pendingReef, verdict, inFlight, answering, stay, nearest, handoff } = model;
   const showReef = island && pendingReef && !inFlight;
   const showNext = island && verdict && !inFlight && !pendingReef && !stay && nearest;
+  const showHandoff = island && handoff && !inFlight;
   wrap.replaceChildren();
-  if (!showReef && !showNext) {
+  if (!showReef && !showNext && !showHandoff) {
     wrap.hidden = true;
     return;
   }
@@ -37,10 +38,16 @@ export function renderCta(model) {
     confirm.disabled = dispute.disabled = Boolean(answering);
     row.append(confirm, dispute);
     card.append(row);
-  } else {
+  } else if (showNext) {
     card.append(el("div", "lbl", "charted"));
     const row = el("div", "row");
     row.append(button(`Sail to ${nearest.name}`, () => model.onSail(nearest.slug), "primary"), button("Stay here", model.onStay));
+    card.append(row);
+  } else {
+    // every landmark explored: the mentor's work here is done, and the Keeper can chart it
+    card.append(el("div", "lbl", "explored"));
+    const row = el("div", "row");
+    row.append(button("Chart with the judge", model.onHandoff, "primary"));
     card.append(row);
   }
   wrap.append(card);

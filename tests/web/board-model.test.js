@@ -1,5 +1,5 @@
 import { test, expect } from "bun:test";
-import { startAdd, startEdit, canSave, writeOf, moveCard, keepCursor } from "../../src/web/board-model.js";
+import { startAdd, startEdit, canSave, writeOf, moveCard, keepCursor, authorLabel } from "../../src/web/board-model.js";
 
 test("startAdd and startEdit build editors without a title; lang lives only on code cards", () => {
   expect(startAdd("note")).toEqual({ id: null, kind: "note", body: "", lang: null });
@@ -39,4 +39,10 @@ test("keepCursor keeps a cursor whose card is still there", () => {
   expect(keepCursor([1, 2], 2)).toBe(2);
   expect(keepCursor([1, 2], 3)).toBeNull();
   expect(keepCursor([], null)).toBeNull();
+});
+
+test("authorLabel names who wrote a card as the board says it", () => {
+  expect(authorLabel("judge")).toBe("the Keeper");
+  expect(authorLabel("mentor")).toBe("the mentor");
+  expect(authorLabel("you")).toBe("you");
 });

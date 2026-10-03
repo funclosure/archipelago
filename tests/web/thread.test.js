@@ -1,5 +1,5 @@
 import { test, expect } from "bun:test";
-import { questionRuns, threadItems, proposalFromBody, landmarkFromSystem, inlineSegments, mdBlocks, logItems, askFor, roundOf } from "../../src/web/thread.js";
+import { questionRuns, threadItems, proposalFromBody, landmarkFromSystem, exploredFromSystem, inlineSegments, mdBlocks, logItems, askFor, roundOf } from "../../src/web/thread.js";
 
 const proposal = { target: "island:caching", claim: "never stale", consequence: "stale prices", evidence: "q", confidence: 0.7, rationale: "r", status: "pending" };
 
@@ -162,3 +162,16 @@ test("mdBlocks parses blockquotes and keeps raw paragraph lines", () => {
     expect(roundOf([m("you", "text", "a"), m("judge", "system", "strait a~b charted as settled"), m("you", "text", "b")])).toBe(2);
   });
 }
+
+test("a 'landmark explored' line becomes an explored item, merged with its neighbours and kept apart from lit lines", () => {
+  expect(exploredFromSystem("landmark explored: Eviction")).toBe("Eviction");
+  expect(exploredFromSystem("landmark lit: Eviction")).toBeNull();
+  expect(threadItems([{ id: 1, role: "mentor", kind: "system", body: "landmark explored: Eviction" }])[0]).toMatchObject({ kind: "explored", text: "Eviction" });
+  const items = logItems([
+    { id: 1, role: "mentor", kind: "system", body: "landmark explored: Eviction" },
+    { id: 2, role: "mentor", kind: "system", body: "landmark explored: Invalidation" },
+    { id: 3, role: "mentor", kind: "text", body: "That's both." },
+    { id: 4, role: "judge", kind: "system", body: "landmark lit: Eviction" },
+  ], null);
+  expect(items.map((i) => [i.kind, i.names ?? i.text])).toEqual([["explored", ["Eviction", "Invalidation"]], ["text", "That's both."], ["landmark", ["Eviction"]]]);
+});

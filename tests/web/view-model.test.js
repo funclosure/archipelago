@@ -1,5 +1,5 @@
 import { test, expect } from "bun:test";
-import { hashSeed, seededRandom, islandRadius, buildNodes, buildLinks, WORLD, stripItems, HINTS, landmarkLit, lensState, lensMarks } from "../../src/web/view-model.js";
+import { hashSeed, seededRandom, islandRadius, buildNodes, buildLinks, WORLD, stripItems, HINTS, landmarkLit, lensState, lensMarks, allExplored } from "../../src/web/view-model.js";
 
 const island = (slug, verdict = null, pos = { x: null, y: null }, byState = { sandbar: 0, settled: 0, mountainous: 0, reef: 0, open: 0 }) => ({
   slug, name: slug, summary: null, hasChildren: Object.values(byState).some(Boolean), verdict, x: pos.x, y: pos.y,
@@ -158,4 +158,13 @@ test("stripItems in the mentor lens counts explored landmarks and names islands 
   expect(items[1]).toEqual({ label: "Not yet explored", value: "queues · db", hint: HINTS.unexplored });
   expect(stripItems({ ...s, islands: [island("x")] }, "mentor")[0].value).toBe("no landmarks yet");
   expect(stripItems(s).map((i) => i.label)).toEqual(["Nearest open water", "Reefs", "For the cartographer"]); // the judge's lens is unchanged
+});
+
+test("allExplored needs at least one landmark, and every one explored", () => {
+  const at = "2026-10-01T00:00:00.000Z";
+  const withItems = (items) => ({ ...island("caching"), landmarks: { total: items.length, unlocked: 0, explored: 0, items } });
+  expect(allExplored(island("caching"))).toBe(false);
+  expect(allExplored(withItems([{ slug: "a", lit: true, exploredAt: null }]))).toBe(false); // lit is not explored
+  expect(allExplored(withItems([{ slug: "a", lit: false, exploredAt: at }, { slug: "b", lit: false, exploredAt: null }]))).toBe(false);
+  expect(allExplored(withItems([{ slug: "a", lit: false, exploredAt: at }, { slug: "b", lit: true, exploredAt: at }]))).toBe(true);
 });

@@ -50,3 +50,10 @@ export function moveCard(ids, cursor, key) {
 export function keepCursor(ids, cursor) {
   return cursor !== null && ids.includes(cursor) ? cursor : null;
 }
+
+/** Who wrote a card, as the board's caption says it. The page says the Keeper for the judge. */
+export const AUTHOR_LABELS = { judge: "the Keeper", mentor: "the mentor", you: "you" };
+
+export function authorLabel(author) {
+  return AUTHOR_LABELS[author] ?? author;
+}

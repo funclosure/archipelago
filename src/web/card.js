@@ -1,6 +1,8 @@
-import { app, api, setScale, frameSelection } from "./app.js";
+import { app, api, setScale, frameSelection, setMode } from "./app.js";
 import { streamPost } from "./stream.js";
 import { logItems, askFor, roundOf } from "./thread.js";
+import { landmarkLit, allExplored } from "./view-model.js";
+import { PERSONA_NAMES } from "./mode-model.js";
 import { renderMarkdown } from "./markdown.js";
 import { loadHighlighter } from "./code.js";
 import { renderCta } from "./cta.js";
@@ -33,6 +35,7 @@ let liveFrame = 0;        // pending animation frame for the streaming reply
 // The one thread the page shows: the selected island's stored messages plus the turn in flight.
 const thread = {
   slug: null,
+  mode: "judge",      // whose thread: the judge's or the mentor's (app.mode when it was opened)
   version: null,      // snapshot version the messages were fetched at; null forces a refetch
   messages: [],
   asks: [],           // questions the judge has posed, with their options and any pick
@@ -166,11 +169,11 @@ function post(path, body) {
   return api(path, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
 }
 
-/** Points the thread at another island, dropping everything from the previous one. */
-function resetThread(slug) {
+/** Points the thread at another island, or another mode's thread, dropping everything from the previous one. */
+function resetThread(slug, mode = app.mode) {
   turnGen += 1; // a stream still running from an earlier visit to this island is no longer ours
   Object.assign(thread, {
-    slug, version: null, messages: [], asks: [], loaded: false, draft: "", live: "", progress: null, inFlight: false, error: null, loadError: null,
+    slug, mode, version: null, messages: [], asks: [], loaded: false, draft: "", live: "", progress: null, inFlight: false, error: null, loadError: null,
     disputeDraft: "", litSeen: null, focusPending: false, answering: false, stay: false,
   });
   noteOpen = false;
@@ -179,16 +182,20 @@ function resetThread(slug) {
 async function loadThread(slug) {
   thread.version = app.version;
   const gen = ++loadGen;
+  const mode = thread.mode;
+  const stale = () => thread.slug !== slug || thread.mode !== mode || gen !== loadGen;
   try {
-    const { messages, asks } = await api(`/api/thread?domain=${encodeURIComponent(app.domain)}&island=${encodeURIComponent(slug)}`);
-    if (thread.slug !== slug || gen !== loadGen) return;
+    const { messages, asks } = await api(
+      `/api/thread?domain=${encodeURIComponent(app.domain)}&island=${encodeURIComponent(slug)}&mode=${encodeURIComponent(mode)}`,
+    );
+    if (stale()) return;
     thread.messages = messages;
     thread.asks = asks ?? [];
     thread.loaded = true;
     thread.answering = false; // a reef answer is complete once the stored proposal status is back
     thread.loadError = null; // thread.error belongs to the last turn and stays until the next one
   } catch (error) {
-    if (thread.slug !== slug || gen !== loadGen) return;
+    if (stale()) return;
     thread.answering = false; // do not wedge the buttons if the refetch fails
     thread.loadError = error.message; // version stays set: the next version change retries, a re-render does not
   }
@@ -199,7 +206,8 @@ async function loadThread(slug) {
 async function runTurn(slug, message, askId) {
   if (thread.inFlight || thread.slug !== slug) return;
   const gen = ++turnGen;
-  const mine = () => thread.slug === slug && gen === turnGen;
+  const mode = thread.mode;
+  const mine = () => thread.slug === slug && thread.mode === mode && gen === turnGen;
   const regionAtSend = region();
   thread.inFlight = true;
   thread.live = "";
@@ -212,7 +220,7 @@ async function runTurn(slug, message, askId) {
     if (log) log.scrollTop = log.scrollHeight; // sending is a request to watch the reply arrive
   }
   try {
-    await streamPost("/api/probe", { domain: app.domain, island: slug, ...(message ? { message } : {}), ...(askId ? { askId } : {}) }, (e) => {
+    await streamPost("/api/probe", { domain: app.domain, island: slug, mode, ...(message ? { message } : {}), ...(askId ? { askId } : {}) }, (e) => {
       if (!mine()) return;
       if (e.type === "text") {
         thread.live += e.data.text;
@@ -315,7 +323,7 @@ function renderLive() {
   const stuck = atBottom(log);
   if (thread.inFlight && !thread.live) {
     // Nothing has arrived yet: the reply's own line says so, where the words will land.
-    const thinking = el("span", "thinking", "the Keeper is thinking");
+    const thinking = el("span", "thinking", `${PERSONA_NAMES[thread.mode]} is thinking`);
     thinking.append(el("span", "caret"));
     live.replaceChildren(thinking);
   } else if (thread.live) {
@@ -330,7 +338,7 @@ function renderLive() {
     live.replaceChildren();
   }
   live.hidden = !(thread.live || thread.inFlight);
-  progress.textContent = thread.progress ? `the Keeper: ${thread.progress}` : "";
+  progress.textContent = thread.progress ? `${PERSONA_NAMES[thread.mode]}: ${thread.progress}` : "";
   progress.hidden = !thread.progress;
   if (stuck) log.scrollTop = log.scrollHeight;
 }
@@ -358,10 +366,12 @@ function growAnswer(ta) {
 
 function chipsEl(island) {
   const row = el("div", "chips");
+  const on = thread.mode === "mentor" ? "explored" : "lit";
   for (const l of island.landmarks.items) {
-    const chip = el("span", `chip${l.lit ? " lit" : ""}`, l.name);
-    if (l.lit && l.evidence) chip.title = `“${l.evidence}”`;
-    if (l.lit && thread.litSeen && !thread.litSeen.has(l.slug)) chip.classList.add("just-lit");
+    const lit = landmarkLit(l, thread.mode);
+    const chip = el("span", `chip${lit ? ` ${on}` : ""}`, l.name);
+    if (lit && thread.mode === "judge" && l.evidence) chip.title = `“${l.evidence}”`;
+    if (lit && thread.litSeen && !thread.litSeen.has(l.slug)) chip.classList.add("just-lit");
     row.append(chip);
   }
   return row;
@@ -397,6 +407,8 @@ function headEl(island) {
   const pills = el("span", "pills");
   pills.append(el("span", `pill${v ? (v.state === "reef" ? " reef" : "") : " open"}`, pillText));
   if (island.harbour) pills.append(el("span", "pill harbour", "harbour"));
+  // The head names who answers here.
+  pills.append(el("span", `pill mode ${thread.mode}`, thread.mode === "mentor" ? "with the mentor" : "with the Keeper"));
   row.append(pills);
   head.append(row);
   if (island.summary) head.append(el("p", "summary", island.summary));
@@ -405,8 +417,14 @@ function headEl(island) {
 
   const sub = el("div", "sub");
   const parts = [];
-  if (hasLandmarks) parts.push(`${island.landmarks.unlocked} of ${island.landmarks.total} charted`);
-  const round = roundOf(thread.messages);
+  if (hasLandmarks) {
+    parts.push(
+      thread.mode === "mentor"
+        ? `${island.landmarks.explored ?? 0} of ${island.landmarks.total} explored`
+        : `${island.landmarks.unlocked} of ${island.landmarks.total} charted`,
+    );
+  }
+  const round = thread.mode === "judge" ? roundOf(thread.messages) : 0; // the mentor has no rounds
   if (round > 0) parts.push(`round ${Math.min(round, ROUNDS)} of ${ROUNDS}`); // the opening turn is not a round yet
   sub.append(el("span", null, parts.join(" · ")));
   const links = el("span", "links");
@@ -491,12 +509,14 @@ function choicesEl(ask, reefPending) {
 
 function itemEl(item, reefPending) {
   if (item.kind === "landmark") return el("div", "lit-line", `◆ ${item.names.join(" · ")}`);
+  if (item.kind === "explored") return el("div", "explored-line", `◇ ${item.names.join(" · ")}`);
   if (item.kind === "verdict") return verdictEl(item.verdict);
   if (item.kind === "system") return el("div", "msg system", item.text);
   if (item.kind === "reef_proposal") return reefEl(item);
   const m = el("div", `msg ${item.role}`);
-  m.append(renderMarkdown(item.text, item.role === "judge" ? { onQuestion: quoteIntoAnswer } : {}));
-  const ask = item.role === "judge" ? askFor(thread.asks, item.id) : null;
+  const persona = item.role === "judge" || item.role === "mentor";
+  m.append(renderMarkdown(item.text, persona ? { onQuestion: quoteIntoAnswer } : {}));
+  const ask = persona ? askFor(thread.asks, item.id) : null;
   if (ask) m.append(choicesEl(ask, reefPending));
   return m;
 }
@@ -518,20 +538,27 @@ function logEl(island) {
   const items = logItems(thread.messages, island);
   if (items.length === 0 && !thread.inFlight) {
     const empty = el("div", "empty");
-    if (island.verdict) empty.append(verdictEl(island.verdict));
-    empty.append(el("p", "muted", island.verdict ? "No thread yet. The Keeper asks first." : "Unsurveyed. The Keeper asks first."));
-    const b = button(island.verdict ? "Explore it" : "Make landfall", () => void runTurn(island.slug, null));
-    b.id = "landfall";
-    empty.append(b);
+    if (thread.mode === "mentor") {
+      empty.append(el("p", "muted", "Nothing explored here yet. The mentor opens with the coastline and one analogy from what you know; then you lead."));
+      const b = button("Explore with the mentor", () => void runTurn(island.slug, null));
+      b.id = "landfall";
+      empty.append(b);
+    } else {
+      if (island.verdict) empty.append(verdictEl(island.verdict));
+      empty.append(el("p", "muted", island.verdict ? "No thread yet. The Keeper asks first." : "Unsurveyed. The Keeper asks first."));
+      const b = button(island.verdict ? "Explore it" : "Make landfall", () => void runTurn(island.slug, null));
+      b.id = "landfall";
+      empty.append(b);
+    }
     log.append(empty);
     if (thread.error) log.append(el("div", "error", thread.error));
     return log;
   }
-  // a verdict written from the terminal has no system line; show it at the top of the log
-  if (island.verdict && !items.some((i) => i.kind === "verdict")) log.append(verdictEl(island.verdict));
+  // a verdict written from the terminal has no system line; show it at the top of the judge's log
+  if (thread.mode === "judge" && island.verdict && !items.some((i) => i.kind === "verdict")) log.append(verdictEl(island.verdict));
   const reefPending = Boolean(items.find((i) => i.kind === "reef_proposal" && i.proposal.status === "pending"));
   for (const item of items) log.append(itemEl(item, reefPending));
-  const live = el("div", "msg judge");
+  const live = el("div", `msg ${thread.mode}`);
   live.id = "live";
   live.hidden = true;
   const progress = el("div", "progress");
@@ -559,10 +586,12 @@ function footEl(island) {
   ta.placeholder = pending
       ? "what is wrong with this reef"
       : empty
-        ? island.verdict ? "press Explore it to begin" : "press Make landfall to begin"
+        ? thread.mode === "mentor"
+          ? "press Explore with the mentor to begin"
+          : island.verdict ? "press Explore it to begin" : "press Make landfall to begin"
         : ask
           ? "or answer in your own words"
-          : "your answer";
+          : thread.mode === "mentor" ? "ask, restate, or try an example" : "your answer";
   ta.value = pending ? thread.disputeDraft : thread.draft;
   ta.addEventListener("input", () => {
     if (pending) thread.disputeDraft = ta.value;
@@ -613,10 +642,12 @@ function footEl(island) {
 
 /** The model handed to renderCta, shared by the "no island selected" and normal render paths. */
 function ctaModel(island) {
+  const judging = thread.mode === "judge";
   return {
     island,
-    pendingReef: island && thread.loaded ? logItems(thread.messages, island).find((i) => i.kind === "reef_proposal" && i.proposal.status === "pending") ?? null : null,
-    verdict: island ? island.verdict : null,
+    pendingReef: judging && island && thread.loaded ? logItems(thread.messages, island).find((i) => i.kind === "reef_proposal" && i.proposal.status === "pending") ?? null : null,
+    verdict: judging && island ? island.verdict : null,
+    handoff: !judging && Boolean(island) && allExplored(island),
     inFlight: thread.inFlight,
     answering: thread.answering,
     stay: thread.stay,
@@ -631,6 +662,7 @@ function ctaModel(island) {
       thread.stay = true;
       render();
     },
+    onHandoff: () => setMode("judge"),
   };
 }
 
@@ -645,7 +677,7 @@ function render() {
     renderCta(ctaModel(island));
     return;
   }
-  if (thread.slug !== island.slug) {
+  if (thread.slug !== island.slug || thread.mode !== app.mode) {
     resetThread(island.slug);
     void loadThread(island.slug);
   } else if (thread.version !== app.version) {
@@ -674,7 +706,7 @@ function render() {
   }
   if (hadFocus || thread.focusPending) focusAnswer();
   // Remember which chips are lit so the next render can pulse only the newly lit ones.
-  thread.litSeen = new Set((island.landmarks?.items ?? []).filter((l) => l.lit).map((l) => l.slug));
+  thread.litSeen = new Set((island.landmarks?.items ?? []).filter((l) => landmarkLit(l, thread.mode)).map((l) => l.slug));
   void renderHistory(island, ++renderId);
   renderCta(ctaModel(island));
 }
