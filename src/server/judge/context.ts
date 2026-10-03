@@ -132,7 +132,9 @@ export function renderIslandHead(ctx: JudgeContext): string[] {
 export function renderLearner(learner: LearnerView): string[] {
   const lines = [`## The learner`, ``];
   const note = learner.note.slice(0, NOTE_MAX).trim();
-  lines.push(note ? `Note: ${indent(note)}` : `Note: none`, ``);
+  // A blockquote, every line marked: a line in the note can never pose as a heading of the protocol.
+  if (note) lines.push(`Note:`, ...note.split(/\r\n|\r|\n/).map((l) => `> ${l}`), ``);
+  else lines.push(`Note: none`, ``);
   if (learner.ground.length === 0) {
     lines.push(`Ground: none yet — use an everyday analogy and say so.`);
   } else {
