@@ -10,7 +10,7 @@ import { addVerdict, latestVerdict } from "../../src/core/repositories/verdictRe
 import { addMessage, listMessages, parseProposal } from "../../src/core/repositories/messageRepository.ts";
 import { startSession } from "../../src/core/repositories/sessionRepository.ts";
 import { listLandmarks, setLandmarks, exploreLandmark } from "../../src/core/repositories/landmarkRepository.ts";
-import { listAsks, attachAsks } from "../../src/core/repositories/askRepository.ts";
+import { listAsks, attachAsks, pickAsk } from "../../src/core/repositories/askRepository.ts";
 import { addCard, listCards } from "../../src/core/repositories/boardRepository.ts";
 import { renderJudgeContext as renderContext, renderJudgeThreadPrompt as renderThreadPrompt } from "../../src/server/judge/persona.ts";
 import {
@@ -444,6 +444,43 @@ test("mark_explored marks a landmark on this island from a verbatim quote of the
   ]);
   expect(listMessages(db2, ids.caching).filter((m) => m.kind === "system")).toEqual([]);
   db2.close();
+});
+
+/** A mentor question with options, then the reader's answer to it, recorded the way POST /api/probe does: pick, then message, in one transaction. */
+function answerMentorAsk(options: string[], answer: string) {
+  const mentorDeps = { ...deps(), mode: "mentor" as const };
+  const { askId } = askReader(mentorDeps, { question: "Which one?", options });
+  const db = openDatabase(dbPath);
+  const reply = addMessage(db, { domainId: ids.domain, islandId: ids.caching, role: "mentor", kind: "text", body: "Which one?", mode: "mentor" });
+  attachAsks(db, ids.caching, reply.id);
+  db.transaction(() => {
+    pickAsk(db, ids.domain, askId, answer);
+    addMessage(db, { domainId: ids.domain, islandId: ids.caching, role: "you", kind: "text", body: answer, mode: "mentor" });
+  })();
+  db.close();
+  return mentorDeps;
+}
+
+test("mark_explored refuses a pick from the mentor's options: explore needs the reader's own words", () => {
+  setLandmarksTool(deps(), { items: landmarkItems });
+  const mentorDeps = answerMentorAsk(["eviction drops the coldest entries", "eviction drops the newest entries"], "eviction drops the coldest entries");
+  expect(() => markExplored(mentorDeps, { slug: "eviction", evidence: "drops the coldest entries" })).toThrow(
+    "the latest reader message is a pick from your options; explore needs the reader's own words",
+  );
+  const db = openDatabase(dbPath);
+  expect(listLandmarks(db, ids.caching).filter((l) => l.exploredAt !== null)).toEqual([]);
+  db.close();
+});
+
+test("mark_explored accepts the reader's own words typed in place of the options, and a later message after a pick", () => {
+  setLandmarksTool(deps(), { items: landmarkItems });
+  const mentorDeps = answerMentorAsk(["the coldest", "the newest"], "neither: NSCache drops whatever it likes");
+  expect(markExplored(mentorDeps, { slug: "eviction", evidence: "NSCache drops whatever it likes" })).toMatchObject({ slug: "eviction", already: false });
+  answerMentorAsk(["stampede is many misses at once", "stampede is one slow miss"], "stampede is many misses at once");
+  const db = openDatabase(dbPath);
+  addMessage(db, { domainId: ids.domain, islandId: ids.caching, role: "you", kind: "text", body: "stampede is many misses at once", mode: "mentor" });
+  db.close();
+  expect(markExplored(mentorDeps, { slug: "stampede", evidence: "many misses at once" })).toMatchObject({ slug: "stampede", already: false });
 });
 
 test("board_write as the mentor writes its line in the mentor thread and touches only the mentor's cards", () => {

@@ -12,7 +12,7 @@ import {
   exploreLandmark as exploreLandmarkRow,
   listLandmarks,
 } from "../../core/repositories/landmarkRepository.ts";
-import { addAsk } from "../../core/repositories/askRepository.ts";
+import { addAsk, listAsks } from "../../core/repositories/askRepository.ts";
 import { addCard, removeCard, requireCard, updateCard } from "../../core/repositories/boardRepository.ts";
 import { resolveVerdictTarget } from "../../core/targets.ts";
 import {
@@ -23,7 +23,7 @@ import {
   reefProposalInputSchema,
   unlockInputSchema,
 } from "../../core/validators.ts";
-import type { BoardCard, Island, MessageMode, MessageRole, ReefProposal, Verdict, VerdictState } from "../../core/types.ts";
+import type { Ask, BoardCard, Island, Message, MessageMode, MessageRole, ReefProposal, Verdict, VerdictState } from "../../core/types.ts";
 import { buildJudgeContext, type JudgeContext } from "./context.ts";
 
 /** Where a tool call writes: the database path, the island whose threads this turn belongs to, and whose turn it is. */
@@ -155,6 +155,21 @@ export function unlockLandmark(deps: ToolDeps, input: unknown): { slug: string; 
 const QUOTE_MIN_CHARS = 12;
 const QUOTE_MIN_WORDS = 2;
 
+/**
+ * Whether `answer` is the reader choosing one of an ask's options in this thread. POST /api/probe records a pick
+ * and then its message in one transaction, so the pick's message is the first reader message at or after
+ * `pickedAt`. Words typed instead of choosing are recorded as a pick too, but they are not one of the options.
+ */
+function isOptionPick(thread: Message[], asks: Ask[], answer: Message): boolean {
+  const ids = new Set(thread.map((m) => m.id));
+  return asks.some((a) => {
+    if (a.messageId === null || !ids.has(a.messageId) || a.picked === null || a.pickedAt === null) return false;
+    if (a.picked !== answer.body || !a.options.includes(a.picked) || a.pickedAt > answer.createdAt) return false;
+    const pickMessage = thread.find((m) => m.role === "you" && m.kind === "text" && m.id > a.messageId! && m.createdAt >= a.pickedAt!);
+    return pickMessage?.id === answer.id;
+  });
+}
+
 export function markExplored(deps: ToolDeps, input: unknown): { slug: string; name: string; explored: number; total: number; already: boolean } {
   const parsed = unlockInputSchema.parse(input);
   const evidence = parsed.evidence.trim();
@@ -166,8 +181,12 @@ export function markExplored(deps: ToolDeps, input: unknown): { slug: string; na
       const domain = requireDomain(db, deps.domain);
       const island = requireIsland(db, domain.id, deps.island);
       // The mentor's tool: it always reads and writes the mentor thread.
-      const answer = listMessages(db, island.id, "mentor").findLast((m) => m.role === "you" && m.kind === "text");
+      const thread = listMessages(db, island.id, "mentor");
+      const answer = thread.findLast((m) => m.role === "you" && m.kind === "text");
       if (!answer) throw new ArchipelagoError("no reader message in the mentor thread to quote");
+      if (isOptionPick(thread, listAsks(db, island.id), answer)) {
+        throw new ArchipelagoError("the latest reader message is a pick from your options; explore needs the reader's own words");
+      }
       if (!answer.body.includes(evidence)) {
         throw new ArchipelagoError("evidence must be a verbatim quote from the reader's latest message in this thread");
       }
