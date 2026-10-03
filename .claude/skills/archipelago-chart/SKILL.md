@@ -85,6 +85,7 @@ You do not probe and you do not write verdicts. The judge's behaviour lives in `
 
 ```bash
 A thread show --domain <slug> --island <island>
+A thread show --domain <slug> --island <island> --mode mentor   # what the reader explored with the mentor
 A board list --domain <slug> --island <island>      # what both of them pinned
 A island show --domain <slug> --slug <island>      # verdict and history
 ```
@@ -93,7 +94,7 @@ A island show --domain <slug> --slug <island>      # verdict and history
 
 ## 4. Sailing closer
 
-When the user asks to go closer, or a `sail_closer` comment arrives, first read the island's thread (`thread show`), its board (`board list`), and its verdict so the islets follow what the judge found. A pinned diagram's nodes are candidate islets and landmarks; a note the judge pinned in the user's words is what the user believes, so an islet on that point starts there. Then sketch 4–8 islets exactly as in Setup, with slugs that do not collide with any slug in the domain (prefix with the parent when in doubt, e.g. `caching-invalidation`), plus straits between neighbouring islets, and 4–6 landmarks per islet, written with `landmark add`. Show the sketch, get approval, then write with `--parent <island-slug>`. Set a harbour among the islets (`harbour set`) when one is the natural first step; otherwise leave it unset. If the island has no verdict yet, suggest the user probe it on the map first, but do what the user asks.
+When the user asks to go closer, or a `sail_closer` comment arrives, first read the island's two threads (`thread show`, then `thread show --mode mentor`), its board (`board list`), its landmarks (`landmark list`: `exploredAt` set but `unlockedAt` null means explored with the mentor and not yet demonstrated to the judge), and its verdict, so the islets follow what both found. A landmark explored but not lit is a good islet: the reader has walked it once and the judge has not seen it held. A pinned diagram's nodes are candidate islets and landmarks; a note the judge pinned in the user's words is what the user believes, so an islet on that point starts there. Then sketch 4–8 islets exactly as in Setup, with slugs that do not collide with any slug in the domain (prefix with the parent when in doubt, e.g. `caching-invalidation`), plus straits between neighbouring islets, and 4–6 landmarks per islet, written with `landmark add`. Show the sketch, get approval, then write with `--parent <island-slug>`. Set a harbour among the islets (`harbour set`) when one is the natural first step; otherwise leave it unset. If the island has no verdict yet, suggest the user probe it on the map first, but do what the user asks.
 
 ## 5. Ending a sitting
 
@@ -112,8 +113,9 @@ island   add --domain --slug --name [--summary] [--parent] [--order]
          update --domain --slug [--name] [--summary] [--order] [--x --y]
          list --domain [--parent] | show --domain --slug
 strait   add --domain --from --to [--name] [--summary] | list --domain [--parent]
-landmark add --domain --island --slug --name [--order] | list --domain --island
-thread   show --domain --island
+landmark add --domain --island --slug --name [--order] | list --domain --island   (rows carry unlockedAt and exploredAt)
+thread   show --domain --island [--mode judge|mentor]
+learner  show | set --note   (the user's own note for the mentor; write it only when the user asks)
 board    list --domain --island
 verdict  history --domain --target island:<slug>|strait:<a>~<b>
          set --domain --target --state --confidence --evidence [--rationale]   (repairs only)
