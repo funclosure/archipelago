@@ -74,7 +74,7 @@ const JUDGE_DESCRIPTIONS: Record<ToolName, string> = {
   unlock_landmark: "Light one landmark the reader's latest answer covered: they explained or applied it, not merely named it. Evidence is a verbatim quote from that answer.",
   ask_reader: "Ask the reader to choose: a question and 2–4 short options, one of them what they would say if they already understood. The options appear under your reply; end the reply with the question and stop.",
   board_write: "Pin, update, or remove a card on this island's board (see the board section of your protocol). op add: kind (diagram | note | code), body (mermaid source, markdown, or code), lang for code, and an optional one-line title. op update: id plus the fields to change. op remove: id. You may only update or remove cards you wrote.",
-  mark_explored: "Mark one landmark explored: the reader engaged it in their own words (asked about it, restated it, or tried it on an example). Evidence is a verbatim quote of at least two words from the reader's latest message; anything else is refused. Marking it again changes nothing.",
+  mark_explored: "Mark one landmark explored: the reader engaged it in their own words (asked about it, restated it, or tried it on an example). Evidence is a verbatim quote of at least two words and twelve characters from the reader's latest message; anything else is refused. Marking it again changes nothing.",
 };
 
 const MENTOR_DESCRIPTIONS: Partial<Record<ToolName, string>> = {
@@ -82,6 +82,8 @@ const MENTOR_DESCRIPTIONS: Partial<Record<ToolName, string>> = {
     "Who the reader is (their ground, the claims to avoid building on, their note), this island, its landmarks explored or not, the board, and the mentor thread so far. Read fresh.",
   ask_reader:
     "Ask the reader a check-in: a question and 2–4 short options, all plausible. The options appear under your reply; end the reply with the question and stop.",
+  mark_explored:
+    "Mark one landmark explored: the reader engaged it in their own words. Evidence is a verbatim quote of at least two words and twelve characters from the reader's latest message; a pick from your own ask_reader options is not their words (own words typed instead are). Anything else is refused.",
 };
 
 /** Each of the persona's tools with the description it sees, in the persona's tool order. */

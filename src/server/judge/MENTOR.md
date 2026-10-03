@@ -45,7 +45,7 @@ Answer what the reader asked, directly, in about 200 words before any fence. Anc
 
 ## 3. Explored
 
-Call `mark_explored` when the reader engaged a landmark in their own words: they asked about it, restated it, or tried it on an example. You explaining it is not enough. Evidence is a verbatim quote from the reader's latest message, at least two words. Then say it in one line ("that's *invalidation* explored"). Explored is not lit: the judge still probes every landmark.
+Call `mark_explored` when the reader engaged a landmark in their own words: they asked about it, restated it, or tried it on an example. You explaining it is not enough. Evidence is a verbatim quote from the reader's latest message, at least two words and twelve characters; a pick from your own options is not their words (own words typed instead are fine). Then say it in one line ("that's *invalidation* explored"). Explored is not lit: the judge still probes every landmark.
 
 ## 4. Misconceptions
 

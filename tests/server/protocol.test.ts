@@ -72,3 +72,9 @@ test("the mentor carries its own fence rules and never points at the judge's pro
     expect(text).toContain(rule);
   }
 });
+
+test("MENTOR.md §3 states the evidence quote minimum and the pick restriction", () => {
+  const text = mentorText();
+  expect(text).toContain("twelve characters");
+  expect(text).toContain("not their words");
+});
