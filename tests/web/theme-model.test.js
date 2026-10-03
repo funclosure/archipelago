@@ -5,7 +5,7 @@ test("the registry: unique ids, the first is the default", () => {
   expect(new Set(THEMES.map((t) => t.id)).size).toBe(THEMES.length);
   expect(THEMES[0].id).toBe(DEFAULT_THEME);
   expect(THEMES.map((t) => t.id)).toEqual(["night", "chart"]);
-  expect(Object.keys(PALETTE_TOKENS)).toEqual(["sea", "line", "lamp", "reef", "sand", "grass", "snow"]);
+  expect(Object.keys(PALETTE_TOKENS)).toEqual(["sea", "line", "lamp", "reef", "sand", "grass", "snow", "explore"]);
 });
 
 test("storedTheme keeps a known id and falls back otherwise", () => {

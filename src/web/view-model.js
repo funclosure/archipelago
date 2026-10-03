@@ -53,21 +53,42 @@ function provisionalPosition(snapshot, island, placedBySlug, radius) {
   return { x: clampWorld(cx + Math.cos(angle) * offset), y: clampWorld(cy + Math.sin(angle) * offset) };
 }
 
-/** When each lit landmark lit: 0 for those already lit when the page first saw the island, now() for ones lit since. */
-function litTimes(island, prev) {
+// ---- lenses: the judge's (what you have demonstrated) and the mentor's (where you have explored) ----
+
+/** Whether a landmark is lit in a lens: lit by the judge, or explored with the mentor. */
+export function landmarkLit(item, lens = "judge") {
+  return lens === "mentor" ? item.exploredAt != null : Boolean(item.lit);
+}
+
+/** The state a lens draws. The mentor lens draws no elevation and no reef: there, every island is open water. */
+export function lensState(island, lens = "judge") {
+  return lens === "mentor" ? "open" : islandState(island);
+}
+
+/** The coast's marks in a lens: one per landmark, in order, lit or dark. */
+export function lensMarks(island, lens = "judge") {
+  const items = (island.landmarks?.items ?? []).map((l) => ({ slug: l.slug, lit: landmarkLit(l, lens) }));
+  return { total: items.length, items };
+}
+
+/** When each lit mark lit: 0 for those already lit when the page first saw the island in this lens, now() for ones lit since. */
+function litTimes(marks, prev) {
   const litAt = new Map(prev ? prev.litAt : []);
-  const lit = new Set((island.landmarks?.items ?? []).filter((l) => l.lit).map((l) => l.slug));
+  const lit = new Set(marks.items.filter((l) => l.lit).map((l) => l.slug));
   for (const slug of lit) if (!litAt.has(slug)) litAt.set(slug, prev ? now() : 0);
   for (const slug of [...litAt.keys()]) if (!lit.has(slug)) litAt.delete(slug);
   return litAt;
 }
 
-export function buildNodes(snapshot, previous = new Map()) {
+export function buildNodes(snapshot, previous = new Map(), lens = "judge") {
   const radius = islandRadius(snapshot.islands.length);
   const placedBySlug = new Map(snapshot.islands.filter((i) => i.x !== null && i.y !== null).map((i) => [i.slug, i]));
   return snapshot.islands.map((island) => {
     const prev = previous.get(island.slug);
-    const state = islandState(island);
+    // A lens switch is not a write: a node last seen in the other lens starts with nothing animating.
+    const seen = prev && prev.lens === lens ? prev : null;
+    const state = lensState(island, lens);
+    const marks = lensMarks(island, lens);
     const placed = island.x !== null && island.y !== null;
     let x;
     let y;
@@ -85,6 +106,10 @@ export function buildNodes(snapshot, previous = new Map()) {
       name: island.name,
       island,
       state,
+      lens,
+      marks,
+      lamp: lens === "mentor" ? "explore" : "lamp", // the PALETTE key a lit mark's lamp is drawn in
+      rollup: lens === "judge" && !island.verdict && island.children.total > 0,
       mass: 1,
       radius,
       seed: hashSeed(island.slug),
@@ -94,17 +119,18 @@ export function buildNodes(snapshot, previous = new Map()) {
       vx: prev && !placed ? prev.vx : 0,
       vy: prev && !placed ? prev.vy : 0,
       pinned: placed,
-      stateAt: prev ? (prev.state !== state ? now() : prev.stateAt) : 0,
-      litAt: litTimes(island, prev),
+      stateAt: seen ? (seen.state !== state ? now() : seen.stateAt) : 0,
+      litAt: litTimes(marks, seen),
     };
   });
 }
 
-export function buildLinks(snapshot, nodes) {
+/** Straits are verdict marks: the mentor lens hides them. */
+export function buildLinks(snapshot, nodes, lens = "judge") {
   const bySlug = new Map(nodes.map((n) => [n.slug, n]));
   return snapshot.straits
     .filter((s) => bySlug.has(s.from) && bySlug.has(s.to))
-    .map((s) => ({ source: bySlug.get(s.from), target: bySlug.get(s.to), strait: s, state: s.verdict ? s.verdict.state : "open" }));
+    .map((s) => ({ source: bySlug.get(s.from), target: bySlug.get(s.to), strait: s, state: s.verdict ? s.verdict.state : "open", hidden: lens === "mentor" }));
 }
 
 // ---- the strip: what the chrome says about this scale, each cell with a hint that explains it ----
@@ -114,11 +140,13 @@ export const HINTS = {
   homePort: "The harbour, already charted. Sail on from here to the nearest open water.",
   openWater: "Islands with no verdict yet, nearest first. Select one and make landfall to chart it with the Keeper.",
   reefs: "A reef is a confident claim the Keeper found wrong. Open the island and answer the Keeper to clear it.",
+  explored: "Landmarks you have explored with the mentor at this scale. Exploring is not charting: the Keeper still probes every one.",
+  unexplored: "Islands where you have explored nothing yet, in map order. Select one and press Explore with the mentor.",
   cartographer: "Requests waiting for the cartographer, Claude in the terminal, who sketches the islands. Open a terminal in this project and run /archipelago-chart: it reads these first and marks them read.",
 };
 
-/** The strip's cells for a snapshot: `[{ label, value, hint }]`. */
-export function stripItems(s) {
+/** The strip's cells for a snapshot in a lens: `[{ label, value, hint }]`. */
+export function stripItems(s, lens = "judge") {
   const nameOf = (slug) => s.islands.find((i) => i.slug === slug)?.name ?? slug;
   const items = [];
   if (s.harbour) {
@@ -126,10 +154,18 @@ export function stripItems(s) {
     const charted = Boolean(h && h.verdict);
     items.push({ label: charted ? "Home port" : "Set out from", value: nameOf(s.harbour), hint: charted ? HINTS.homePort : HINTS.harbour });
   }
-  const open = s.nearestOpenWater.slice(0, 4).map(nameOf);
-  items.push({ label: "Nearest open water", value: open.length ? open.join(" · ") : "none at this scale", hint: HINTS.openWater });
-  const reefs = s.reefs.map((r) => (r.startsWith("island:") ? nameOf(r.slice(7)) : r.replace("strait:", "strait ")));
-  items.push({ label: "Reefs", value: reefs.length ? reefs.join(" · ") : "none charted", hint: HINTS.reefs });
+  if (lens === "mentor") {
+    const total = s.islands.reduce((n, i) => n + (i.landmarks?.total ?? 0), 0);
+    const explored = s.islands.reduce((n, i) => n + (i.landmarks?.explored ?? 0), 0);
+    items.push({ label: "Explored", value: total ? `${explored} of ${total} landmarks` : "no landmarks yet", hint: HINTS.explored });
+    const fresh = s.islands.filter((i) => !(i.landmarks?.explored > 0)).slice(0, 4).map((i) => i.name);
+    items.push({ label: "Not yet explored", value: fresh.length ? fresh.join(" · ") : "none at this scale", hint: HINTS.unexplored });
+  } else {
+    const open = s.nearestOpenWater.slice(0, 4).map(nameOf);
+    items.push({ label: "Nearest open water", value: open.length ? open.join(" · ") : "none at this scale", hint: HINTS.openWater });
+    const reefs = s.reefs.map((r) => (r.startsWith("island:") ? nameOf(r.slice(7)) : r.replace("strait:", "strait ")));
+    items.push({ label: "Reefs", value: reefs.length ? reefs.join(" · ") : "none charted", hint: HINTS.reefs });
+  }
   const unread = s.unread ?? [];
   if (unread.length) {
     const words = unread.map((c) => {

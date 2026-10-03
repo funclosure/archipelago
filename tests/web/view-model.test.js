@@ -1,5 +1,5 @@
 import { test, expect } from "bun:test";
-import { hashSeed, seededRandom, islandRadius, buildNodes, buildLinks, WORLD, stripItems, HINTS } from "../../src/web/view-model.js";
+import { hashSeed, seededRandom, islandRadius, buildNodes, buildLinks, WORLD, stripItems, HINTS, landmarkLit, lensState, lensMarks } from "../../src/web/view-model.js";
 
 const island = (slug, verdict = null, pos = { x: null, y: null }, byState = { sandbar: 0, settled: 0, mountainous: 0, reef: 0, open: 0 }) => ({
   slug, name: slug, summary: null, hasChildren: Object.values(byState).some(Boolean), verdict, x: pos.x, y: pos.y,
@@ -109,4 +109,53 @@ test("stripItems: harbour, open water, reefs, and the cartographer's requests, e
     { kind: "sail_closer", target: "island:caching" }, { kind: "note", target: "domain:sd" }, { kind: "dispute", target: "island:db" },
   ] });
   expect(three[2].value).toBe("sail closer · caching · note +1");
+});
+
+test("a landmark is lit in the judge's lens by the judge, in the mentor's by being explored", () => {
+  const lit = { slug: "a", name: "A", lit: true, evidence: "q", exploredAt: null };
+  const explored = { slug: "b", name: "B", lit: false, evidence: null, exploredAt: "2026-10-01T00:00:00.000Z" };
+  expect([landmarkLit(lit), landmarkLit(explored)]).toEqual([true, false]);
+  expect([landmarkLit(lit, "mentor"), landmarkLit(explored, "mentor")]).toEqual([false, true]);
+  expect(landmarkLit({ slug: "c", name: "C", lit: false, evidence: null }, "mentor")).toBe(false); // an older snapshot without the field
+  const reefy = { ...island("q", { state: "reef" }), landmarks: { total: 2, unlocked: 1, explored: 1, items: [lit, explored] } };
+  expect(lensState(reefy)).toBe("reef");
+  expect(lensState(reefy, "mentor")).toBe("open");
+  expect(lensMarks(reefy, "mentor")).toEqual({ total: 2, items: [{ slug: "a", lit: false }, { slug: "b", lit: true }] });
+});
+
+test("the mentor lens draws no elevation, reef, rollup, or strait, and lights explored landmarks in their own lamp; a switch animates nothing", () => {
+  const items = [
+    { slug: "a", name: "A", lit: true, evidence: "q", exploredAt: null },
+    { slug: "b", name: "B", lit: false, evidence: null, exploredAt: "2026-10-01T00:00:00.000Z" },
+  ];
+  const reefy = { ...island("caching", { state: "reef" }), landmarks: { total: 2, unlocked: 1, explored: 1, items } };
+  const parent = island("db", null, { x: null, y: null }, { sandbar: 0, settled: 2, mountainous: 0, reef: 0, open: 1 });
+  const snap = snapshot([reefy, parent], [{ from: "caching", to: "db", name: null, verdict: { state: "settled" } }]);
+  const judging = buildNodes(snap);
+  expect(judging[0]).toMatchObject({ lens: "judge", state: "reef", lamp: "lamp", rollup: false });
+  expect(judging[1].rollup).toBe(true);
+  expect(judging[0].marks.items.map((m) => [m.slug, m.lit])).toEqual([["a", true], ["b", false]]);
+  const mentoring = buildNodes(snap, new Map(judging.map((n) => [n.slug, n])), "mentor");
+  expect(mentoring[0]).toMatchObject({ lens: "mentor", state: "open", lamp: "explore", rollup: false });
+  expect(mentoring[1].rollup).toBe(false);
+  expect(mentoring[0].marks.items.map((m) => [m.slug, m.lit])).toEqual([["a", false], ["b", true]]);
+  expect(mentoring[0].stateAt).toBe(0);
+  expect(mentoring[0].litAt.get("b")).toBe(0);
+  expect(mentoring[0].x).toBe(judging[0].x); // the switch keeps provisional positions
+  expect(buildLinks(snap, mentoring, "mentor")[0].hidden).toBe(true);
+  expect(buildLinks(snap, judging)[0].hidden).toBe(false);
+});
+
+test("stripItems in the mentor lens counts explored landmarks and names islands with nothing explored", () => {
+  const lm = (explored, total) => ({ total, unlocked: 0, explored, items: [] });
+  const s = {
+    ...snapshot([{ ...island("caching"), landmarks: lm(2, 4) }, { ...island("queues"), landmarks: lm(0, 4) }, island("db")]),
+    harbour: null, nearestOpenWater: ["queues"], reefs: ["island:db"], unread: [{ kind: "note", target: "domain:sd" }],
+  };
+  const items = stripItems(s, "mentor");
+  expect(items.map((i) => i.label)).toEqual(["Explored", "Not yet explored", "For the cartographer"]);
+  expect(items[0]).toEqual({ label: "Explored", value: "2 of 8 landmarks", hint: HINTS.explored });
+  expect(items[1]).toEqual({ label: "Not yet explored", value: "queues · db", hint: HINTS.unexplored });
+  expect(stripItems({ ...s, islands: [island("x")] }, "mentor")[0].value).toBe("no landmarks yet");
+  expect(stripItems(s).map((i) => i.label)).toEqual(["Nearest open water", "Reefs", "For the cartographer"]); // the judge's lens is unchanged
 });

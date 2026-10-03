@@ -1,6 +1,6 @@
 // One keydown listener for the page. Exactly one region (outline, map, pane) has focus; keys go to it.
 // Global keys (Tab, [, ?, /, Escape, Cmd-Enter) are handled here; everything else is the region's.
-import { app } from "./app.js";
+import { app, toggleMode } from "./app.js";
 import { select } from "./interactions.js";
 import { REGIONS, nextRegion, isTyping, escapeRung, cheatSheet } from "./keys-model.js";
 import { cycleTheme } from "./theme.js";
@@ -154,6 +154,11 @@ function onKeydown(e) {
   if (e.key === "t") {
     e.preventDefault();
     cycleTheme();
+    return;
+  }
+  if (e.key === "m") {
+    e.preventDefault();
+    toggleMode();
     return;
   }
   if (e.key === "/") {

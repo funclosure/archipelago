@@ -1,7 +1,7 @@
 :root {
   /* Contour palette */
   --sea: #1B3F5B; --line-1: #FFFFFF; --line-07: rgba(255, 255, 255, .7); --line-03: rgba(255, 255, 255, .45);
-  --lamp: #F5C242; --reef: #D9473A; --sand-fill: #E7D39A; --grass: #6FAF5E; --snow: #F2F4F1;
+  --lamp: #F5C242; --reef: #D9473A; --sand-fill: #E7D39A; --grass: #6FAF5E; --snow: #F2F4F1; --explore: #5EC8D8;
   /* the chrome's names, aliased onto the palette */
   --water: var(--sea); --text: rgba(255, 255, 255, .92); --muted: rgba(255, 255, 255, .65);
   --sand: var(--lamp); --land: var(--grass); --ridge: var(--snow);
@@ -18,7 +18,7 @@
 /* Paper chart: cream ground, ink lines. Every literal colour token of :root, redefined (tests/web/theme-tokens.test.js). */
 :root[data-theme="chart"] {
   --sea: #EFE6D2; --line-1: #24405E; --line-07: rgba(36, 64, 94, .7); --line-03: rgba(36, 64, 94, .45);
-  --lamp: #B8861B; --reef: #B8392E; --sand-fill: #D2AE55; --grass: #4E8A45; --snow: #FFFFFF;
+  --lamp: #B8861B; --reef: #B8392E; --sand-fill: #D2AE55; --grass: #4E8A45; --snow: #FFFFFF; --explore: #2A7F8E;
   --text: rgba(20, 32, 48, .92); --muted: rgba(20, 32, 48, .62); --text-2: rgba(20, 32, 48, .8);
   --panel: #F8F3E7; --panel-2: #E4D9C0; --line: rgba(36, 64, 94, .18); --open: rgba(36, 64, 94, .45);
   --on-land: #FFFFFF;
@@ -54,6 +54,13 @@ html, body { margin: 0; height: 100%; background: var(--water); color: var(--tex
 .strip-item:last-child .hint { left: auto; right: 0; }
 .strip-item:hover .hint, .strip-item.open .hint { display: block; }
 .strip-label { color: var(--muted); text-transform: uppercase; letter-spacing: .08em; font-size: 10px; }
+/* the lens switch: Keeper (what you have demonstrated) or Mentor (where you have explored) */
+.mode-switch { display: inline-flex; align-self: flex-start; border: 1px solid var(--line); border-radius: 999px; overflow: hidden; }
+.mode-switch .seg { background: transparent; border: 0; color: var(--muted); font: 11px system-ui, sans-serif; letter-spacing: .06em;
+  text-transform: uppercase; padding: 4px 10px; cursor: pointer; }
+.mode-switch .seg:hover { color: var(--text); }
+.mode-switch .seg.on { background: var(--panel-2); color: var(--text); }
+body[data-mode="mentor"] .mode-switch .seg.on { color: var(--explore); }
 
 /* ---- the pane: head, log, foot ---- */
 .pane { position: fixed; top: 0; right: 0; bottom: 0; width: var(--pane-w); background: var(--panel);

@@ -63,7 +63,7 @@ export function moveCursor(rows, cursorSlug, key) {
   }
 }
 
-const EVERYWHERE = [["Tab", "next region"], ["⇧Tab", "previous region"], ["[", "outline"], ["/", "answer"], ["b", "board"], ["t", "theme"], ["?", "keys"], ["Esc", "back"]];
+const EVERYWHERE = [["Tab", "next region"], ["⇧Tab", "previous region"], ["[", "outline"], ["/", "answer"], ["b", "board"], ["m", "keeper / mentor"], ["t", "theme"], ["?", "keys"], ["Esc", "back"]];
 const REGION_KEYS = {
   outline: { title: "Outline", keys: [["↓ j", "move"], ["↑ k", "move"], ["↵", "select"], ["→ ←", "expand / collapse"], ["Home End", "first / last"]] },
   map: { title: "Map", keys: [["↵", "select"], ["← → ↑ ↓", "pan"], ["+ −", "zoom"], ["0", "home"], ["Esc", "deselect"]] },

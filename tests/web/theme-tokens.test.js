@@ -1,10 +1,11 @@
 import { test, expect } from "bun:test";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { THEMES } from "../../src/web/theme-model.js";
 
 const css = readFileSync(resolve(import.meta.dir, "../../src/web/styles.css"), "utf8");
 const SIZES = new Set(["--outline-w", "--pane-w"]);
-const PALETTE = ["--sea", "--line-1", "--lamp", "--reef", "--sand-fill", "--grass", "--snow"];
+const PALETTE = ["--sea", "--line-1", "--lamp", "--reef", "--sand-fill", "--grass", "--snow", "--explore"];
 
 function block(selector) {
   const start = css.indexOf(`${selector} {`);
@@ -34,4 +35,11 @@ test("the canvas tokens are six-digit hex in both themes", () => {
 test("no literal colour survives outside the token blocks", () => {
   const body = css.replace(/:root(\[data-theme="\w+"\])? \{[^}]*\}/g, "");
   expect(body.match(/rgba?\(|#[0-9A-Fa-f]{6}\b/g) ?? []).toEqual([]);
+});
+
+test("every registered theme defines --explore, the mentor lens's lamp, as six-digit hex", () => {
+  for (const t of THEMES) {
+    const b = block(t.id === THEMES[0].id ? ":root" : `:root[data-theme="${t.id}"]`);
+    expect(b["--explore"]).toMatch(/^#[0-9A-Fa-f]{6}$/);
+  }
 });

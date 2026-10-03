@@ -86,3 +86,7 @@ test("cheatSheet shows the board keys in the map's slot while the board is open"
   expect(cheatSheet("pane", { board: true })[1].title).toBe("Pane");
   expect(cheatSheet("map")[0].keys).toContainEqual(["b", "board"]);
 });
+
+test("the cheat sheet lists m, the switch between the Keeper and the mentor", () => {
+  expect(cheatSheet("outline")[0].keys).toContainEqual(["m", "keeper / mentor"]);
+});

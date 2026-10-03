@@ -1,5 +1,5 @@
-// Contour: how an island is drawn. Reads derived fields only (state, landmarks, harbour, children, strait verdicts)
-// and keeps no state of its own; the three write animations run off the timestamps the view model puts on nodes.
+// Contour: how an island is drawn. Reads derived fields only (state, marks, lamp, rollup, harbour, children, strait verdicts)
+// and keeps no state of its own; the lens is already applied by the view model, and the write animations run off its timestamps.
 import {
   CENTRE, COAST, LAMP_R, SOUNDING_R, RING_STEP, ROLLUP_R, SNOW_R, HALO_R, ANCHOR, NAME_Y, LEVEL,
   boxScale, ringPoints, arcRanges, arcIndices, polar, rollupSegments, hatchLines, polylineLength,
@@ -13,6 +13,7 @@ export const PALETTE = {
   sand: "#E7D39A",
   grass: "#6FAF5E",
   snow: "#F2F4F1",
+  explore: "#5EC8D8",
 };
 
 const LAMP_MS = 300;
@@ -26,7 +27,7 @@ function progress(since, ms, now) {
   return Math.min(1, (now - since) / ms);
 }
 
-/** The theme pushes its seven canvas tokens here; every draw call reads PALETTE at draw time. */
+/** The theme pushes its eight canvas tokens here; every draw call reads PALETTE at draw time. */
 export function setPalette(p) {
   Object.assign(PALETTE, p);
 }
@@ -117,7 +118,7 @@ function drawRollup(ctx, node) {
 
 /** The coastline: one arc per landmark, dotted while dark (with a sounding), firm once lit. */
 function drawCoast(ctx, node, coast, now) {
-  const lm = node.island.landmarks;
+  const lm = node.marks;
   const total = lm ? lm.total : 0;
   const dotted = () => {
     ctx.setLineDash([1, 5]);
@@ -163,7 +164,7 @@ function drawCoast(ctx, node, coast, now) {
 
 /** One lamp per landmark just outside the coast: a hollow ring while dark, a lit dot with a halo once lit. */
 function drawLamps(ctx, node, now) {
-  const lm = node.island.landmarks;
+  const lm = node.marks;
   if (!lm || !lm.total) return;
   arcRanges(lm.total).forEach((arc, k) => {
     const p = polar(arc.mid, LAMP_R);
@@ -172,11 +173,11 @@ function drawLamps(ctx, node, now) {
       const t = progress(node.litAt.get(item.slug), LAMP_MS, now);
       ctx.beginPath();
       ctx.arc(p.x, p.y, 7, 0, Math.PI * 2);
-      ctx.fillStyle = alpha(PALETTE.lamp, 0.22 * t);
+      ctx.fillStyle = alpha(PALETTE[node.lamp], 0.22 * t);
       ctx.fill();
       ctx.beginPath();
       ctx.arc(p.x, p.y, 3, 0, Math.PI * 2);
-      ctx.fillStyle = PALETTE.lamp;
+      ctx.fillStyle = PALETTE[node.lamp];
       ctx.fill();
     } else {
       ctx.beginPath();
@@ -216,7 +217,7 @@ export function drawIsland(ctx, node, { dim = false, selected = false, hovered =
   ctx.lineJoin = "round";
   const coast = ringPoints(node.seed, COAST);
   fillInterior(ctx, node.state, coast);
-  if (!isl.verdict && isl.children.total > 0) drawRollup(ctx, node);
+  if (node.rollup) drawRollup(ctx, node);
   else drawElevation(ctx, node, now);
   if (node.state === "reef") drawHatch(ctx, coast);
   drawCoast(ctx, node, coast, now);
@@ -247,7 +248,7 @@ export function drawIsland(ctx, node, { dim = false, selected = false, hovered =
 export function drawStrait(ctx, link, { dim = false } = {}) {
   const a = link.source;
   const b = link.target;
-  if (!a.island.verdict || !b.island.verdict) return;
+  if (link.hidden || !a.island.verdict || !b.island.verdict) return;
   const sa = boxScale(a.radius);
   const sb = boxScale(b.radius);
   const dx = b.x - a.x;

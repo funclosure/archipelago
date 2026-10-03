@@ -7,7 +7,7 @@ export const THEMES = [
 ];
 export const DEFAULT_THEME = THEMES[0].id;
 /** The canvas palette's names → the tokens they are read from (six-digit hex in every theme). */
-export const PALETTE_TOKENS = { sea: "--sea", line: "--line-1", lamp: "--lamp", reef: "--reef", sand: "--sand-fill", grass: "--grass", snow: "--snow" };
+export const PALETTE_TOKENS = { sea: "--sea", line: "--line-1", lamp: "--lamp", reef: "--reef", sand: "--sand-fill", grass: "--grass", snow: "--snow", explore: "--explore" };
 /** Mermaid's colour variables → the tokens they are read from. */
 export const MERMAID_TOKENS = {
   background: "--sea", primaryColor: "--panel-2", primaryTextColor: "--text", primaryBorderColor: "--line-03", lineColor: "--lamp",

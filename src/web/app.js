@@ -8,6 +8,7 @@ import { installOutline } from "./outline.js";
 import { installKeys } from "./keys.js";
 import { installBoard } from "./board.js";
 import { installTheme } from "./theme.js";
+import { MODES, MODE_LABELS, MODE_HINTS, modeKey, storedMode, nextMode } from "./mode-model.js";
 
 const canvas = document.getElementById("map");
 const ctx = canvas.getContext("2d");
@@ -22,6 +23,7 @@ export const app = {
   links: [],
   hover: null,      // slug under the pointer
   selected: null,   // slug with the card open
+  mode: "judge",    // the lens on the map and who answers in the pane; stored per domain
   connected: true,
   version: null,
   sim: createSimulation(),
@@ -65,6 +67,37 @@ export function setScale(slug) {
   return refresh();
 }
 
+/** Switches the lens and the pane's persona. Stored per domain; the map redraws from the snapshot it already has. */
+export function setMode(mode) {
+  const next = storedMode(mode);
+  if (next === app.mode) return;
+  app.mode = next;
+  document.body.dataset.mode = next;
+  try {
+    localStorage.setItem(modeKey(app.domain), next);
+  } catch {
+    /* storage unavailable */
+  }
+  if (!app.snapshot) return;
+  app.nodes = buildNodes(app.snapshot, new Map(app.nodes.map((n) => [n.slug, n])), next);
+  app.links = buildLinks(app.snapshot, app.nodes, next);
+  app.sim.setGraph(app.nodes, app.links, app.sim.alpha); // keep whatever placement heat there was
+  renderChrome();
+  for (const fn of app.listeners) fn(app.snapshot);
+}
+
+export function toggleMode() {
+  setMode(nextMode(app.mode));
+}
+
+function readMode(domain) {
+  try {
+    return storedMode(localStorage.getItem(modeKey(domain)));
+  } catch {
+    return storedMode(null);
+  }
+}
+
 let refreshGen = 0;
 /** The newest refresh: a superseded one waits for it, so `await setScale(…)` resolves only once the new scale is on the map. */
 let latestRefresh = Promise.resolve();
@@ -98,8 +131,8 @@ function applySnapshot(snapshot) {
   const isFirstSnapshot = app.snapshot === null;
   app.snapshot = snapshot;
   app.version = snapshot.version;
-  app.nodes = buildNodes(snapshot, previous);
-  app.links = buildLinks(snapshot, app.nodes);
+  app.nodes = buildNodes(snapshot, previous, app.mode);
+  app.links = buildLinks(snapshot, app.nodes, app.mode);
   // The simulation exists only to place islands that have no stored position; placed ones are pinned.
   app.sim.setGraph(app.nodes, app.links, unplaced().length ? (sameScale ? 0.5 : 1) : 0);
   if (!sameScale) {
@@ -264,10 +297,29 @@ function stripItem({ label, value, hint }) {
   return el;
 }
 
+/** The two-segment lens switch that leads the strip. */
+function modeSwitchEl() {
+  const wrap = document.createElement("div");
+  wrap.className = "mode-switch";
+  wrap.setAttribute("role", "group");
+  wrap.setAttribute("aria-label", "Lens");
+  for (const m of MODES) {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = `seg${m === app.mode ? " on" : ""}`;
+    b.textContent = MODE_LABELS[m];
+    b.title = `${MODE_HINTS[m]}  [m]`;
+    b.setAttribute("aria-pressed", String(m === app.mode));
+    b.addEventListener("click", () => setMode(m));
+    wrap.append(b);
+  }
+  return wrap;
+}
+
 function renderStrip() {
   const strip = document.getElementById("strip");
   if (!app.snapshot) return;
-  strip.replaceChildren(...stripItems(app.snapshot).map(stripItem));
+  strip.replaceChildren(modeSwitchEl(), ...stripItems(app.snapshot, app.mode).map(stripItem));
 }
 
 function renderStatus() {
@@ -290,7 +342,7 @@ function frame(now) {
   if (focusSlug) {
     near.add(focusSlug);
     for (const l of app.links) {
-      if (!l.source.island.verdict || !l.target.island.verdict) continue; // only charted channels count as near
+      if (l.hidden || !l.source.island.verdict || !l.target.island.verdict) continue; // only drawn, charted channels count as near
       if (l.source.slug === focusSlug) near.add(l.target.slug);
       if (l.target.slug === focusSlug) near.add(l.source.slug);
     }
@@ -316,6 +368,8 @@ async function boot() {
     url.searchParams.set("domain", app.domain);
     history.replaceState(null, "", url);
   }
+  app.mode = readMode(app.domain);
+  document.body.dataset.mode = app.mode;
   app.sim.setCenter(WORLD / 2, WORLD / 2);
   resize();
   window.addEventListener("resize", resize);
