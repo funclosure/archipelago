@@ -54,3 +54,9 @@ test("removeCard deletes and returns the card; requireCard scopes to the island"
   expect(listCards(db, islandId)).toEqual([]);
   expect(() => removeCard(db, a.id)).toThrow(NotFoundError);
 });
+
+test("a card may be the mentor's, and keeps that author", () => {
+  const c = addCard(db, { domainId, islandId, kind: "note", title: "Analogy", body: "a pantry by the stove", author: "mentor" });
+  expect(c.author).toBe("mentor");
+  expect(updateCard(db, c.id, { body: "a pantry, emptied overnight" }).author).toBe("mentor");
+});

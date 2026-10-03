@@ -57,3 +57,15 @@ test("parseProposal rejects bodies that are not proposals", () => {
   expect(() => parseProposal("not json")).toThrow();
   expect(() => parseProposal(JSON.stringify({ claim: "x" }))).toThrow();
 });
+
+test("threads are per mode: listMessages reads the judge thread unless asked for the mentor's", () => {
+  const j = addMessage(db, { domainId, islandId: caching, role: "judge", kind: "text", body: "Explain caching." });
+  const m = addMessage(db, { domainId, islandId: caching, role: "mentor", kind: "text", body: "Caching is a pantry by the stove.", mode: "mentor" });
+  addMessage(db, { domainId, islandId: caching, role: "you", kind: "text", body: "so it goes stale?", mode: "mentor" });
+  expect(j.mode).toBe("judge");
+  expect(listMessages(db, caching).map((x) => x.id)).toEqual([j.id]);
+  expect(listMessages(db, caching, "judge").map((x) => x.id)).toEqual([j.id]);
+  expect(listMessages(db, caching, "mentor").map((x) => [x.role, x.mode])).toEqual([["mentor", "mentor"], ["you", "mentor"]]);
+  expect(getMessage(db, m.id)?.mode).toBe("mentor");
+  expect(countMessages(db, [caching])).toEqual(new Map([[caching, 3]])); // the snapshot's count is the island's, both threads
+});

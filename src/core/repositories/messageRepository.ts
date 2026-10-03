@@ -1,9 +1,9 @@
 import type { Database } from "bun:sqlite";
 import { z } from "zod";
 import { ConflictError, NotFoundError } from "../errors.ts";
-import { reefStatuses, type Message, type MessageKind, type MessageRole, type ReefProposal, type ReefStatus } from "../types.ts";
+import { reefStatuses, type Message, type MessageKind, type MessageMode, type MessageRole, type ReefProposal, type ReefStatus } from "../types.ts";
 
-const COLS = "id, domain_id as domainId, island_id as islandId, role, kind, body, created_at as createdAt";
+const COLS = "id, domain_id as domainId, island_id as islandId, role, kind, body, mode, created_at as createdAt";
 
 export type MessageInsert = {
   domainId: number;
@@ -11,6 +11,8 @@ export type MessageInsert = {
   role: MessageRole;
   kind: MessageKind;
   body: string;
+  /** The thread: the judge's unless said otherwise. */
+  mode?: MessageMode;
 };
 
 const proposalSchema = z.object({
@@ -26,14 +28,18 @@ const proposalSchema = z.object({
 export function addMessage(db: Database, input: MessageInsert): Message {
   return db
     .query<Message, Record<string, string | number>>(
-      `insert into messages (domain_id, island_id, role, kind, body)
-       values ($domainId, $islandId, $role, $kind, $body) returning ${COLS}`,
+      `insert into messages (domain_id, island_id, role, kind, body, mode)
+       values ($domainId, $islandId, $role, $kind, $body, $mode) returning ${COLS}`,
     )
-    .get({ $domainId: input.domainId, $islandId: input.islandId, $role: input.role, $kind: input.kind, $body: input.body })!;
+    .get({
+      $domainId: input.domainId, $islandId: input.islandId, $role: input.role, $kind: input.kind, $body: input.body,
+      $mode: input.mode ?? "judge",
+    })!;
 }
 
-export function listMessages(db: Database, islandId: number): Message[] {
-  return db.query<Message, [number]>(`select ${COLS} from messages where island_id = ? order by id`).all(islandId);
+/** One thread of an island, in order: the judge's by default, the mentor's when asked. */
+export function listMessages(db: Database, islandId: number, mode: MessageMode = "judge"): Message[] {
+  return db.query<Message, [number, string]>(`select ${COLS} from messages where island_id = ? and mode = ? order by id`).all(islandId, mode);
 }
 
 export function getMessage(db: Database, id: number): Message | null {

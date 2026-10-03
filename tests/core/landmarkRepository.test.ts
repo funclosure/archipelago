@@ -6,7 +6,7 @@ import { upsertIsland } from "../../src/core/repositories/islandRepository.ts";
 import { addMessage } from "../../src/core/repositories/messageRepository.ts";
 import { getViewState } from "../../src/core/repositories/viewStateRepository.ts";
 import {
-  upsertLandmark, setLandmarks, unlockLandmark, listLandmarks, listLandmarksByIsland,
+  upsertLandmark, setLandmarks, unlockLandmark, exploreLandmark, listLandmarks, listLandmarksByIsland,
 } from "../../src/core/repositories/landmarkRepository.ts";
 import { ConflictError, NotFoundError } from "../../src/core/errors.ts";
 
@@ -73,4 +73,26 @@ test("deleting the island cascades its landmarks and bumps the version", () => {
   db.run("delete from islands where id = ?", [queues]);
   expect(db.query<{ n: number }, []>("select count(*) as n from landmarks").get()!.n).toBe(0);
   expect(getViewState(db, domainId).version).toBeGreaterThan(v);
+});
+
+test("explore marks a landmark once, in its own columns apart from lit, and bumps the version", () => {
+  setLandmarks(db, domainId, caching, [{ slug: "a", name: "A" }, { slug: "b", name: "B" }]);
+  const m = addMessage(db, { domainId, islandId: caching, role: "you", kind: "text", body: "so it is like NSCache", mode: "mentor" });
+  const v1 = getViewState(db, domainId).version;
+  const first = exploreLandmark(db, caching, "a", "like NSCache", m.id);
+  expect(first.changed).toBe(true);
+  expect(first.landmark).toMatchObject({ slug: "a", exploredEvidence: "like NSCache", exploredMessageId: m.id, unlockedAt: null, evidence: null, messageId: null });
+  expect(first.landmark.exploredAt).not.toBeNull();
+  expect(getViewState(db, domainId).version).toBe(v1 + 1);
+  const again = exploreLandmark(db, caching, "a", "other words", null);
+  expect(again.changed).toBe(false);
+  expect(again.landmark.exploredEvidence).toBe("like NSCache");
+  expect(getViewState(db, domainId).version).toBe(v1 + 1); // a repeat writes nothing
+  unlockLandmark(db, caching, "a", "q", null);
+  expect(listLandmarks(db, caching)[0]).toMatchObject({ exploredEvidence: "like NSCache", evidence: "q" });
+  const missing = (() => { try { exploreLandmark(db, caching, "zzz", "x", null); } catch (e) { return e; } })() as NotFoundError;
+  expect(missing).toBeInstanceOf(NotFoundError);
+  expect(missing.valid).toEqual(["a", "b"]);
+  db.run("delete from messages where id = ?", [m.id]);
+  expect(listLandmarks(db, caching)[0]!.exploredMessageId).toBeNull();
 });

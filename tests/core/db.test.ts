@@ -1,6 +1,6 @@
 import { test, expect } from "bun:test";
 import { Database } from "bun:sqlite";
-import { readFileSync, mkdtempSync, rmSync } from "node:fs";
+import { readFileSync, readdirSync, mkdtempSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { openDatabase } from "../../src/core/db.ts";
@@ -43,7 +43,7 @@ test("0002 adds nullable island positions", () => {
   expect(cols).toContain("x");
   expect(cols).toContain("y");
   const versions = db.query<{ version: string }, []>("select version from schema_migrations order by version").all().map((r) => r.version);
-  expect(versions).toEqual(["0001_initial", "0002_positions", "0003_threads", "0004_landmarks", "0005_harbour", "0006_asks", "0007_board"]);
+  expect(versions).toEqual(["0001_initial", "0002_positions", "0003_threads", "0004_landmarks", "0005_harbour", "0006_asks", "0007_board", "0008_mentor"]);
 });
 
 test("0002 upgrades a database created with 0001 only", () => {
@@ -63,7 +63,7 @@ test("0002 upgrades a database created with 0001 only", () => {
     .get(domainId)!.version;
 
   const ran = migrateDatabase(db);
-  expect(ran).toEqual(["0002_positions", "0003_threads", "0004_landmarks", "0005_harbour", "0006_asks", "0007_board"]);
+  expect(ran).toEqual(["0002_positions", "0003_threads", "0004_landmarks", "0005_harbour", "0006_asks", "0007_board", "0008_mentor"]);
 
   const island = db.query<{ x: number | null; y: number | null }, []>("select x, y from islands where slug = 'caching'").get();
   expect(island).toEqual({ x: null, y: null });
@@ -158,4 +158,68 @@ test("a migration another connection applied first is skipped, not run twice", (
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
+});
+
+test("0008 rebuilds messages and board cards in place: ids, links, and authors survive; every message lands in the judge thread", () => {
+  const db = new Database(":memory:");
+  db.exec("pragma foreign_keys = on");
+  db.exec("create table schema_migrations (version text primary key, applied_at text not null default (strftime('%Y-%m-%dT%H:%M:%fZ','now')))");
+  const dir = new URL("../../src/core/migrations/", import.meta.url);
+  for (const file of readdirSync(dir).filter((f) => f.endsWith(".sql") && f < "0008").sort()) {
+    db.exec(readFileSync(new URL(file, dir), "utf8"));
+    db.run("insert into schema_migrations (version) values (?)", [file.replace(/\.sql$/, "")]);
+  }
+  db.run("insert into domains (slug, name) values ('sd', 'System Design')");
+  db.run("insert into islands (domain_id, slug, name) values (1, 'caching', 'Caching')");
+  for (const body of ["Explain caching.", "hot data close", "landmark lit: Hit ratio", "gone"]) {
+    db.run("insert into messages (domain_id, island_id, role, kind, body) values (1, 1, 'judge', 'text', ?)", [body]);
+  }
+  db.run("delete from messages where body = 'gone'"); // the id sequence now runs ahead of the largest id
+  db.run(
+    "insert into landmarks (domain_id, island_id, slug, name, unlocked_at, evidence, message_id) values (1, 1, 'hit-ratio', 'Hit ratio', '2026-09-01T00:00:00.000Z', 'hot data close', 2)",
+  );
+  db.run("insert into asks (domain_id, island_id, message_id, question, options) values (1, 1, 1, 'which?', '[\"a\",\"b\"]')");
+  db.run("insert into board_cards (domain_id, island_id, kind, title, body, author) values (1, 1, 'note', 'Claim', 'hot data close', 'you')");
+  const version = () => db.query<{ version: number }, []>("select version from view_state").get()!.version;
+  const before = version();
+
+  expect(migrateDatabase(db)).toEqual(["0008_mentor"]);
+
+  expect(db.query("select id, role, mode from messages order by id").all()).toEqual([
+    { id: 1, role: "judge", mode: "judge" }, { id: 2, role: "judge", mode: "judge" }, { id: 3, role: "judge", mode: "judge" },
+  ]);
+  expect(db.query("select message_id as m from landmarks").get()).toEqual({ m: 2 });
+  expect(db.query("select message_id as m from asks").get()).toEqual({ m: 1 });
+  expect(db.query("select author, title from board_cards").get()).toEqual({ author: "you", title: "Claim" });
+  expect(db.query<{ n: number }, []>("select count(*) as n from learner").get()!.n).toBe(1);
+  expect(version()).toBe(before); // a rebuild is not a write anyone made
+  expect(db.query("pragma foreign_keys").get()).toEqual({ foreign_keys: 1 }); // restored after the rebuild
+  expect(db.query("pragma foreign_key_check").all()).toEqual([]);
+
+  // the sequence carried over: a new message never reuses the deleted id 4
+  const fresh = db
+    .query<{ id: number }, []>("insert into messages (domain_id, island_id, role, kind, body, mode) values (1, 1, 'mentor', 'text', 'hi', 'mentor') returning id")
+    .get()!;
+  expect(fresh.id).toBe(5);
+  expect(version()).toBe(before + 1); // messages_ai is back
+  expect(() => db.run("insert into messages (domain_id, island_id, role, kind, body) values (1, 1, 'bot', 'text', 'x')")).toThrow();
+  expect(() => db.run("insert into messages (domain_id, island_id, role, kind, body, mode) values (1, 1, 'you', 'text', 'x', 'chat')")).toThrow();
+  db.run("insert into board_cards (domain_id, island_id, kind, title, body, author) values (1, 1, 'note', 'Analogy', 'a pantry', 'mentor')");
+  expect(() => db.run("insert into board_cards (domain_id, island_id, kind, title, body, author) values (1, 1, 'note', 't', 'b', 'bot')")).toThrow();
+  // the cascades still point at the rebuilt table
+  db.run("delete from messages where id = 1");
+  expect(db.query<{ n: number }, []>("select count(*) as n from asks").get()!.n).toBe(0);
+  db.run("delete from messages where id = 2");
+  expect(db.query("select message_id as m from landmarks").get()).toEqual({ m: null });
+});
+
+test("0008's learner is one row, and updating it bumps every domain's version", () => {
+  const db = openDatabase(":memory:");
+  db.run("insert into domains (slug, name) values ('a', 'A'), ('b', 'B')");
+  const versions = () => db.query<{ version: number }, []>("select version from view_state order by domain_id").all().map((r) => r.version);
+  expect(versions()).toEqual([0, 0]);
+  expect(db.query("select note from learner").all()).toEqual([{ note: "" }]);
+  db.run("update learner set note = 'iOS engineer'");
+  expect(versions()).toEqual([1, 1]);
+  expect(() => db.run("insert into learner (id) values (2)")).toThrow();
 });

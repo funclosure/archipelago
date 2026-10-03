@@ -3,7 +3,7 @@ import { ConflictError, NotFoundError } from "../errors.ts";
 import type { Landmark } from "../types.ts";
 
 const COLS =
-  "id, domain_id as domainId, island_id as islandId, slug, name, sort_order as sortOrder, unlocked_at as unlockedAt, evidence, message_id as messageId, created_at as createdAt";
+  "id, domain_id as domainId, island_id as islandId, slug, name, sort_order as sortOrder, unlocked_at as unlockedAt, evidence, message_id as messageId, explored_at as exploredAt, explored_evidence as exploredEvidence, explored_message_id as exploredMessageId, created_at as createdAt";
 const NOW = "strftime('%Y-%m-%dT%H:%M:%fZ','now')";
 
 export type LandmarkUpsert = { domainId: number; islandId: number; slug: string; name: string; sortOrder?: number | null };
@@ -73,4 +73,23 @@ export function listLandmarksByIsland(db: Database, islandIds: number[]): Map<nu
     map.set(row.islandId, list);
   }
   return map;
+}
+
+/**
+ * Marks a landmark explored with the mentor. Unknown slug → NotFoundError listing the island's slugs.
+ * Already explored → the row as it is, `changed: false`: a repeat is a no-op, not an error.
+ */
+export function exploreLandmark(
+  db: Database, islandId: number, slug: string, evidence: string, messageId: number | null,
+): { landmark: Landmark; changed: boolean } {
+  const current = listLandmarks(db, islandId);
+  const landmark = current.find((l) => l.slug === slug);
+  if (!landmark) throw new NotFoundError(`no landmark "${slug}" on this island`, current.map((l) => l.slug));
+  if (landmark.exploredAt !== null) return { landmark, changed: false };
+  const row = db
+    .query<Landmark, [string, number | null, number]>(
+      `update landmarks set explored_at = ${NOW}, explored_evidence = ?, explored_message_id = ? where id = ? returning ${COLS}`,
+    )
+    .get(evidence, messageId, landmark.id)!;
+  return { landmark: row, changed: true };
 }

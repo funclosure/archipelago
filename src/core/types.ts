@@ -70,8 +70,12 @@ export type Comment = {
 
 export type ViewState = { domainId: number; focusIslandId: number | null; version: number };
 
-export const messageRoles = ["you", "judge"] as const;
+export const messageRoles = ["you", "judge", "mentor"] as const;
 export type MessageRole = (typeof messageRoles)[number];
+
+/** Each island has two threads, the judge's and the mentor's; a message lives in exactly one. */
+export const messageModes = ["judge", "mentor"] as const;
+export type MessageMode = (typeof messageModes)[number];
 
 export const messageKinds = ["text", "reef_proposal", "system"] as const;
 export type MessageKind = (typeof messageKinds)[number];
@@ -83,6 +87,7 @@ export type Message = {
   role: MessageRole;
   kind: MessageKind;
   body: string;
+  mode: MessageMode;
   createdAt: string;
 };
 
@@ -143,5 +148,12 @@ export type Landmark = {
   unlockedAt: string | null;
   evidence: string | null;
   messageId: number | null;
+  /** Explored with the mentor: the reader engaged it in their own words. Never lit, never a state. */
+  exploredAt: string | null;
+  exploredEvidence: string | null;
+  exploredMessageId: number | null;
   createdAt: string;
 };
+
+/** The one learner row: what the reader says about themselves, read by the mentor in every domain. */
+export type Learner = { note: string; updatedAt: string };
