@@ -5,10 +5,11 @@ import { z } from "zod";
 import { openDatabase } from "../core/db.ts";
 import { ArchipelagoError, ConflictError, NotFoundError } from "../core/errors.ts";
 import {
-  boardPostInputSchema, commentInputSchema, focusInputSchema, positionsInputSchema, probeInputSchema, reefAnswerInputSchema, slugSchema,
+  boardPostInputSchema, commentInputSchema, focusInputSchema, learnerInputSchema, positionsInputSchema, probeInputSchema, reefAnswerInputSchema, slugSchema,
 } from "../core/validators.ts";
 import { attachAsks, listAsks, pickAsk, requireAsk } from "../core/repositories/askRepository.ts";
 import { listCards } from "../core/repositories/boardRepository.ts";
+import { getLearner, setLearnerNote } from "../core/repositories/learnerRepository.ts";
 import { listDomains, requireDomain } from "../core/repositories/domainRepository.ts";
 import { getIslandById, requireIsland, setIslandPositions } from "../core/repositories/islandRepository.ts";
 import { addVerdict, verdictHistory } from "../core/repositories/verdictRepository.ts";
@@ -215,6 +216,13 @@ async function handleApi(req: Request, url: URL, ctx: ServerContext): Promise<Re
     const result = boardWrite({ dbPath: ctx.dbPath, domain, island }, write, "you");
     const version = withDb(ctx, (db) => getViewState(db, requireDomain(db, domain).id).version);
     return json({ ...result, version });
+  }
+
+  if (route === "GET /api/learner") return json(withDb(ctx, getLearner));
+
+  if (route === "POST /api/learner") {
+    const input = learnerInputSchema.parse(await req.json());
+    return json(withDb(ctx, (db) => setLearnerNote(db, input.note)));
   }
 
   if (route === "POST /api/probe") {

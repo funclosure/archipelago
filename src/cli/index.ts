@@ -5,7 +5,7 @@ import { openDatabase } from "../core/db.ts";
 import { ArchipelagoError } from "../core/errors.ts";
 import {
   domainInputSchema, islandInputSchema, islandUpdateSchema, straitInputSchema, verdictInputSchema,
-  sessionEndInputSchema, slugSchema, landmarkInputSchema,
+  sessionEndInputSchema, slugSchema, landmarkInputSchema, learnerInputSchema, modeSchema,
 } from "../core/validators.ts";
 import { listDomains, requireDomain, upsertDomain } from "../core/repositories/domainRepository.ts";
 import {
@@ -18,6 +18,7 @@ import { activeSession, endSession, listSessions, startSession } from "../core/r
 import { markCommentsRead } from "../core/repositories/commentRepository.ts";
 import { listMessages } from "../core/repositories/messageRepository.ts";
 import { listCards } from "../core/repositories/boardRepository.ts";
+import { getLearner, setLearnerNote } from "../core/repositories/learnerRepository.ts";
 import { listLandmarks, upsertLandmark } from "../core/repositories/landmarkRepository.ts";
 import { getViewState, setFocus } from "../core/repositories/viewStateRepository.ts";
 import { buildSnapshot, listCommentViews } from "../core/view-model.ts";
@@ -347,13 +348,14 @@ common(
 );
 
 // ---- thread ----
-const thread = program.command("thread").description("The judge's conversation on one island");
-common(thread.command("show").option("--domain <slug>").option("--island <slug>")).action(
+const thread = program.command("thread").description("An island's conversation: the judge's thread, or the mentor's");
+common(thread.command("show").option("--domain <slug>").option("--island <slug>").option("--mode <mode>", "judge (default) or mentor")).action(
   run((o) =>
     withDb((db) => {
       const d = requireDomain(db, slugSchema.parse(o.domain));
       const i = requireIsland(db, d.id, slugSchema.parse(o.island));
-      return { island: i.slug, messages: listMessages(db, i.id) };
+      const mode = modeSchema.parse(o.mode ?? "judge");
+      return { island: i.slug, mode, messages: listMessages(db, i.id, mode) };
     }),
   ),
 );
@@ -368,6 +370,13 @@ common(board.command("list").option("--domain <slug>").option("--island <slug>")
       return { island: i.slug, cards: listCards(db, i.id) };
     }),
   ),
+);
+
+// ---- learner ----
+const learner = program.command("learner").description("The note the mentor reads about you, in every domain");
+common(learner.command("show")).action(run(() => withDb((db) => getLearner(db))));
+common(learner.command("set").option("--note <text>")).action(
+  run((o) => withDb((db) => setLearnerNote(db, learnerInputSchema.parse(o).note))),
 );
 
 // ---- snapshot ----

@@ -8,6 +8,7 @@ import { requireIsland } from "../../src/core/repositories/islandRepository.ts";
 import { addComment } from "../../src/core/repositories/commentRepository.ts";
 import { addMessage } from "../../src/core/repositories/messageRepository.ts";
 import { addCard } from "../../src/core/repositories/boardRepository.ts";
+import { setLandmarks, exploreLandmark } from "../../src/core/repositories/landmarkRepository.ts";
 
 const ROOT = resolve(import.meta.dir, "../..");
 let dir: string;
@@ -243,4 +244,38 @@ test("harbour: set, show, snapshot, clear, unknown island", () => {
   const bad = cli(["harbour", "set", "--domain", "sd", "--island", "nope"]);
   expect(bad.code).toBe(1);
   expect(bad.json.valid).toEqual(["caching", "databases"]);
+});
+
+test("learner show and set round-trip the one note; more than 1000 characters is refused", () => {
+  expect(cli(["learner", "show"]).json).toMatchObject({ note: "" });
+  const set = cli(["learner", "set", "--note", "iOS engineer; I know memory management well"]);
+  expect(set.code).toBe(0);
+  expect(set.json.note).toBe("iOS engineer; I know memory management well");
+  expect(cli(["learner", "show"]).json.note).toBe("iOS engineer; I know memory management well");
+  const long = cli(["learner", "set", "--note", "x".repeat(1001)]);
+  expect(long.code).toBe(1);
+  expect(long.json).toEqual({ error: "note: a note is at most 1000 characters" });
+});
+
+test("thread show --mode reads one thread; landmark list reports exploredAt", () => {
+  cli(["domain", "add", "--slug", "sd", "--name", "System Design"]);
+  cli(["island", "add", "--domain", "sd", "--slug", "caching", "--name", "Caching"]);
+  const db = openDatabase(dbPath);
+  const d = requireDomain(db, "sd");
+  const i = requireIsland(db, d.id, "caching");
+  addMessage(db, { domainId: d.id, islandId: i.id, role: "judge", kind: "text", body: "Explain caching." });
+  addMessage(db, { domainId: d.id, islandId: i.id, role: "mentor", kind: "text", body: "Caching is a pantry by the stove.", mode: "mentor" });
+  setLandmarks(db, d.id, i.id, [{ slug: "eviction", name: "Eviction" }]);
+  exploreLandmark(db, i.id, "eviction", "a pantry", null);
+  db.close();
+  const judge = cli(["thread", "show", "--domain", "sd", "--island", "caching"]);
+  expect(judge.json).toMatchObject({ island: "caching", mode: "judge" });
+  expect(judge.json.messages.map((m: any) => m.body)).toEqual(["Explain caching."]);
+  const mentor = cli(["thread", "show", "--domain", "sd", "--island", "caching", "--mode", "mentor"]);
+  expect(mentor.json).toMatchObject({ island: "caching", mode: "mentor" });
+  expect(mentor.json.messages.map((m: any) => [m.role, m.body])).toEqual([["mentor", "Caching is a pantry by the stove."]]);
+  expect(cli(["thread", "show", "--domain", "sd", "--island", "caching", "--mode", "tutor"]).code).toBe(1);
+  const lm = cli(["landmark", "list", "--domain", "sd", "--island", "caching"]).json.landmarks[0];
+  expect(lm).toMatchObject({ slug: "eviction", unlockedAt: null, exploredEvidence: "a pantry" });
+  expect(lm.exploredAt).not.toBeNull();
 });

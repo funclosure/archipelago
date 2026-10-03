@@ -506,3 +506,16 @@ test("a read through a rebinding hostname is refused", async () => {
   const okRes = await fetch(base.replace("127.0.0.1", "localhost") + "/api/domains");
   expect(okRes.status).toBe(200);
 });
+
+test("/api/learner reads and writes the one learner note; the write reaches every domain's map", async () => {
+  expect((await get("/api/learner")).json).toMatchObject({ note: "" });
+  const v0 = (await get("/api/version?domain=sd")).json.version;
+  const set = await post("/api/learner", { note: "  iOS engineer; memory management is solid  " });
+  expect(set.status).toBe(200);
+  expect(set.json.note).toBe("iOS engineer; memory management is solid");
+  expect((await get("/api/learner")).json.note).toBe("iOS engineer; memory management is solid");
+  expect((await get("/api/version?domain=sd")).json.version).toBe(v0 + 1);
+  const long = await post("/api/learner", { note: "x".repeat(1001) });
+  expect(long.status).toBe(400);
+  expect(long.json).toEqual({ error: "note: a note is at most 1000 characters" });
+});

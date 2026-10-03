@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { ArchipelagoError } from "./errors.ts";
-import { boardKinds, codeLangs, commentKinds, commentTargetTypes, verdictStates } from "./types.ts";
+import { boardKinds, codeLangs, commentKinds, commentTargetTypes, messageModes, verdictStates } from "./types.ts";
 
 export const slugSchema = z
   .string()
@@ -189,3 +189,12 @@ const boardScope = { domain: slugSchema, island: slugSchema };
 export const boardPostInputSchema = z
   .discriminatedUnion("op", [boardAdd.extend(boardScope), boardUpdate.extend(boardScope), boardRemove.extend(boardScope)])
   .refine(needsAField, NEEDS_A_FIELD);
+
+/** Which thread: the judge's or the mentor's. */
+export const modeSchema = z.enum(messageModes);
+
+/** The learner note's cap. The mentor's context slices to it as well, so an older, longer row cannot grow the prompt. */
+export const NOTE_MAX = 1000;
+export const learnerInputSchema = z.object({
+  note: z.string().trim().max(NOTE_MAX, `a note is at most ${NOTE_MAX} characters`),
+});
