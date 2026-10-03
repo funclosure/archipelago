@@ -78,6 +78,7 @@ function toggleSheet() {
 function escape(e) {
   const rung = escapeRung({
     sheetOpen,
+    about: handlers.about?.isOpen?.() ?? false,
     menuOpen: handlers.outline?.menuOpen?.() ?? false,
     typing: isTyping(e.target),
     editor: handlers.board?.editing?.() ?? false,
@@ -89,6 +90,7 @@ function escape(e) {
   e.preventDefault();
   e.stopImmediatePropagation();
   if (rung === "sheet") toggleSheet();
+  else if (rung === "about") handlers.about?.close?.();
   else if (rung === "menu") handlers.outline?.closeMenu?.();
   else if (rung === "blur") {
     e.target.blur();
@@ -117,7 +119,7 @@ function step(from, back) {
 function onKeydown(e) {
   if (!shown(current)) setRegion(step(current, false)); // a hidden region (e.g. the pane, poll-hidden) never keeps focus
   if (e.key === "Tab" && !e.metaKey && !e.ctrlKey && !e.altKey) { // ⌘⇥ and friends stay the browser's
-    if (isTyping(e.target) && e.target.closest("#board .editor")) return; // the editor's fields keep the browser's Tab order
+    if (isTyping(e.target) && e.target.closest("#board .editor, #about")) return; // these fields keep the browser's Tab order
     e.preventDefault();
     setRegion(step(current, e.shiftKey));
     return;

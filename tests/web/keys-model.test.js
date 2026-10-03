@@ -90,3 +90,11 @@ test("cheatSheet shows the board keys in the map's slot while the board is open"
 test("the cheat sheet lists m, the switch between the Keeper and the mentor", () => {
   expect(cheatSheet("outline")[0].keys).toContainEqual(["m", "keeper / mentor"]);
 });
+
+test("escapeRung closes the About you editor right after the sheet, even while typing in it", () => {
+  const all = { sheetOpen: false, about: true, menuOpen: true, typing: true, editor: true, board: true, cursor: true, selected: true };
+  expect(escapeRung({ ...all, sheetOpen: true })).toBe("sheet");
+  expect(escapeRung(all)).toBe("about");
+  expect(escapeRung({ ...all, about: false })).toBe("menu");
+  expect(escapeRung({ sheetOpen: false, menuOpen: false, typing: false, cursor: false, selected: false })).toBeNull(); // about defaults to closed
+});

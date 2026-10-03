@@ -5,6 +5,7 @@ import { clear, drawIsland, drawStrait } from "./draw.js";
 import { installInteractions } from "./interactions.js";
 import { installCard } from "./card.js";
 import { installOutline } from "./outline.js";
+import { installAbout } from "./learner.js";
 import { installKeys } from "./keys.js";
 import { installBoard } from "./board.js";
 import { installTheme } from "./theme.js";
@@ -378,6 +379,7 @@ async function boot() {
   installCard();
   installBoard();
   installOutline();
+  installAbout();
   installKeys();
   try {
     await refresh();

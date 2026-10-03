@@ -14,9 +14,10 @@ export function isTyping(target) {
   return tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || Boolean(target.isContentEditable);
 }
 
-/** The one thing Escape does this press, top rung first. `editor` is the board's editor, `board` the board itself. */
-export function escapeRung({ sheetOpen, menuOpen, typing, editor = false, board = false, cursor, selected }) {
+/** The one thing Escape does this press, top rung first. `about` is the learner note editor, `editor` the board's editor, `board` the board itself. */
+export function escapeRung({ sheetOpen, about = false, menuOpen, typing, editor = false, board = false, cursor, selected }) {
   if (sheetOpen) return "sheet";
+  if (about) return "about";
   if (menuOpen) return "menu";
   if (typing) return "blur";
   if (editor) return "editor";

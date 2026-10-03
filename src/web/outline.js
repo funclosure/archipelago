@@ -6,6 +6,7 @@ import { registerRegion, region } from "./keys.js";
 import { moveCursor } from "./keys-model.js";
 import { THEMES } from "./theme-model.js";
 import { applyTheme, currentTheme } from "./theme.js";
+import { openAbout } from "./learner.js";
 
 // app.js imports installOutline from here and this file imports app: fine, because nothing below reads app or select at module evaluation.
 
@@ -200,6 +201,7 @@ function headerEl(outline) {
     for (const t of THEMES) {
       menu.append(button(t.name, () => { applyTheme(t.id); closeMenu(); }, `mi${t.id === cur ? " on" : ""}`));
     }
+    menu.append(el("div", "sep"), button("About you", () => { closeMenu(); void openAbout(); }, "mi"));
     head.append(menu);
   }
   return head;
