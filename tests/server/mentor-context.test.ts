@@ -12,7 +12,7 @@ import { addCard } from "../../src/core/repositories/boardRepository.ts";
 import { setLearnerNote } from "../../src/core/repositories/learnerRepository.ts";
 import { islandContext } from "../../src/server/judge/tools.ts";
 import { renderLearner } from "../../src/server/judge/context.ts";
-import { renderMentorContext, renderMentorThreadPrompt } from "../../src/server/judge/persona.ts";
+import { renderJudgeContext, renderMentorContext, renderMentorThreadPrompt } from "../../src/server/judge/persona.ts";
 
 let dir: string;
 let dbPath: string;
@@ -126,4 +126,14 @@ test("the mentor's island block: landmarks explored or not, the next unexplored,
   exploreLandmark(db2, ids.caching, "invalidation", "x", null);
   db2.close();
   expect(renderMentorContext(islandContext(mentorDeps()))).toContain("Every landmark is explored: hand off to the judge in one line (§7).");
+});
+
+test("the mentor's board names the judge's cards judge, the word MENTOR.md uses; the judge's own board still says keeper", () => {
+  const db = openDatabase(dbPath);
+  addCard(db, { domainId: ids.sd, islandId: ids.caching, kind: "note", title: "Claim", body: "the reader said so", author: "judge" });
+  db.close();
+  const text = renderMentorContext(islandContext(mentorDeps()));
+  expect(text).toContain('note "Claim" [judge, new since your last reply]');
+  expect(text).not.toContain("keeper");
+  expect(renderJudgeContext(islandContext({ dbPath, domain: "sd", island: "caching" }))).toContain('note "Claim" [keeper, new since your last reply]');
 });

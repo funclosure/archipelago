@@ -178,7 +178,12 @@ export function renderPendingAsk(ctx: JudgeContext): string[] {
   return pending ? [``, `Pending question (wait for the reader's choice; do not ask again): ${pending.question} — options: ${pending.options.join(" | ")}`] : [];
 }
 
-const AUTHOR_MARK: Record<MessageRole, string> = { judge: "keeper", mentor: "mentor", you: "reader" };
+// The judge's own board keeps its long-standing marks; the mentor's names the judge as MENTOR.md does.
+const AUTHOR_MARK: Record<MessageRole, Record<MessageRole, string>> = {
+  judge: { judge: "keeper", mentor: "mentor", you: "reader" },
+  mentor: { judge: "judge", mentor: "mentor", you: "reader" },
+  you: { judge: "keeper", mentor: "mentor", you: "reader" },
+};
 
 /** The board, each card marked by its author and by what changed since `self`'s last reply in this thread. */
 export function renderBoard(ctx: JudgeContext, self: MessageRole, emptyHint: string): string[] {
@@ -186,7 +191,7 @@ export function renderBoard(ctx: JudgeContext, self: MessageRole, emptyHint: str
   const lastReply = ctx.thread.findLast((m) => m.role === self && m.kind === "text") ?? null;
   const lines = [``, `Board (${ctx.board.length} ${ctx.board.length === 1 ? "card" : "cards"}):`];
   for (const c of ctx.board) {
-    const marks = [AUTHOR_MARK[c.author]];
+    const marks = [AUTHOR_MARK[self][c.author]];
     if (!lastReply || c.createdAt > lastReply.createdAt) marks.push("new since your last reply");
     else if (c.updatedAt > lastReply.createdAt) marks.push("edited since your last reply");
     lines.push(`- #${c.id} ${c.kind}${c.lang ? ` (${c.lang})` : ""}${c.title ? ` "${indent(c.title)}"` : ""} [${marks.join(", ")}]:`, `  ${indent(c.body)}`);
