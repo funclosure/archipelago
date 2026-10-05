@@ -15,10 +15,11 @@ export function isTyping(target) {
 }
 
 /** The one thing Escape does this press, top rung first. `about` is the learner note editor, `editor` the board's editor, `board` the board itself. */
-export function escapeRung({ sheetOpen, about = false, menuOpen, typing, editor = false, board = false, cursor, selected }) {
+export function escapeRung({ sheetOpen, about = false, menuOpen, turn = false, typing, editor = false, board = false, cursor, selected }) {
   if (sheetOpen) return "sheet";
   if (about) return "about";
   if (menuOpen) return "menu";
+  if (turn) return "stop"; // a reply is streaming: Escape stops it, wherever focus is
   if (typing) return "blur";
   if (editor) return "editor";
   if (board) return "board";
@@ -89,4 +90,13 @@ const REGION_KEYS = {
 export function cheatSheet(region, { board = false } = {}) {
   const key = region === "map" && board ? "board" : region;
   return [{ title: "Everywhere", keys: EVERYWHERE }, REGION_KEYS[key] ?? REGION_KEYS.outline];
+}
+
+/**
+ * A key the input method owns, never the page's: one pressed mid-composition (Enter picking a Zhuyin
+ * candidate, Escape dismissing it), or Safari's confirming Enter, which arrives just after compositionend
+ * with isComposing false but keyCode 229. shuttle's Loomy panel guards its Enter the same way.
+ */
+export function isImeKey(e) {
+  return Boolean(e.isComposing) || e.keyCode === 229;
 }

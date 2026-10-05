@@ -2,7 +2,7 @@
 // Global keys (Tab, [, ?, /, Escape, Cmd-Enter) are handled here; everything else is the region's.
 import { app, toggleMode } from "./app.js";
 import { select } from "./interactions.js";
-import { REGIONS, nextRegion, isTyping, escapeRung, aboutKey, cheatSheet } from "./keys-model.js";
+import { REGIONS, nextRegion, isTyping, escapeRung, aboutKey, cheatSheet, isImeKey } from "./keys-model.js";
 import { cycleTheme } from "./theme.js";
 
 const handlers = {}; // region name → handler
@@ -80,6 +80,7 @@ function escape(e) {
     sheetOpen,
     about: handlers.about?.isOpen?.() ?? false,
     menuOpen: handlers.outline?.menuOpen?.() ?? false,
+    turn: handlers.pane?.turning?.() ?? false,
     typing: isTyping(e.target),
     editor: handlers.board?.editing?.() ?? false,
     board: handlers.board?.isOpen?.() ?? false,
@@ -92,6 +93,7 @@ function escape(e) {
   if (rung === "sheet") toggleSheet();
   else if (rung === "about") handlers.about?.close?.();
   else if (rung === "menu") handlers.outline?.closeMenu?.();
+  else if (rung === "stop") handlers.pane?.stop?.();
   else if (rung === "blur") {
     e.target.blur();
     containers()[current]?.focus({ preventScroll: true });
@@ -117,6 +119,7 @@ function step(from, back) {
 }
 
 function onKeydown(e) {
+  if (isImeKey(e)) return; // the input method owns this key: picking or dismissing a candidate is not a page key
   if (!shown(current)) setRegion(step(current, false)); // a hidden region (e.g. the pane, poll-hidden) never keeps focus
   if (handlers.about?.isOpen?.()) { // the About you editor is modal for page keys
     const act = aboutKey({ key: e.key, meta: e.metaKey, ctrl: e.ctrlKey, alt: e.altKey, inAbout: Boolean(e.target?.closest?.("#about")) });

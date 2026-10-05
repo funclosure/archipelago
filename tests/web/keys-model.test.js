@@ -1,5 +1,5 @@
 import { test, expect } from "bun:test";
-import { REGIONS, nextRegion, isTyping, escapeRung, aboutKey, moveCursor, cheatSheet } from "../../src/web/keys-model.js";
+import { REGIONS, nextRegion, isTyping, escapeRung, aboutKey, moveCursor, cheatSheet, isImeKey } from "../../src/web/keys-model.js";
 import { visibleRows } from "../../src/web/outline-model.js";
 
 const lm = { total: 0, unlocked: 0 };
@@ -108,4 +108,21 @@ test("aboutKey: the open About editor is modal; only Escape, Cmd-Enter and Tab a
   expect(k("Tab", { meta: true })).toBe("ignore");
   for (const key of ["t", "m", "b", "j", "k", "Enter", "?", "[", "/", "ArrowDown"]) expect(k(key)).toBe("block");
   expect(k("Enter", { ctrl: true })).toBe("block");
+});
+
+test("a key the input method owns is never the page's: mid-composition, or Safari's confirming Enter (keyCode 229)", () => {
+  expect(isImeKey({ key: "Enter", isComposing: true, keyCode: 13 })).toBe(true);
+  expect(isImeKey({ key: "Enter", isComposing: false, keyCode: 229 })).toBe(true);
+  expect(isImeKey({ key: "Escape", isComposing: true, keyCode: 27 })).toBe(true); // Escape cancels the candidate, not the page
+  expect(isImeKey({ key: "Enter", isComposing: false, keyCode: 13 })).toBe(false);
+  expect(isImeKey({ key: "a" })).toBe(false);
+});
+
+test("Escape stops a running turn before it blurs or closes anything below the overlays", () => {
+  const base = { sheetOpen: false, about: false, menuOpen: false, typing: true, editor: false, board: false, cursor: false, selected: true };
+  expect(escapeRung({ ...base, turn: true })).toBe("stop");
+  expect(escapeRung({ ...base, turn: true, sheetOpen: true })).toBe("sheet"); // an overlay closes first
+  expect(escapeRung({ ...base, turn: true, menuOpen: true })).toBe("menu");
+  expect(escapeRung({ ...base, turn: false })).toBe("blur");
+  expect(escapeRung(base)).toBe("blur"); // turn defaults to false
 });

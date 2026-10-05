@@ -100,6 +100,7 @@ body[data-mode="mentor"] .mode-switch .seg.on { color: var(--explore); }
 .earlier { font-size: 12px; color: var(--muted); }
 .muted { color: var(--muted); font-size: 12px; }
 .error { color: var(--reef); font-size: 12px; }
+.stopped { color: var(--muted); font-size: 12px; font-style: italic; margin: 4px 0; }
 
 .log { flex: 1; overflow: auto; padding: 14px 20px; display: flex; flex-direction: column; gap: 12px; }
 .msg p { margin: 0 0 6px; }

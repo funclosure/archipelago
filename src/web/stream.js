@@ -27,13 +27,26 @@ export function parseSseBuffer(buffer) {
   return { events, rest: buffer };
 }
 
+/** The error as an Error, with `aborted` set when the caller's signal stopped the request. */
+function markAborted(error, signal) {
+  const e = error instanceof Error ? error : new Error(String(error));
+  if (signal?.aborted || e.name === "AbortError") e.aborted = true;
+  return e;
+}
+
 /**
  * POSTs JSON and calls onEvent({ type, data }) for each SSE event as it arrives. Resolves when the stream ends.
  * Throws when the server refused the request (nothing was stored), and throws with `midStream` set when the
- * connection broke after the stream opened (the message may be stored).
+ * connection broke after the stream opened (the message may be stored). Aborting `signal` stops it, and
+ * the error then carries `aborted`; the server takes the closed connection as a stop and keeps no reply.
  */
-export async function streamPost(url, body, onEvent) {
-  const res = await fetch(url, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+export async function streamPost(url, body, onEvent, signal) {
+  let res;
+  try {
+    res = await fetch(url, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body), signal });
+  } catch (error) {
+    throw markAborted(error, signal);
+  }
   if (!res.ok || !res.body) {
     let message = `request failed (${res.status})`;
     try {
@@ -57,7 +70,7 @@ export async function streamPost(url, body, onEvent) {
       for (const e of events) onEvent(e);
     }
   } catch (error) {
-    const broken = error instanceof Error ? error : new Error(String(error));
+    const broken = markAborted(error, signal);
     broken.midStream = true;
     throw broken;
   }

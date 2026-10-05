@@ -8,6 +8,7 @@ import { loadHighlighter } from "./code.js";
 import { renderCta } from "./cta.js";
 import { select } from "./interactions.js";
 import { registerRegion, region } from "./keys.js";
+import { isImeKey } from "./keys-model.js";
 
 const pane = document.getElementById("pane");
 const STICK_PX = 40;            // within this of the bottom, the log follows new content
@@ -30,6 +31,9 @@ let renderId = 0;         // guards async appends against stale renders
 let loadGen = 0;          // monotonic across islands, so a slow load can never overwrite a newer one
 /** Bumped whenever the thread is reset or a turn starts: a stream only writes into the turn that started it. */
 let turnGen = 0;
+let turnAbort = null;    // the running turn's AbortController: Stop and Escape abort it
+let composing = false;   // the answer box is mid-composition (an IME): a rebuild now would destroy the word
+let renderHeld = false;  // a render came in while composing; it runs once the word is committed
 let liveFrame = 0;        // pending animation frame for the streaming reply
 
 // The one thread the page shows: the selected island's stored messages plus the turn in flight.
@@ -47,6 +51,8 @@ const thread = {
   error: null,        // a turn failed; the messages on screen are still good
   loadError: null,    // the thread itself could not be fetched
   disputeDraft: "",   // the objection typed while a reef is pending
+  stopped: false,     // the last turn was stopped by the reader (Stop or Escape)
+  stoppedDraft: null, // words an early stop gave back, until the refetch shows whether the server stored them
   litSeen: null,      // slugs already lit at the last render, so only newly lit chips pulse
   focusPending: false, // a turn ended before the answer box was usable; the next render focuses it
   answering: false,   // a reef answer is in flight: Confirm and Dispute are one-shot
@@ -72,6 +78,8 @@ export function installCard() {
   loadHighlighter(() => render());
   registerRegion("pane", {
     focusAnswer: () => focusAnswer(),
+    turning: () => thread.inFlight && turnAbort !== null,
+    stop: () => stopTurn(),
     send() {
       const form = pane.querySelector("#answer-form");
       const ta = pane.querySelector("#answer");
@@ -174,7 +182,7 @@ function resetThread(slug, mode = app.mode) {
   turnGen += 1; // a stream still running from an earlier visit to this island is no longer ours
   Object.assign(thread, {
     slug, mode, version: null, messages: [], asks: [], loaded: false, draft: "", live: "", progress: null, inFlight: false, error: null, loadError: null,
-    disputeDraft: "", litSeen: null, focusPending: false, answering: false, stay: false,
+    disputeDraft: "", stopped: false, stoppedDraft: null, litSeen: null, focusPending: false, answering: false, stay: false,
   });
   noteOpen = false;
 }
@@ -191,6 +199,11 @@ async function loadThread(slug) {
     if (stale()) return;
     thread.messages = messages;
     thread.asks = asks ?? [];
+    if (thread.stoppedDraft !== null) {
+      // An early stop gave the words back; if the server stored them after all, they are in the thread, not the box.
+      if (thread.draft === thread.stoppedDraft && messages.some((m) => m.role === "you" && m.body === thread.stoppedDraft)) thread.draft = "";
+      thread.stoppedDraft = null;
+    }
     thread.loaded = true;
     thread.answering = false; // a reef answer is complete once the stored proposal status is back
     thread.loadError = null; // thread.error belongs to the last turn and stays until the next one
@@ -200,6 +213,13 @@ async function loadThread(slug) {
     thread.loadError = error.message; // version stays set: the next version change retries, a re-render does not
   }
   render();
+}
+
+/** Stops the running turn, as Loomy's Stop does: the request aborts, and the server stops the persona and keeps no reply. */
+function stopTurn() {
+  if (!turnAbort) return false;
+  turnAbort.abort();
+  return true;
 }
 
 /** One judge turn. `message` null opens or continues the thread without a new reader message. */
@@ -213,6 +233,9 @@ async function runTurn(slug, message, askId) {
   thread.live = "";
   thread.progress = null;
   thread.error = null;
+  thread.stopped = false;
+  const abort = new AbortController();
+  turnAbort = abort;
   if (message) thread.messages = [...thread.messages, { id: `local-${Date.now()}`, role: "you", kind: "text", body: message }];
   render();
   if (message) {
@@ -232,14 +255,27 @@ async function runTurn(slug, message, askId) {
       } else if (e.type === "error") {
         thread.error = e.data.message;
       }
-    });
+    }, abort.signal);
   } catch (error) {
+    if (turnAbort === abort) turnAbort = null;
     if (!mine()) return; // the reader moved on; nothing here is theirs
-    thread.error = error.message;
-    // Refused or never sent: the server stored nothing, so the words go back in the box.
-    // Broken mid-stream: the server may have stored them, and the refetch will show it.
-    if (message && !error.midStream) thread.draft = message;
+    if (error.aborted) {
+      // The reader stopped it. The server keeps no reply. Stopped mid-stream, their message is stored and comes
+      // back with the refetch; stopped before the stream opened, it may never have arrived, so the words go back
+      // in the box, and the refetch takes them out again if the server did store them.
+      thread.stopped = true;
+      if (message && !error.midStream) {
+        thread.draft = message;
+        thread.stoppedDraft = message;
+      }
+    } else {
+      thread.error = error.message;
+      // Refused or never sent: the server stored nothing, so the words go back in the box.
+      // Broken mid-stream: the server may have stored them, and the refetch will show it.
+      if (message && !error.midStream) thread.draft = message;
+    }
   }
+  if (turnAbort === abort) turnAbort = null;
   if (!mine()) return;
   cancelLive();
   thread.inFlight = false;
@@ -564,6 +600,7 @@ function logEl(island) {
   progress.id = "progress";
   progress.hidden = true;
   log.append(live, progress);
+  if (thread.stopped) log.append(el("div", "stopped", "stopped · the reply was not kept"));
   if (thread.error) log.append(el("div", "error", thread.error));
   return log;
 }
@@ -597,7 +634,20 @@ function footEl(island) {
     else thread.draft = ta.value;
     growAnswer(ta);
   });
+  ta.addEventListener("compositionstart", () => {
+    composing = true;
+  });
+  ta.addEventListener("compositionend", () => {
+    composing = false;
+    if (pending) thread.disputeDraft = ta.value;
+    else thread.draft = ta.value;
+    // A rebuild held back while the word was composed runs now, after the key that committed it has finished.
+    if (renderHeld) setTimeout(() => {
+      if (!composing && renderHeld) render();
+    }, 0);
+  });
   ta.addEventListener("keydown", (e) => {
+    if (isImeKey(e)) return; // Enter picking a Zhuyin candidate is the input method's, never a send
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       form.requestSubmit();
@@ -615,10 +665,18 @@ function footEl(island) {
       void answerReef(island.slug, pending.id, "dispute", ta.value.trim() || undefined);
     });
   } else {
-    const send = button("Send", null);
-    send.type = "submit";
-    send.disabled = ta.disabled;
-    form.append(send);
+    if (thread.inFlight && turnAbort) {
+      // While a reply streams, Send is Stop (Escape does the same).
+      const stop = button("Stop", () => stopTurn(), "btn ghost");
+      stop.type = "button";
+      stop.id = "stop";
+      form.append(stop);
+    } else {
+      const send = button("Send", null);
+      send.type = "submit";
+      send.disabled = ta.disabled;
+      form.append(send);
+    }
     form.addEventListener("submit", (e) => {
       e.preventDefault();
       const body = ta.value.trim();
@@ -632,7 +690,8 @@ function footEl(island) {
   }
   foot.append(form);
   const meta = el("div", "meta");
-  meta.append(el("span", null, pending ? "Confirm at the bottom of the map · Dispute sends your objection" : "Enter to send · Shift-Enter for a new line"));
+  meta.append(el("span", null, pending ? "Confirm at the bottom of the map · Dispute sends your objection"
+    : thread.inFlight ? "Esc to stop" : "Enter to send · Shift-Enter for a new line"));
   foot.append(meta);
   return foot;
 }
@@ -666,6 +725,11 @@ function ctaModel(island) {
 }
 
 function render() {
+  if (composing && pane.contains(document.activeElement)) {
+    renderHeld = true; // rebuilding now would destroy the word being composed; compositionend runs it
+    return;
+  }
+  renderHeld = false;
   const s = app.snapshot;
   const island = s && app.selected ? s.islands.find((i) => i.slug === app.selected) : null;
   document.body.classList.toggle("pane-open", Boolean(island));

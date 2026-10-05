@@ -52,3 +52,34 @@ test("a stream that breaks after opening throws marked midStream", async () => {
     globalThis.fetch = realFetch;
   }
 });
+
+test("a stream the caller aborts throws marked aborted, mid-stream or before it opened", async () => {
+  const realFetch = globalThis.fetch;
+  try {
+    // before the response: fetch itself rejects with an AbortError
+    globalThis.fetch = (_u, o) => new Promise((_res, rej) => o.signal.addEventListener("abort", () => rej(new DOMException("aborted", "AbortError"))));
+    const early = new AbortController();
+    const p1 = streamPost("/api/probe", {}, () => {}, early.signal).catch((e) => e);
+    early.abort();
+    const e1 = await p1;
+    expect(e1.aborted).toBe(true);
+    // after it opened: the body read rejects
+    let pulls = 0;
+    globalThis.fetch = (_u, o) => Promise.resolve(new Response(new ReadableStream({
+      pull(c) {
+        pulls += 1;
+        if (pulls === 1) return c.enqueue(new TextEncoder().encode('event: text\ndata: {"type":"text","text":"Hi"}\n\n'));
+        return new Promise((_r, rej) => o.signal.addEventListener("abort", () => rej(new DOMException("aborted", "AbortError"))));
+      },
+    }), { status: 200 }));
+    const late = new AbortController();
+    const events = [];
+    const p2 = streamPost("/api/probe", {}, (e) => { events.push(e.type); if (e.type === "text") late.abort(); }, late.signal).catch((e) => e);
+    const e2 = await p2;
+    expect(e2.aborted).toBe(true);
+    expect(e2.midStream).toBe(true);
+    expect(events).toEqual(["text"]);
+  } finally {
+    globalThis.fetch = realFetch;
+  }
+});
