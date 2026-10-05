@@ -147,6 +147,9 @@ button:focus-visible, textarea:focus-visible, input:focus-visible { outline: 2px
 .foot textarea { flex: 1; resize: none; background: var(--water); border: 1px solid var(--line); border-radius: 6px; color: var(--text);
   padding: 8px 10px; font: inherit; font-size: 13px; line-height: 1.4; min-height: 36px; max-height: 118px; box-sizing: border-box; }
 .foot textarea:disabled { color: var(--muted); }
+.foot textarea::placeholder { color: var(--muted); opacity: 1; }
+.btn.send.judge { background: var(--panel-2); color: var(--text); }
+.btn.send.mentor { background: var(--explore); color: var(--on-land); }
 .foot .meta { display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); }
 
 /* ---- the outline: Linear rows, Shuttle rail ---- */

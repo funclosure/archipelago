@@ -672,7 +672,7 @@ function footEl(island) {
       stop.id = "stop";
       form.append(stop);
     } else {
-      const send = button("Send", null);
+      const send = button("Send", null, `btn send ${thread.mode}`); // tinted by who it goes to, like the head's mode pill
       send.type = "submit";
       send.disabled = ta.disabled;
       form.append(send);
