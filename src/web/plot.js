@@ -3,7 +3,7 @@
 // palette at draw time, and a plot is redrawn rather than cached, so a resize or a theme switch (which
 // rebuilds the pane and the board) comes back in the right tokens with nothing to invalidate.
 import { PALETTE } from "./draw.js";
-import { parsePlot, plotSize, plotOptions, plotColours } from "./plot-model.js";
+import { parsePlot, plotSize, plotOptions, plotColours, plotLegend } from "./plot-model.js";
 
 let plotter = null;
 let loading = null;
@@ -56,6 +56,24 @@ function paint(target, colours) {
   for (const el of svg.querySelectorAll("text")) el.style.fill = colours.text;
 }
 
+/** The key under a plot: a swatch in each curve's colour and its label. Text only; colours from the palette. */
+function legendEl(options) {
+  const entries = plotLegend(options, PALETTE);
+  if (entries.length === 0) return null;
+  const legend = document.createElement("div");
+  legend.className = "legend";
+  for (const { label, color } of entries) {
+    const item = document.createElement("span");
+    item.className = "item";
+    const swatch = document.createElement("span");
+    swatch.className = "swatch";
+    swatch.style.backgroundColor = color;
+    item.append(swatch, document.createTextNode(label));
+    legend.append(item);
+  }
+  return legend;
+}
+
 function draw(holder, source, options) {
   const box = holder.clientWidth || holder.parentElement?.clientWidth || 320;
   const target = document.createElement("div");
@@ -63,6 +81,8 @@ function draw(holder, source, options) {
   try {
     plotter(plotOptions(options, { target, ...plotSize(box), palette: PALETTE }));
     paint(target, plotColours(PALETTE));
+    const legend = legendEl(options); // rebuilt with each draw, so a theme switch recolours the swatches too
+    if (legend) holder.append(legend);
   } catch (e) {
     holder.replaceChildren(fallback(source, e instanceof Error ? e.message : "the plot did not draw"));
   }

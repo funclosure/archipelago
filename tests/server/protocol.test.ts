@@ -59,7 +59,7 @@ test("the fence rules do not drift: mermaid types, code language tags, and the p
   const judgeText = readProtocol();
   const mentor = mentorText();
   const tags = ["swift", "objective-c", "kotlin", "typescript", "tsx", "javascript", "json", "bash", "python", "sql", "yaml"];
-  for (const word of ["`mermaid`", "`flowchart TB`", "`sequenceDiagram`", "`stateDiagram-v2`", ...tags.map((t) => `\`${t}\``), "`plot`", "xAxis", "yAxis"]) {
+  for (const word of ["`mermaid`", "`flowchart TB`", "`sequenceDiagram`", "`stateDiagram-v2`", ...tags.map((t) => `\`${t}\``), "`plot`", "xAxis", "yAxis", "`title`"]) {
     expect(judgeText).toContain(word);
     expect(mentor).toContain(word);
   }

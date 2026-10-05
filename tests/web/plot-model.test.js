@@ -1,6 +1,6 @@
 // The plot fence's body → the library's options. Pure: the library is never imported here.
 import { test, expect } from "bun:test";
-import { PLOT_LANGS, SERIES_KEYS, parsePlot, plotSize, rgba, plotColours, plotOptions } from "../../src/web/plot-model.js";
+import { PLOT_LANGS, SERIES_KEYS, parsePlot, plotSize, rgba, plotColours, plotOptions, plotLegend } from "../../src/web/plot-model.js";
 
 const PALETTE = { sea: "#1B3F5B", line: "#FFFFFF", lamp: "#F5C242", reef: "#D9473A", sand: "#E7D39A", grass: "#6FAF5E", snow: "#F2F4F1" };
 
@@ -115,4 +115,35 @@ test("an expression cannot carry code: a bracket, a quote, or a backtick is reje
   expect(parsePlot(unsafeDerivative).error).toBeTruthy();
   const safeDerivative = JSON.stringify({ data: [{ fn: "x^2", derivative: { fn: "2*x" } }] });
   expect(parsePlot(safeDerivative).error).toBeUndefined();
+});
+
+test("the legend names each curve in its own colour: its title, else its expression", () => {
+  const two = parsePlot('{"data":[{"fn":"2*x","title":"×2 policy"},{"fn":"x^2/2"}]}').options;
+  expect(plotLegend(two, PALETTE)).toEqual([
+    { label: "×2 policy", color: PALETTE.lamp },
+    { label: "x^2/2", color: PALETTE.grass },
+  ]);
+  // the colours are the ones plotOptions gives the library, so swatch and line always match
+  const drawn = plotOptions(two, { target: null, width: 300, height: 200, palette: PALETTE }).data.map((d) => d.color);
+  expect(plotLegend(two, PALETTE).map((e) => e.color)).toEqual(drawn);
+  expect(plotLegend(parsePlot("x^2\nx*log(x)").options, PALETTE).map((e) => e.label)).toEqual(["x^2", "x*log(x)"]);
+});
+
+test("one curve with no title has no legend; a title earns one", () => {
+  expect(plotLegend(parsePlot("x^2").options, PALETTE)).toEqual([]);
+  expect(plotLegend(parsePlot('{"data":[{"fn":"x^2","title":"  quadratic  "}]}').options, PALETTE)).toEqual([{ label: "quadratic", color: PALETTE.lamp }]);
+  expect(plotLegend(parsePlot('{"data":[{"fn":"x^2","title":"   "}]}').options, PALETTE)).toEqual([]); // a blank title is no title
+});
+
+test("legend labels for parametric, polar, unnamed, and over-long curves; an explicit colour is honoured", () => {
+  const options = { data: [
+    { x: "cos(t)", y: "sin(t)", fnType: "parametric" },
+    { r: "2*sin(4*theta)", fnType: "polar" },
+    { points: [[1, 2]], fnType: "points" },
+    { fn: "x", title: "a".repeat(60), color: "#123456" },
+  ] };
+  const legend = plotLegend(options, PALETTE);
+  expect(legend.map((e) => e.label)).toEqual(["(cos(t), sin(t))", "r = 2*sin(4*theta)", "series 3", `${"a".repeat(39)}…`]);
+  expect(legend[3].color).toBe("#123456");
+  expect(plotLegend({}, PALETTE)).toEqual([]);
 });

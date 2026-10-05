@@ -101,3 +101,27 @@ export function plotOptions(options, { target, width, height, palette }) {
   }));
   return { ...options, data, target, width, height, grid: true, disableZoom: true };
 }
+
+const LABEL_MAX = 40;
+
+/** A curve's name in the legend: its `title`, else the expression it draws, else its place. */
+function seriesLabel(d, i) {
+  const title = typeof d.title === "string" ? d.title.trim() : "";
+  const raw = title || (typeof d.fn === "string" && d.fn)
+    || (typeof d.x === "string" && typeof d.y === "string" && `(${d.x}, ${d.y})`)
+    || (typeof d.r === "string" && `r = ${d.r}`)
+    || `series ${i + 1}`;
+  return raw.length > LABEL_MAX ? `${raw.slice(0, LABEL_MAX - 1)}…` : raw;
+}
+
+/**
+ * The legend under a plot: one `{ label, color }` per curve, in the colours `plotOptions` hands the
+ * library, so a swatch always matches its line. Empty for a single curve with no title: one line needs
+ * no key, but a curve the writer named is worth naming.
+ */
+export function plotLegend(options, palette) {
+  const data = Array.isArray(options?.data) ? options.data.filter((d) => d && typeof d === "object") : [];
+  const titled = data.some((d) => typeof d.title === "string" && d.title.trim());
+  if (data.length === 0 || (data.length === 1 && !titled)) return [];
+  return data.map((d, i) => ({ label: seriesLabel(d, i), color: d.color ?? palette[SERIES_KEYS[i % SERIES_KEYS.length]] }));
+}
