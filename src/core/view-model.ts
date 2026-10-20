@@ -1,5 +1,5 @@
 import type { Database } from "bun:sqlite";
-import type { Comment, CommentTargetType, Island, Landmark, Verdict, VerdictState, CommentKind } from "./types.ts";
+import type { Comment, CommentTargetType, Island, Landmark, SketchBody, Verdict, VerdictState, CommentKind } from "./types.ts";
 import { requireDomain } from "./repositories/domainRepository.ts";
 import { getIslandById, islandPath, listIslands, requireIsland } from "./repositories/islandRepository.ts";
 import { getStraitById, listStraits } from "./repositories/straitRepository.ts";
@@ -8,6 +8,7 @@ import { listComments } from "./repositories/commentRepository.ts";
 import { getViewState } from "./repositories/viewStateRepository.ts";
 import { countMessages } from "./repositories/messageRepository.ts";
 import { listLandmarksByIsland } from "./repositories/landmarkRepository.ts";
+import { pendingSketch } from "./repositories/sketchRepository.ts";
 
 export type VerdictView = { state: VerdictState; confidence: number; evidence: string; rationale: string | null; at: string };
 export type RollupState = Record<VerdictState | "open", number>;
@@ -38,6 +39,8 @@ export type Snapshot = {
   unread: { kind: CommentKind; target: string }[];
   nearestOpenWater: string[];
   reefs: string[];
+  /** The cartographer's pending sketch at this scale, drawn as drafts until the reader approves it. */
+  sketch: { id: number; body: SketchBody; messageId: number | null } | null;
 };
 export type CommentView = Comment & { target: string };
 
@@ -126,6 +129,7 @@ export function buildSnapshot(db: Database, domainSlug: string, scaleSlug: strin
     verdict: toView(straitVerdicts.get(s.id)),
   }));
 
+  const pending = pendingSketch(db, domain.id, parentId);
   const state = getViewState(db, domain.id);
   const focusIsland = state.focusIslandId === null ? null : getIslandById(db, state.focusIslandId);
 
@@ -144,6 +148,7 @@ export function buildSnapshot(db: Database, domainSlug: string, scaleSlug: strin
       ...islandViews.filter((i) => i.verdict?.state === "reef").map((i) => `island:${i.slug}`),
       ...straitViews.filter((s) => s.verdict?.state === "reef").map((s) => `strait:${s.from}~${s.to}`),
     ],
+    sketch: pending ? { id: pending.id, body: pending.body, messageId: pending.messageId } : null,
   };
 }
 

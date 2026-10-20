@@ -88,27 +88,26 @@ test("nodes remember when each landmark lit and when the state changed; nothing 
   expect(third[0].litAt.get("b")).toBe(second[0].litAt.get("b")); // unchanged lamps keep their time
 });
 
-test("stripItems: harbour, open water, reefs, and the cartographer's requests, each with a hint", () => {
+test("stripItems: harbour, open water, reefs, and the cartographer, each with a hint", () => {
   const verdict = { state: "settled", confidence: 0.8 };
   const base = snapshot([island("caching", verdict), island("queues"), island("db")]);
-  const plain = stripItems({ ...base, harbour: null, nearestOpenWater: ["queues"], reefs: [], unread: [] });
-  expect(plain.map((i) => i.label)).toEqual(["Nearest open water", "Reefs"]);
+  const plain = stripItems({ ...base, harbour: null, nearestOpenWater: ["queues"], reefs: [], sketch: null });
+  expect(plain.map((i) => i.label)).toEqual(["Nearest open water", "Reefs", "Cartographer"]);
   expect(plain[0].value).toBe("queues");
   expect(plain[1].value).toBe("none charted");
   expect(plain.every((i) => typeof i.hint === "string" && i.hint.length > 20)).toBe(true);
 
-  const charted = stripItems({ ...base, harbour: "caching", nearestOpenWater: [], reefs: ["island:db", "strait:caching~db"], unread: [] });
+  const charted = stripItems({ ...base, harbour: "caching", nearestOpenWater: [], reefs: ["island:db", "strait:caching~db"], sketch: null });
   expect(charted[0]).toEqual({ label: "Home port", value: "caching", hint: HINTS.homePort });
   expect(charted[1].value).toBe("none at this scale");
   expect(charted[2].value).toBe("db · strait caching~db");
-  expect(stripItems({ ...base, harbour: "queues", nearestOpenWater: [], reefs: [], unread: [] })[0]).toEqual({ label: "Set out from", value: "queues", hint: HINTS.harbour });
+  expect(stripItems({ ...base, harbour: "queues", nearestOpenWater: [], reefs: [], sketch: null })[0]).toEqual({ label: "Set out from", value: "queues", hint: HINTS.harbour });
 
-  const one = stripItems({ ...base, harbour: null, nearestOpenWater: [], reefs: [], unread: [{ kind: "sail_closer", target: "island:caching" }] });
-  expect(one[2]).toEqual({ label: "For the cartographer", value: "sail closer · caching", hint: HINTS.cartographer });
-  const three = stripItems({ ...base, harbour: null, nearestOpenWater: [], reefs: [], unread: [
-    { kind: "sail_closer", target: "island:caching" }, { kind: "note", target: "domain:sd" }, { kind: "dispute", target: "island:db" },
-  ] });
-  expect(three[2].value).toBe("sail closer · caching · note +1");
+  // the last cell opens the cartographer, and names a pending sketch when there is one
+  expect(plain[2]).toEqual({ label: "Cartographer", value: "ask to sketch or change", hint: HINTS.cartographer, action: "chart" });
+  const body = { islands: [{ slug: "q", name: "Queues", summary: "s", landmarks: [] }], straits: [{ from: "q", to: "db" }], updates: [], harbour: undefined };
+  const sketched = stripItems({ ...base, harbour: null, nearestOpenWater: [], reefs: [], sketch: { id: 1, body, messageId: null } });
+  expect(sketched[2].value).toBe("sketch to approve · 1 island · 1 strait");
 });
 
 test("a landmark is lit in the judge's lens by the judge, in the mentor's by being explored", () => {
@@ -150,14 +149,14 @@ test("stripItems in the mentor lens counts explored landmarks and names islands 
   const lm = (explored, total) => ({ total, unlocked: 0, explored, items: [] });
   const s = {
     ...snapshot([{ ...island("caching"), landmarks: lm(2, 4) }, { ...island("queues"), landmarks: lm(0, 4) }, island("db")]),
-    harbour: null, nearestOpenWater: ["queues"], reefs: ["island:db"], unread: [{ kind: "note", target: "domain:sd" }],
+    harbour: null, nearestOpenWater: ["queues"], reefs: ["island:db"], sketch: null,
   };
   const items = stripItems(s, "mentor");
-  expect(items.map((i) => i.label)).toEqual(["Explored", "Not yet explored", "For the cartographer"]);
+  expect(items.map((i) => i.label)).toEqual(["Explored", "Not yet explored", "Cartographer"]);
   expect(items[0]).toEqual({ label: "Explored", value: "2 of 8 landmarks", hint: HINTS.explored });
   expect(items[1]).toEqual({ label: "Not yet explored", value: "queues · db", hint: HINTS.unexplored });
   expect(stripItems({ ...s, islands: [island("x")] }, "mentor")[0].value).toBe("no landmarks yet");
-  expect(stripItems(s).map((i) => i.label)).toEqual(["Nearest open water", "Reefs", "For the cartographer"]); // the judge's lens is unchanged
+  expect(stripItems(s).map((i) => i.label)).toEqual(["Nearest open water", "Reefs", "Cartographer"]); // the judge's lens is unchanged
 });
 
 test("allExplored needs at least one landmark, and every one explored", () => {

@@ -1,7 +1,7 @@
 # The cartographer in the app
 
 **Date:** 2026-10-20
-**Status:** slice 1 (server and data) built 2026-10-20; slice 2 (page) designed
+**Status:** built 2026-10-20 (slice 1: server and data; slice 2: the page)
 **Builds on:** the API runner (`2026-10-20-api-runner-design.md`, PR #4), mentor mode (`2026-09-30-mentor-mode-design.md`), harbour (`2026-09-04-harbour-design.md`), landmarks (`2026-09-04-landmarks-design.md`)
 **Depends on:** PR #4 merged. The cartographer is a third persona on the same runners.
 **Unlocks:** the bring-your-own-key web app (route 2): with this, nobody needs a terminal to make or grow a map.

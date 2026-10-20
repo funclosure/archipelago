@@ -56,7 +56,7 @@ function renderSheet() {
   const card = el("div", "keys-card");
   card.append(el("div", "lbl", "Keys"));
   const cols = el("div", "cols");
-  for (const section of cheatSheet(current, { board: handlers.board?.isOpen?.() ?? false })) {
+  for (const section of cheatSheet(current, { board: handlers.board?.isOpen?.() ?? false, chart: handlers.pane?.chartOpen?.() ?? false })) {
     const col = el("div", "col");
     col.append(el("div", "sec", section.title));
     for (const [k, label] of section.keys) {
@@ -85,6 +85,7 @@ function escape(e) {
     editor: handlers.board?.editing?.() ?? false,
     board: handlers.board?.isOpen?.() ?? false,
     cursor: current === "outline" && (handlers.outline?.hasCursor?.() ?? false),
+    chart: handlers.pane?.chartOpen?.() ?? false,
     selected: Boolean(app.selected),
   });
   if (!rung) return;
@@ -100,6 +101,10 @@ function escape(e) {
   } else if (rung === "editor") handlers.board?.cancelEditor?.();
   else if (rung === "board") handlers.board?.close?.();
   else if (rung === "cursor") handlers.outline?.clearCursor?.();
+  else if (rung === "chart") {
+    handlers.pane?.closeChart?.();
+    if (current === "pane") setRegion("map");
+  }
   else if (rung === "deselect") {
     void select(null);
     if (current === "pane") setRegion("map");
@@ -121,6 +126,14 @@ function step(from, back) {
 function onKeydown(e) {
   if (isImeKey(e)) return; // the input method owns this key: picking or dismissing a candidate is not a page key
   if (!shown(current)) setRegion(step(current, false)); // a hidden region (e.g. the pane, poll-hidden) never keeps focus
+  if (handlers.newDomain?.isOpen?.()) { // the New domain dialog is modal: Escape closes it, its field keeps its keys
+    if (e.key === "Escape") {
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      handlers.newDomain.close();
+    } else if (!e.target?.closest?.("#new-domain")) e.stopPropagation();
+    return;
+  }
   if (handlers.about?.isOpen?.()) { // the About you editor is modal for page keys
     const act = aboutKey({ key: e.key, meta: e.metaKey, ctrl: e.ctrlKey, alt: e.altKey, inAbout: Boolean(e.target?.closest?.("#about")) });
     if (act === "escape") escape(e);

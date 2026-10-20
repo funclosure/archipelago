@@ -126,3 +126,11 @@ test("Escape stops a running turn before it blurs or closes anything below the o
   expect(escapeRung({ ...base, turn: false })).toBe("blur");
   expect(escapeRung(base)).toBe("blur"); // turn defaults to false
 });
+
+test("Escape closes the cartographer's pane after the cursor and before a selection; the sheet shows its keys", () => {
+  expect(escapeRung({ chart: true, cursor: true })).toBe("cursor");
+  expect(escapeRung({ chart: true, selected: true })).toBe("chart");
+  expect(escapeRung({ chart: true, turn: true })).toBe("stop");
+  expect(cheatSheet("pane", { chart: true })[1].title).toBe("Cartographer");
+  expect(cheatSheet("pane")[1].title).toBe("Pane");
+});
