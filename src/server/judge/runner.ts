@@ -1,3 +1,4 @@
+import { ArchipelagoError } from "../../core/errors.ts";
 import type { MessageMode } from "../../core/types.ts";
 import { stubRunner } from "./stub.ts";
 
@@ -21,8 +22,40 @@ export type JudgeTurn = {
 /** Runs one judge turn on the stored thread. Emits text as it arrives and resolves with the whole reply. */
 export type JudgeRunner = (turn: JudgeTurn) => Promise<string>;
 
-/** The stub needs no login; the SDK runner is imported lazily so tests never load it. */
-export function createRunner(stub: boolean): JudgeRunner {
-  if (stub) return stubRunner;
-  return async (turn) => (await import("./sdk.ts")).sdkRunner(turn);
+export const JUDGE_KINDS = ["api", "sdk", "stub"] as const;
+export type JudgeKind = (typeof JUDGE_KINDS)[number];
+
+export const SDK_DEFAULT_MODEL = "claude-opus-5";
+export const API_DEFAULT_MODEL = "claude-opus-5-5";
+
+export function parseJudgeKind(raw: string, from: string): JudgeKind {
+  if ((JUDGE_KINDS as readonly string[]).includes(raw)) return raw as JudgeKind;
+  throw new ArchipelagoError(`${from} must be one of ${JUDGE_KINDS.join(", ")}, not "${raw}"`);
+}
+
+/** The judge when nothing names one: ARCHIPELAGO_JUDGE, then ARCHIPELAGO_STUB=1, then the API when a key is set, else the SDK. */
+export function defaultJudge(env: Record<string, string | undefined> = process.env): JudgeKind {
+  if (env.ARCHIPELAGO_JUDGE) return parseJudgeKind(env.ARCHIPELAGO_JUDGE, "ARCHIPELAGO_JUDGE");
+  if (env.ARCHIPELAGO_STUB === "1") return "stub";
+  return env.ANTHROPIC_API_KEY ? "api" : "sdk";
+}
+
+/** The model a judge runs on: ARCHIPELAGO_MODEL, else that runner's default. The stub has none. */
+export function judgeModel(kind: JudgeKind, env: Record<string, string | undefined> = process.env): string | null {
+  if (kind === "stub") return null;
+  return env.ARCHIPELAGO_MODEL ?? (kind === "api" ? API_DEFAULT_MODEL : SDK_DEFAULT_MODEL);
+}
+
+/** The stub needs no login; the SDK and API runners are imported lazily so tests never load them. */
+export function createRunner(kind: JudgeKind): JudgeRunner {
+  if (kind === "stub") return stubRunner;
+  if (kind === "sdk") return async (turn) => (await import("./sdk.ts")).sdkRunner(turn);
+  let api: JudgeRunner | undefined; // one client for the server's life, made on the first turn
+  return async (turn) => {
+    if (!api) {
+      const [{ createApiRunner }, { islandContext, runTool }] = await Promise.all([import("./api.ts"), import("./tools.ts")]);
+      api = createApiRunner({ toolbox: { context: islandContext, run: runTool } });
+    }
+    return api(turn);
+  };
 }

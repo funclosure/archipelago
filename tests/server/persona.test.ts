@@ -2,7 +2,8 @@ import { test, expect } from "bun:test";
 import { judge, mentor, personaFor, renderJudgeContext, renderJudgeThreadPrompt, renderMentorContext, renderMentorThreadPrompt } from "../../src/server/judge/persona.ts";
 import { readProtocol } from "../../src/server/judge/protocol.ts";
 import { judgeStubTurn, mentorStubTurn } from "../../src/server/judge/stub.ts";
-import { allowedToolsFor, toolDescriptionsFor } from "../../src/server/judge/sdk.ts";
+import { allowedToolsFor } from "../../src/server/judge/sdk.ts";
+import { toolDescriptionsFor } from "../../src/server/judge/tool-specs.ts";
 
 test("the judge persona: PROTOCOL.md, its seven tools, its renderers, its stub", () => {
   expect(judge.id).toBe("judge");

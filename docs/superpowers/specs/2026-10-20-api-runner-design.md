@@ -1,7 +1,7 @@
 # API runner: the judge on the Messages API
 
 **Date:** 2026-10-20
-**Status:** designed
+**Status:** built (2026-10-20)
 **Builds on:** web judge (`2026-09-04-web-judge-design.md`), mentor mode (`2026-09-30-mentor-mode-design.md`), the Claude Code plugin (PR #1)
 **Unlocks:** the cartographer in the app (change A), which runs through this runner as a third persona; the bring-your-own-key web app (route 2), which runs this loop in the browser.
 

@@ -25,6 +25,7 @@ import { buildSnapshot, listCommentViews } from "../core/view-model.ts";
 import { resolveVerdictTarget } from "../core/targets.ts";
 import { emit, fail, readStdinJson } from "./io.ts";
 import { startServer } from "../server/index.ts";
+import { defaultJudge, judgeModel, parseJudgeKind, type JudgeKind } from "../server/judge/runner.ts";
 
 type Opts = Record<string, unknown>;
 
@@ -62,6 +63,13 @@ program.exitOverride();
 program.configureOutput({ writeErr: (text) => { commanderOutput += text; } });
 
 // ---- domain ----
+/** The startup line's judge: which runner, on which model, and why when the key chose it. */
+function judgeLine(judge: JudgeKind, named: boolean): string {
+  const model = judgeModel(judge);
+  const why = !named && !process.env.ARCHIPELAGO_JUDGE && judge === "api" ? ", because ANTHROPIC_API_KEY is set" : "";
+  return `judge: ${judge}${model ? ` on ${model}` : ""}${why}`;
+}
+
 /** The platform's own opener; a failure leaves the printed URL to click. */
 function openInBrowser(url: string) {
   const cmd = process.platform === "darwin" ? ["open", url] : process.platform === "win32" ? ["cmd", "/c", "start", "", url] : ["xdg-open", url];
@@ -399,13 +407,14 @@ program
   .option("--port <n>", "port", "4480")
   .option("--domain <slug>", "domain to open")
   .option("--no-open", "do not open the browser")
-  .option("--stub", "run the judge without the Agent SDK (canned replies, no login needed)")
-  .action((o: { port: string; domain?: string; open: boolean; stub?: boolean }) => {
+  .option("--judge <kind>", "api, sdk, or stub (default: api when ANTHROPIC_API_KEY is set, otherwise sdk)")
+  .option("--stub", "the same as --judge stub: canned replies, no login needed")
+  .action((o: { port: string; domain?: string; open: boolean; judge?: string; stub?: boolean }) => {
     try {
-      const stub = o.stub || process.env.ARCHIPELAGO_STUB === "1";
-      const server = startServer({ port: Number(o.port), stub });
+      const judge = o.judge ? parseJudgeKind(o.judge, "--judge") : o.stub ? "stub" : defaultJudge();
+      const server = startServer({ port: Number(o.port), judge });
       const url = `http://127.0.0.1:${server.port}/${o.domain ? `?domain=${encodeURIComponent(o.domain)}` : ""}`;
-      console.log(`Archipelago map: ${url}${stub ? "  (judge: stub)" : ""}`);
+      console.log(`Archipelago map: ${url}  (${judgeLine(judge, Boolean(o.judge || o.stub))})`);
       if (o.open) openInBrowser(url);
     } catch (error) {
       fail(error, false);

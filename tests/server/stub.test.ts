@@ -83,8 +83,8 @@ test("'reef' proposes and writes no verdict; 'fail' throws", async () => {
   await expect(turn("please fail")).rejects.toThrow("stub failure");
 });
 
-test("createRunner(true) is the stub", () => {
-  expect(createRunner(true)).toBe(stubRunner);
+test("createRunner(\"stub\") is the stub", () => {
+  expect(createRunner("stub")).toBe(stubRunner);
 });
 
 test("the second answer gets a canned ask; picking the first option lights 'shape'", async () => {
