@@ -4,7 +4,8 @@ import { resolve } from "node:path";
 import { THEMES } from "../../src/web/theme-model.js";
 
 const css = readFileSync(resolve(import.meta.dir, "../../src/web/styles.css"), "utf8");
-const SIZES = new Set(["--outline-w", "--pane-w"]);
+/** Tokens of :root that are not colours, so no theme redefines them. */
+const NOT_COLOURS = new Set(["--outline-w", "--pane-w", "--font-mono"]);
 const PALETTE = ["--sea", "--line-1", "--lamp", "--reef", "--sand-fill", "--grass", "--snow", "--explore"];
 
 function block(selector) {
@@ -19,7 +20,7 @@ function block(selector) {
 test("the chart theme defines every literal colour token of :root, and nothing else", () => {
   const root = block(":root");
   const chart = block(':root[data-theme="chart"]');
-  const literal = Object.keys(root).filter((k) => !SIZES.has(k) && !root[k].startsWith("var("));
+  const literal = Object.keys(root).filter((k) => !NOT_COLOURS.has(k) && !root[k].startsWith("var("));
   expect(literal.length).toBeGreaterThan(20);
   expect(Object.keys(chart).filter((k) => !(k in root))).toEqual([]);
   expect(literal.filter((k) => !(k in chart))).toEqual([]);
