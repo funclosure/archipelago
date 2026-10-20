@@ -2,8 +2,8 @@ import { test, expect } from "bun:test";
 import { Database } from "bun:sqlite";
 import { readFileSync, readdirSync, mkdtempSync, rmSync } from "node:fs";
 import { join } from "node:path";
-import { tmpdir } from "node:os";
-import { openDatabase } from "../../src/core/db.ts";
+import { homedir, tmpdir } from "node:os";
+import { openDatabase, resolveDbPath } from "../../src/core/db.ts";
 import { migrateDatabase } from "../../src/core/migrate.ts";
 
 test("openDatabase creates the schema", () => {
@@ -15,6 +15,17 @@ test("openDatabase creates the schema", () => {
   for (const t of ["schema_migrations", "domains", "islands", "straits", "verdicts", "sessions", "comments", "messages", "landmarks", "view_state"]) {
     expect(tables).toContain(t);
   }
+});
+
+test("the default database lives under the home directory, not the working directory", () => {
+  const saved = process.env.ARCHIPELAGO_DB_PATH;
+  delete process.env.ARCHIPELAGO_DB_PATH;
+  try {
+    expect(resolveDbPath()).toBe(join(homedir(), ".archipelago", "archipelago.sqlite"));
+  } finally {
+    if (saved !== undefined) process.env.ARCHIPELAGO_DB_PATH = saved;
+  }
+  expect(resolveDbPath("rel/x.sqlite")).toBe(join(process.cwd(), "rel/x.sqlite"));
 });
 
 test("migrations are idempotent", () => {

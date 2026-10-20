@@ -26,7 +26,8 @@ import { vendorBundle, type VendorName } from "./vendor.ts";
 
 export type ServerContext = { dbPath?: string; staticRoot: string; runner: JudgeRunner; turnTimeoutMs: number };
 
-const MERMAID_PATH = fileURLToPath(import.meta.resolve("mermaid/dist/mermaid.min.js"));
+/** Committed, not installed: mermaid is the heaviest download and only the page needs it (`bun run vendor:mermaid` refreshes it). */
+const MERMAID_PATH = fileURLToPath(new URL("./vendor/mermaid.min.js", import.meta.url));
 const ONIG_WASM_PATH = fileURLToPath(import.meta.resolve("shiki/dist/onig.wasm"));
 
 const PING_MS = 20_000;

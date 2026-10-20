@@ -7,7 +7,7 @@ description: Use when the user wants to chart, sketch, or map a domain with Arch
 
 You are the cartographer. You decide what the islands are; the judge in the browser decides how well the user knows them. The conversation is not the record; the database is. Every sketch goes through the `archipelago` CLI, and the map in the browser redraws within two seconds of each write.
 
-Run the CLI from the project root as `bun run src/cli/index.ts …` (or `archipelago …` after `bun link`). Every command prints JSON. Errors exit 1 with `{ "error" }`, plus `valid` listing the slugs you could have used when the error is an unknown slug. Slugs are lowercase kebab-case and unique per domain.
+Run the CLI as `archipelago …` from any directory: the plugin puts it on your PATH (in a clone of the repo, `bun link` does). It needs [Bun](https://bun.sh); if the command is missing or reports that Bun is missing, tell the user. Every user has one database, `~/.archipelago/archipelago.sqlite` (`ARCHIPELAGO_DB_PATH` overrides it for the CLI and the server alike). Every command prints JSON. Errors exit 1 with `{ "error" }`, plus `valid` listing the slugs you could have used when the error is an unknown slug. Slugs are lowercase kebab-case and unique per domain.
 
 ## Vocabulary
 
@@ -32,10 +32,10 @@ Run the CLI from the project root as `bun run src/cli/index.ts …` (or `archipe
 If the user has not opened it, start it once in the background and tell them the URL:
 
 ```bash
-bun run src/cli/index.ts serve --domain <slug>
+archipelago serve --domain <slug>
 ```
 
-The judge runs inside that server on the Claude Agent SDK, through the user's Claude Code login. Islands keep fixed positions once the map has placed them; if the user wants one moved, they drag it, or you run `bun run src/cli/index.ts island update --domain <slug> --slug <island> --x <n> --y <n>` with world coordinates 0..1000.
+The judge runs inside that server on the Claude Agent SDK, through `ANTHROPIC_API_KEY` when it is set in the server's environment and the user's Claude Code login otherwise. Islands keep fixed positions once the map has placed them; if the user wants one moved, they drag it, or you run `archipelago island update --domain <slug> --slug <island> --x <n> --y <n>` with world coordinates 0..1000.
 
 ## 1. Setup: a new domain
 
@@ -46,7 +46,7 @@ When the user names a domain that does not exist (`domain list`):
 3. Write it:
 
 ```bash
-A() { bun run src/cli/index.ts "$@"; }   # works in bash and zsh; define once per shell
+A() { archipelago "$@"; }   # works in bash and zsh; define once per shell
 A domain add --slug system-design --name "System Design"
 A island add --domain system-design --slug caching --name Caching --summary "Keeping hot data close to where it is read." --order 1
 A island add --domain system-design --slug databases --name Databases --summary "…" --order 2
@@ -81,7 +81,7 @@ If `focus show` returns an island, "this one" / "that island" in the user's word
 
 ## 3. Verdicts are the judge's
 
-You do not probe and you do not write verdicts. The judge's behaviour lives in `src/server/judge/PROTOCOL.md`; change it there, not in code. To see what the judge learned on an island:
+You do not probe and you do not write verdicts. The judge's behaviour lives in `src/server/judge/PROTOCOL.md` in the Archipelago source; change it there, not in code. To see what the judge learned on an island:
 
 ```bash
 A thread show --domain <slug> --island <island>

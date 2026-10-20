@@ -1,9 +1,11 @@
 import { Database } from "bun:sqlite";
 import { mkdirSync } from "node:fs";
-import { dirname, resolve } from "node:path";
+import { homedir } from "node:os";
+import { dirname, join, resolve } from "node:path";
 import { migrateDatabase } from "./migrate.ts";
 
-export const DEFAULT_DB_PATH = ".archipelago/archipelago.sqlite";
+/** One database per user, so the CLI and the server agree from any working directory. */
+export const DEFAULT_DB_PATH = join(homedir(), ".archipelago", "archipelago.sqlite");
 
 export function resolveDbPath(override?: string): string {
   const path = override ?? process.env.ARCHIPELAGO_DB_PATH ?? DEFAULT_DB_PATH;
