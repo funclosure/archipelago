@@ -1,4 +1,8 @@
+/* Paper Mono (SIL OFL 1.1, fonts/OFL.txt): one variable file, weights 100–800. */
+@font-face { font-family: "Paper Mono"; src: url("fonts/PaperMono.woff2") format("woff2"); font-weight: 100 800; font-style: normal; font-display: swap; }
+
 :root {
+  --font-mono: "Paper Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
   /* Contour palette */
   --sea: #1B3F5B; --line-1: #FFFFFF; --line-07: rgba(255, 255, 255, .7); --line-03: rgba(255, 255, 255, .45);
   --lamp: #F5C242; --reef: #D9473A; --sand-fill: #E7D39A; --grass: #6FAF5E; --snow: #F2F4F1; --explore: #5EC8D8;
@@ -107,12 +111,13 @@ body[data-mode="mentor"] .mode-switch .seg.on { color: var(--explore); }
 .msg p:last-child { margin-bottom: 0; }
 .msg ul, .msg ol { margin: 0 0 6px; padding-left: 20px; }
 .msg h1, .msg h2, .msg h3 { margin: 0 0 4px; font-size: 14px; font-weight: 600; }
+pre, code, kbd { font-family: var(--font-mono); }
 .msg pre { margin: 0 0 6px; padding: 8px 10px; background: var(--water); border-radius: 6px; overflow-x: auto; font-size: 12px; }
 .msg .ask { text-decoration: underline dotted var(--line-03); text-underline-offset: 3px; cursor: pointer; border-radius: 3px; }
 .msg .ask:hover, .msg .ask:focus-visible { text-decoration-color: var(--lamp); color: var(--lamp); outline: none; }
 .msg blockquote { margin: 0 0 6px; padding: 2px 0 2px 10px; border-left: 2px solid var(--line-03); color: var(--muted); }
 .msg blockquote p { margin: 0; }
-.msg code { font-family: ui-monospace, Menlo, monospace; font-size: 12px; background: var(--water); padding: 1px 4px; border-radius: 3px; }
+.msg code { font-family: var(--font-mono); font-size: 12px; background: var(--water); padding: 1px 4px; border-radius: 3px; }
 .msg pre code { background: none; padding: 0; }
 .msg.judge, .msg.mentor { font-family: Georgia, serif; font-size: 14.5px; }
 .msg.you { align-self: flex-end; max-width: 88%; background: var(--panel-2); border-radius: 10px 10px 2px 10px; padding: 8px 12px; }
@@ -199,7 +204,7 @@ button:focus-visible, textarea:focus-visible, input:focus-visible { outline: 2px
 :is(.outline, .peek) .row .anchor { color: var(--lamp); font-size: 11px; }
 :is(.outline, .peek) .row .n { font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
 .outline .ft { padding: 8px 14px; border-top: 1px solid var(--line); font-size: 11px; color: var(--muted); display: flex; justify-content: space-between; flex: none; }
-.outline kbd { font: 10px ui-monospace, Menlo, monospace; border: 1px solid var(--line); border-radius: 4px; padding: 0 4px; color: var(--muted); }
+.outline kbd { font: 10px var(--font-mono); border: 1px solid var(--line); border-radius: 4px; padding: 0 4px; color: var(--muted); }
 .outline.rail { width: 44px; }
 .outline.rail .oh { padding: 0; justify-content: center; }
 .outline.rail .ws, .outline.rail .sp, .outline.rail .sum, .outline.rail .sec, .outline.rail .list, .outline.rail .ft { display: none; }
@@ -297,7 +302,7 @@ body.pane-open .keys { right: var(--pane-w); }
 .keys-card .cols { display: flex; gap: 28px; }
 .keys-card .sec { font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); margin: 0 0 6px; }
 .keys-card .krow { display: flex; gap: 10px; align-items: baseline; font-size: 12px; line-height: 22px; }
-.keys-card kbd { font: 10px ui-monospace, Menlo, monospace; border: 1px solid var(--line); border-radius: 4px; padding: 0 5px; color: var(--text); min-width: 28px; text-align: center; }
+.keys-card kbd { font: 10px var(--font-mono); border: 1px solid var(--line); border-radius: 4px; padding: 0 5px; color: var(--text); min-width: 28px; text-align: center; }
 
 /* ---- board ---- */
 .board-scrim { position: fixed; top: 0; bottom: 0; left: var(--outline-w); right: 0; background: var(--scrim); z-index: 2; opacity: 0; transition: opacity .18s ease, left .18s ease; }
@@ -358,7 +363,7 @@ body.pane-open .board { right: var(--pane-w); }
 .board .editor .ebody { background: var(--water); }
 .board .editor .write { display: block; width: 100%; box-sizing: border-box; min-height: 160px; margin: 0; padding: 12px 14px; border: 0; background: transparent; color: var(--text); resize: none; outline: none; overflow-y: hidden;
   font: 14px/1.6 system-ui, -apple-system, sans-serif; }
-.board .editor.diagram .write { font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; white-space: pre; overflow-x: auto; }
+.board .editor.diagram .write { font: 12px/1.5 var(--font-mono); white-space: pre; overflow-x: auto; }
 .board .editor .write::placeholder { color: var(--muted); }
 .board .editor .write[hidden], .board .editor .preview[hidden] { display: none; }
 .board .editor .preview { padding: 12px 14px; min-height: 160px; box-sizing: border-box; }
@@ -368,20 +373,20 @@ body.pane-open .board { right: var(--pane-w); }
 .board .editor .err { color: var(--reef); font-size: 12px; white-space: pre-wrap; padding: 6px 14px 10px; border-top: 1px solid var(--reef-tint); }
 .board .editor .efoot { display: flex; gap: 6px; align-items: center; padding: 8px 12px; border-top: 1px solid var(--line); }
 .board .editor .efoot .hint { margin-left: auto; color: var(--muted); font-size: 11px; }
-.board .editor .efoot .hint kbd { font: 10px ui-monospace, monospace; border: 1px solid var(--line-03); border-radius: 4px; padding: 0 4px; margin: 0 2px; }
+.board .editor .efoot .hint kbd { font: 10px var(--font-mono); border: 1px solid var(--line-03); border-radius: 4px; padding: 0 4px; margin: 0 2px; }
 .board .editor .efoot .status { color: var(--muted); font-size: 12px; margin-left: 8px; }
 .board .editor .efoot .status.bad { color: var(--reef); }
 .board .editor .efoot .status:empty { display: none; }
 /* the live code block: a transparent textarea over the highlighted mirror, same metrics */
 .board .live { position: relative; }
-.board .live pre, .board .live textarea { margin: 0; padding: 12px 14px; font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; white-space: pre; tab-size: 2; box-sizing: border-box; }
+.board .live pre, .board .live textarea { margin: 0; padding: 12px 14px; font: 12px/1.5 var(--font-mono); white-space: pre; tab-size: 2; box-sizing: border-box; }
 .board .live textarea { position: relative; display: block; width: 100%; min-height: 160px; border: 0; background: transparent; color: transparent; caret-color: var(--text); resize: none; overflow: auto; outline: none; }
 .board .live code { color: var(--code-fg); }
 .board-toggle { position: fixed; right: 16px; bottom: 16px; z-index: 2; display: flex; gap: 8px; align-items: center; background: var(--panel); border: 1px solid var(--line); color: var(--text);
   border-radius: 999px; padding: 6px 12px; font: 12px system-ui, sans-serif; cursor: pointer; box-shadow: 0 8px 24px var(--shadow-soft); transition: right .18s ease; }
 body.pane-open .board-toggle { right: calc(var(--pane-w) + 16px); }
 .board-toggle:hover { border-color: var(--lamp); color: var(--lamp); }
-.board-toggle kbd { font: 10px ui-monospace, monospace; border: 1px solid var(--line-03); border-radius: 4px; padding: 0 4px; color: var(--muted); }
+.board-toggle kbd { font: 10px var(--font-mono); border: 1px solid var(--line-03); border-radius: 4px; padding: 0 4px; color: var(--muted); }
 .board-toggle[hidden] { display: none; }
 
 /* ---- About you: the learner note ---- */
