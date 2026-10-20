@@ -1,24 +1,33 @@
-// A persona is everything that differs between the judge and the mentor: the protocol file, the closed
-// tool list, how the context and the thread are rendered, and the stub turn. One runner serves both.
+// A persona is everything that differs between the judge, the mentor, and the cartographer: the protocol
+// file, the closed tool list, the context it reads and how it and the thread are rendered, and the stub
+// turn. One runner serves all three.
 import type { Ask, Message, MessageMode } from "../../core/types.ts";
 import {
   indent, renderBoard, renderIslandHead, renderLearner, renderPendingAsk, renderPendingReefs, renderReplay, renderSurroundings, type JudgeContext,
 } from "./context.ts";
 import type { JudgeRunner } from "./runner.ts";
-import { judgeStubTurn, mentorStubTurn } from "./stub.ts";
+import { cartographerStubTurn, judgeStubTurn, mentorStubTurn } from "./stub.ts";
+import { islandContext, type TurnDeps } from "./tools.ts";
+import { chartContext, renderChartContext, renderChartThreadPrompt, type ChartContext } from "./chart.ts";
 
 export const TOOL_NAMES = [
   "island_context", "record_verdict", "propose_reef", "set_landmarks", "unlock_landmark", "ask_reader", "board_write", "mark_explored",
+  "chart_context", "propose_sketch",
 ] as const;
 export type ToolName = (typeof TOOL_NAMES)[number];
 
-export type Persona = {
+/** What every persona's context carries for the runners: its thread and the asks on it. */
+export type PersonaContext = { thread: Message[]; asks: Ask[] };
+
+export type Persona<C extends PersonaContext = any> = {
   id: MessageMode;
   /** Beside protocol.ts; read fresh every turn. */
   protocolFile: string;
-  /** The closed tool set: sdk.ts builds these and allows only these. */
+  /** The closed tool set: the runners build these and allow only these. */
   toolNames: readonly ToolName[];
-  renderContext: (ctx: JudgeContext) => string;
+  /** The turn's context, read fresh from the database before the first request. */
+  buildContext: (deps: TurnDeps) => C;
+  renderContext: (ctx: C) => string;
   renderThreadPrompt: (thread: Message[], asks?: Ask[]) => string;
   stubTurn: JudgeRunner;
 };
@@ -99,18 +108,20 @@ export function renderMentorThreadPrompt(thread: Message[], asks: Ask[] = []): s
   return [...renderReplay(thread, asks), "", "Continue as the mentor."].join("\n");
 }
 
-export const judge: Persona = {
+export const judge: Persona<JudgeContext> = {
   id: "judge",
   protocolFile: "PROTOCOL.md",
+  buildContext: (deps) => islandContext(deps),
   toolNames: ["island_context", "record_verdict", "propose_reef", "set_landmarks", "unlock_landmark", "ask_reader", "board_write"],
   renderContext: renderJudgeContext,
   renderThreadPrompt: renderJudgeThreadPrompt,
   stubTurn: judgeStubTurn,
 };
 
-export const mentor: Persona = {
+export const mentor: Persona<JudgeContext> = {
   id: "mentor",
   protocolFile: "MENTOR.md",
+  buildContext: (deps) => islandContext(deps),
   // No verdict tools: the mentor never writes a verdict, never lights a landmark, never proposes a reef.
   toolNames: ["island_context", "set_landmarks", "mark_explored", "ask_reader", "board_write"],
   renderContext: renderMentorContext,
@@ -118,7 +129,18 @@ export const mentor: Persona = {
   stubTurn: mentorStubTurn,
 };
 
-const PERSONAS: Record<MessageMode, Persona> = { judge, mentor };
+export const cartographer: Persona<ChartContext> = {
+  id: "cartographer",
+  protocolFile: "CARTOGRAPHER.md",
+  // Sketches only: no verdict, no landmark, no board. What it proposes reaches the map when the reader approves.
+  toolNames: ["chart_context", "propose_sketch"],
+  buildContext: (deps) => chartContext(deps),
+  renderContext: renderChartContext,
+  renderThreadPrompt: renderChartThreadPrompt,
+  stubTurn: cartographerStubTurn,
+};
+
+const PERSONAS: Record<MessageMode, Persona> = { judge, mentor, cartographer };
 
 export function personaFor(mode: MessageMode): Persona {
   return PERSONAS[mode];

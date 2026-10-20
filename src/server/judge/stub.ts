@@ -1,4 +1,6 @@
+import { ArchipelagoError } from "../../core/errors.ts";
 import type { JudgeRunner, JudgeTurn } from "./runner.ts";
+import { chartContext, proposeSketchTool } from "./chart.ts";
 import { personaFor } from "./persona.ts";
 import { askReader, boardWrite, islandContext, markExplored, proposeReef, recordVerdict, setLandmarks, unlockLandmark } from "./tools.ts";
 
@@ -19,8 +21,14 @@ export const stubRunner: JudgeRunner = (turn) => personaFor(turn.mode ?? "judge"
  *   (canned) · else a canned follow-up.
  * A function declaration, not a const: persona.ts imports it while this module may still be evaluating.
  */
+/** The judge's and the mentor's turns always name an island. */
+function islandOf(island: string | undefined): string {
+  if (island === undefined) throw new ArchipelagoError("a judge or mentor turn needs an island");
+  return island;
+}
+
 export async function judgeStubTurn({ dbPath, domain, island, emit }: JudgeTurn): Promise<string> {
-  const deps = { dbPath, domain, island };
+  const deps = { dbPath, domain, island: islandOf(island) };
   let ctx = islandContext(deps);
   const say = (text: string) => {
     emit({ type: "text", text });
@@ -99,7 +107,7 @@ export async function judgeStubTurn({ dbPath, domain, island, emit }: JudgeTurn)
  * A function declaration, not a const: persona.ts imports it while this module may still be evaluating.
  */
 export async function mentorStubTurn({ dbPath, domain, island, emit }: JudgeTurn): Promise<string> {
-  const deps = { dbPath, domain, island, mode: "mentor" as const };
+  const deps = { dbPath, domain, island: islandOf(island), mode: "mentor" as const };
   let ctx = islandContext(deps);
   const say = (text: string) => {
     emit({ type: "text", text });
@@ -132,4 +140,50 @@ export async function mentorStubTurn({ dbPath, domain, island, emit }: JudgeTurn
     return say("Pinned the analogy to the board. Where does it break for you?");
   }
   return say(`Here is more on ${ctx.island.name}, in plain terms. Try it on an example of your own.`);
+}
+
+/** Generic parts of any field: the stub's top scale. */
+const TOP = ["foundations", "tools", "patterns", "failure-modes", "trade-offs", "practice"];
+const ISLETS = ["basics", "mechanics", "edge-cases", "in-practice"];
+const title = (slug: string) => slug.replace(/-/g, " ").replace(/^./, (c) => c.toUpperCase());
+const canned = (prefix: string, slug: string) => ({
+  slug: `${prefix}${slug}`,
+  name: title(slug),
+  summary: `The ${slug.replace(/-/g, " ")} of this field.`,
+  landmarks: ["what", "why", "when", "limits"].map((l) => ({ slug: l, name: title(l) })),
+});
+
+/**
+ * No-login cartographer for `serve --stub` and tests, through the same tool: an empty scale → propose_sketch
+ * (six canned islands at the top, four islets inside an island, chained by straits, the first as harbour) ·
+ * "rename" → propose_sketch updating the first island's summary · "fail" → throws · else a canned line.
+ * A function declaration, not a const: persona.ts imports it while this module may still be evaluating.
+ */
+export async function cartographerStubTurn({ dbPath, domain, island, emit }: JudgeTurn): Promise<string> {
+  const deps = { dbPath, domain, island };
+  const ctx = chartContext(deps);
+  const say = (text: string) => {
+    emit({ type: "text", text });
+    return text;
+  };
+  const last = ctx.thread.findLast((m) => m.role === "you" && m.kind === "text");
+  const text = last?.body.toLowerCase() ?? "";
+  if (text.includes("fail")) throw new Error("stub failure");
+  if (ctx.islands.length === 0) {
+    const islands = ctx.scale ? ISLETS.map((s) => canned(`${ctx.scale!.slug}-`, s)) : TOP.map((s) => canned("", s));
+    emit({ type: "progress", message: "propose_sketch" });
+    proposeSketchTool(deps, {
+      islands,
+      straits: islands.slice(1).map((isle, i) => ({ from: islands[i]!.slug, to: isle.slug })),
+      harbour: islands[0]!.slug,
+    });
+    return say(`Here is a first sketch of ${ctx.scale ? ctx.scale.name : ctx.domain.name}: ${islands.length} islands. Approve it, or say what to change.`);
+  }
+  if (text.includes("rename")) {
+    const first = ctx.islands[0]!;
+    emit({ type: "progress", message: "propose_sketch" });
+    proposeSketchTool(deps, { updates: [{ slug: first.slug, summary: `${first.name}, as the reader asked.` }] });
+    return say(`I proposed a new summary for ${first.name}. Approve it, or say what to change.`);
+  }
+  return say(`This scale has ${ctx.islands.length} islands. Say what to add or change.`);
 }

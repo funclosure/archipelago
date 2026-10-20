@@ -596,7 +596,7 @@ test("a mentor turn that asks: the reply is stored as the mentor's and the ask a
   const asking: JudgeRunner = async ({ domain, island }) => {
     const db = openDatabase(dbPath);
     const d = upsertDomain(db, { slug: domain, name: "System Design" });
-    const i = upsertIsland(db, { domainId: d.id, slug: island, name: "Databases" });
+    const i = upsertIsland(db, { domainId: d.id, slug: island!, name: "Databases" });
     addAsk(db, { domainId: d.id, islandId: i.id, question: "Which sounds closer?", options: ["a ledger", "a pantry"] });
     db.close();
     return "Let me check where you are.";

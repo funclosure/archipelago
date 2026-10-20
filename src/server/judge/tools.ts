@@ -27,9 +27,18 @@ import type { Ask, BoardCard, Island, Message, MessageMode, MessageRole, ReefPro
 import { buildJudgeContext, type JudgeContext } from "./context.ts";
 import type { Persona, ToolName } from "./persona.ts";
 import { toolError, toolResult, type ToolResult } from "./tool-specs.ts";
+import { chartContext, proposeSketchTool } from "./chart.ts";
 
 /** Where a tool call writes: the database path, the island whose threads this turn belongs to, and whose turn it is. */
 export type ToolDeps = { dbPath?: string; domain: string; island: string; mode?: MessageMode };
+/** A turn's deps as the runners hold them: the island is absent only for the cartographer at the top scale. */
+export type TurnDeps = Omit<ToolDeps, "island"> & { island?: string };
+
+/** The island an island tool needs; a cartographer turn at the top scale has none. */
+function onIsland(deps: TurnDeps): ToolDeps {
+  if (deps.island === undefined) throw new ArchipelagoError("this tool needs an island");
+  return { ...deps, island: deps.island };
+}
 
 /** Each tool call opens and closes the database, like every request. */
 function withDb<T>(dbPath: string | undefined, fn: (db: Database) => T): T {
@@ -50,8 +59,9 @@ export function systemLine(target: string, state: VerdictState, threadIsland: st
   return `${target.replace(/^island:/, "island ").replace(/^strait:/, "strait ")} charted as ${state}`;
 }
 
-export function islandContext(deps: ToolDeps): JudgeContext {
-  return withDb(deps.dbPath, (db) => buildJudgeContext(db, deps.domain, deps.island, deps.mode ?? "judge"));
+export function islandContext(deps: TurnDeps): JudgeContext {
+  const { domain, island, mode } = onIsland(deps);
+  return withDb(deps.dbPath, (db) => buildJudgeContext(db, domain, island, mode ?? "judge"));
 }
 
 /** A thread charts its own island, and a strait only when this island is one of its two ends. */
@@ -247,18 +257,20 @@ export function boardWrite(deps: ToolDeps, input: unknown, author: MessageRole =
 }
 
 /** One tool call for a persona, as either runner makes it. A name outside the persona's list is refused, never dispatched. */
-export function runTool(persona: Persona, deps: ToolDeps, name: string, input: unknown): ToolResult {
+export function runTool(persona: Persona, deps: TurnDeps, name: string, input: unknown): ToolResult {
   if (!(persona.toolNames as readonly string[]).includes(name)) return toolError(new ArchipelagoError(`no tool named ${name} for the ${persona.id}`));
   try {
     switch (name as ToolName) {
       case "island_context": return toolResult(islandContext(deps));
-      case "record_verdict": return toolResult(recordVerdict(deps, input));
-      case "propose_reef": return toolResult(proposeReef(deps, input));
-      case "set_landmarks": return toolResult(setLandmarks(deps, input));
-      case "unlock_landmark": return toolResult(unlockLandmark(deps, input));
-      case "ask_reader": return toolResult(askReader(deps, input));
-      case "board_write": return toolResult(boardWrite(deps, input, persona.id));
-      case "mark_explored": return toolResult(markExplored(deps, input));
+      case "record_verdict": return toolResult(recordVerdict(onIsland(deps), input));
+      case "propose_reef": return toolResult(proposeReef(onIsland(deps), input));
+      case "set_landmarks": return toolResult(setLandmarks(onIsland(deps), input));
+      case "unlock_landmark": return toolResult(unlockLandmark(onIsland(deps), input));
+      case "ask_reader": return toolResult(askReader(onIsland(deps), input));
+      case "board_write": return toolResult(boardWrite(onIsland(deps), input, persona.id));
+      case "mark_explored": return toolResult(markExplored(onIsland(deps), input));
+      case "chart_context": return toolResult(chartContext(deps));
+      case "propose_sketch": return toolResult(proposeSketchTool(deps, input));
     }
   } catch (error) {
     return toolError(error);

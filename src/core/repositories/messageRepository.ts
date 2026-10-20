@@ -7,7 +7,8 @@ const COLS = "id, domain_id as domainId, island_id as islandId, role, kind, body
 
 export type MessageInsert = {
   domainId: number;
-  islandId: number;
+  /** Null only for the cartographer at the domain's top scale. */
+  islandId: number | null;
   role: MessageRole;
   kind: MessageKind;
   body: string;
@@ -27,7 +28,7 @@ const proposalSchema = z.object({
 
 export function addMessage(db: Database, input: MessageInsert): Message {
   return db
-    .query<Message, Record<string, string | number>>(
+    .query<Message, Record<string, string | number | null>>(
       `insert into messages (domain_id, island_id, role, kind, body, mode)
        values ($domainId, $islandId, $role, $kind, $body, $mode) returning ${COLS}`,
     )
@@ -37,9 +38,18 @@ export function addMessage(db: Database, input: MessageInsert): Message {
     })!;
 }
 
-/** One thread of an island, in order: the judge's by default, the mentor's when asked. */
+/** One thread of an island, in order: the judge's by default, the mentor's or the cartographer's (its islets) when asked. */
 export function listMessages(db: Database, islandId: number, mode: MessageMode = "judge"): Message[] {
   return db.query<Message, [number, string]>(`select ${COLS} from messages where island_id = ? and mode = ? order by id`).all(islandId, mode);
+}
+
+/** The cartographer's thread at one scale: an island's islets, or the domain's top scale when `islandId` is null. */
+export function listScaleMessages(db: Database, domainId: number, islandId: number | null): Message[] {
+  return db
+    .query<Message, [number, number | null]>(
+      `select ${COLS} from messages where domain_id = ? and mode = 'cartographer' and coalesce(island_id, 0) = coalesce(?, 0) order by id`,
+    )
+    .all(domainId, islandId);
 }
 
 export function getMessage(db: Database, id: number): Message | null {

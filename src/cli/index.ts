@@ -16,7 +16,8 @@ import { countStraitsTouching, listStraits, upsertStrait } from "../core/reposit
 import { addVerdict, latestVerdict, latestVerdicts, verdictHistory } from "../core/repositories/verdictRepository.ts";
 import { activeSession, endSession, listSessions, startSession } from "../core/repositories/sessionRepository.ts";
 import { markCommentsRead } from "../core/repositories/commentRepository.ts";
-import { listMessages } from "../core/repositories/messageRepository.ts";
+import { listMessages, listScaleMessages } from "../core/repositories/messageRepository.ts";
+import { listSketches } from "../core/repositories/sketchRepository.ts";
 import { listCards } from "../core/repositories/boardRepository.ts";
 import { getLearner, setLearnerNote } from "../core/repositories/learnerRepository.ts";
 import { listLandmarks, upsertLandmark } from "../core/repositories/landmarkRepository.ts";
@@ -364,14 +365,37 @@ common(
 );
 
 // ---- thread ----
-const thread = program.command("thread").description("An island's conversation: the judge's thread, or the mentor's");
-common(thread.command("show").option("--domain <slug>").option("--island <slug>").option("--mode <mode>", "judge (default) or mentor")).action(
+const thread = program.command("thread").description("A conversation: an island's judge or mentor thread, or the cartographer's at one scale");
+common(
+  thread
+    .command("show")
+    .option("--domain <slug>")
+    .option("--island <slug>", "the island; for the cartographer, whose islets (omit for the top scale)")
+    .option("--mode <mode>", "judge (default), mentor, or cartographer"),
+).action(
   run((o) =>
     withDb((db) => {
       const d = requireDomain(db, slugSchema.parse(o.domain));
-      const i = requireIsland(db, d.id, slugSchema.parse(o.island));
       const mode = modeSchema.parse(o.mode ?? "judge");
+      if (mode === "cartographer") {
+        const scale = o.island === undefined ? null : requireIsland(db, d.id, slugSchema.parse(o.island));
+        return { island: scale ? scale.slug : null, mode, messages: listScaleMessages(db, d.id, scale ? scale.id : null) };
+      }
+      const i = requireIsland(db, d.id, slugSchema.parse(o.island));
       return { island: i.slug, mode, messages: listMessages(db, i.id, mode) };
+    }),
+  ),
+);
+
+// ---- sketch ----
+const sketch = program.command("sketch").description("Sketches the cartographer in the app proposed; the reader approves them on the map");
+common(sketch.command("list").option("--domain <slug>").option("--island <slug>", "sketches among this island's islets (omit for every scale)").option("--pending", "only pending")).action(
+  run((o) =>
+    withDb((db) => {
+      const d = requireDomain(db, slugSchema.parse(o.domain));
+      const scale = o.island === undefined ? undefined : requireIsland(db, d.id, slugSchema.parse(o.island)).id;
+      const rows = listSketches(db, d.id, scale).filter((s) => !o.pending || s.status === "pending");
+      return { sketches: rows };
     }),
   ),
 );
