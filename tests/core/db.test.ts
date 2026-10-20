@@ -54,7 +54,7 @@ test("0002 adds nullable island positions", () => {
   expect(cols).toContain("x");
   expect(cols).toContain("y");
   const versions = db.query<{ version: string }, []>("select version from schema_migrations order by version").all().map((r) => r.version);
-  expect(versions).toEqual(["0001_initial", "0002_positions", "0003_threads", "0004_landmarks", "0005_harbour", "0006_asks", "0007_board", "0008_mentor"]);
+  expect(versions).toEqual(["0001_initial", "0002_positions", "0003_threads", "0004_landmarks", "0005_harbour", "0006_asks", "0007_board", "0008_mentor", "0009_cartographer"]);
 });
 
 test("0002 upgrades a database created with 0001 only", () => {
@@ -74,7 +74,7 @@ test("0002 upgrades a database created with 0001 only", () => {
     .get(domainId)!.version;
 
   const ran = migrateDatabase(db);
-  expect(ran).toEqual(["0002_positions", "0003_threads", "0004_landmarks", "0005_harbour", "0006_asks", "0007_board", "0008_mentor"]);
+  expect(ran).toEqual(["0002_positions", "0003_threads", "0004_landmarks", "0005_harbour", "0006_asks", "0007_board", "0008_mentor", "0009_cartographer"]);
 
   const island = db.query<{ x: number | null; y: number | null }, []>("select x, y from islands where slug = 'caching'").get();
   expect(island).toEqual({ x: null, y: null });
@@ -194,7 +194,7 @@ test("0008 rebuilds messages and board cards in place: ids, links, and authors s
   const version = () => db.query<{ version: number }, []>("select version from view_state").get()!.version;
   const before = version();
 
-  expect(migrateDatabase(db)).toEqual(["0008_mentor"]);
+  expect(migrateDatabase(db)).toEqual(["0008_mentor", "0009_cartographer"]);
 
   expect(db.query("select id, role, mode from messages order by id").all()).toEqual([
     { id: 1, role: "judge", mode: "judge" }, { id: 2, role: "judge", mode: "judge" }, { id: 3, role: "judge", mode: "judge" },
@@ -233,4 +233,36 @@ test("0008's learner is one row, and updating it bumps every domain's version", 
   db.run("update learner set note = 'iOS engineer'");
   expect(versions()).toEqual([1, 1]);
   expect(() => db.run("insert into learner (id) values (2)")).toThrow();
+});
+
+test("0009 rebuilds messages in place: ids, islands, and modes survive; only the cartographer may have no island", () => {
+  const db = new Database(":memory:");
+  db.exec("pragma foreign_keys = on");
+  db.exec("create table schema_migrations (version text primary key, applied_at text not null default (strftime('%Y-%m-%dT%H:%M:%fZ','now')))");
+  const dir = new URL("../../src/core/migrations/", import.meta.url);
+  for (const file of readdirSync(dir).filter((f) => f.endsWith(".sql") && f < "0009").sort()) {
+    db.exec("pragma foreign_keys = off");
+    db.exec(readFileSync(new URL(file, dir), "utf8"));
+    db.exec("pragma foreign_keys = on");
+    db.run("insert into schema_migrations (version) values (?)", [file.replace(/\.sql$/, "")]);
+  }
+  db.run("insert into domains (slug, name) values ('sd', 'System Design')");
+  db.run("insert into islands (domain_id, slug, name) values (1, 'caching', 'Caching')");
+  db.run("insert into messages (domain_id, island_id, role, kind, body, mode) values (1, 1, 'judge', 'text', 'q', 'judge')");
+  db.run("insert into messages (domain_id, island_id, role, kind, body, mode) values (1, 1, 'mentor', 'text', 'm', 'mentor')");
+  db.run("insert into asks (domain_id, island_id, message_id, question, options) values (1, 1, 2, 'which?', '[\"a\",\"b\"]')");
+
+  expect(migrateDatabase(db)).toEqual(["0009_cartographer"]);
+
+  expect(db.query("select id, island_id as islandId, role, mode from messages order by id").all()).toEqual([
+    { id: 1, islandId: 1, role: "judge", mode: "judge" }, { id: 2, islandId: 1, role: "mentor", mode: "mentor" },
+  ]);
+  expect(db.query<{ message_id: number }, []>("select message_id from asks").get()!.message_id).toBe(2);
+  db.run("insert into messages (domain_id, island_id, role, kind, body, mode) values (1, null, 'cartographer', 'text', 'top', 'cartographer')");
+  expect(() => db.run("insert into messages (domain_id, island_id, role, kind, body, mode) values (1, null, 'judge', 'text', 'x', 'judge')")).toThrow();
+  expect(db.query("pragma foreign_key_check").all()).toEqual([]);
+  const version = () => db.query<{ version: number }, []>("select version from view_state").get()!.version;
+  const before = version();
+  db.run("insert into sketches (domain_id, body) values (1, '{}')");
+  expect(version()).toBe(before + 1);
 });

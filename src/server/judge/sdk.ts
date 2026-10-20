@@ -1,7 +1,7 @@
 import type { SdkMcpToolDefinition } from "@anthropic-ai/claude-agent-sdk";
 import { ArchipelagoError } from "../../core/errors.ts";
 import { readProtocol } from "./protocol.ts";
-import { islandContext, runTool, type ToolDeps } from "./tools.ts";
+import { runTool, type TurnDeps } from "./tools.ts";
 import { personaFor, type Persona, type ToolName } from "./persona.ts";
 import { TOOL_SHAPES, toolDescriptionsFor } from "./tool-specs.ts";
 import { SDK_DEFAULT_MODEL, type JudgeRunner } from "./runner.ts";
@@ -45,7 +45,7 @@ export function allowedToolsFor(persona: Persona): string[] {
 }
 
 /** The persona's tools as MCP tools, from the specs both runners share. */
-function toolsFor(sdk: Sdk, deps: ToolDeps, persona: Persona): SdkMcpToolDefinition<any>[] {
+function toolsFor(sdk: Sdk, deps: TurnDeps, persona: Persona): SdkMcpToolDefinition<any>[] {
   const describe = toolDescriptionsFor(persona) as Record<ToolName, string>;
   return persona.toolNames.map((name) => sdk.tool(name, describe[name], TOOL_SHAPES[name], async (args) => runTool(persona, deps, name, args)));
 }
@@ -54,8 +54,8 @@ function toolsFor(sdk: Sdk, deps: ToolDeps, persona: Persona): SdkMcpToolDefinit
 export const sdkRunner: JudgeRunner = async ({ dbPath, domain, island, mode = "judge", emit, signal }) => {
   const sdk = await loadSdk();
   const persona = personaFor(mode);
-  const deps: ToolDeps = { dbPath, domain, island, mode };
-  const context = islandContext(deps);
+  const deps: TurnDeps = { dbPath, domain, island, mode };
+  const context = persona.buildContext(deps);
   const systemPrompt = `${readProtocol(persona)}\n\n${persona.renderContext(context)}`;
   const prompt = persona.renderThreadPrompt(context.thread, context.asks);
 

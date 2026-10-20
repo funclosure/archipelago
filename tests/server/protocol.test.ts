@@ -1,6 +1,8 @@
 import { test, expect } from "bun:test";
 import { readProtocol } from "../../src/server/judge/protocol.ts";
-import { judge, mentor } from "../../src/server/judge/persona.ts";
+import { readFileSync } from "node:fs";
+import { cartographer, judge, mentor } from "../../src/server/judge/persona.ts";
+import { SKETCH_LIMITS } from "../../src/core/repositories/sketchRepository.ts";
 
 test("the protocol names the states, the seven tools, the round shape, and the four-answer rule", () => {
   const text = readProtocol();
@@ -82,4 +84,16 @@ test("MENTOR.md §3 states the evidence quote minimum and the pick restriction",
 
 test("both protocols put every tool call before the reply: text between tool calls is not shown on the API runner", () => {
   for (const persona of [judge, mentor]) expect(readProtocol(persona)).toContain("Make every tool call first. Write the whole reply after the last tool returns");
+});
+
+test("the sketch numbers agree across CARTOGRAPHER.md, the skill, and the repository", () => {
+  const chart = readProtocol(cartographer);
+  const skill = readFileSync(new URL("../../.claude/skills/archipelago-chart/SKILL.md", import.meta.url), "utf8");
+  const n = (range: readonly [number, number]) => `${range[0]}–${range[1]}`;
+  for (const text of [chart, skill]) {
+    expect(text).toContain(`${n(SKETCH_LIMITS.top.first)} top-level islands`);
+    expect(text).toContain(`${n(SKETCH_LIMITS.islets.first)} islets`);
+    expect(text).toContain("4–6 landmarks");
+  }
+  expect(chart).toContain("Make every tool call first. Write the whole reply after the last tool returns");
 });

@@ -5,8 +5,8 @@ import { z } from "zod";
 import { ArchipelagoError } from "../../core/errors.ts";
 import type { Persona, ToolName } from "./persona.ts";
 
-/** The judge's wording for each tool; the mentor overrides what reads differently in its mode. */
-const JUDGE_DESCRIPTIONS: Record<ToolName, string> = {
+/** Each tool's wording as the judge (or, for its two tools, the cartographer) reads it; the mentor overrides what reads differently in its mode. */
+const DESCRIPTIONS: Record<ToolName, string> = {
   island_context: "This island: verdict and history, islets, straits to neighbours, nearest open water, pending reef proposals, the board, and the thread so far. Read fresh.",
   record_verdict: "Write a sandbar, settled, or mountainous verdict on island:<slug> or strait:<a>~<b>. Evidence is a verbatim quote from the reader. Reefs are not accepted here; use propose_reef.",
   propose_reef: "Show the reader a reef: the specific false claim and the concrete consequence. The reef is written only if they confirm it.",
@@ -15,6 +15,8 @@ const JUDGE_DESCRIPTIONS: Record<ToolName, string> = {
   ask_reader: "Ask the reader to choose: a question and 2–4 short options, one of them what they would say if they already understood. The options appear under your reply; end the reply with the question and stop.",
   board_write: "Pin, update, or remove a card on this island's board (see the board section of your protocol). op add: kind (diagram | note | code), body (mermaid source, markdown, or code), lang for code, and an optional one-line title. op update: id plus the fields to change. op remove: id. You may only update or remove cards you wrote.",
   mark_explored: "Mark one landmark explored: the reader engaged it in their own words (asked about it, restated it, or tried it on an example). Evidence is a verbatim quote of at least two words and twelve characters from the reader's latest message; anything else is refused. Marking it again changes nothing.",
+  chart_context: "This scale: the islands and straits here, at island scale the island's landmarks, board, and two threads, every slug taken in the domain, how many islands the next sketch may add, the pending sketch, and your thread. Read fresh.",
+  propose_sketch: "Propose a sketch at this scale: new islands (slug, name, one-line summary, 4–6 landmarks each), straits between islands at this scale, an optional harbour, and name or summary updates to islands already here. It replaces any pending sketch. Nothing reaches the map until the reader approves it there.",
 };
 
 const MENTOR_DESCRIPTIONS: Partial<Record<ToolName, string>> = {
@@ -29,7 +31,7 @@ const MENTOR_DESCRIPTIONS: Partial<Record<ToolName, string>> = {
 /** Each of the persona's tools with the description it sees, in the persona's tool order. */
 export function toolDescriptionsFor(persona: Persona): Partial<Record<ToolName, string>> {
   const own = persona.id === "mentor" ? MENTOR_DESCRIPTIONS : {};
-  return Object.fromEntries(persona.toolNames.map((name) => [name, own[name] ?? JUDGE_DESCRIPTIONS[name]]));
+  return Object.fromEntries(persona.toolNames.map((name) => [name, own[name] ?? DESCRIPTIONS[name]]));
 }
 
 /** The input each tool takes, as the model sees it. The tool functions validate again with the core schemas. */
@@ -62,6 +64,15 @@ export const TOOL_SHAPES: Record<ToolName, z.ZodRawShape> = {
     lang: z.string().nullable().optional(),
   },
   mark_explored: { slug: z.string(), evidence: z.string() },
+  chart_context: {},
+  propose_sketch: {
+    islands: z
+      .array(z.object({ slug: z.string(), name: z.string(), summary: z.string(), landmarks: z.array(z.object({ slug: z.string(), name: z.string() })).min(4).max(6) }))
+      .optional(),
+    straits: z.array(z.object({ from: z.string(), to: z.string(), name: z.string().optional() })).optional(),
+    harbour: z.string().optional(),
+    updates: z.array(z.object({ slug: z.string(), name: z.string().optional(), summary: z.string().optional() })).optional(),
+  },
 };
 
 /** A tool's JSON Schema for the Messages API: the zod shape, without the `$schema` marker. */

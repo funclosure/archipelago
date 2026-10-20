@@ -3,12 +3,11 @@
 // wherever the SDK runs.
 import Anthropic from "@anthropic-ai/sdk";
 import { ArchipelagoError } from "../../core/errors.ts";
-import type { JudgeContext } from "./context.ts";
-import { personaFor, type Persona } from "./persona.ts";
+import { personaFor, type Persona, type PersonaContext } from "./persona.ts";
 import { readProtocol } from "./protocol.ts";
 import { API_DEFAULT_MODEL, type JudgeRunner } from "./runner.ts";
 import { toolDefinitionsFor, type ToolResult } from "./tool-specs.ts";
-import type { ToolDeps } from "./tools.ts";
+import type { TurnDeps } from "./tools.ts";
 
 type Effort = NonNullable<NonNullable<Anthropic.Beta.Messages.BetaOutputConfig["effort"]>>;
 export const DEFAULT_EFFORT: Effort = "high";
@@ -35,8 +34,8 @@ export type OpenStream = (params: Params, options: { signal?: AbortSignal }) => 
 
 /** The loop's only way to the island: read its context, run one tool call. */
 export type ToolBox = {
-  context: (deps: ToolDeps) => JudgeContext;
-  run: (persona: Persona, deps: ToolDeps, name: string, input: unknown) => ToolResult;
+  context: (persona: Persona, deps: TurnDeps) => PersonaContext;
+  run: (persona: Persona, deps: TurnDeps, name: string, input: unknown) => ToolResult;
 };
 
 export type ApiRunnerOptions = {
@@ -53,7 +52,7 @@ export function effortFromEnv(raw = process.env.ARCHIPELAGO_EFFORT): Effort {
 }
 
 /** The turn's first request: the protocol cached, the island's context after it, the thread as one user message. */
-export function requestFor(persona: Persona, context: JudgeContext, model: string, effort: Effort): Params {
+export function requestFor(persona: Persona, context: PersonaContext, model: string, effort: Effort): Params {
   return {
     model,
     max_tokens: MAX_TOKENS,
@@ -112,9 +111,9 @@ export function createApiRunner(options: ApiRunnerOptions): JudgeRunner {
   const open = options.openStream ?? defaultOpenStream();
   return async ({ dbPath, domain, island, mode = "judge", emit, signal }) => {
     const persona = personaFor(mode);
-    const deps: ToolDeps = { dbPath, domain, island, mode };
+    const deps: TurnDeps = { dbPath, domain, island, mode };
     const model = options.model ?? process.env.ARCHIPELAGO_MODEL ?? API_DEFAULT_MODEL;
-    const params = requestFor(persona, options.toolbox.context(deps), model, options.effort ?? effortFromEnv());
+    const params = requestFor(persona, options.toolbox.context(persona, deps), model, options.effort ?? effortFromEnv());
     const messages: MessageParam[] = [...params.messages];
     const cancelled = () => new ArchipelagoError(`the ${persona.id}'s turn was cancelled`);
 

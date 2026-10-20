@@ -70,12 +70,15 @@ export type Comment = {
 
 export type ViewState = { domainId: number; focusIslandId: number | null; version: number };
 
-export const messageRoles = ["you", "judge", "mentor"] as const;
+export const messageRoles = ["you", "judge", "mentor", "cartographer"] as const;
 export type MessageRole = (typeof messageRoles)[number];
 
-/** Each island has two threads, the judge's and the mentor's; a message lives in exactly one. */
-export const messageModes = ["judge", "mentor"] as const;
+/** Each island has two threads, the judge's and the mentor's, and each scale one cartographer's; a message lives in exactly one. */
+export const messageModes = ["judge", "mentor", "cartographer"] as const;
 export type MessageMode = (typeof messageModes)[number];
+/** The modes whose threads belong to an island. */
+export const islandModes = ["judge", "mentor"] as const;
+export type IslandMode = (typeof islandModes)[number];
 
 export const messageKinds = ["text", "reef_proposal", "system"] as const;
 export type MessageKind = (typeof messageKinds)[number];
@@ -83,7 +86,8 @@ export type MessageKind = (typeof messageKinds)[number];
 export type Message = {
   id: number;
   domainId: number;
-  islandId: number;
+  /** Null only in a cartographer thread at the domain's top scale. */
+  islandId: number | null;
   role: MessageRole;
   kind: MessageKind;
   body: string;
@@ -157,3 +161,26 @@ export type Landmark = {
 
 /** The one learner row: what the reader says about themselves, read by the mentor in every domain. */
 export type Learner = { note: string; updatedAt: string };
+
+export const sketchStatuses = ["pending", "approved", "discarded", "superseded"] as const;
+export type SketchStatus = (typeof sketchStatuses)[number];
+
+/** What the cartographer proposes at one scale: new islands, straits, a harbour, and fixes to islands already there. */
+export type SketchBody = {
+  islands: { slug: string; name: string; summary: string; landmarks: { slug: string; name: string }[] }[];
+  straits: { from: string; to: string; name?: string }[];
+  harbour?: string;
+  updates: { slug: string; name?: string; summary?: string }[];
+};
+
+export type Sketch = {
+  id: number;
+  domainId: number;
+  /** The scale: null is the domain's top scale. */
+  parentIslandId: number | null;
+  body: SketchBody;
+  status: SketchStatus;
+  messageId: number | null;
+  createdAt: string;
+  decidedAt: string | null;
+};

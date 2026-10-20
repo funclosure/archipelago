@@ -6,16 +6,18 @@ import { z } from "zod";
 import { openDatabase } from "../core/db.ts";
 import { ArchipelagoError, ConflictError, NotFoundError } from "../core/errors.ts";
 import {
-  boardPostInputSchema, commentInputSchema, focusInputSchema, learnerInputSchema, modeSchema, positionsInputSchema, probeInputSchema, reefAnswerInputSchema, slugSchema,
+  boardPostInputSchema, commentInputSchema, domainCreateSchema, focusInputSchema, kebab, learnerInputSchema, modeSchema, positionsInputSchema, probeInputSchema,
+  reefAnswerInputSchema, sketchDecisionSchema, slugSchema,
 } from "../core/validators.ts";
 import { attachAsks, listAsks, pickAsk, requireAsk } from "../core/repositories/askRepository.ts";
 import { listCards } from "../core/repositories/boardRepository.ts";
 import { getLearner, setLearnerNote } from "../core/repositories/learnerRepository.ts";
-import { listDomains, requireDomain } from "../core/repositories/domainRepository.ts";
+import { getDomain, listDomains, requireDomain, upsertDomain } from "../core/repositories/domainRepository.ts";
 import { getIslandById, requireIsland, setIslandPositions } from "../core/repositories/islandRepository.ts";
 import { addVerdict, verdictHistory } from "../core/repositories/verdictRepository.ts";
 import { addComment } from "../core/repositories/commentRepository.ts";
-import { addMessage, getMessage, listMessages, parseProposal, setReefStatus } from "../core/repositories/messageRepository.ts";
+import { addMessage, getMessage, listMessages, listScaleMessages, parseProposal, setReefStatus } from "../core/repositories/messageRepository.ts";
+import { approveSketch, attachSketch, discardSketch, pendingSketch, requireSketch, sketchFloor } from "../core/repositories/sketchRepository.ts";
 import { activeSession } from "../core/repositories/sessionRepository.ts";
 import { getViewState, setFocus } from "../core/repositories/viewStateRepository.ts";
 import { buildOutline, buildSnapshot } from "../core/view-model.ts";
@@ -35,10 +37,10 @@ const PING_MS = 20_000;
 const TURN_SETTLE_MS = 5_000;
 /** How long one judge turn may run before the island is released. Overridable by `ARCHIPELAGO_TURN_TIMEOUT_MS`. */
 export const JUDGE_TURN_TIMEOUT_MS = 180_000;
-/** Islands with a turn running, as `<domain>/<island>`, and whose turn it is. One turn per island at a time. */
+/** Islands with a turn running, as `<domain>/<island>` (`<domain>/` for the cartographer at the top scale), and whose turn it is. One turn per island at a time. */
 const inFlight = new Map<string, MessageMode>();
 /** What the page calls each persona, for the 409 that names who is answering. */
-const SPEAKER_NAME: Record<MessageMode, string> = { judge: "the Keeper", mentor: "the mentor" };
+const SPEAKER_NAME: Record<MessageMode, string> = { judge: "the Keeper", mentor: "the mentor", cartographer: "the cartographer" };
 const turnKey = (domain: string, island: string) => `${domain}/${island}`;
 
 /** A bundled library: built on first request, then an ETag the page can revalidate against. */
@@ -192,8 +194,19 @@ async function handleApi(req: Request, url: URL, ctx: ServerContext): Promise<Re
 
   if (route === "GET /api/thread") {
     const slug = slugSchema.parse(q("domain"));
-    const islandSlug = slugSchema.parse(q("island"));
     const mode = modeSchema.parse(q("mode") ?? "judge");
+    if (mode === "cartographer") {
+      const scaleSlug = q("island") ? slugSchema.parse(q("island")) : null;
+      return json(
+        withDb(ctx, (db) => {
+          const d = requireDomain(db, slug);
+          const scale = scaleSlug === null ? null : requireIsland(db, d.id, scaleSlug);
+          const parentId = scale ? scale.id : null;
+          return { island: scale ? scale.slug : null, mode, messages: listScaleMessages(db, d.id, parentId), asks: [], sketch: pendingSketch(db, d.id, parentId) };
+        }),
+      );
+    }
+    const islandSlug = slugSchema.parse(q("island"));
     return json(
       withDb(ctx, (db) => {
         const d = requireDomain(db, slug);
@@ -236,15 +249,17 @@ async function handleApi(req: Request, url: URL, ctx: ServerContext): Promise<Re
 
   if (route === "POST /api/probe") {
     const input = probeInputSchema.parse(await req.json());
+    if (input.mode === "cartographer") return chartTurn(ctx, input);
     const mode = input.mode;
-    // One turn per island across both modes: the judge and the mentor never write the same island at once.
-    const key = turnKey(input.domain, input.island);
+    const island = input.island!; // required for the judge and the mentor (probeInputSchema)
+    // One turn per island across every mode: no two personas ever write the same island at once.
+    const key = turnKey(input.domain, island);
     const running = inFlight.get(key);
     if (running) throw new ConflictError(`${SPEAKER_NAME[running]} is answering on this island; try again when it ends`);
     if (input.askId !== undefined && !input.message) throw new ArchipelagoError("a pick needs a message");
     const askFloor = withDb(ctx, (db) => {
       const d = requireDomain(db, input.domain);
-      const i = requireIsland(db, d.id, input.island);
+      const i = requireIsland(db, d.id, island);
       return db.transaction(() => {
         if (input.askId !== undefined) {
           // An ask belongs to one island's thread in one mode; a pick from another pane is not this ask.
@@ -257,48 +272,53 @@ async function handleApi(req: Request, url: URL, ctx: ServerContext): Promise<Re
         return listAsks(db, i.id).at(-1)?.id ?? 0;
       })();
     });
-    inFlight.set(key, mode);
-    const abort = new AbortController();
-    return sseResponse(async (emit) => {
-      // A hung turn would wedge this island until the server restarts: cap it, and cancel the runner.
-      const ms = ctx.turnTimeoutMs;
-      let turn: Promise<string> | undefined;
-      let timer: ReturnType<typeof setTimeout> | undefined;
-      const expiry = new Promise<never>((_, reject) => {
-        timer = setTimeout(() => {
-          // Reject before aborting: a runner that rejects on abort would otherwise win the race and
-          // report its own cancellation instead of the timeout the reader needs to see.
-          reject(new ArchipelagoError(`the ${mode} did not answer within ${ms / 1000} s`));
-          abort.abort();
-        }, ms);
-      });
-      try {
-        turn = ctx.runner({ dbPath: ctx.dbPath, domain: input.domain, island: input.island, mode, emit, signal: abort.signal });
-        const reply = (await Promise.race([turn, expiry])).trim();
-        if (abort.signal.aborted) return; // the reader left: a reply nobody asked to keep is not stored
-        withDb(ctx, (db) => {
-          const d = requireDomain(db, input.domain);
-          const i = requireIsland(db, d.id, input.island);
-          // An ask recorded this turn rides on the reply; a silent turn still shows its question.
-          // Only an ask created since this turn started counts: one left unattached from an earlier,
-          // unrelated reply must never latch onto this one.
-          const unattached = listAsks(db, i.id).find((a) => a.messageId === null && a.id > askFloor);
-          const body = reply || (unattached ? unattached.question : "");
-          if (!body) return;
-          // The reply is the persona's, in its own thread.
-          const stored = addMessage(db, { domainId: d.id, islandId: i.id, role: mode, kind: "text", body, mode });
-          attachAsks(db, i.id, stored.id, askFloor);
-        });
-        emit({ type: "done" });
-      } catch (error) {
-        emit({ type: "error", message: error instanceof Error ? error.message : String(error) });
-      } finally {
-        clearTimeout(timer);
-        // An abandoned runner can still land tool writes: keep the island until it has stopped, within a bound.
-        if (turn) await Promise.race([turn.then(() => {}, () => {}), Bun.sleep(TURN_SETTLE_MS)]);
-        inFlight.delete(key);
-      }
-    }, () => abort.abort());
+    return streamTurn(ctx, key, mode, { domain: input.domain, island }, (reply) =>
+      withDb(ctx, (db) => {
+        const d = requireDomain(db, input.domain);
+        const i = requireIsland(db, d.id, island);
+        // An ask recorded this turn rides on the reply; a silent turn still shows its question.
+        // Only an ask created since this turn started counts: one left unattached from an earlier,
+        // unrelated reply must never latch onto this one.
+        const unattached = listAsks(db, i.id).find((a) => a.messageId === null && a.id > askFloor);
+        const body = reply || (unattached ? unattached.question : "");
+        if (!body) return;
+        // The reply is the persona's, in its own thread.
+        const stored = addMessage(db, { domainId: d.id, islandId: i.id, role: mode, kind: "text", body, mode });
+        attachAsks(db, i.id, stored.id, askFloor);
+      }),
+    );
+  }
+
+  if (route === "POST /api/domains") {
+    const input = domainCreateSchema.parse(await req.json());
+    const slug = input.slug ?? kebab(input.name);
+    if (!slug) throw new ArchipelagoError("a domain name needs at least one letter or digit");
+    return json(
+      withDb(ctx, (db) => {
+        if (getDomain(db, slug)) throw new ConflictError(`the domain ${slug} already exists`);
+        return { domain: upsertDomain(db, { slug, name: input.name }) };
+      }),
+    );
+  }
+
+  if (route === "POST /api/sketch") {
+    const input = sketchDecisionSchema.parse(await req.json());
+    if (inFlight.has(turnKey(input.domain, input.island ?? ""))) throw new ConflictError("the cartographer is answering at this scale; decide when it ends");
+    return json(
+      withDb(ctx, (db) => {
+        const d = requireDomain(db, input.domain);
+        const scale = input.island === undefined ? null : requireIsland(db, d.id, input.island);
+        const sketch = requireSketch(db, d.id, input.sketchId);
+        if (sketch.parentIslandId !== (scale ? scale.id : null)) throw new NotFoundError(`no sketch ${input.sketchId} at this scale`);
+        if (input.action === "approve") return { ...approveSketch(db, d.id, sketch.id), version: getViewState(db, d.id).version };
+        const discarded = db.transaction(() => {
+          const row = discardSketch(db, d.id, sketch.id);
+          addMessage(db, { domainId: d.id, islandId: row.parentIslandId, role: "cartographer", kind: "system", body: "sketch discarded", mode: "cartographer" });
+          return row;
+        })();
+        return { sketch: discarded, version: getViewState(db, d.id).version };
+      }),
+    );
   }
 
   if (route === "POST /api/probe/reef") {
@@ -312,7 +332,7 @@ async function handleApi(req: Request, url: URL, ctx: ServerContext): Promise<Re
         }
         const proposal = parseProposal(message.body);
         if (proposal.status !== "pending") throw new ConflictError(`reef proposal ${input.id} is already ${proposal.status}`);
-        const island = getIslandById(db, message.islandId)!;
+        const island = getIslandById(db, message.islandId!)!; // a reef proposal is always in an island's judge thread
         if (inFlight.has(turnKey(input.domain, island.slug))) throw new ConflictError("a turn is running on this island; answer when it ends");
         if (input.answer === "confirm") {
           const target = resolveVerdictTarget(db, d.id, proposal.target);
@@ -361,6 +381,70 @@ async function serveStatic(pathname: string, staticRoot: string): Promise<Respon
  * A server-sent-event response driven by `run`. Events are `event: <type>\ndata: <json>\n\n`; a `: ping`
  * comment every 20 s keeps the connection alive through Bun's idle timeout. The stream closes when `run` settles.
  */
+/**
+ * Runs one persona turn as server-sent events: holds the turn lock under `key`, caps the turn at the
+ * timeout and cancels the runner, stores the reply through `store` unless the reader left, and keeps the
+ * lock until an abandoned runner has stopped writing, within a bound.
+ */
+function streamTurn(ctx: ServerContext, key: string, mode: MessageMode, at: { domain: string; island?: string }, store: (reply: string) => void): Response {
+  inFlight.set(key, mode);
+  const abort = new AbortController();
+  return sseResponse(async (emit) => {
+    // A hung turn would wedge this island until the server restarts: cap it, and cancel the runner.
+    const ms = ctx.turnTimeoutMs;
+    let turn: Promise<string> | undefined;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const expiry = new Promise<never>((_, reject) => {
+      timer = setTimeout(() => {
+        // Reject before aborting: a runner that rejects on abort would otherwise win the race and
+        // report its own cancellation instead of the timeout the reader needs to see.
+        reject(new ArchipelagoError(`the ${mode} did not answer within ${ms / 1000} s`));
+        abort.abort();
+      }, ms);
+    });
+    try {
+      turn = ctx.runner({ dbPath: ctx.dbPath, domain: at.domain, island: at.island, mode, emit, signal: abort.signal });
+      const reply = (await Promise.race([turn, expiry])).trim();
+      if (abort.signal.aborted) return; // the reader left: a reply nobody asked to keep is not stored
+      store(reply);
+      emit({ type: "done" });
+    } catch (error) {
+      emit({ type: "error", message: error instanceof Error ? error.message : String(error) });
+    } finally {
+      clearTimeout(timer);
+      // An abandoned runner can still land tool writes: keep the island until it has stopped, within a bound.
+      if (turn) await Promise.race([turn.then(() => {}, () => {}), Bun.sleep(TURN_SETTLE_MS)]);
+      inFlight.delete(key);
+    }
+  }, () => abort.abort());
+}
+
+/** A cartographer turn at one scale. Its lock is the island's (the top scale has its own), shared with the judge and the mentor. */
+function chartTurn(ctx: ServerContext, input: z.infer<typeof probeInputSchema>): Response {
+  const key = turnKey(input.domain, input.island ?? "");
+  const running = inFlight.get(key);
+  if (running) throw new ConflictError(`${SPEAKER_NAME[running]} is answering here; try again when it ends`);
+  if (input.askId !== undefined) throw new ArchipelagoError("the cartographer does not ask with options");
+  const { floor, scaleId } = withDb(ctx, (db) => {
+    const d = requireDomain(db, input.domain);
+    const scale = input.island === undefined ? null : requireIsland(db, d.id, input.island);
+    if (input.message) addMessage(db, { domainId: d.id, islandId: scale ? scale.id : null, role: "you", kind: "text", body: input.message, mode: "cartographer" });
+    return { floor: sketchFloor(db, d.id), scaleId: scale ? scale.id : null };
+  });
+  return streamTurn(ctx, key, "cartographer", { domain: input.domain, island: input.island }, (reply) =>
+    withDb(ctx, (db) => {
+      const d = requireDomain(db, input.domain);
+      // A sketch proposed this turn rides on the reply; a silent turn that proposed one still says so.
+      const proposed = pendingSketch(db, d.id, scaleId);
+      const fresh = proposed !== null && proposed.id > floor && proposed.messageId === null;
+      const body = reply || (fresh ? "Here is a sketch. Approve it, or say what to change." : "");
+      if (!body) return;
+      const stored = addMessage(db, { domainId: d.id, islandId: scaleId, role: "cartographer", kind: "text", body, mode: "cartographer" });
+      attachSketch(db, d.id, scaleId, stored.id, floor);
+    }),
+  );
+}
+
 function sseResponse(run: (emit: (event: JudgeEvent) => void) => Promise<void>, onCancel?: () => void): Response {
   const encoder = new TextEncoder();
   let open = true;

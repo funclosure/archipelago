@@ -116,14 +116,17 @@ export const reefProposalInputSchema = z.object({
   rationale: z.string().min(1),
 });
 
-export const probeInputSchema = z.object({
-  domain: slugSchema,
-  island: slugSchema,
-  /** Whose turn: the judge's (default) or the mentor's. */
-  mode: z.enum(messageModes).default("judge"),
-  message: z.string().trim().min(1).optional(),
-  askId: numberInput.pipe(z.number().int().positive()).optional(),
-});
+export const probeInputSchema = z
+  .object({
+    domain: slugSchema,
+    /** The island; for the cartographer, the scale, and absent at the domain's top scale. */
+    island: slugSchema.optional(),
+    /** Whose turn: the judge's (default), the mentor's, or the cartographer's. */
+    mode: z.enum(messageModes).default("judge"),
+    message: z.string().trim().min(1).optional(),
+    askId: numberInput.pipe(z.number().int().positive()).optional(),
+  })
+  .refine((v) => v.mode === "cartographer" || v.island !== undefined, { message: "island is required", path: ["island"] });
 
 export const askInputSchema = z.object({
   question: z.string().trim().min(1),
@@ -200,3 +203,51 @@ export const NOTE_MAX = 1000;
 export const learnerInputSchema = z.object({
   note: z.string().trim().max(NOTE_MAX, `a note is at most ${NOTE_MAX} characters`),
 });
+
+const oneLine = z
+  .string()
+  .trim()
+  .min(1)
+  .refine((t) => !/[\r\n\u2028\u2029]/.test(t), { message: "must be one line" });
+const landmarkItems = z
+  .array(z.object({ slug: slugSchema, name: oneLine }))
+  .min(4)
+  .max(6)
+  .refine((items) => new Set(items.map((i) => i.slug)).size === items.length, { message: "landmark slugs must be unique" });
+
+/** A sketch's shape. The rules that depend on the map (counts per scale, slugs taken) are checked by the repository. */
+export const sketchBodySchema = z
+  .object({
+    islands: z.array(z.object({ slug: slugSchema, name: oneLine, summary: oneLine, landmarks: landmarkItems })).max(10).default([]),
+    straits: z.array(z.object({ from: slugSchema, to: slugSchema, name: oneLine.optional() })).max(40).default([]),
+    harbour: slugSchema.optional(),
+    updates: z
+      .array(
+        z
+          .object({ slug: slugSchema, name: oneLine.optional(), summary: oneLine.optional() })
+          .refine((u) => u.name !== undefined || u.summary !== undefined, { message: "an update changes the name, the summary, or both" }),
+      )
+      .max(20)
+      .default([]),
+  })
+  .refine((b) => b.islands.length + b.straits.length + b.updates.length > 0 || b.harbour !== undefined, { message: "a sketch proposes something" });
+
+/** A new domain from the page: the slug defaults to the name in kebab case. */
+export const domainCreateSchema = z.object({ name: oneLine.pipe(z.string().max(80)), slug: slugSchema.optional() });
+
+export const sketchDecisionSchema = z.object({
+  domain: slugSchema,
+  island: slugSchema.optional(),
+  sketchId: numberInput.pipe(z.number().int().positive()),
+  action: z.enum(["approve", "discard"]),
+});
+
+/** A name in lowercase kebab case, as a slug: letters and digits only, runs of anything else become one hyphen. */
+export function kebab(name: string): string {
+  return name
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}

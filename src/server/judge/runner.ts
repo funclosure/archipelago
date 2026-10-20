@@ -11,8 +11,9 @@ export type JudgeEvent =
 export type JudgeTurn = {
   dbPath?: string;
   domain: string;
-  island: string;
-  /** Whose turn: the judge's (default) or the mentor's. Picks the persona and the thread. */
+  /** The island; for the cartographer the scale, absent at the domain's top scale. */
+  island?: string;
+  /** Whose turn: the judge's (default), the mentor's, or the cartographer's. Picks the persona and the thread. */
   mode?: MessageMode;
   emit: (event: JudgeEvent) => void;
   /** Aborted when the turn times out or the reader disconnects; the SDK runner cancels on it, the stub ignores it. */
@@ -53,8 +54,8 @@ export function createRunner(kind: JudgeKind): JudgeRunner {
   let api: JudgeRunner | undefined; // one client for the server's life, made on the first turn
   return async (turn) => {
     if (!api) {
-      const [{ createApiRunner }, { islandContext, runTool }] = await Promise.all([import("./api.ts"), import("./tools.ts")]);
-      api = createApiRunner({ toolbox: { context: islandContext, run: runTool } });
+      const [{ createApiRunner }, { runTool }] = await Promise.all([import("./api.ts"), import("./tools.ts")]);
+      api = createApiRunner({ toolbox: { context: (persona, deps) => persona.buildContext(deps), run: runTool } });
     }
     return api(turn);
   };

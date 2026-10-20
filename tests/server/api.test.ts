@@ -10,7 +10,7 @@ import { addMessage } from "../../src/core/repositories/messageRepository.ts";
 import { listLandmarks, setLandmarks } from "../../src/core/repositories/landmarkRepository.ts";
 import { createApiRunner, describeApiError, effortFromEnv, type OpenStream, type TurnStream } from "../../src/server/judge/api.ts";
 import { createRunner, defaultJudge, judgeModel, type JudgeEvent } from "../../src/server/judge/runner.ts";
-import { islandContext, runTool } from "../../src/server/judge/tools.ts";
+import { runTool } from "../../src/server/judge/tools.ts";
 import { ArchipelagoError } from "../../src/core/errors.ts";
 
 type Message = Anthropic.Beta.Messages.BetaMessage;
@@ -71,7 +71,7 @@ function scripted(steps: Step[]) {
 
 async function run(steps: Step[], opts: { mode?: "judge" | "mentor"; signal?: AbortSignal } = {}) {
   const script = scripted(steps);
-  const runner = createApiRunner({ toolbox: { context: islandContext, run: runTool }, openStream: script.open, model: "claude-opus-5-5", effort: "high" });
+  const runner = createApiRunner({ toolbox: { context: (persona, deps) => persona.buildContext(deps), run: runTool }, openStream: script.open, model: "claude-opus-5-5", effort: "high" });
   const events: JudgeEvent[] = [];
   const reply = runner({ dbPath, domain: "sd", island: "caching", mode: opts.mode, emit: (e) => events.push(e), signal: opts.signal });
   return { reply, events, requests: script.requests };

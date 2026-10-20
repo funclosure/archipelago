@@ -9,6 +9,7 @@ import { addComment } from "../../src/core/repositories/commentRepository.ts";
 import { addMessage } from "../../src/core/repositories/messageRepository.ts";
 import { addCard } from "../../src/core/repositories/boardRepository.ts";
 import { setLandmarks, exploreLandmark } from "../../src/core/repositories/landmarkRepository.ts";
+import { proposeSketch } from "../../src/core/repositories/sketchRepository.ts";
 
 const ROOT = resolve(import.meta.dir, "../..");
 let dir: string;
@@ -278,4 +279,26 @@ test("thread show --mode reads one thread; landmark list reports exploredAt", ()
   const lm = cli(["landmark", "list", "--domain", "sd", "--island", "caching"]).json.landmarks[0];
   expect(lm).toMatchObject({ slug: "eviction", unlockedAt: null, exploredEvidence: "a pantry" });
   expect(lm.exploredAt).not.toBeNull();
+});
+
+test("thread show --mode cartographer reads a scale's thread; sketch list shows what the map's cartographer proposed", () => {
+  cli(["domain", "add", "--slug", "sd", "--name", "System Design"]);
+  cli(["island", "add", "--domain", "sd", "--slug", "caching", "--name", "Caching"]);
+  const db = openDatabase(dbPath);
+  const d = requireDomain(db, "sd");
+  const caching = requireIsland(db, d.id, "caching");
+  addMessage(db, { domainId: d.id, islandId: null, role: "you", kind: "text", body: "add queues", mode: "cartographer" });
+  addMessage(db, { domainId: d.id, islandId: caching.id, role: "you", kind: "text", body: "sail closer", mode: "cartographer" });
+  proposeSketch(db, d.id, null, { islands: [{ slug: "queues", name: "Queues", summary: "Buffers between producers and consumers.", landmarks: ["a", "b", "c", "d"].map((s) => ({ slug: s, name: s })) }] });
+  db.close();
+
+  const top = cli(["thread", "show", "--domain", "sd", "--mode", "cartographer"]);
+  expect(top.json).toMatchObject({ island: null, mode: "cartographer" });
+  expect(top.json.messages.map((m: any) => m.body)).toEqual(["add queues"]);
+  expect(cli(["thread", "show", "--domain", "sd", "--island", "caching", "--mode", "cartographer"]).json.messages.map((m: any) => m.body)).toEqual(["sail closer"]);
+  expect(cli(["thread", "show", "--domain", "sd", "--mode", "judge"]).code).toBe(1); // the judge's thread needs an island
+
+  const sketches = cli(["sketch", "list", "--domain", "sd", "--pending"]).json.sketches;
+  expect(sketches.map((s: any) => [s.status, s.parentIslandId, s.body.islands[0].slug])).toEqual([["pending", null, "queues"]]);
+  expect(cli(["sketch", "list", "--domain", "sd", "--island", "caching"]).json.sketches).toEqual([]);
 });

@@ -182,9 +182,10 @@ export function renderPendingAsk(ctx: JudgeContext): string[] {
 
 // The judge's own board keeps its long-standing marks; the mentor's names the judge as MENTOR.md does.
 const AUTHOR_MARK: Record<MessageRole, Record<MessageRole, string>> = {
-  judge: { judge: "keeper", mentor: "mentor", you: "reader" },
-  mentor: { judge: "judge", mentor: "mentor", you: "reader" },
-  you: { judge: "keeper", mentor: "mentor", you: "reader" },
+  judge: { judge: "keeper", mentor: "mentor", you: "reader", cartographer: "cartographer" },
+  mentor: { judge: "judge", mentor: "mentor", you: "reader", cartographer: "cartographer" },
+  you: { judge: "keeper", mentor: "mentor", you: "reader", cartographer: "cartographer" },
+  cartographer: { judge: "judge", mentor: "mentor", you: "reader", cartographer: "cartographer" },
 };
 
 /** The board, each card marked by its author and by what changed since `self`'s last reply in this thread. */
@@ -201,7 +202,7 @@ export function renderBoard(ctx: JudgeContext, self: MessageRole, emptyHint: str
   return lines;
 }
 
-const SPEAKER: Record<MessageRole, string> = { you: "Reader", judge: "Judge", mentor: "Mentor" };
+const SPEAKER: Record<MessageRole, string> = { you: "Reader", judge: "Judge", mentor: "Mentor", cartographer: "Cartographer" };
 
 /** The stored thread as transcript lines. Stateless: the model sees the whole thread every turn. */
 export function renderReplay(thread: Message[], asks: Ask[]): string[] {
