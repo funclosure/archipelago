@@ -25,7 +25,7 @@ export function describeSdkError(code: string): string {
   switch (code) {
     case "authentication_failed":
     case "oauth_org_not_allowed":
-      return "Claude Code is not logged in. Run `claude login` in a terminal, then send again.";
+      return "Claude Code is not logged in. Run `claude login` in a terminal (or start the server with ANTHROPIC_API_KEY set), then send again.";
     case "billing_error":
     case "account_on_hold":
       return "The Claude account behind this login cannot run the judge right now (billing).";
@@ -176,7 +176,7 @@ function toolsFor(sdk: Sdk, deps: ToolDeps, persona: Persona): SdkMcpToolDefinit
   return persona.toolNames.map((name) => build[name]());
 }
 
-/** One stateless turn on the Agent SDK, through the user's Claude Code login, as the turn's persona. */
+/** One stateless turn on the Agent SDK, through ANTHROPIC_API_KEY when it is set and the user's Claude Code login otherwise, as the turn's persona. */
 export const sdkRunner: JudgeRunner = async ({ dbPath, domain, island, mode = "judge", emit, signal }) => {
   const sdk = await loadSdk();
   const persona = personaFor(mode);

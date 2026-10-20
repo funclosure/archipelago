@@ -10,19 +10,21 @@ Read `docs/BRIEF.md` for the idea and `docs/superpowers/specs/2026-09-03-archipe
 
 Requires [Bun](https://bun.sh) and [Claude Code](https://claude.ai/code).
 
-```bash
-bun install
-bun link                        # once: puts `archipelago` on your PATH
-archipelago serve               # starts the map at http://127.0.0.1:4480 and opens it
+Install it as a Claude Code plugin:
+
+```
+/plugin install archipelago --marketplace funclosure/archipelago
 ```
 
-Data lives in `.archipelago/` under the **current working directory**, so run `archipelago serve` and the Claude Code session from the same directory (or set `ARCHIPELAGO_DB_PATH` for both).
-
-Then in Claude Code, inside this directory:
+(or `/plugin marketplace add funclosure/archipelago`, then `/plugin install archipelago@archipelago`). The plugin brings the charting skill and puts the `archipelago` command on Claude's PATH; Claude Code installs its dependencies. Then, in any directory:
 
 > /archipelago-chart — I want to chart System Design.
 
-Claude sketches the archipelago and you approve it in the terminal. Then open the map, click an island and probe it: the judge asks, you answer, and the map fills in.
+Claude sketches the archipelago and you approve it in the terminal. It starts the map (`archipelago serve`, http://127.0.0.1:4480); click an island and probe it: the judge asks, you answer, and the map fills in.
+
+Data lives in `~/.archipelago/archipelago.sqlite`, one database per user. Set `ARCHIPELAGO_DB_PATH` to use another file (for both the CLI and the server).
+
+From a clone instead: `bun install`, then `bun link` puts `archipelago` on your PATH, and the skill loads as a project skill inside the repo.
 
 ## The five states
 
@@ -44,7 +46,7 @@ Islands keep their place. The map lays out new islands once, around the ones alr
 
 ## The judge
 
-`archipelago serve` runs the judge on `@anthropic-ai/claude-agent-sdk`, which uses your Claude Code login; there is no API key. Set `ARCHIPELAGO_MODEL` to change the model (default `claude-opus-5`). A turn that runs past 180 s is cancelled and the island released; set `ARCHIPELAGO_TURN_TIMEOUT_MS` (milliseconds) to change that. `archipelago serve --stub` (or `ARCHIPELAGO_STUB=1`) runs a canned judge with no login, for development: a message containing `settled` charts the island, `reef` proposes a reef, `unlock <slug>` lights a landmark, `fail` errors; an island with no landmarks gets four canned ones (`shape`, `scale`, `failure`, `tradeoff`) on the first open. The stub also asks a three-option question on your second answer.
+`archipelago serve` runs the judge on `@anthropic-ai/claude-agent-sdk`: with `ANTHROPIC_API_KEY` set in the server's environment it uses that key, otherwise your Claude Code login. Set `ARCHIPELAGO_MODEL` to change the model (default `claude-opus-5`). A turn that runs past 180 s is cancelled and the island released; set `ARCHIPELAGO_TURN_TIMEOUT_MS` (milliseconds) to change that. `archipelago serve --stub` (or `ARCHIPELAGO_STUB=1`) runs a canned judge with no login, for development: a message containing `settled` charts the island, `reef` proposes a reef, `unlock <slug>` lights a landmark, `fail` errors; an island with no landmarks gets four canned ones (`shape`, `scale`, `failure`, `tradeoff`) on the first open. The stub also asks a three-option question on your second answer.
 
 Every island carries 4–6 **landmarks**, the key concepts on it. The cartographer sketches them (`archipelago landmark add`); on an island that has none, the judge names them on the first probe. `archipelago harbour set --domain <slug> --island <slug>` marks the island to set out from at that scale. Each answer that covers a landmark lights it: a chip fills in the pane and one arc of the island's dotted coastline turns firm and its lamp lights on the map, before any verdict. The judge acknowledges what you got right, lights what you covered, nudges once at most, and asks the next question; the verdict lands when every landmark is lit, when a reef is clear, or after your fourth answer.
 
@@ -70,4 +72,4 @@ bun test              # bun's test runner (Vitest cannot load bun:sqlite)
 bunx tsc --noEmit     # typecheck
 ```
 
-Data lives in `.archipelago/archipelago.sqlite` (gitignored, per working directory).
+Data lives in `~/.archipelago/archipelago.sqlite` unless `ARCHIPELAGO_DB_PATH` says otherwise.

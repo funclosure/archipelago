@@ -62,6 +62,14 @@ program.exitOverride();
 program.configureOutput({ writeErr: (text) => { commanderOutput += text; } });
 
 // ---- domain ----
+/** The platform's own opener; a failure leaves the printed URL to click. */
+function openInBrowser(url: string) {
+  const cmd = process.platform === "darwin" ? ["open", url] : process.platform === "win32" ? ["cmd", "/c", "start", "", url] : ["xdg-open", url];
+  try {
+    Bun.spawn(cmd, { stdout: "ignore", stderr: "ignore" });
+  } catch {}
+}
+
 const domain = program.command("domain").description("Domains (one per archipelago)");
 common(domain.command("add").option("--slug <slug>").option("--name <name>")).action(
   run((o) => withDb((db) => upsertDomain(db, domainInputSchema.parse(o)))),
@@ -398,7 +406,7 @@ program
       const server = startServer({ port: Number(o.port), stub });
       const url = `http://127.0.0.1:${server.port}/${o.domain ? `?domain=${encodeURIComponent(o.domain)}` : ""}`;
       console.log(`Archipelago map: ${url}${stub ? "  (judge: stub)" : ""}`);
-      if (o.open) Bun.spawn(["open", url]);
+      if (o.open) openInBrowser(url);
     } catch (error) {
       fail(error, false);
     }

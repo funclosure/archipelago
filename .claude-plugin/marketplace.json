@@ -1,0 +1,12 @@
+{
+  "name": "archipelago",
+  "owner": { "name": "funclosure" },
+  "description": "Archipelago, packaged as a Claude Code plugin.",
+  "plugins": [
+    {
+      "name": "archipelago",
+      "source": "./",
+      "description": "Chart what you understand about a domain as islands in open water."
+    }
+  ]
+}
