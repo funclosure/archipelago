@@ -35,7 +35,7 @@ If the user has not opened it, start it once in the background and tell them the
 archipelago serve --domain <slug>
 ```
 
-The judge runs inside that server on the Claude Agent SDK, through `ANTHROPIC_API_KEY` when it is set in the server's environment and the user's Claude Code login otherwise. Islands keep fixed positions once the map has placed them; if the user wants one moved, they drag it, or you run `archipelago island update --domain <slug> --slug <island> --x <n> --y <n>` with world coordinates 0..1000.
+The judge runs inside that server: on the Messages API when `ANTHROPIC_API_KEY` is set in the server's environment, otherwise on the Claude Agent SDK through the user's Claude Code login. The startup line names which. Islands keep fixed positions once the map has placed them; if the user wants one moved, they drag it, or you run `archipelago island update --domain <slug> --slug <island> --x <n> --y <n>` with world coordinates 0..1000.
 
 ## 1. Setup: a new domain
 
@@ -124,7 +124,7 @@ focus    show --domain | set --domain --island <slug> | set --domain --clear
 harbour  set --domain --island <slug> | clear --domain [--parent <slug>] | show --domain [--parent <slug>]
 comment  list --domain [--unread] | mark-read --domain [--id n ...] [--all]
 snapshot --domain [--scale <island-slug>]
-serve    [--port 4480] [--domain <slug>] [--no-open] [--stub]
+serve    [--port 4480] [--domain <slug>] [--no-open] [--judge api|sdk|stub] [--stub]
 ```
 
 Add `--stdin` to any command to merge a JSON object from stdin under the flags, and `--json` for compact output (already the default when stdout is not a terminal, as it is when you run commands).

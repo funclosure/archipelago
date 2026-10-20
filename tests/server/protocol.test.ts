@@ -1,5 +1,6 @@
 import { test, expect } from "bun:test";
 import { readProtocol } from "../../src/server/judge/protocol.ts";
+import { judge, mentor } from "../../src/server/judge/persona.ts";
 
 test("the protocol names the states, the seven tools, the round shape, and the four-answer rule", () => {
   const text = readProtocol();
@@ -77,4 +78,8 @@ test("MENTOR.md §3 states the evidence quote minimum and the pick restriction",
   const text = mentorText();
   expect(text).toContain("twelve characters");
   expect(text).toContain("not their words");
+});
+
+test("both protocols put every tool call before the reply: text between tool calls is not shown on the API runner", () => {
+  for (const persona of [judge, mentor]) expect(readProtocol(persona)).toContain("Make every tool call first. Write the whole reply after the last tool returns");
 });

@@ -25,6 +25,8 @@ import {
 } from "../../core/validators.ts";
 import type { Ask, BoardCard, Island, Message, MessageMode, MessageRole, ReefProposal, Verdict, VerdictState } from "../../core/types.ts";
 import { buildJudgeContext, type JudgeContext } from "./context.ts";
+import type { Persona, ToolName } from "./persona.ts";
+import { toolError, toolResult, type ToolResult } from "./tool-specs.ts";
 
 /** Where a tool call writes: the database path, the island whose threads this turn belongs to, and whose turn it is. */
 export type ToolDeps = { dbPath?: string; domain: string; island: string; mode?: MessageMode };
@@ -242,4 +244,23 @@ export function boardWrite(deps: ToolDeps, input: unknown, author: MessageRole =
       return { card };
     })(),
   );
+}
+
+/** One tool call for a persona, as either runner makes it. A name outside the persona's list is refused, never dispatched. */
+export function runTool(persona: Persona, deps: ToolDeps, name: string, input: unknown): ToolResult {
+  if (!(persona.toolNames as readonly string[]).includes(name)) return toolError(new ArchipelagoError(`no tool named ${name} for the ${persona.id}`));
+  try {
+    switch (name as ToolName) {
+      case "island_context": return toolResult(islandContext(deps));
+      case "record_verdict": return toolResult(recordVerdict(deps, input));
+      case "propose_reef": return toolResult(proposeReef(deps, input));
+      case "set_landmarks": return toolResult(setLandmarks(deps, input));
+      case "unlock_landmark": return toolResult(unlockLandmark(deps, input));
+      case "ask_reader": return toolResult(askReader(deps, input));
+      case "board_write": return toolResult(boardWrite(deps, input, persona.id));
+      case "mark_explored": return toolResult(markExplored(deps, input));
+    }
+  } catch (error) {
+    return toolError(error);
+  }
 }
