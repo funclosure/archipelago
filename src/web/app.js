@@ -12,6 +12,7 @@ import { installTheme } from "./theme.js";
 import { openChart } from "./chart.js";
 import { request } from "./transport.js";
 import { installNewDomain, openNewDomain } from "./new-domain.js";
+import { anotherTab, installHosted, welcomeGate } from "./hosted.js";
 import { MODES, MODE_LABELS, MODE_HINTS, modeKey, storedMode, nextMode } from "./mode-model.js";
 
 const canvas = document.getElementById("map");
@@ -367,17 +368,28 @@ function frame(now) {
   requestAnimationFrame(frame);
 }
 
+/** Nothing to draw without the server (or, hosted, without the browser's storage): say why instead of a blank sea. */
+function failedToStart(error) {
+  const nav = document.getElementById("breadcrumb");
+  if (error.code === "another-tab") return anotherTab(nav);
+  nav.replaceChildren(error.message);
+  console.error(error);
+}
+
 async function boot() {
   installNewDomain();
+  installHosted();
+  try {
+    await welcomeGate(); // hosted only: a key, or Try without a key, before the map
+  } catch (error) {
+    return failedToStart(error);
+  }
   if (!app.domain) {
     let domains;
     try {
       ({ domains } = await api("/api/domains"));
     } catch (error) {
-      // Nothing to draw without the server (or, hosted, without the browser's storage): say why instead of a blank sea.
-      document.getElementById("breadcrumb").replaceChildren(error.message);
-      console.error(error);
-      return;
+      return failedToStart(error);
     }
     if (domains.length === 0) {
       const nav = document.getElementById("breadcrumb");
@@ -417,8 +429,8 @@ async function boot() {
     app.connected = false;
     renderStatus();
     // No chart yet to fall back on: say why, as the domain list does above.
-    if (!app.snapshot) document.getElementById("breadcrumb").replaceChildren(error.message);
-    console.error(error);
+    if (!app.snapshot) failedToStart(error);
+    else console.error(error);
   }
   // A domain made on the page arrives with ?chart=start: open the cartographer and let it sketch.
   if (params.get("chart") === "start") {

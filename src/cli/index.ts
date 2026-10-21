@@ -4,10 +4,10 @@ import type { Database } from "../core/sql.ts";
 import { openDatabase } from "../core/db.ts";
 import { ArchipelagoError } from "../core/errors.ts";
 import {
-  domainInputSchema, islandInputSchema, islandUpdateSchema, straitInputSchema, verdictInputSchema,
+  domainInputSchema, domainUpdateSchema, islandInputSchema, islandUpdateSchema, straitInputSchema, verdictInputSchema,
   sessionEndInputSchema, slugSchema, landmarkInputSchema, learnerInputSchema, modeSchema,
 } from "../core/validators.ts";
-import { listDomains, requireDomain, upsertDomain } from "../core/repositories/domainRepository.ts";
+import { listDomains, requireDomain, updateDomain, upsertDomain } from "../core/repositories/domainRepository.ts";
 import {
   getIsland, getIslandById, islandPath, listIslands, requireIsland, updateIsland, upsertIsland,
   setHarbour, clearHarbour, getHarbour,
@@ -25,6 +25,9 @@ import { getViewState, setFocus } from "../core/repositories/viewStateRepository
 import { buildSnapshot, listCommentViews } from "../core/view-model.ts";
 import { resolveVerdictTarget } from "../core/targets.ts";
 import { emit, fail, readStdinJson } from "./io.ts";
+import { existsSync, statSync } from "node:fs";
+import { resolve } from "node:path";
+import { exportName } from "../hosted/backup.ts";
 import { startServer } from "../server/index.ts";
 import { defaultJudge, judgeModel, parseJudgeKind, type JudgeKind } from "../server/judge/runner.ts";
 
@@ -80,8 +83,14 @@ function openInBrowser(url: string) {
 }
 
 const domain = program.command("domain").description("Domains (one per archipelago)");
-common(domain.command("add").option("--slug <slug>").option("--name <name>")).action(
+common(domain.command("add").option("--slug <slug>").option("--name <name>").option("--description <text>", "the user's words on what they want to chart and why")).action(
   run((o) => withDb((db) => upsertDomain(db, domainInputSchema.parse(o)))),
+);
+common(domain.command("update").option("--slug <slug>").option("--name <name>").option("--description <text>", "\"\" clears it")).action(
+  run((o) => withDb((db) => {
+    const { domain: slug, ...change } = domainUpdateSchema.parse({ domain: o.slug, name: o.name, description: o.description });
+    return updateDomain(db, slug, change);
+  })),
 );
 common(domain.command("list")).action(run(() => withDb((db) => ({ domains: listDomains(db) }))));
 common(domain.command("show").option("--slug <slug>")).action(
@@ -422,6 +431,22 @@ common(learner.command("set").option("--note <text>")).action(
 // ---- snapshot ----
 common(program.command("snapshot").description("What the map shows at one scale").option("--domain <slug>").option("--scale <slug>", "island to look inside")).action(
   run((o) => withDb((db) => buildSnapshot(db, slugSchema.parse(o.domain), o.scale ? slugSchema.parse(o.scale) : null))),
+);
+
+// ---- export ----
+common(
+  program
+    .command("export")
+    .description("Copy the whole database into one file: the hosted app imports it, and ARCHIPELAGO_DB_PATH opens it")
+    .option("--out <file>", "where to write it (default: ./archipelago-YYYY-MM-DD.sqlite)"),
+).action(
+  run((o) => {
+    const out = resolve(String(o.out ?? exportName()));
+    if (existsSync(out)) throw new ArchipelagoError(`${out} already exists. Pick another --out.`);
+    // VACUUM INTO writes a compact copy with the WAL folded in, consistent even while a server is writing.
+    withDb((db) => db.run("vacuum into ?", [out]));
+    return { out, bytes: statSync(out).size };
+  }),
 );
 
 // ---- serve ----

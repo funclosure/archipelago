@@ -126,6 +126,14 @@ function step(from, back) {
 function onKeydown(e) {
   if (isImeKey(e)) return; // the input method owns this key: picking or dismissing a candidate is not a page key
   if (!shown(current)) setRegion(step(current, false)); // a hidden region (e.g. the pane, poll-hidden) never keeps focus
+  if (handlers.hosted?.isOpen?.()) { // the hosted build's dialogs are modal: Escape closes the ones that can close
+    if (e.key === "Escape") {
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      handlers.hosted.close();
+    } else if (!e.target?.closest?.("#hosted")) e.stopPropagation();
+    return;
+  }
   if (handlers.newDomain?.isOpen?.()) { // the New domain dialog is modal: Escape closes it, its field keeps its keys
     if (e.key === "Escape") {
       e.preventDefault();

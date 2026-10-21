@@ -19,7 +19,8 @@ export type LearnerView = { note: string; ground: GroundItem[]; reefs: ReefClaim
 export type JudgeContext = {
   /** Whose turn this context is for. */
   mode: MessageMode;
-  domain: { slug: string; name: string };
+  /** `description`: the reader's words on what they want to chart and why, or null. */
+  domain: { slug: string; name: string; description: string | null };
   island: { slug: string; name: string; summary: string | null; path: string[] };
   verdict: Verdict | null;
   history: Verdict[];
@@ -74,7 +75,7 @@ export function buildJudgeContext(db: Database, domainSlug: string, islandSlug: 
     .filter((p) => p.proposal.status === "pending");
   return {
     mode,
-    domain: { slug: domain.slug, name: domain.name },
+    domain: { slug: domain.slug, name: domain.name, description: domain.description },
     island: { slug: island.slug, name: island.name, summary: island.summary, path: islandPath(db, island.id).map((i) => i.slug) },
     verdict: latestVerdict(db, "island", island.id),
     history: verdictHistory(db, "island", island.id),
@@ -115,6 +116,7 @@ export const indent = (body: string) => body.replace(/\r?\n/g, "\n  ");
 export function renderIslandHead(ctx: JudgeContext): string[] {
   const lines = [`# This island`, ``];
   lines.push(`Domain: ${ctx.domain.name} (${ctx.domain.slug})`);
+  lines.push(...renderDescription(ctx.domain.description));
   lines.push(`Island: ${ctx.island.name} (island:${ctx.island.slug}), at ${ctx.island.path.join(" › ")}`);
   if (ctx.island.summary) lines.push(`Summary: ${indent(ctx.island.summary)}`);
   lines.push(
@@ -126,6 +128,11 @@ export function renderIslandHead(ctx: JudgeContext): string[] {
     lines.push(`Earlier verdicts: ${ctx.history.slice(1).map((v) => `${v.state} on ${v.createdAt.slice(0, 10)}`).join(", ")}`);
   }
   return lines;
+}
+
+/** The domain's description, quoted as the reader wrote it: one line, or none when they gave none. */
+export function renderDescription(description: string | null): string[] {
+  return description ? [`Description (the reader's words on what they want to chart and why): ${indent(description)}`] : [];
 }
 
 /** `## The learner`: the note, solid ground in every domain, and the claims never to build on. */

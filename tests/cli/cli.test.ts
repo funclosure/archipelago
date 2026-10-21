@@ -1,5 +1,5 @@
 import { test, expect, beforeEach, afterEach } from "bun:test";
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { openDatabase } from "../../src/core/db.ts";
@@ -301,4 +301,29 @@ test("thread show --mode cartographer reads a scale's thread; sketch list shows 
   const sketches = cli(["sketch", "list", "--domain", "sd", "--pending"]).json.sketches;
   expect(sketches.map((s: any) => [s.status, s.parentIslandId, s.body.islands[0].slug])).toEqual([["pending", null, "queues"]]);
   expect(cli(["sketch", "list", "--domain", "sd", "--island", "caching"]).json.sketches).toEqual([]);
+});
+
+test("export writes one file the hosted app imports, and never overwrites", () => {
+  cli(["domain", "add", "--slug", "wine", "--name", "Wine"]);
+  const out = join(dir, "backup.sqlite");
+  const made = cli(["export", "--out", out]);
+  expect(made.code).toBe(0);
+  expect(made.json).toEqual({ out, bytes: expect.any(Number) });
+  const bytes = new Uint8Array(readFileSync(out));
+  expect(new TextDecoder().decode(bytes.subarray(0, 15))).toBe("SQLite format 3");
+  const copy = openDatabase(out);
+  expect(requireDomain(copy, "wine").name).toBe("Wine");
+  copy.close();
+  const again = cli(["export", "--out", out]);
+  expect(again.code).toBe(1);
+  expect(again.json.error).toContain("already exists");
+});
+
+test("domain add --description stores it; domain update renames and changes or clears it", () => {
+  const added = cli(["domain", "add", "--slug", "rn", "--name", "React Native", "--description", "From iOS."]);
+  expect(added.json).toMatchObject({ slug: "rn", description: "From iOS.", provisional: 0 });
+  expect(cli(["domain", "update", "--slug", "rn", "--description", "For an interview."]).json.description).toBe("For an interview.");
+  expect(cli(["domain", "update", "--slug", "rn", "--name", "RN", "--description", ""]).json).toMatchObject({ name: "RN", description: null });
+  expect(cli(["domain", "update", "--slug", "rn"]).code).toBe(1);
+  expect(cli(["domain", "show", "--slug", "rn"]).json.description).toBeNull();
 });

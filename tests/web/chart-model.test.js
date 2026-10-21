@@ -38,6 +38,7 @@ test("buildNodes adds drafts after the islands, at the scale's shared radius; th
 
 test("the sketch card's summary and rows name islands by name, old and new", () => {
   expect(sketchSummary(body, [existing])).toBe("2 islands · 2 straits · 1 update · harbour Queues");
+  expect(sketchSummary({ ...body, name: "React Native" }, [existing])).toBe("named React Native · 2 islands · 2 straits · 1 update · harbour Queues");
   const rows = sketchRows(body, [existing]);
   expect(rows.islands[0]).toEqual({ name: "Queues", summary: "Buffers between producers and consumers.", landmarks: "A · B · C · D", harbour: true });
   expect(rows.straits).toEqual(["Queues ~ Caching", "Queues ~ Streams (fan-out)"]);

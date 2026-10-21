@@ -11,14 +11,19 @@ import { listLandmarks, listLandmarksByIsland } from "../../core/repositories/la
 import { listCards } from "../../core/repositories/boardRepository.ts";
 import { pendingSketch, proposeSketch, SKETCH_LIMITS } from "../../core/repositories/sketchRepository.ts";
 import type { Ask, BoardCard, Landmark, Message, Sketch, VerdictState } from "../../core/types.ts";
-import { indent, renderReplay, stateOf } from "./context.ts";
+import { getLearner } from "../../core/repositories/learnerRepository.ts";
+import { NOTE_MAX } from "../../core/validators.ts";
+import { indent, renderDescription, renderReplay, stateOf } from "./context.ts";
 
 /** Where a cartographer turn reads and writes: a domain, and the island whose islets it sketches (absent: the top scale). */
 export type ChartDeps = { dbPath?: string; domain: string; island?: string };
 
 export type ChartContext = {
   mode: "cartographer";
-  domain: { slug: string; name: string };
+  /** `provisional`: the name is a placeholder taken from the description; the first sketch names the domain. */
+  domain: { slug: string; name: string; description: string | null; provisional: boolean };
+  /** The reader's About you note, the same one the mentor reads; empty when they wrote none. */
+  learnerNote: string;
   /** The island whose islets this scale holds; null at the domain's top scale. */
   scale: null | {
     slug: string;
@@ -64,7 +69,8 @@ export function buildChartContext(db: Database, domainSlug: string, islandSlug?:
   const straitVerdicts = latestVerdicts(db, "strait", straits.map((s) => s.id));
   return {
     mode: "cartographer",
-    domain: { slug: domain.slug, name: domain.name },
+    domain: { slug: domain.slug, name: domain.name, description: domain.description, provisional: domain.provisional === 1 },
+    learnerNote: getLearner(db).note.slice(0, NOTE_MAX).trim(),
     scale: island && {
       slug: island.slug,
       name: island.name,
@@ -124,7 +130,11 @@ function renderThread(label: string, thread: Message[]): string[] {
 /** The cartographer's block, appended to CARTOGRAPHER.md. */
 export function renderChartContext(ctx: ChartContext): string {
   const [min, max] = ctx.limits;
-  const lines = [`## This scale`, ``, `Domain: ${ctx.domain.name} (${ctx.domain.slug})`, `Scale: ${scaleName(ctx)}`];
+  const lines = [`## This scale`, ``, `Domain: ${ctx.domain.name} (${ctx.domain.slug})`];
+  if (ctx.domain.provisional) lines.push(`Name: provisional, taken from the reader's description. Name the domain in this sketch (§1).`);
+  lines.push(...renderDescription(ctx.domain.description));
+  lines.push(`About the reader (their note): ${ctx.learnerNote ? indent(ctx.learnerNote) : "none written"}`);
+  lines.push(`Scale: ${scaleName(ctx)}`);
   if (ctx.scale) {
     const s = ctx.scale;
     lines.push(`Path: ${s.path.join(" › ")}`, `Summary: ${s.summary ? indent(s.summary) : "none"}`, `Verdict: ${stateOf(s.state)}`, ``, `Its landmarks:`);

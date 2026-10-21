@@ -241,6 +241,17 @@ test("API errors become one actionable sentence; aborts and our own errors pass 
   expect(describeApiError(ours, "m")).toBe(ours);
 });
 
+test("in the browser the key and model errors point at Your key, never at the environment", () => {
+  const headers = new Headers();
+  const status = (Klass: new (...args: any[]) => Error, code: number) => new Klass(code, { type: "error", error: {} }, "x", headers);
+  const said = (error: unknown) => (describeApiError(error, "claude-sonnet-5-5", true) as Error).message;
+  for (const [Klass, code] of [[Anthropic.AuthenticationError, 401], [Anthropic.PermissionDeniedError, 403], [Anthropic.NotFoundError, 404]] as const) {
+    const message = said(status(Klass, code));
+    expect(message).toContain("Your key");
+    expect(message).not.toMatch(/ANTHROPIC_API_KEY|ARCHIPELAGO_MODEL/);
+  }
+});
+
 test("effort comes from ARCHIPELAGO_EFFORT only when it names a level", () => {
   expect(effortFromEnv("medium")).toBe("medium");
   expect(effortFromEnv("loud")).toBe("high");

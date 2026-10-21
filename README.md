@@ -26,6 +26,12 @@ Data lives in `~/.archipelago/archipelago.sqlite`, one database per user. Set `A
 
 From a clone instead: `bun install`, then `bun link` puts `archipelago` on your PATH, and the skill loads as a project skill inside the repo.
 
+## In the browser, with your own key
+
+The hosted build is the same map as a static site, with nothing to install. Open it, paste an Anthropic API key (or choose **Try without a key** to see how a turn goes on a scripted stand-in), and press **New domain…**: say what you want to chart and why, in your own words. The cartographer names the domain and sketches the islands and the judge runs in the page, on your key, with Sonnet 5.5 by default and Opus 5.5 one click away under **Your key** in the domain menu. Your key stays in that browser and is sent only to `api.anthropic.com`; every turn is billed to it.
+
+Charts live in that browser's private storage, one tab at a time (a second tab offers **Use it here**). **Export database** in the domain menu downloads them as one `.sqlite` file, and **Import database…** replaces them with one. The two forms are the same file: `archipelago export` writes one from `~/.archipelago` that the browser imports, and an export from the browser opens locally with `ARCHIPELAGO_DB_PATH`.
+
 ## The five states
 
 | State | Meaning | On the map |
@@ -72,7 +78,8 @@ src/server/judge/PROTOCOL.md   the judge's protocol (system prompt), read at run
 bun test              # bun's test runner (Vitest cannot load bun:sqlite)
 bun run test:wasm     # the same tests on the WebAssembly SQLite
 bunx tsc --noEmit     # typecheck
-bun run build:web     # the hosted build, a static site in dist/web/
+bun run build:web     # the hosted build, a static site in dist/web/ (with _headers for Cloudflare Pages)
+bun run deploy:web    # build, then deploy dist/web to Cloudflare Pages (needs `wrangler login`)
 ```
 
 Data lives in `~/.archipelago/archipelago.sqlite` unless `ARCHIPELAGO_DB_PATH` says otherwise.

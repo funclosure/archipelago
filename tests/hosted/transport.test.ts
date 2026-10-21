@@ -8,6 +8,7 @@ import { openDatabase } from "../../src/core/db.ts";
 import { upsertDomain } from "../../src/core/repositories/domainRepository.ts";
 import { upsertIsland } from "../../src/core/repositories/islandRepository.ts";
 import { createHandler, type PageMessage, type WorkerMessage } from "../../src/hosted/handler.ts";
+import { DATABASE_TYPE } from "../../src/hosted/routes.ts";
 import type { ApiContext } from "../../src/server/api-routes.ts";
 import { stubRunner } from "../../src/server/judge/stub.ts";
 import type { JudgeRunner } from "../../src/server/judge/runner.ts";
@@ -16,10 +17,14 @@ let dir: string;
 let ctx: ApiContext;
 
 /** What `new Worker("/worker.js")` gives the page in these tests: the handler, over message events. */
+let context: () => ApiContext | Promise<ApiContext> = () => ctx;
+/** The worker's own /hosted/ routes, as `worker.ts` passes them: here a stand-in per test. */
+let hosted = async (_req: Request): Promise<Response> => new Response("none", { status: 404 });
+
 class FakeWorker extends EventTarget {
-  private onMessage = createHandler(() => ctx, (message: WorkerMessage) => {
+  private onMessage = createHandler(() => context(), (message: WorkerMessage) => {
     queueMicrotask(() => this.dispatchEvent(new MessageEvent("message", { data: structuredClone(message) })));
-  });
+  }, (req) => hosted(req));
   postMessage(message: PageMessage) {
     void this.onMessage(structuredClone(message));
   }
@@ -46,7 +51,10 @@ beforeEach(() => {
   db.close();
   ctx = { dbPath, runner: stubRunner, turnTimeoutMs: 5_000 };
 });
-afterEach(() => rmSync(dir, { recursive: true, force: true }));
+afterEach(() => {
+  rmSync(dir, { recursive: true, force: true });
+  context = () => ctx;
+});
 
 const json = (body: unknown) => ({ method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
 
@@ -114,4 +122,25 @@ test("a second turn on the same island while one runs is a 409", async () => {
   expect(second.status).toBe(409);
   finish("done");
   await first;
+});
+
+test("a /hosted/ path reaches the worker's own routes, and a database file comes back as bytes both ways", async () => {
+  let received: number[] = [];
+  hosted = async (req) => {
+    if (req.method === "POST") received = [...new Uint8Array(await req.arrayBuffer())];
+    return new Response(new Uint8Array([83, 81, 76]), { headers: { "content-type": DATABASE_TYPE } });
+  };
+  const res = await request("/hosted/export");
+  expect(res.headers.get("content-type")).toBe(DATABASE_TYPE);
+  expect([...new Uint8Array(await res.arrayBuffer())]).toEqual([83, 81, 76]);
+  await request("/hosted/import", { method: "POST", body: new Uint8Array([1, 2]).buffer });
+  expect(received).toEqual([1, 2]);
+  expect((await request("/api/domains")).status).toBe(200); // /api/ still goes to the shared routes
+});
+
+test("an error with a code reaches the page with it, so it can offer to take over", async () => {
+  context = () => Promise.reject(Object.assign(new Error("Archipelago is open in another tab or window."), { code: "another-tab" }));
+  const error = await request("/api/domains").catch((e: any) => e);
+  expect(error.message).toBe("Archipelago is open in another tab or window.");
+  expect(error.code).toBe("another-tab");
 });

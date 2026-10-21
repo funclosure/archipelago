@@ -169,11 +169,18 @@ export async function decideSketch(sketchId, action) {
   chart.deciding = true;
   rerender();
   try {
-    await api("/api/sketch", {
+    const result = await api("/api/sketch", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ domain: app.domain, ...(app.scale ? { island: app.scale } : {}), sketchId, action }),
     });
+    // A sketch that named a provisional domain can give it a new slug: follow it, or the next poll is a 404.
+    if (result.domain && result.domain.slug !== app.domain) {
+      const url = new URL(location.href);
+      url.searchParams.set("domain", result.domain.slug);
+      location.replace(url.toString());
+      return;
+    }
     chart.version = null; // chart.deciding stays true until the refetched thread lands
     await refresh();
   } catch (error) {

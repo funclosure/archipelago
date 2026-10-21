@@ -1,6 +1,7 @@
 // `bun run build:web [--out dir]`: the hosted build, a static site in `dist/web/`. The page's files are copied as they
 // are (the local page has no build step and keeps none); the server becomes `worker.js`, bundled with three modules
 // swapped for browser twins; the vendor libraries the local server bundles per process are written out as files.
+import { createHash } from "node:crypto";
 import { cpSync, copyFileSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -36,10 +37,46 @@ export function hostedIndex(html: string): string {
   return html.replace(marker, `<script>window.ARCHIPELAGO_HOSTED = true;</script>\n${marker}`);
 }
 
+/**
+ * Cloudflare Pages' `_headers`: a CSP that lets the page reach only itself and api.anthropic.com, with the inline
+ * scripts of `html` (the theme stamp, the hosted flag) allowed by hash, and wasm compilation for sqlite and shiki.
+ * `'unsafe-eval'` is for function-plot, which compiles each parsed expression with `new Function`; nothing on the
+ * page builds markup from strings (no innerHTML), so there is no injected text for an eval to reach.
+ */
+export function headersFile(html: string): string {
+  const hashes = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map(
+    (m) => `'sha256-${createHash("sha256").update(m[1]!).digest("base64")}'`,
+  );
+  const csp = [
+    "default-src 'self'",
+    "connect-src 'self' https://api.anthropic.com",
+    `script-src 'self' 'wasm-unsafe-eval' 'unsafe-eval' ${hashes.join(" ")}`,
+    "style-src 'self' 'unsafe-inline'",
+    "img-src 'self' data: blob:",
+    "font-src 'self'",
+    "worker-src 'self'",
+    "object-src 'none'",
+    "base-uri 'none'",
+    "frame-ancestors 'none'",
+  ].join("; ");
+  return [
+    "/*",
+    `  Content-Security-Policy: ${csp}`,
+    "  Referrer-Policy: no-referrer",
+    "  X-Content-Type-Options: nosniff",
+    "  Permissions-Policy: camera=(), microphone=(), geolocation=()",
+    // The page has no build hashes in its file names: every load asks whether a file changed.
+    "  Cache-Control: no-cache",
+    "",
+  ].join("\n");
+}
+
 export async function buildWeb(out: string): Promise<void> {
   rmSync(out, { recursive: true, force: true });
   cpSync(src("web"), out, { recursive: true });
-  writeFileSync(join(out, "index.html"), hostedIndex(readFileSync(src("web/index.html"), "utf8")));
+  const html = hostedIndex(readFileSync(src("web/index.html"), "utf8"));
+  writeFileSync(join(out, "index.html"), html);
+  writeFileSync(join(out, "_headers"), headersFile(html));
 
   mkdirSync(join(out, "vendor"), { recursive: true });
   copyFileSync(src("server/vendor/mermaid.min.js"), join(out, "vendor/mermaid.js"));

@@ -30,10 +30,11 @@ export function draftStraits(snapshot) {
 
 const plural = (n, one, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 
-/** One line naming what the sketch would do, e.g. "6 islands · 5 straits · harbour Foundations". */
+/** One line naming what the sketch would do, e.g. "named React Native · 6 islands · 5 straits · harbour Foundations". */
 export function sketchSummary(body, islands = []) {
   const nameOf = (slug) => body.islands.find((i) => i.slug === slug)?.name ?? islands.find((i) => i.slug === slug)?.name ?? slug;
   const parts = [];
+  if (body.name) parts.push(`named ${body.name}`);
   if (body.islands.length) parts.push(plural(body.islands.length, "island"));
   if (body.straits.length) parts.push(plural(body.straits.length, "strait"));
   if (body.updates.length) parts.push(plural(body.updates.length, "update"));
