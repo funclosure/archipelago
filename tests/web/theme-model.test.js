@@ -4,21 +4,23 @@ import { THEMES, DEFAULT_THEME, PALETTE_TOKENS, storedTheme, nextTheme, mermaidV
 test("the registry: unique ids, the first is the default", () => {
   expect(new Set(THEMES.map((t) => t.id)).size).toBe(THEMES.length);
   expect(THEMES[0].id).toBe(DEFAULT_THEME);
-  expect(THEMES.map((t) => t.id)).toEqual(["night", "chart"]);
+  expect(THEMES.map((t) => t.id)).toEqual(["ink", "tide", "moonlight", "chart", "vellum"]);
   expect(Object.keys(PALETTE_TOKENS)).toEqual(["sea", "line", "lamp", "reef", "sand", "grass", "snow", "explore"]);
 });
 
 test("storedTheme keeps a known id and falls back otherwise", () => {
   expect(storedTheme("chart")).toBe("chart");
-  expect(storedTheme(null)).toBe("night");
-  expect(storedTheme("")).toBe("night");
-  expect(storedTheme("solarized")).toBe("night");
+  expect(storedTheme(null)).toBe("ink");
+  expect(storedTheme("")).toBe("ink");
+  expect(storedTheme("night")).toBe("ink"); // a browser that stored the retired Night gets the default
+  expect(storedTheme("solarized")).toBe("ink");
 });
 
 test("nextTheme walks the list and wraps", () => {
-  expect(nextTheme("night")).toBe("chart");
-  expect(nextTheme("chart")).toBe("night");
-  expect(nextTheme("nope")).toBe("night");
+  expect(nextTheme("ink")).toBe("tide");
+  expect(nextTheme("chart")).toBe("vellum");
+  expect(nextTheme("vellum")).toBe("ink");
+  expect(nextTheme("nope")).toBe("ink");
 });
 
 test("mermaidVariables reads the tokens", () => {

@@ -17,17 +17,21 @@ function block(selector) {
   return out;
 }
 
-test("the chart theme defines every literal colour token of :root, and nothing else", () => {
+const OTHERS = THEMES.slice(1).map((t) => `:root[data-theme="${t.id}"]`);
+
+test("every other theme defines every literal colour token of :root, and nothing else", () => {
   const root = block(":root");
-  const chart = block(':root[data-theme="chart"]');
   const literal = Object.keys(root).filter((k) => !NOT_COLOURS.has(k) && !root[k].startsWith("var("));
   expect(literal.length).toBeGreaterThan(20);
-  expect(Object.keys(chart).filter((k) => !(k in root))).toEqual([]);
-  expect(literal.filter((k) => !(k in chart))).toEqual([]);
+  for (const sel of OTHERS) {
+    const theme = block(sel);
+    expect(Object.keys(theme).filter((k) => !(k in root))).toEqual([]);
+    expect(literal.filter((k) => !(k in theme))).toEqual([]);
+  }
 });
 
-test("the canvas tokens are six-digit hex in both themes", () => {
-  for (const sel of [":root", ':root[data-theme="chart"]']) {
+test("the canvas tokens are six-digit hex in every theme", () => {
+  for (const sel of [":root", ...OTHERS]) {
     const b = block(sel);
     for (const k of PALETTE) expect(b[k]).toMatch(/^#[0-9A-Fa-f]{6}$/);
   }

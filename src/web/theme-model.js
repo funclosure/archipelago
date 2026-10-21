@@ -2,8 +2,11 @@
 // (tests/web/theme-tokens.test.js checks the block covers every colour token). The first entry is the default.
 // The user picks; the system setting is never read.
 export const THEMES = [
-  { id: "night", name: "Night", dark: true },
+  { id: "ink", name: "Ink", dark: true },
+  { id: "tide", name: "Tide", dark: true },
+  { id: "moonlight", name: "Moonlight", dark: true },
   { id: "chart", name: "Paper chart", dark: false },
+  { id: "vellum", name: "Vellum", dark: false },
 ];
 export const DEFAULT_THEME = THEMES[0].id;
 /** The canvas palette's names → the tokens they are read from (six-digit hex in every theme). */
