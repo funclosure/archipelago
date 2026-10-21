@@ -6,13 +6,13 @@ import { z } from "zod";
 import { openDatabase } from "../core/db.ts";
 import { ArchipelagoError, ConflictError, NotFoundError } from "../core/errors.ts";
 import {
-  boardPostInputSchema, commentInputSchema, domainCreateSchema, focusInputSchema, kebab, learnerInputSchema, modeSchema, positionsInputSchema, probeInputSchema,
+  boardPostInputSchema, commentInputSchema, domainAngleSchema, domainCreateSchema, focusInputSchema, kebab, learnerInputSchema, modeSchema, positionsInputSchema, probeInputSchema,
   reefAnswerInputSchema, sketchDecisionSchema, slugSchema,
 } from "../core/validators.ts";
 import { attachAsks, listAsks, pickAsk, requireAsk } from "../core/repositories/askRepository.ts";
 import { listCards } from "../core/repositories/boardRepository.ts";
 import { getLearner, setLearnerNote } from "../core/repositories/learnerRepository.ts";
-import { getDomain, listDomains, requireDomain, upsertDomain } from "../core/repositories/domainRepository.ts";
+import { getDomain, listDomains, requireDomain, setDomainAngle, upsertDomain } from "../core/repositories/domainRepository.ts";
 import { getIslandById, requireIsland, setIslandPositions } from "../core/repositories/islandRepository.ts";
 import { addVerdict, verdictHistory } from "../core/repositories/verdictRepository.ts";
 import { addComment } from "../core/repositories/commentRepository.ts";
@@ -270,9 +270,14 @@ async function handleApi(req: Request, url: URL, ctx: ApiContext): Promise<Respo
     return json(
       withDb(ctx, (db) => {
         if (getDomain(db, slug)) throw new ConflictError(`the domain ${slug} already exists`);
-        return { domain: upsertDomain(db, { slug, name: input.name }) };
+        return { domain: upsertDomain(db, { slug, name: input.name, angle: input.angle ?? null }) };
       }),
     );
+  }
+
+  if (route === "POST /api/domains/angle") {
+    const input = domainAngleSchema.parse(await req.json());
+    return json({ domain: withDb(ctx, (db) => setDomainAngle(db, input.domain, input.angle)) });
   }
 
   if (route === "POST /api/sketch") {

@@ -58,7 +58,7 @@ test("0002 adds nullable island positions", () => {
   expect(cols).toContain("x");
   expect(cols).toContain("y");
   const versions = db.query<{ version: string }, []>("select version from schema_migrations order by version").all().map((r) => r.version);
-  expect(versions).toEqual(["0001_initial", "0002_positions", "0003_threads", "0004_landmarks", "0005_harbour", "0006_asks", "0007_board", "0008_mentor", "0009_cartographer"]);
+  expect(versions).toEqual(["0001_initial", "0002_positions", "0003_threads", "0004_landmarks", "0005_harbour", "0006_asks", "0007_board", "0008_mentor", "0009_cartographer", "0010_angle"]);
 });
 
 test("0002 upgrades a database created with 0001 only", () => {
@@ -78,7 +78,7 @@ test("0002 upgrades a database created with 0001 only", () => {
     .get(domainId)!.version;
 
   const ran = migrateDatabase(db);
-  expect(ran).toEqual(["0002_positions", "0003_threads", "0004_landmarks", "0005_harbour", "0006_asks", "0007_board", "0008_mentor", "0009_cartographer"]);
+  expect(ran).toEqual(["0002_positions", "0003_threads", "0004_landmarks", "0005_harbour", "0006_asks", "0007_board", "0008_mentor", "0009_cartographer", "0010_angle"]);
 
   const island = db.query<{ x: number | null; y: number | null }, []>("select x, y from islands where slug = 'caching'").get();
   expect(island).toEqual({ x: null, y: null });
@@ -198,7 +198,7 @@ test("0008 rebuilds messages and board cards in place: ids, links, and authors s
   const version = () => db.query<{ version: number }, []>("select version from view_state").get()!.version;
   const before = version();
 
-  expect(migrateDatabase(db)).toEqual(["0008_mentor", "0009_cartographer"]);
+  expect(migrateDatabase(db)).toEqual(["0008_mentor", "0009_cartographer", "0010_angle"]);
 
   expect(db.query("select id, role, mode from messages order by id").all()).toEqual([
     { id: 1, role: "judge", mode: "judge" }, { id: 2, role: "judge", mode: "judge" }, { id: 3, role: "judge", mode: "judge" },
@@ -256,7 +256,7 @@ test("0009 rebuilds messages in place: ids, islands, and modes survive; only the
   db.run("insert into messages (domain_id, island_id, role, kind, body, mode) values (1, 1, 'mentor', 'text', 'm', 'mentor')");
   db.run("insert into asks (domain_id, island_id, message_id, question, options) values (1, 1, 2, 'which?', '[\"a\",\"b\"]')");
 
-  expect(migrateDatabase(db)).toEqual(["0009_cartographer"]);
+  expect(migrateDatabase(db)).toEqual(["0009_cartographer", "0010_angle"]);
 
   expect(db.query("select id, island_id as islandId, role, mode from messages order by id").all()).toEqual([
     { id: 1, islandId: 1, role: "judge", mode: "judge" }, { id: 2, islandId: 1, role: "mentor", mode: "mentor" },

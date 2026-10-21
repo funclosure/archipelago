@@ -12,10 +12,21 @@ const numberInput = z.union([z.number(), z.string().trim().min(1, "expected a nu
 /** A map coordinate in the 1000-unit world. */
 const coordinate = numberInput.pipe(z.number().min(0).max(1000));
 
+/** A domain's angle: one paragraph at most. Empty means none. */
+export const ANGLE_MAX = 500;
+const angleSchema = z
+  .string()
+  .trim()
+  .max(ANGLE_MAX, `an angle is at most ${ANGLE_MAX} characters`)
+  .transform((a) => a || null);
+
 export const domainInputSchema = z.object({
   slug: slugSchema,
   name: z.string().min(1),
+  angle: angleSchema.optional(),
 });
+
+export const domainAngleSchema = z.object({ domain: slugSchema, angle: z.union([angleSchema, z.null()]) });
 
 export const islandInputSchema = z.object({
   domain: slugSchema,
@@ -233,7 +244,7 @@ export const sketchBodySchema = z
   .refine((b) => b.islands.length + b.straits.length + b.updates.length > 0 || b.harbour !== undefined, { message: "a sketch proposes something" });
 
 /** A new domain from the page: the slug defaults to the name in kebab case. */
-export const domainCreateSchema = z.object({ name: oneLine.pipe(z.string().max(80)), slug: slugSchema.optional() });
+export const domainCreateSchema = z.object({ name: oneLine.pipe(z.string().max(80)), slug: slugSchema.optional(), angle: angleSchema.optional() });
 
 export const sketchDecisionSchema = z.object({
   domain: slugSchema,

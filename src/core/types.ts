@@ -10,7 +10,8 @@ export type CommentTargetType = (typeof commentTargetTypes)[number];
 export const commentKinds = ["note", "probe_me", "sail_closer", "dispute"] as const;
 export type CommentKind = (typeof commentKinds)[number];
 
-export type Domain = { id: number; slug: string; name: string; createdAt: string };
+/** `angle`: the reader's words on where they chart the domain from and why; null when they gave none. */
+export type Domain = { id: number; slug: string; name: string; angle: string | null; createdAt: string };
 
 export type Island = {
   id: number;

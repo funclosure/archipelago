@@ -8,7 +8,7 @@ import { THEMES } from "./theme-model.js";
 import { applyTheme, currentTheme } from "./theme.js";
 import { openAbout } from "./learner.js";
 import { exportDatabase, importDatabase, isHosted, openYourKey } from "./hosted.js";
-import { openNewDomain } from "./new-domain.js";
+import { openAngle, openNewDomain } from "./new-domain.js";
 import { request } from "./transport.js";
 
 // app.js imports installOutline from here and this file imports app: fine, because nothing below reads app or select at module evaluation.
@@ -209,7 +209,9 @@ function headerEl(outline) {
     for (const t of THEMES) {
       menu.append(button(t.name, () => { applyTheme(t.id); closeMenu(); }, `mi${t.id === cur ? " on" : ""}`));
     }
-    menu.append(el("div", "sep"), button("About you", () => { closeMenu(); void openAbout(); }, "mi"));
+    menu.append(el("div", "sep"));
+    if (app.domain) menu.append(button("Angle of this domain…", () => { closeMenu(); void openAngle(app.domain); }, "mi"));
+    menu.append(button("About you", () => { closeMenu(); void openAbout(); }, "mi"));
     if (isHosted()) {
       menu.append(button("Your key", () => { closeMenu(); openYourKey(); }, "mi"));
       menu.append(button("Export database", () => { closeMenu(); void exportDatabase(); }, "mi"));

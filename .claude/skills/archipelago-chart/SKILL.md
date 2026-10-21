@@ -43,13 +43,13 @@ When the user names a domain that does not exist (`domain list`):
 
 0. The map has its own cartographer too: the reader can make a domain and approve sketches on the page. Before sketching any scale, run `sketch list --domain <slug> [--island <island>] --pending` and `thread show --domain <slug> [--island <island>] --mode cartographer`. If a sketch is pending there, do not sketch that scale: tell the user to approve or discard it on the map. Read the thread so you do not undo what the reader asked for there.
 
-1. Propose 6–10 top-level islands, each with a slug, a name, a one-line summary, and 4–6 landmarks (the key concepts a person who knows this island can explain, as slug + short name), and the straits between islands that neighbour each other conceptually, and the harbour: the island the user already half-stands on (when nothing is known, the island with the most straits). Print the sketch as a table with a landmarks column, and the harbour as a line under the table.
+1. If the user said where they come from or why (their role, what they already know, an interview), keep it as the domain's angle in their words. Shape the sketch to it and to their note (`learner show`). Then propose 6–10 top-level islands, each with a slug, a name, a one-line summary, and 4–6 landmarks (the key concepts a person who knows this island can explain, as slug + short name), and the straits between islands that neighbour each other conceptually, and the harbour: the island the user already half-stands on (when nothing is known, the island with the most straits). Print the sketch as a table with a landmarks column, and the harbour as a line under the table.
 2. Wait for the user to approve or edit it. Do not write before that.
 3. Write it:
 
 ```bash
 A() { archipelago "$@"; }   # works in bash and zsh; define once per shell
-A domain add --slug system-design --name "System Design"
+A domain add --slug system-design --name "System Design" --angle "A backend engineer; preparing for a staff interview."   # --angle only when they gave one
 A island add --domain system-design --slug caching --name Caching --summary "Keeping hot data close to where it is read." --order 1
 A island add --domain system-design --slug databases --name Databases --summary "…" --order 2
 A landmark add --domain system-design --island caching --slug hit-ratio --name "Hit ratio" --order 1
@@ -110,7 +110,7 @@ Then give the user an orientation in prose, at the current scale: the islands th
 ## Command reference
 
 ```
-domain   add --slug --name | list | show --slug
+domain   add --slug --name [--angle] | list | show --slug | angle --slug [--set <text>]   (the angle: where the user charts it from and why; the judge and mentor read it too)
 island   add --domain --slug --name [--summary] [--parent] [--order]
          update --domain --slug [--name] [--summary] [--order] [--x --y]
          list --domain [--parent] | show --domain --slug

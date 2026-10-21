@@ -480,3 +480,5 @@ body.pane-open .board-toggle { right: calc(var(--pane-w) + 16px); }
   .about-card { width: auto; }
   .peek { display: none; }
 }
+.new-domain-card .sub-lbl { font-size: 11px; color: var(--muted); margin-top: 2px; }
+.new-domain-card textarea { resize: vertical; background: var(--water); border: 1px solid var(--line); border-radius: 6px; color: var(--text); padding: 8px 10px; font: inherit; font-size: 13px; line-height: 1.45; }
