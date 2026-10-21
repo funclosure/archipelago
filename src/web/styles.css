@@ -93,6 +93,7 @@ body[data-mode="mentor"] .mode-switch .seg.on { color: var(--explore); }
 @keyframes lit-pulse { 0% { box-shadow: 0 0 0 0 var(--lamp-pulse); } 100% { box-shadow: 0 0 0 10px transparent; } }
 .sub { display: flex; justify-content: space-between; gap: 10px; font-size: 12px; color: var(--muted); }
 .sub .links { display: flex; gap: 10px; }
+.sub .phone-only { display: none; }
 .link { background: none; border: 0; padding: 0; color: var(--text); font: inherit; font-size: 12px; text-decoration: underline;
   text-underline-offset: 2px; cursor: pointer; }
 .link:hover { color: var(--sand); }
@@ -431,3 +432,51 @@ body.pane-open .board-toggle { right: calc(var(--pane-w) + 16px); }
 .new-domain-card input { background: var(--water); border: 1px solid var(--line); border-radius: 6px; color: var(--text); padding: 8px 10px; font: inherit; font-size: 14px; }
 .new-domain-card .row { display: flex; gap: 6px; }
 .new-domain-card .error { margin: 0; font-size: 12px; color: var(--reef); }
+
+/* ---- the hosted build: welcome, Your key, import, another tab (src/web/hosted.js) ---- */
+.hosted { position: fixed; inset: 0; z-index: 7; display: flex; align-items: flex-start; justify-content: center; padding: 12vh 16px 16px; background: var(--scrim); overflow-y: auto; }
+.hosted[hidden] { display: none; }
+.hosted.welcome { background: var(--water); }
+.hosted-card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px; box-shadow: 0 12px 32px var(--shadow);
+  width: min(460px, 100%); box-sizing: border-box; display: grid; gap: 10px; accent-color: var(--lamp); }
+.hosted-card a { color: var(--lamp); }
+.hosted-card .lbl { font-size: 10px; text-transform: uppercase; letter-spacing: .1em; color: var(--lamp); }
+.hosted-card .lede { margin: 0; font-family: Georgia, serif; font-size: 16px; line-height: 1.45; }
+.hosted-card .help { margin: 0; font-size: 12px; color: var(--muted); }
+.hosted-card .help code { font: 11px var(--font-mono); }
+.hosted-card .error { margin: 0; font-size: 12px; color: var(--reef); }
+.hosted-card .fields { display: grid; gap: 10px; }
+.hosted-card input[type="password"] { background: var(--water); border: 1px solid var(--line); border-radius: 6px; color: var(--text); padding: 8px 10px; font: 14px var(--font-mono); min-width: 0; }
+.hosted-card .models { display: grid; gap: 4px; }
+.hosted-card .model { display: grid; grid-template-columns: auto auto 1fr; gap: 8px; align-items: baseline; font-size: 13px; cursor: pointer; }
+.hosted-card .model .note { color: var(--muted); font-size: 12px; }
+.hosted-card .remember { font-size: 12px; color: var(--text-2); cursor: pointer; }
+.hosted-card .row { display: flex; gap: 6px; flex-wrap: wrap; }
+.hosted-card .btn.link { background: none; border: 0; padding: 0; color: var(--lamp); text-decoration: underline; cursor: pointer; font: inherit; font-size: 12px; }
+
+/* ---- phones: the outline starts as a rail (outline.js), the chrome wraps, the pane and the board take the screen ---- */
+@media (max-width: 720px) {
+  :root { --pane-w: 100vw !important; }
+  .chrome { right: 0; padding: 10px 12px; }
+  .chrome-stack { min-width: 0; max-width: 100%; }
+  .breadcrumb { flex-wrap: wrap; font-size: 16px; row-gap: 2px; }
+  .strip { flex-wrap: wrap; gap: 6px 14px; }
+  .strip-item .hint { position: fixed; top: auto; left: 12px; right: 12px; width: auto; margin-top: 8px; }
+  .strip-item:last-child .hint { left: 12px; right: 12px; }
+  .pane { height: 100dvh; bottom: auto; border-left: 0; z-index: 4; }
+  .pane .grip, .pane-width { display: none; }
+  .head { padding: 14px 16px 10px; }
+  .head .row, .pills, .sub, .sub .links { flex-wrap: wrap; }
+  .head .row { justify-content: flex-start; row-gap: 6px; }
+  .sub .phone-only { display: inline; }
+  .board, body.pane-open .board { top: 0; left: 0; right: 0; border-radius: 0; z-index: 4; }
+  .board-scrim, body.pane-open .board-scrim { left: 0; right: 0; }
+  .keys, body.pane-open .keys { left: 0; right: 0; }
+  .map-focus { left: 0; }
+  .board-toggle { right: 12px; bottom: max(12px, env(safe-area-inset-bottom)); }
+  body.pane-open .board-toggle, body.pane-open .cta { display: none; }
+  .cta { left: 0; bottom: max(64px, calc(env(safe-area-inset-bottom) + 52px)); padding: 0 12px; }
+  .about { left: 12px; right: 12px; top: 64px; }
+  .about-card { width: auto; }
+  .peek { display: none; }
+}

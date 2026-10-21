@@ -25,6 +25,9 @@ import { getViewState, setFocus } from "../core/repositories/viewStateRepository
 import { buildSnapshot, listCommentViews } from "../core/view-model.ts";
 import { resolveVerdictTarget } from "../core/targets.ts";
 import { emit, fail, readStdinJson } from "./io.ts";
+import { existsSync, statSync } from "node:fs";
+import { resolve } from "node:path";
+import { exportName } from "../hosted/backup.ts";
 import { startServer } from "../server/index.ts";
 import { defaultJudge, judgeModel, parseJudgeKind, type JudgeKind } from "../server/judge/runner.ts";
 
@@ -422,6 +425,22 @@ common(learner.command("set").option("--note <text>")).action(
 // ---- snapshot ----
 common(program.command("snapshot").description("What the map shows at one scale").option("--domain <slug>").option("--scale <slug>", "island to look inside")).action(
   run((o) => withDb((db) => buildSnapshot(db, slugSchema.parse(o.domain), o.scale ? slugSchema.parse(o.scale) : null))),
+);
+
+// ---- export ----
+common(
+  program
+    .command("export")
+    .description("Copy the whole database into one file: the hosted app imports it, and ARCHIPELAGO_DB_PATH opens it")
+    .option("--out <file>", "where to write it (default: ./archipelago-YYYY-MM-DD.sqlite)"),
+).action(
+  run((o) => {
+    const out = resolve(String(o.out ?? exportName()));
+    if (existsSync(out)) throw new ArchipelagoError(`${out} already exists. Pick another --out.`);
+    // VACUUM INTO writes a compact copy with the WAL folded in, consistent even while a server is writing.
+    withDb((db) => db.run("vacuum into ?", [out]));
+    return { out, bytes: statSync(out).size };
+  }),
 );
 
 // ---- serve ----

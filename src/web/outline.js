@@ -7,6 +7,7 @@ import { moveCursor } from "./keys-model.js";
 import { THEMES } from "./theme-model.js";
 import { applyTheme, currentTheme } from "./theme.js";
 import { openAbout } from "./learner.js";
+import { exportDatabase, importDatabase, isHosted, openYourKey } from "./hosted.js";
 import { openNewDomain } from "./new-domain.js";
 import { request } from "./transport.js";
 
@@ -22,7 +23,11 @@ function storageKey() {
   return `outline:${app.domain}`;
 }
 
+/** A phone's first visit starts with the outline as a rail: expanded, it would cover half the map. */
+const NARROW = "(max-width: 720px)";
+
 function load() {
+  state.rail = matchMedia(NARROW).matches;
   try {
     const raw = localStorage.getItem(storageKey());
     if (!raw) return;
@@ -205,6 +210,11 @@ function headerEl(outline) {
       menu.append(button(t.name, () => { applyTheme(t.id); closeMenu(); }, `mi${t.id === cur ? " on" : ""}`));
     }
     menu.append(el("div", "sep"), button("About you", () => { closeMenu(); void openAbout(); }, "mi"));
+    if (isHosted()) {
+      menu.append(button("Your key", () => { closeMenu(); openYourKey(); }, "mi"));
+      menu.append(button("Export database", () => { closeMenu(); void exportDatabase(); }, "mi"));
+      menu.append(button("Import database…", () => { closeMenu(); importDatabase(); }, "mi"));
+    }
     head.append(menu);
   }
   return head;

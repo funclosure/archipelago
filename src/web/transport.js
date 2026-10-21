@@ -14,14 +14,17 @@ const pending = new Map();
 
 // Leaving the page (a reload, New domain's navigation, the back-forward cache) ends its worker, so the database
 // file and its lock are free for the next page's worker at once. A page restored from the cache starts a new one.
-addEventListener("pagehide", () => {
+addEventListener("pagehide", () => release("the page was left"));
+
+/** Ends this page's worker and frees the database for another tab; open requests fail with `reason`. */
+export function release(reason) {
   if (!worker) return;
   worker.terminate();
   worker = null;
-  const error = new Error("the page was left");
+  const error = new Error(reason);
   for (const p of pending.values()) p.controller ? p.controller.error(error) : p.reject(error);
   pending.clear();
-});
+}
 
 function connect() {
   if (worker) return worker;
@@ -62,10 +65,11 @@ function receive(message) {
   if (!p) return; // aborted on this side already
   if (message.kind === "error") {
     pending.delete(message.id);
-    p.controller ? p.controller.error(new Error(message.message)) : p.reject(new Error(message.message));
+    const error = Object.assign(new Error(message.message), message.code ? { code: message.code } : {});
+    p.controller ? p.controller.error(error) : p.reject(error);
   } else if (message.kind === "response" && !message.stream) {
     pending.delete(message.id);
-    p.resolve(new Response(message.text ?? null, { status: message.status, headers: message.headers }));
+    p.resolve(new Response(message.bytes ?? message.text ?? null, { status: message.status, headers: message.headers }));
   } else if (message.kind === "response") {
     const encoder = new TextEncoder();
     const body = new ReadableStream({

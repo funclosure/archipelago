@@ -4,7 +4,7 @@ import { test, expect, beforeAll, afterAll } from "bun:test";
 import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { buildWeb, hostedIndex } from "../../scripts/build-web.ts";
+import { buildWeb, headersFile, hostedIndex } from "../../scripts/build-web.ts";
 
 let out: string;
 
@@ -37,7 +37,30 @@ test("every file the page, its modules, and the worker ask for exists", () => {
 
 test("the worker imports nothing from Bun or Node and never bundles the Agent SDK", () => {
   const worker = readFileSync(join(out, "worker.js"), "utf8");
-  expect(worker).not.toMatch(/(?:from|import\()\s*["'](?:bun|node):/);
+  // Bun writes its own imports with double quotes; the API SDK's error text quotes `import('node:buffer')` in single ones.
+  expect(worker).not.toMatch(/(?:from|import\(|require\()\s*"(?:bun|node):/);
   expect(worker).not.toContain("claude-agent-sdk");
   expect(worker).not.toContain("readFileSync");
+});
+
+test("the worker carries the protocols, and the API client set up for a browser", () => {
+  const worker = readFileSync(join(out, "worker.js"), "utf8");
+  for (const file of ["PROTOCOL.md", "MENTOR.md", "CARTOGRAPHER.md"]) {
+    const firstLine = readFileSync(join(import.meta.dir, "../../src/server/judge", file), "utf8").split("\n")[0]!;
+    expect(worker).toContain(firstLine);
+  }
+  expect(worker).toContain("dangerouslyAllowBrowser");
+});
+
+test("_headers allows the page's inline scripts by hash, and connections only to itself and the API", () => {
+  const headers = readFileSync(join(out, "_headers"), "utf8");
+  const html = readFileSync(join(out, "index.html"), "utf8");
+  expect(headers).toBe(headersFile(html));
+  const csp = /Content-Security-Policy: (.*)/.exec(headers)![1]!;
+  expect(csp).toContain("connect-src 'self' https://api.anthropic.com;");
+  const inline = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)];
+  expect(inline.length).toBe(2); // the theme stamp and the hosted flag
+  expect(csp.match(/'sha256-/g)!.length).toBe(inline.length);
+  // a changed inline script changes its hash: the build can never ship a CSP that blocks its own page
+  expect(headersFile(html.replace("ARCHIPELAGO_HOSTED = true", "ARCHIPELAGO_HOSTED = 1"))).not.toBe(headers);
 });

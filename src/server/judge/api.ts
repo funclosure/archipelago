@@ -44,6 +44,10 @@ export type ApiRunnerOptions = {
   openStream?: OpenStream;
   model?: string;
   effort?: Effort;
+  /** The key, when it does not come from the environment: the hosted build passes the reader's. */
+  apiKey?: string;
+  /** In the browser (the hosted build): the SDK is told so, and errors point at Your key, not the environment. */
+  hosted?: boolean;
 };
 
 /** `ARCHIPELAGO_EFFORT` when it names an effort level, else the default. */
@@ -70,13 +74,19 @@ export function requestFor(persona: Persona, context: PersonaContext, model: str
 }
 
 /** One actionable sentence for each way the API can fail a turn. Aborts and our own errors pass through. */
-export function describeApiError(error: unknown, model: string): unknown {
+export function describeApiError(error: unknown, model: string, hosted = false): unknown {
   if (error instanceof ArchipelagoError || error instanceof Anthropic.APIUserAbortError) return error;
   const say = (message: string) => new ArchipelagoError(message);
-  if (isMissingCredentials(error)) return say(MISSING_KEY);
-  if (error instanceof Anthropic.AuthenticationError) return say("ANTHROPIC_API_KEY was rejected. Check the key, then send again.");
-  if (error instanceof Anthropic.PermissionDeniedError) return say(`This API key cannot use ${model}. Set ARCHIPELAGO_MODEL to a model it can use.`);
-  if (error instanceof Anthropic.NotFoundError) return say(`The model ${model} is not available. Set ARCHIPELAGO_MODEL (default ${API_DEFAULT_MODEL}).`);
+  if (isMissingCredentials(error)) return say(hosted ? HOSTED_MISSING_KEY : MISSING_KEY);
+  if (error instanceof Anthropic.AuthenticationError) {
+    return say(hosted ? "The API key was rejected. Open Your key in the domain menu, paste it again, then send again." : "ANTHROPIC_API_KEY was rejected. Check the key, then send again.");
+  }
+  if (error instanceof Anthropic.PermissionDeniedError) {
+    return say(hosted ? `This API key cannot use ${model}. Pick another model under Your key in the domain menu.` : `This API key cannot use ${model}. Set ARCHIPELAGO_MODEL to a model it can use.`);
+  }
+  if (error instanceof Anthropic.NotFoundError) {
+    return say(hosted ? `The model ${model} is not available. Pick another model under Your key in the domain menu.` : `The model ${model} is not available. Set ARCHIPELAGO_MODEL (default ${API_DEFAULT_MODEL}).`);
+  }
   if (error instanceof Anthropic.RateLimitError) return say("Claude is rate-limited. Wait a moment and send again.");
   if (error instanceof Anthropic.InternalServerError) return say("Claude is overloaded. Wait a moment and send again.");
   if (error instanceof Anthropic.APIConnectionError) return say("Cannot reach the Claude API. Check the connection, then send again.");
@@ -84,14 +94,15 @@ export function describeApiError(error: unknown, model: string): unknown {
 }
 
 /** The SDK's client, made once and only when a turn needs it, so a server without a key still starts. */
-function defaultOpenStream(): OpenStream {
+function defaultOpenStream({ apiKey, hosted }: Pick<ApiRunnerOptions, "apiKey" | "hosted">): OpenStream {
   let client: Anthropic | undefined;
   return (params, options) => {
     if (!client) {
       try {
-        client = new Anthropic();
+        // In a browser the SDK refuses to run unless told it is meant to (it then sends the header the API's CORS needs).
+        client = new Anthropic({ ...(apiKey ? { apiKey } : {}), ...(hosted ? { dangerouslyAllowBrowser: true } : {}) });
       } catch {
-        throw new ArchipelagoError(MISSING_KEY);
+        throw new ArchipelagoError(hosted ? HOSTED_MISSING_KEY : MISSING_KEY);
       }
     }
     return client.beta.messages.stream(params, options);
@@ -106,9 +117,10 @@ const isUnparsedToolInput = (error: unknown) =>
 const isMissingCredentials = (error: unknown) =>
   error instanceof Anthropic.AnthropicError && !(error instanceof Anthropic.APIError) && error.message.startsWith("Could not resolve authentication method");
 const MISSING_KEY = "ANTHROPIC_API_KEY is not set. Set it in the server's environment, or run `archipelago serve --judge sdk`.";
+const HOSTED_MISSING_KEY = "No API key is set. Open Your key in the domain menu and paste one.";
 
 export function createApiRunner(options: ApiRunnerOptions): JudgeRunner {
-  const open = options.openStream ?? defaultOpenStream();
+  const open = options.openStream ?? defaultOpenStream(options);
   return async ({ dbPath, domain, island, mode = "judge", emit, signal }) => {
     const persona = personaFor(mode);
     const deps: TurnDeps = { dbPath, domain, island, mode };
@@ -143,7 +155,7 @@ export function createApiRunner(options: ApiRunnerOptions): JudgeRunner {
           reply = before; // the request is re-issued whole; its partial text is not the reply
           continue;
         }
-        throw describeApiError(error, model);
+        throw describeApiError(error, model, options.hosted);
       }
 
       switch (message.stop_reason) {

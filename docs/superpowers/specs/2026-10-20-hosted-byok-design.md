@@ -1,7 +1,7 @@
 # Archipelago on the web: bring your own key
 
 **Date:** 2026-10-20
-**Status:** slice 1 built (2026-10-21); slice 2 next
+**Status:** slices 1 and 2 built (2026-10-21); the first deploy and a live turn per persona with a real key are next
 **Builds on:** the API runner (`2026-10-20-api-runner-design.md`), the cartographer in the app (`2026-10-20-cartographer-in-app-design.md`)
 **Route:** 2 of the distribution routes (1 is the Claude Code plugin, PR #1; 3 is the Claude.ai connector).
 
@@ -110,3 +110,28 @@ The hosted build sets `window.ARCHIPELAGO_HOSTED = true` in its `index.html` and
    - Safari's back-forward cache kept the old page's worker, which held the file. The page now terminates its worker on `pagehide`, and a Web Lock gives one tab at a time.
    - A failed first load said only "disconnected". The page now shows the reason.
    - A restored URL could name a domain that this browser's database never had. The page now falls back to the start screen.
+
+## Slice 2 as built (2026-10-21)
+
+Where the build differs from the plan above, it is recorded here.
+
+- **Control messages became routes.** The worker's own endpoints are paths under `/hosted/` (`GET`/`POST settings`, `GET export`, `POST import`) through the same transport, not `setKey`/`export`/`import` message kinds. `handler.ts` sends them to `hosted/routes.ts`, and a response typed `application/vnd.sqlite3` crosses as bytes (transferred, not copied).
+- **Key.** The worker checks it with `sk-ant-` plus at least 8 characters. The page only ever sees `keyHint` (`…abcd`). A key replaces Try without a key, and **Forget key** goes back to it. The 401, 403 and 404 sentences point at **Your key** (`describeApiError(…, hosted)`).
+- **Take over.** The second tab shows "Archipelago is open in another tab or window." with **Use it here**. That posts `takeover` on `BroadcastChannel("archipelago")`, and the first tab terminates its worker (`release()` in `transport.js`) and says "Archipelago moved to another tab". The second tab then reloads, and its worker gets the lock.
+- **Import.** `prepareImport` checks the header and rewrites bytes 18–19 from 2 to 1, because the local tool keeps its file in WAL mode and `opfs-sahpool` has no WAL. The worker opens the candidate as `/incoming.sqlite` to read `schema_migrations` before it touches the real file. An older database is migrated up after the import. An import of a database with no key set switches on Try without a key, so the imported chart opens without the welcome screen.
+- **CSP.** The page has two inline scripts (the theme stamp and the hosted flag), so the build hashes them into `script-src`. function-plot compiles each parsed expression with `new Function`, so `script-src` also carries `'unsafe-eval'`. It's a deliberate trade: the page builds no markup from strings, so there is no injected text for eval to reach. Removing it means a plot renderer that doesn't use eval.
+- **Persistent storage** is requested when the reader starts with a key, chooses Try without a key, or imports a database.
+- **Phone layout.**
+  - The outline starts as a rail on a narrow screen that has no stored state.
+  - The breadcrumb and strip wrap, and a strip hint spans the screen.
+  - `--pane-w` is forced to `100vw` (`!important`, over the stored width), so the pane takes the screen, and so do the board, the scrim and the cheat sheet, which align to it.
+  - The pane head wraps and adds **Board** and **Map** links, because on a phone the board button and the map are both behind the pane.
+- **Deploy.** `bun run deploy:web` builds, then runs `wrangler@4.148.0 pages deploy dist/web --project-name archipelago`. Pages applies `_headers`.
+- **Checked** in Chromium against the build, served with its `_headers`:
+  - welcome, a malformed key, Try without a key, New domain, approve;
+  - code, mermaid and plot cards under the CSP;
+  - a well-formed fake key, which reaches `api.anthropic.com`, gets a 401, and shows the Your-key sentence;
+  - export, then a second tab taking over;
+  - import into a fresh browser, both of that export and of an `archipelago export` file, plus a junk file refused;
+  - the phone layout at 393 px.
+- **Still open:** one live turn per persona with a real key, and the first deploy (it needs `wrangler login` for the Cloudflare account).
