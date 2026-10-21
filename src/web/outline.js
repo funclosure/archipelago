@@ -206,6 +206,7 @@ function headerEl(outline) {
       menu.append(item);
     }
     menu.append(button("New domain…", () => { closeMenu(); openNewDomain(); }, "mi new"));
+    if (app.domain) menu.append(button("Edit domain…", () => { closeMenu(); void openDomainEdit(app.domain); }, "mi"));
     // Theme: one row naming the current theme; a click opens the list under it, a pick applies it and closes the menu.
     const cur = currentTheme();
     const themeRow = button("", (e) => {
@@ -224,7 +225,6 @@ function headerEl(outline) {
       }
     }
     menu.append(el("div", "sep"));
-    if (app.domain) menu.append(button("Name and description…", () => { closeMenu(); void openDomainEdit(app.domain); }, "mi"));
     menu.append(button("About you", () => { closeMenu(); void openAbout(); }, "mi"));
     if (isHosted()) {
       menu.append(button("Your key", () => { closeMenu(); openYourKey(); }, "mi"));
