@@ -327,3 +327,17 @@ test("domain add --description stores it; domain update renames and changes or c
   expect(cli(["domain", "update", "--slug", "rn"]).code).toBe(1);
   expect(cli(["domain", "show", "--slug", "rn"]).json.description).toBeNull();
 });
+
+test("sea add, list, update, and remove: the reader's names on the water, from the terminal", () => {
+  cli(["domain", "add", "--slug", "rn", "--name", "React Native"]);
+  cli(["island", "add", "--domain", "rn", "--slug", "hooks", "--name", "Hooks"]);
+  const made = cli(["sea", "add", "--domain", "rn", "--name", "The React side", "--x", "-200", "--y", "40"]);
+  expect(made.json).toMatchObject({ name: "The React side", x: -200, y: 40, parentIslandId: null });
+  const inner = cli(["sea", "add", "--domain", "rn", "--island", "hooks", "--name", "Inside", "--x", "0", "--y", "0"]);
+  expect(inner.json.parentIslandId).not.toBeNull();
+  expect(cli(["sea", "list", "--domain", "rn"]).json.seas.map((s: any) => s.name)).toEqual(["The React side"]);
+  expect(cli(["sea", "list", "--domain", "rn", "--island", "hooks"]).json.seas.map((s: any) => s.name)).toEqual(["Inside"]);
+  expect(cli(["sea", "update", "--domain", "rn", "--id", String(made.json.id), "--name", "React"]).json.name).toBe("React");
+  expect(cli(["sea", "remove", "--domain", "rn", "--id", String(made.json.id)]).json).toEqual({ removed: made.json.id });
+  expect(cli(["sea", "remove", "--domain", "rn", "--id", "999"]).code).toBe(1);
+});

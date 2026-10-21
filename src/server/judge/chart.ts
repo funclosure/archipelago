@@ -12,6 +12,8 @@ import { listCards } from "../../core/repositories/boardRepository.ts";
 import { pendingSketch, proposeSketch, SKETCH_LIMITS } from "../../core/repositories/sketchRepository.ts";
 import type { Ask, BoardCard, Landmark, Message, Sketch, VerdictState } from "../../core/types.ts";
 import { getLearner } from "../../core/repositories/learnerRepository.ts";
+import { listSeas } from "../../core/repositories/seaRepository.ts";
+import { seaMembers } from "../../core/seas.ts";
 import { NOTE_MAX } from "../../core/validators.ts";
 import { indent, renderDescription, renderReplay, stateOf } from "./context.ts";
 
@@ -39,6 +41,8 @@ export type ChartContext = {
   };
   islands: { slug: string; name: string; summary: string | null; state: VerdictState | null; harbour: boolean; landmarks: string[] }[];
   straits: { a: string; b: string; name: string | null; state: VerdictState | null }[];
+  /** The seas the reader named at this scale, each with the islands nearest its name: how they group the domain. */
+  seas: { name: string; islands: string[] }[];
   /** Every island slug in the domain, so a sketch never takes one. */
   slugs: string[];
   /** How many new islands the next sketch may add here. */
@@ -89,6 +93,11 @@ export function buildChartContext(db: Database, domainSlug: string, islandSlug?:
     straits: straits.map((s) => ({
       a: getIslandById(db, s.fromIslandId)!.slug, b: getIslandById(db, s.toIslandId)!.slug, name: s.name, state: straitVerdicts.get(s.id)?.state ?? null,
     })),
+    seas: (() => {
+      const seas = listSeas(db, domain.id, parentId);
+      const members = seaMembers(seas, siblings);
+      return seas.map((s) => ({ name: s.name, islands: members.get(s.id) ?? [] }));
+    })(),
     slugs: listIslandSlugs(db, domain.id),
     limits: SKETCH_LIMITS[island ? "islets" : "top"][siblings.length === 0 ? "first" : "more"],
     pending: pendingSketch(db, domain.id, parentId),
@@ -153,6 +162,9 @@ export function renderChartContext(ctx: ChartContext): string {
   lines.push(``, `Straits at this scale:`);
   if (ctx.straits.length === 0) lines.push(`- none`);
   for (const s of ctx.straits) lines.push(`- ${s.a}~${s.b}${s.name ? ` "${s.name}"` : ""}: ${stateOf(s.state)}`);
+  lines.push(``, `Seas the reader named at this scale (their own grouping; each island belongs to the nearest name):`);
+  if (ctx.seas.length === 0) lines.push(`- none`);
+  for (const s of ctx.seas) lines.push(`- "${indent(s.name)}": ${s.islands.length ? s.islands.join(", ") : "no islands near it yet"}`);
   lines.push(``, `Slugs already taken in this domain: ${ctx.slugs.length ? ctx.slugs.join(", ") : "none"}`);
   lines.push(`The next sketch here adds ${min === max ? min : `${min}–${max}`} new islands.`);
   if (ctx.pending) {

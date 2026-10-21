@@ -38,6 +38,39 @@ function alpha(hex, a) {
   return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, ${a})`;
 }
 
+/** A sea's stippled water (sea-model.js), in the coast colour: fine dots, stronger where its islands are close. */
+export function drawSeaWater(ctx, dots, radius, dim = false) {
+  const r = radius * 0.024;
+  for (const [x, y, a] of dots) {
+    ctx.fillStyle = alpha(PALETTE.line, (0.07 + a * 0.2) * (dim ? 0.4 : 1));
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
+/** A sea's name: upright capitals, tracked as `set` says (sea-model.js `lettering`), faint until hovered or selected. */
+export function drawSeaName(ctx, sea, set, { selected = false, hover = false, dim = false } = {}) {
+  ctx.save();
+  ctx.font = `${set.font}px Georgia, 'Times New Roman', serif`;
+  ctx.textAlign = "left";
+  ctx.textBaseline = "alphabetic";
+  ctx.fillStyle = alpha(PALETTE.line, (selected || hover ? 0.72 : 0.4) * (dim ? 0.5 : 1));
+  let x = sea.x - set.total / 2;
+  [...set.text].forEach((ch, i) => {
+    ctx.fillText(ch, x, sea.y + set.font * 0.35);
+    x += set.widths[i] + set.track;
+  });
+  if (selected) {
+    const pad = set.font * 0.5;
+    ctx.setLineDash([set.font * 0.14, set.font * 0.18]);
+    ctx.strokeStyle = alpha(PALETTE.lamp, 0.7);
+    ctx.lineWidth = set.font * 0.04;
+    ctx.strokeRect(sea.x - set.total / 2 - pad, sea.y - set.font * 0.9, set.total + 2 * pad, set.font * 1.5);
+  }
+  ctx.restore();
+}
+
 export function clear(ctx, w, h) {
   ctx.fillStyle = PALETTE.sea;
   ctx.fillRect(0, 0, w, h);
@@ -213,8 +246,15 @@ function drawName(ctx, node, lifted = false, label = null) {
   ctx.font = NAME_FONT;
   ctx.textAlign = "center";
   ctx.textBaseline = "top";
+  // A halo of sea around each name, so a sea's lettering passing behind never muddies it.
+  ctx.lineJoin = "round";
+  ctx.strokeStyle = PALETTE.sea;
+  ctx.lineWidth = 6;
   ctx.fillStyle = alpha(PALETTE.line, lifted || node.state !== "open" ? 0.9 : 0.75);
-  lines.forEach((line, i) => ctx.fillText(line, cx, top + i * LINE_H));
+  lines.forEach((line, i) => {
+    ctx.strokeText(line, cx, top + i * LINE_H);
+    ctx.fillText(line, cx, top + i * LINE_H);
+  });
   return { cx, y: top + lines.length * LINE_H };
 }
 

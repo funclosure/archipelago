@@ -23,6 +23,12 @@ test("isTyping is true for inputs, textareas, selects, and contentEditable", () 
   expect(isTyping(null)).toBe(false);
 });
 
+test("a selected sea lets go on Escape before the island is deselected", () => {
+  expect(escapeRung({ sea: true, selected: true })).toBe("sea");
+  expect(escapeRung({ chart: true, sea: true, selected: true })).toBe("chart");
+  expect(escapeRung({ sea: false, selected: true })).toBe("deselect");
+});
+
 test("escapeRung returns the top rung only, in order", () => {
   const all = { sheetOpen: true, menuOpen: true, typing: true, cursor: true, selected: true };
   expect(escapeRung(all)).toBe("sheet");

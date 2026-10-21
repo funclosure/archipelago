@@ -15,7 +15,7 @@ export function isTyping(target) {
 }
 
 /** The one thing Escape does this press, top rung first. `about` is the learner note editor, `editor` the board's editor, `board` the board itself, `chart` the cartographer's pane. */
-export function escapeRung({ sheetOpen, about = false, menuOpen, turn = false, typing, editor = false, board = false, cursor, chart = false, selected }) {
+export function escapeRung({ sheetOpen, about = false, menuOpen, turn = false, typing, editor = false, board = false, cursor, chart = false, sea = false, selected }) {
   if (sheetOpen) return "sheet";
   if (about) return "about";
   if (menuOpen) return "menu";
@@ -25,6 +25,7 @@ export function escapeRung({ sheetOpen, about = false, menuOpen, turn = false, t
   if (board) return "board";
   if (cursor) return "cursor";
   if (chart) return "chart"; // the cartographer's pane closes as an island's does
+  if (sea) return "sea"; // a selected sea's name lets go before the island does
   if (selected) return "deselect";
   return null;
 }
@@ -83,7 +84,7 @@ const EVERYWHERE = [["Tab", "next region"], ["⇧Tab", "previous region"], ["[",
 const CHART_KEYS = { title: "Cartographer", keys: [["↵ /", "answer"], ["l", "start the sketch"], ["⌘↵", "approve sketch"], ["↑ ↓", "scroll"], ["Esc", "close"]] };
 const REGION_KEYS = {
   outline: { title: "Outline", keys: [["↓ j", "move"], ["↑ k", "move"], ["↵", "select"], ["→ ←", "expand / collapse"], ["Home End", "first / last"], ["n", "new domain"]] },
-  map: { title: "Map", keys: [["↵", "select"], ["← → ↑ ↓", "pan"], ["+ −", "zoom"], ["0", "home"], ["Esc", "deselect"]] },
+  map: { title: "Map", keys: [["↵", "select"], ["← → ↑ ↓", "pan"], ["+ −", "zoom"], ["0", "home"], ["Esc", "deselect"], ["double-click water", "name a sea"], ["Del", "remove the selected sea"]] },
   pane: { title: "Pane", keys: [["↵ /", "answer"], ["l", "make landfall"], ["n", "note"], ["1–4", "pick option"], ["c", "confirm reef"], ["d", "dispute"], ["↑ ↓", "scroll"], ["⌘↵", "send"]] },
   board: { title: "Board", keys: [["↓ j", "move"], ["↑ k", "move"], ["↵", "edit"], ["d n c", "add diagram / note / code"], ["x", "remove"], ["⌘↵", "save"], ["b", "map"]] },
 };
