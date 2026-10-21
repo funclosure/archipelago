@@ -1,7 +1,7 @@
 // "New domain…": one field, the description: what the reader wants to chart and why, in their words. The server
 // makes the domain under a provisional name taken from it; the page opens it with ?chart=start, where the
 // cartographer names the domain and sketches its first islands, and the reader approves both. Works before the
-// map has loaded (no domains yet). "Edit domain…" in the domain menu edits both for an existing domain.
+// map has loaded (no domains yet). the pencil on the current domain's row in the domain menu edits both for an existing domain.
 import { api } from "./app.js";
 import { registerRegion } from "./keys.js";
 import { CENTRE, COAST, RING_STEP, ringPoints } from "./contour.js";

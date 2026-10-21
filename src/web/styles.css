@@ -555,3 +555,9 @@ body.empty .outline, body.empty .chrome, body.empty #map-focus, body.empty #boar
 .outline .mi.theme-row .cur { margin-left: auto; color: var(--muted); }
 .outline .mi.theme-row .chev { color: var(--muted); font-size: 10px; width: 10px; text-align: center; }
 .outline .mi.sub { padding-left: 20px; }
+.outline .mi-row { position: relative; display: grid; }
+.outline .mi-row .mi { padding-right: 36px; }
+.outline .mi-row .edit { position: absolute; right: 4px; top: 50%; transform: translateY(-50%); opacity: 0; transition: opacity .12s ease; }
+.outline .mi-row:hover .edit, .outline .mi-row:focus-within .edit { opacity: 1; }
+.outline .mi-row .edit:hover { color: var(--lamp); }
+@media (hover: none) { .outline .mi-row .edit { opacity: 1; } }
