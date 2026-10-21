@@ -101,9 +101,9 @@ The hosted build sets `window.ARCHIPELAGO_HOSTED = true` in its `index.html` and
 - Showing a cost per turn. The runner sees `usage`, so a small "≈ $0.08" under each reply is a natural follow-up once there's real usage to calibrate it against.
 - The terminal cartographer and comments. The hosted app has no CLI; the in-app cartographer covers sketching.
 
-## Open questions
+## Settled (2026-10-21)
 
-1. **Domain and name.** `archipelago.<something>` on Cloudflare Pages, or under funclosure's existing domain? This needs deciding before slice 2's deploy, not before slice 1.
-2. **The repo is private.** A public site built from a private repo is fine, but the license question from PR #1 (UNLICENSED placeholder) applies to the shipped bundle too.
-3. **Default model for strangers.** `claude-opus-5-5` at `high` is right for quality, but costly for someone trying it out. Should the welcome screen offer a cheaper default (Sonnet 5.5) with Opus one click away? This depends on the live comparison the API runner spec left open.
-4. **Safari.** `opfs-sahpool` needs Safari 17+. Check it on the iPhone over `tailscale serve` before slice 2 ships; if it fails, Safari gets a clear message, not a broken map.
+1. **Domain.** The free `*.pages.dev` address on Cloudflare Pages. A custom domain can be added later without any code change.
+2. **License.** The repo stays private and `UNLICENSED` stays. The site is public but its source is not. This gets revisited before inviting contributors.
+3. **Default model.** The hosted build defaults to `claude-sonnet-5-5`, still at `high` effort, because it is much cheaper for someone trying it out. The welcome screen and **Your key** offer Opus 5.5 one click away. The choice is stored beside the key, never in the database. The local tool keeps `claude-opus-5-5`.
+4. **Safari.** Slice 1 tests `opfs-sahpool` on the iPhone over `tailscale serve`. If it fails, Safari gets a clear "use Chrome or Firefox for now" message instead of a broken map, and a fallback storage path is a later decision.
