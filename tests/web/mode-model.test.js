@@ -1,5 +1,5 @@
 import { test, expect } from "bun:test";
-import { MODES, DEFAULT_MODE, PERSONA_NAMES, MODE_LABELS, MODE_HINTS, modeKey, storedMode, nextMode, headPill } from "../../src/web/mode-model.js";
+import { MODES, DEFAULT_MODE, PERSONA_NAMES, MODE_LABELS, MODE_ROLES, MODE_HINTS, modeKey, storedMode, nextMode, headPill } from "../../src/web/mode-model.js";
 
 test("two modes, the judge's first and the default, each named and explained", () => {
   expect(MODES).toEqual(["judge", "mentor"]);
@@ -8,6 +8,7 @@ test("two modes, the judge's first and the default, each named and explained", (
     expect(typeof PERSONA_NAMES[m]).toBe("string");
     expect(typeof MODE_LABELS[m]).toBe("string");
     expect(MODE_HINTS[m].length).toBeGreaterThan(20);
+    expect(MODE_ROLES[m].split(" ").length).toBeLessThanOrEqual(3); // fits under the name in the switch
   }
   expect(PERSONA_NAMES.judge).toBe("the Keeper");
 });
