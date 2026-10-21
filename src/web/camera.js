@@ -16,17 +16,26 @@ export function createCamera() {
     get home() {
       return home;
     },
-    /** The framing that fits the whole world into the area between the insets, centred, with a margin. */
-    fit(w, h, { left = 0, right = 0 } = {}) {
+    /**
+     * The framing that fits the whole world into the area between the insets, centred, with a margin. The insets
+     * are what covers the map: the outline (left), the pane (right), the header (top), the bottom card (bottom).
+     */
+    fit(w, h, { left = 0, right = 0, top = 0, bottom = 0 } = {}) {
       const aw = Math.max(1, w - left - right);
-      const scale = (Math.min(aw, h) * (1 - 2 * MARGIN)) / WORLD;
-      home = { x: left + (aw - WORLD * scale) / 2, y: (h - WORLD * scale) / 2, scale };
+      const ah = Math.max(1, h - top - bottom);
+      const scale = (Math.min(aw, ah) * (1 - 2 * MARGIN)) / WORLD;
+      home = { x: left + (aw - WORLD * scale) / 2, y: top + (ah - WORLD * scale) / 2, scale };
       return home;
     },
     /** The framing at `scale` that puts a world point at the centre of the area between the insets. */
-    centreOn(point, w, h, { left = 0, right = 0 } = {}, scale = cam.scale) {
+    centreOn(point, w, h, { left = 0, right = 0, top = 0, bottom = 0 } = {}, scale = cam.scale) {
       const aw = Math.max(1, w - left - right);
-      return { x: left + aw / 2 - point.x * scale, y: h / 2 - point.y * scale, scale };
+      const ah = Math.max(1, h - top - bottom);
+      return { x: left + aw / 2 - point.x * scale, y: top + ah / 2 - point.y * scale, scale };
+    },
+    /** True while the camera sits where `fit` last put it (the reader has not panned or zoomed since). */
+    atHome() {
+      return !anim && Math.abs(cam.x - home.x) < 0.5 && Math.abs(cam.y - home.y) < 0.5 && Math.abs(cam.scale - home.scale) < 1e-6;
     },
     /** The select zoom: a step in from home, unless the reader is already closer. */
     closer() {

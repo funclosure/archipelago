@@ -45,3 +45,23 @@ test("a left inset shifts the area the world is centred in", () => {
   expect(640 * f.scale + f.x).toBeCloseTo(232 + 184);
   expect(700 * f.scale + f.y).toBeCloseTo(400);
 });
+
+test("top and bottom insets keep the world clear of the header and the bottom card", () => {
+  const cam = createCamera();
+  const h = cam.fit(1000, 800, { top: 100, bottom: 160 });
+  expect(h.scale).toBeCloseTo((540 * 0.88) / WORLD);
+  expect(h.y + (WORLD * h.scale) / 2).toBeCloseTo(100 + 270);
+  expect(h.y).toBeGreaterThan(100);
+  expect(h.y + WORLD * h.scale).toBeLessThan(800 - 160);
+  const f = cam.centreOn({ x: 500, y: 500 }, 1000, 800, { top: 100, bottom: 160 }, 1);
+  expect(500 + f.y).toBeCloseTo(370);
+});
+
+test("atHome holds until the reader pans", () => {
+  const cam = createCamera();
+  cam.fit(1000, 800);
+  cam.snapHome();
+  expect(cam.atHome()).toBe(true);
+  cam.panBy(10, 0);
+  expect(cam.atHome()).toBe(false);
+});

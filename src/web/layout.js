@@ -7,8 +7,9 @@ const REPULSION = 10000;
 const SPRING = 0.03;
 const CENTER = 0.0008;
 const DAMPING = 0.8;
-const MIN_GAP = 60;
-const REST_GAP = 150;
+// Room between coasts for the names: a wrapped name is about three radii wide, so new islands keep that much water.
+const MIN_GAP = 110;
+const REST_GAP = 190;
 
 export function createSimulation() {
   let nodes = [];

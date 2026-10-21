@@ -4,6 +4,7 @@ import {
   CENTRE, COAST, LAMP_R, SOUNDING_R, RING_STEP, ROLLUP_R, SNOW_R, HALO_R, ANCHOR, NAME_Y, LEVEL,
   boxScale, ringPoints, arcRanges, arcIndices, polar, rollupSegments, hatchLines, polylineLength,
 } from "./contour.js";
+import { LINE_H } from "./labels.js";
 
 export const PALETTE = {
   sea: "#0E293A",
@@ -197,16 +198,28 @@ function drawAnchor(ctx) {
   ctx.fillText("⚓︎", ANCHOR.x, ANCHOR.y);
 }
 
-function drawName(ctx, node, lifted = false) {
-  ctx.font = "20px Georgia, 'Times New Roman', serif";
+/** The font every island name is measured and drawn in: 20 box units tall. */
+export const NAME_FONT = "20px Georgia, 'Times New Roman', serif";
+
+/**
+ * The name where `labels.js` put it: wrapped, below or above the coast, faded when it had no clear spot. Without a
+ * label (a caller that laid nothing out), one line below. Returns the y under the last line, for the draft line.
+ */
+function drawName(ctx, node, lifted = false, label = null) {
+  const lines = label?.lines ?? [node.name];
+  const top = label?.top ?? NAME_Y;
+  const cx = label?.cx ?? CENTRE;
+  if (label?.hidden) return null;
+  ctx.font = NAME_FONT;
   ctx.textAlign = "center";
   ctx.textBaseline = "top";
   ctx.fillStyle = alpha(PALETTE.line, lifted || node.state !== "open" ? 0.9 : 0.75);
-  ctx.fillText(node.name, CENTRE, NAME_Y);
+  lines.forEach((line, i) => ctx.fillText(line, cx, top + i * LINE_H));
+  return { cx, y: top + lines.length * LINE_H };
 }
 
 /** A draft from the cartographer's pending sketch: a dashed coast in the lamp's colour, its name, and "draft". No elevation, no lamps. */
-function drawDraft(ctx, node, dim) {
+function drawDraft(ctx, node, dim, label) {
   const s = boxScale(node.radius);
   ctx.save();
   ctx.translate(node.x - CENTRE * s, node.y - CENTRE * s);
@@ -224,17 +237,19 @@ function drawDraft(ctx, node, dim) {
   ctx.stroke();
   ctx.setLineDash([]);
   if (node.island.harbour) drawAnchor(ctx);
-  drawName(ctx, node, true);
-  ctx.font = "italic 13px Georgia, 'Times New Roman', serif";
-  ctx.textAlign = "center";
-  ctx.textBaseline = "top";
-  ctx.fillStyle = alpha(PALETTE.lamp, 0.85);
-  ctx.fillText("draft", CENTRE, NAME_Y + 26);
+  const under = drawName(ctx, node, false, label);
+  if (under) {
+    ctx.font = "italic 13px Georgia, 'Times New Roman', serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "top";
+    ctx.fillStyle = alpha(PALETTE.lamp, 0.85);
+    ctx.fillText("draft", under.cx, under.y + 3);
+  }
   ctx.restore();
 }
 
-export function drawIsland(ctx, node, { dim = false, selected = false, hovered = false, now = 0 } = {}) {
-  if (node.draft) return drawDraft(ctx, node, dim);
+export function drawIsland(ctx, node, { dim = false, selected = false, hovered = false, now = 0, label = null } = {}) {
+  if (node.draft) return drawDraft(ctx, node, dim, label);
   const isl = node.island;
   const s = boxScale(node.radius);
   ctx.save();
@@ -269,7 +284,7 @@ export function drawIsland(ctx, node, { dim = false, selected = false, hovered =
     ctx.stroke();
     ctx.setLineDash([]);
   }
-  drawName(ctx, node, hovered || selected);
+  drawName(ctx, node, hovered || selected, label);
   ctx.restore();
 }
 

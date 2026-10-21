@@ -1,7 +1,9 @@
 import { buildNodes, buildLinks, WORLD, stripItems } from "./view-model.js";
 import { createSimulation } from "./layout.js";
 import { createCamera } from "./camera.js";
-import { clear, drawIsland, drawStrait } from "./draw.js";
+import { clear, drawIsland, drawStrait, NAME_FONT } from "./draw.js";
+import { layoutLabels } from "./labels.js";
+import { boxScale } from "./contour.js";
 import { installInteractions } from "./interactions.js";
 import { installCard } from "./card.js";
 import { installOutline } from "./outline.js";
@@ -203,8 +205,36 @@ export function outlineInset() {
   return Number.isFinite(intended) ? intended : outline.offsetWidth;
 }
 
+/** How much of the top edge the header (breadcrumb and strip) covers. */
+function topInset() {
+  const chrome = document.querySelector(".chrome.top");
+  return chrome && getComputedStyle(chrome).display !== "none" ? chrome.getBoundingClientRect().bottom : 0;
+}
+
+/** How much of the bottom edge the bottom card (approve, confirm, sail to) covers while it shows. */
+function bottomInset() {
+  const card = document.querySelector("#cta:not([hidden]) .cta-card");
+  return card ? Math.max(0, app.size.h - card.getBoundingClientRect().top) + 8 : 0;
+}
+
 export function insets() {
-  return { left: outlineInset(), right: paneInset() };
+  return { left: outlineInset(), right: paneInset(), top: topInset(), bottom: bottomInset() };
+}
+
+let lastInsets = "";
+/**
+ * Refits the map when what covers it changes (the bottom card comes or goes, the strip wraps): the selection stays
+ * framed, and a camera still at home moves to the new home; one the reader has panned stays where it is.
+ */
+export function reframe() {
+  const ins = insets();
+  const key = `${ins.top}|${ins.bottom}`;
+  if (key === lastInsets || !app.size.w) return;
+  lastInsets = key;
+  const wasHome = app.camera.atHome();
+  app.camera.fit(app.size.w, app.size.h, ins);
+  if (app.selected) frameSelection();
+  else if (wasHome) app.camera.animateTo(app.camera.home, FRAME_MS);
 }
 
 const FRAME_MS = 450;
@@ -340,6 +370,18 @@ function renderStatus() {
   el.classList.toggle("off", !app.connected);
 }
 
+const measureCtx = document.createElement("canvas").getContext("2d");
+const nameWidths = new Map();
+/** A name's width in box units, in the font the map draws it in; cached, since names rarely change. */
+function measureName(text) {
+  let w = nameWidths.get(text);
+  if (w === undefined) {
+    measureCtx.font = NAME_FONT;
+    nameWidths.set(text, (w = measureCtx.measureText(text).width));
+  }
+  return w;
+}
+
 function frame(now) {
   const moving = app.sim.tick();
   if (!moving && app.placing.size > 0 && !app.placementInFlight) void persistPlacement();
@@ -362,8 +404,9 @@ function frame(now) {
   for (const l of app.links) {
     drawStrait(ctx, l, { dim: Boolean(focusSlug) && !(near.has(l.source.slug) && near.has(l.target.slug)) });
   }
+  const labels = layoutLabels(app.nodes, { measure: measureName, scale: (n) => boxScale(n.radius), focus: focusSlug, hover: app.hover });
   for (const n of app.nodes) {
-    drawIsland(ctx, n, { dim: Boolean(focusSlug) && !near.has(n.slug), selected: n.slug === focusSlug, hovered: n.slug === app.hover, now });
+    drawIsland(ctx, n, { dim: Boolean(focusSlug) && !near.has(n.slug), selected: n.slug === focusSlug, hovered: n.slug === app.hover, now, label: labels.get(n.slug) });
   }
   requestAnimationFrame(frame);
 }
@@ -414,6 +457,8 @@ async function boot() {
   installOutline();
   installAbout();
   installKeys();
+  const watch = new ResizeObserver(() => reframe());
+  for (const id of ["cta", "strip"]) watch.observe(document.getElementById(id));
   try {
     await refresh();
   } catch (error) {
