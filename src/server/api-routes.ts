@@ -6,11 +6,12 @@ import { z } from "zod";
 import { openDatabase } from "../core/db.ts";
 import { ArchipelagoError, ConflictError, NotFoundError } from "../core/errors.ts";
 import {
-  boardPostInputSchema, commentInputSchema, domainCreateSchema, domainUpdateSchema, focusInputSchema, learnerInputSchema, modeSchema, positionsInputSchema, probeInputSchema,
+  boardPostInputSchema, commentInputSchema, domainCreateSchema, domainUpdateSchema, seaWriteSchema, focusInputSchema, learnerInputSchema, modeSchema, positionsInputSchema, probeInputSchema,
   reefAnswerInputSchema, sketchDecisionSchema, slugSchema,
 } from "../core/validators.ts";
 import { attachAsks, listAsks, pickAsk, requireAsk } from "../core/repositories/askRepository.ts";
 import { listCards } from "../core/repositories/boardRepository.ts";
+import { addSea, removeSea, updateSea } from "../core/repositories/seaRepository.ts";
 import { getLearner, setLearnerNote } from "../core/repositories/learnerRepository.ts";
 import { createDomain, listDomains, requireDomain, updateDomain } from "../core/repositories/domainRepository.ts";
 import { getIslandById, requireIsland, setIslandPositions } from "../core/repositories/islandRepository.ts";
@@ -212,6 +213,23 @@ async function handleApi(req: Request, url: URL, ctx: ApiContext): Promise<Respo
     const result = boardWrite({ dbPath: ctx.dbPath, domain, island }, write, "you");
     const version = withDb(ctx, (db) => getViewState(db, requireDomain(db, domain).id).version);
     return json({ ...result, version });
+  }
+
+  if (route === "POST /api/seas") {
+    // The reader's names on the water. Only the reader writes them: no persona has a tool for seas.
+    const input = seaWriteSchema.parse(await req.json());
+    return json(
+      withDb(ctx, (db) => {
+        const d = requireDomain(db, input.domain);
+        const sea =
+          input.op === "add"
+            ? addSea(db, { domainId: d.id, parentIslandId: input.island ? requireIsland(db, d.id, input.island).id : null, name: input.name, x: input.x, y: input.y })
+            : input.op === "update"
+              ? updateSea(db, d.id, input.id, { name: input.name, x: input.x, y: input.y })
+              : (removeSea(db, d.id, input.id), null);
+        return { sea, version: getViewState(db, d.id).version };
+      }),
+    );
   }
 
   if (route === "GET /api/learner") return json(withDb(ctx, getLearner));

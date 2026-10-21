@@ -30,6 +30,18 @@ export const domainInputSchema = z.object({
 const domainName = z.string().pipe(z.string().trim().min(1, "a name cannot be empty").max(80)).refine((n) => !/[\r\n]/.test(n), { message: "a name is one line" });
 
 /** A change to a domain from the page or the terminal: its name, its description (null or "" clears it), or both. */
+/** A sea's name: one line, the reader's words. */
+export const SEA_NAME_MAX = 40;
+const seaName = z.string().pipe(z.string().trim().min(1, "a sea needs a name").max(SEA_NAME_MAX)).refine((n) => !/[\r\n]/.test(n), { message: "a sea's name is one line" });
+const seaId = numberInput.pipe(z.number().int().positive());
+/** POST /api/seas: add one at a scale (`island` = the scale, absent = the top), rename or move one, or remove one. */
+export const seaWriteSchema = z.discriminatedUnion("op", [
+  z.object({ op: z.literal("add"), domain: slugSchema, island: slugSchema.optional(), name: seaName, x: coordinate, y: coordinate }),
+  z.object({ op: z.literal("update"), domain: slugSchema, id: seaId, name: seaName.optional(), x: coordinate.optional(), y: coordinate.optional() })
+    .refine((u) => u.name !== undefined || (u.x !== undefined && u.y !== undefined), { message: "an update renames the sea, or moves it with both x and y" }),
+  z.object({ op: z.literal("remove"), domain: slugSchema, id: seaId }),
+]);
+
 export const domainUpdateSchema = z
   .object({ domain: slugSchema, name: domainName.optional(), description: z.union([descriptionSchema, z.null()]).optional() })
   .refine((u) => u.name !== undefined || u.description !== undefined, { message: "an update changes the name, the description, or both" });

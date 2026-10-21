@@ -573,3 +573,13 @@ body.empty .outline, body.empty .chrome, body.empty #map-focus, body.empty #boar
 .head .row h2 { flex: 1 1 100%; text-wrap: balance; }
 .head .pills { flex-wrap: wrap; }
 .outline .menu .themes { display: grid; gap: 2px; }
+
+/* ---- seas: the field that names one on the water, and the button under a selected name (seas.js) ---- */
+.sea-edit { position: fixed; transform: translate(-50%, -50%); z-index: 3; width: min(300px, 80vw); box-sizing: border-box; background: var(--panel); color: var(--text);
+  border: 1px solid var(--lamp); box-shadow: 0 0 0 3px var(--lamp-tint), 0 12px 32px var(--shadow); border-radius: 6px; padding: 6px 10px;
+  font: 17px Georgia, 'Times New Roman', serif; letter-spacing: .14em; text-transform: uppercase; text-align: center; outline: none; }
+.sea-edit::placeholder { text-transform: none; letter-spacing: 0; color: var(--muted); }
+.sea-remove { position: fixed; transform: translateX(-50%); z-index: 1; background: var(--panel); border: 1px solid var(--line); color: var(--text-2);
+  border-radius: 999px; font: 12px system-ui, sans-serif; padding: 3px 10px; cursor: pointer; }
+.sea-remove:hover { border-color: var(--reef); color: var(--reef); }
+.sea-remove[hidden] { display: none; }

@@ -9,6 +9,7 @@ import { getViewState } from "./repositories/viewStateRepository.ts";
 import { countMessages } from "./repositories/messageRepository.ts";
 import { listLandmarksByIsland } from "./repositories/landmarkRepository.ts";
 import { pendingSketch } from "./repositories/sketchRepository.ts";
+import { listSeas } from "./repositories/seaRepository.ts";
 
 export type VerdictView = { state: VerdictState; confidence: number; evidence: string; rationale: string | null; at: string };
 export type RollupState = Record<VerdictState | "open", number>;
@@ -41,6 +42,8 @@ export type Snapshot = {
   reefs: string[];
   /** The cartographer's pending sketch at this scale, drawn as drafts until the reader approves it. */
   sketch: { id: number; body: SketchBody; messageId: number | null } | null;
+  /** The seas the reader named at this scale. */
+  seas: { id: number; name: string; x: number; y: number }[];
 };
 export type CommentView = Comment & { target: string };
 
@@ -149,6 +152,7 @@ export function buildSnapshot(db: Database, domainSlug: string, scaleSlug: strin
       ...straitViews.filter((s) => s.verdict?.state === "reef").map((s) => `strait:${s.from}~${s.to}`),
     ],
     sketch: pending ? { id: pending.id, body: pending.body, messageId: pending.messageId } : null,
+    seas: listSeas(db, domain.id, parentId).map((s) => ({ id: s.id, name: s.name, x: s.x, y: s.y })),
   };
 }
 

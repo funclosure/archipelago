@@ -4,10 +4,11 @@ import type { Database } from "../core/sql.ts";
 import { openDatabase } from "../core/db.ts";
 import { ArchipelagoError } from "../core/errors.ts";
 import {
-  domainInputSchema, domainUpdateSchema, islandInputSchema, islandUpdateSchema, straitInputSchema, verdictInputSchema,
+  domainInputSchema, domainUpdateSchema, seaWriteSchema, islandInputSchema, islandUpdateSchema, straitInputSchema, verdictInputSchema,
   sessionEndInputSchema, slugSchema, landmarkInputSchema, learnerInputSchema, modeSchema,
 } from "../core/validators.ts";
 import { listDomains, requireDomain, updateDomain, upsertDomain } from "../core/repositories/domainRepository.ts";
+import { addSea, listSeas, removeSea, updateSea } from "../core/repositories/seaRepository.ts";
 import {
   getIsland, getIslandById, islandPath, listIslands, requireIsland, updateIsland, upsertIsland,
   setHarbour, clearHarbour, getHarbour,
@@ -419,6 +420,39 @@ common(board.command("list").option("--domain <slug>").option("--island <slug>")
       return { island: i.slug, cards: listCards(db, i.id) };
     }),
   ),
+);
+
+// ---- sea ----
+const sea = program.command("sea").description("Names the reader wrote on the water at a scale; write them only when the user asks");
+const seaScale = (db: Database, domainId: number, island: unknown) => (island ? requireIsland(db, domainId, slugSchema.parse(island)).id : null);
+common(sea.command("list").option("--domain <slug>").option("--island <slug>", "the seas among this island's islets (omit for the top scale)")).action(
+  run((o) => withDb((db) => {
+    const d = requireDomain(db, slugSchema.parse(o.domain));
+    return { seas: listSeas(db, d.id, seaScale(db, d.id, o.island)) };
+  })),
+);
+common(sea.command("add").option("--domain <slug>").option("--island <slug>", "add among this island's islets").option("--name <name>").option("--x <n>").option("--y <n>")).action(
+  run((o) => withDb((db) => {
+    const input = seaWriteSchema.parse({ op: "add", domain: o.domain, island: o.island, name: o.name, x: o.x, y: o.y });
+    if (input.op !== "add") throw new Error("unreachable");
+    const d = requireDomain(db, input.domain);
+    return addSea(db, { domainId: d.id, parentIslandId: seaScale(db, d.id, input.island), name: input.name, x: input.x, y: input.y });
+  })),
+);
+common(sea.command("update").option("--domain <slug>").option("--id <n>").option("--name <name>").option("--x <n>").option("--y <n>")).action(
+  run((o) => withDb((db) => {
+    const input = seaWriteSchema.parse({ op: "update", domain: o.domain, id: o.id, name: o.name, x: o.x, y: o.y });
+    if (input.op !== "update") throw new Error("unreachable");
+    return updateSea(db, requireDomain(db, input.domain).id, input.id, { name: input.name, x: input.x, y: input.y });
+  })),
+);
+common(sea.command("remove").option("--domain <slug>").option("--id <n>")).action(
+  run((o) => withDb((db) => {
+    const input = seaWriteSchema.parse({ op: "remove", domain: o.domain, id: o.id });
+    if (input.op !== "remove") throw new Error("unreachable");
+    removeSea(db, requireDomain(db, input.domain).id, input.id);
+    return { removed: input.id };
+  })),
 );
 
 // ---- learner ----

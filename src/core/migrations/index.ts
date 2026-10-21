@@ -12,6 +12,7 @@ import m0008 from "./0008_mentor.sql" with { type: "text" };
 import m0009 from "./0009_cartographer.sql" with { type: "text" };
 import m0010 from "./0010_angle.sql" with { type: "text" };
 import m0011 from "./0011_description.sql" with { type: "text" };
+import m0012 from "./0012_seas.sql" with { type: "text" };
 
 export const MIGRATIONS: readonly { version: string; sql: string }[] = [
   { version: "0001_initial", sql: m0001 },
@@ -25,4 +26,5 @@ export const MIGRATIONS: readonly { version: string; sql: string }[] = [
   { version: "0009_cartographer", sql: m0009 },
   { version: "0010_angle", sql: m0010 },
   { version: "0011_description", sql: m0011 },
+  { version: "0012_seas", sql: m0012 },
 ];

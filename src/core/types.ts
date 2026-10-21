@@ -179,6 +179,9 @@ export type SketchBody = {
   updates: { slug: string; name?: string; summary?: string }[];
 };
 
+/** A name the reader wrote on the water at one scale (`parentIslandId` null = the top), at a world position. */
+export type Sea = { id: number; domainId: number; parentIslandId: number | null; name: string; x: number; y: number; createdAt: string; updatedAt: string };
+
 export type Sketch = {
   id: number;
   domainId: number;

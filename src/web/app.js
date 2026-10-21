@@ -1,7 +1,9 @@
 import { buildNodes, buildLinks, WORLD, stripItems } from "./view-model.js";
 import { createSimulation } from "./layout.js";
 import { createCamera } from "./camera.js";
-import { clear, drawIsland, drawStrait, NAME_FONT } from "./draw.js";
+import { clear, drawIsland, drawStrait, drawSeaWater, drawSeaName, NAME_FONT } from "./draw.js";
+import { seaMembers, lettering, letteringBox, stippleDots, SEA_FONT } from "./sea-model.js";
+import { placeRemoveButton } from "./seas.js";
 import { layoutLabels } from "./labels.js";
 import { boxScale } from "./contour.js";
 import { installInteractions } from "./interactions.js";
@@ -40,6 +42,11 @@ export const app = {
   placing: new Set(),        // slugs awaiting their first persisted position
   placementInFlight: false,  // a positions post is in progress (or backing off after a failure)
   placementGen: 0,           // bumped on a scale change so a stale post cannot clear the new scale's placing set
+  seas: [],                  // the reader's names on the water at this scale: { id, name, x, y }
+  selectedSea: null,         // id of the sea whose name is selected (dashed box, Delete removes it)
+  hoverSea: null,
+  draggingSea: null,         // id of the sea being dragged: a snapshot mid-drag keeps its local position
+  seaSets: new Map(),        // id → this frame's lettering, for hit-testing
 };
 
 export async function api(path, init) {
@@ -139,6 +146,9 @@ function applySnapshot(snapshot) {
   app.snapshot = snapshot;
   app.version = snapshot.version;
   app.nodes = buildNodes(snapshot, previous, app.mode);
+  const held = app.seas.find((s) => s.id === app.draggingSea);
+  app.seas = (snapshot.seas ?? []).map((s) => (held && s.id === held.id ? { ...s, x: held.x, y: held.y } : { ...s }));
+  if (!app.seas.some((s) => s.id === app.selectedSea)) app.selectedSea = null;
   app.links = buildLinks(snapshot, app.nodes, app.mode);
   // The simulation exists only to place islands that have no stored position; placed ones are pinned.
   // New islands gather around the reader's arrangement, not around a fixed point of the sea.
@@ -178,6 +188,19 @@ async function poll() {
 }
 
 /** The node under a screen point, or null. */
+/** The sea whose name is under a screen point, or null. Islands are hit-tested first: they sit above the water. */
+export function seaAt(px, py) {
+  const w = app.camera.toWorld(px, py);
+  for (let i = app.seas.length - 1; i >= 0; i--) {
+    const s = app.seas[i];
+    const set = app.seaSets.get(s.id);
+    if (!set) continue;
+    const b = letteringBox(s, set);
+    if (w.x > b.x0 && w.x < b.x1 && w.y > b.y0 && w.y < b.y1) return s;
+  }
+  return null;
+}
+
 export function hitTest(px, py) {
   const { x, y } = app.camera.toWorld(px, py);
   let best = null;
@@ -250,6 +273,13 @@ const FRAME_MS = 450;
 export function homeBounds() {
   if (app.nodes.length === 0) return null;
   const b = { x0: Infinity, y0: Infinity, x1: -Infinity, y1: -Infinity };
+  for (const s of app.seas) {
+    const box = app.seaSets.has(s.id) ? letteringBox(s, app.seaSets.get(s.id)) : { x0: s.x, x1: s.x, y0: s.y, y1: s.y };
+    b.x0 = Math.min(b.x0, box.x0);
+    b.x1 = Math.max(b.x1, box.x1);
+    b.y0 = Math.min(b.y0, box.y0);
+    b.y1 = Math.max(b.y1, box.y1);
+  }
   for (const n of app.nodes) {
     b.x0 = Math.min(b.x0, n.x - n.radius * 2.8); // a name can sit beside the coast
     b.x1 = Math.max(b.x1, n.x + n.radius * 2.8);
@@ -412,6 +442,43 @@ function renderStatus() {
 }
 
 const measureCtx = document.createElement("canvas").getContext("2d");
+const seaCharWidths = new Map();
+/** A character's width in a sea's lettering at `font` world units; cached. */
+function measureSeaChar(font) {
+  return (ch) => {
+    const key = `${font}|${ch}`;
+    let w = seaCharWidths.get(key);
+    if (w === undefined) {
+      measureCtx.font = `${font}px Georgia, 'Times New Roman', serif`;
+      seaCharWidths.set(key, (w = measureCtx.measureText(ch).width));
+    }
+    return w;
+  };
+}
+const stippleCache = new Map(); // sea id → { key, dots }: the dots move only when the sea or an island does
+function seaDots(sea, members, radius) {
+  const key = `${sea.x},${sea.y}|${radius}|${app.nodes.map((n) => `${Math.round(n.x)},${Math.round(n.y)}`).join(";")}|${members.map((m) => m.slug).join(",")}`;
+  const hit = stippleCache.get(sea.id);
+  if (hit && hit.key === key) return hit.dots;
+  const dots = stippleDots(sea, members, app.nodes, radius);
+  stippleCache.set(sea.id, { key, dots });
+  return dots;
+}
+
+/** The reader's seas, under everything else: stippled water first, then the names. */
+function drawSeas(radius) {
+  const members = seaMembers(app.seas, app.nodes);
+  app.seaSets = new Map();
+  for (const s of app.seas) {
+    const m = members.get(s.id) ?? [];
+    const set = lettering(s.name, m, radius, measureSeaChar(SEA_FONT * radius));
+    app.seaSets.set(s.id, set);
+    drawSeaWater(ctx, seaDots(s, m, radius), radius);
+  }
+  for (const s of app.seas) drawSeaName(ctx, s, app.seaSets.get(s.id), { selected: s.id === app.selectedSea, hover: s.id === app.hoverSea });
+  const chosen = app.seas.find((s) => s.id === app.selectedSea);
+  placeRemoveButton(chosen ? letteringBox(chosen, app.seaSets.get(chosen.id)) : null);
+}
 const nameWidths = new Map();
 /** A name's width in box units, in the font the map draws it in; cached, since names rarely change. */
 function measureName(text) {
@@ -449,6 +516,7 @@ function frame(now) {
       if (l.target.slug === focusSlug) near.add(l.source.slug);
     }
   }
+  drawSeas(app.nodes[0]?.radius ?? 62);
   for (const l of app.links) {
     drawStrait(ctx, l, { dim: Boolean(focusSlug) && !(near.has(l.source.slug) && near.has(l.target.slug)) });
   }

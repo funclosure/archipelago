@@ -1,4 +1,5 @@
-import { app, api, hitTest, setScale, postPositions, frameSelection, insets } from "./app.js";
+import { app, api, hitTest, seaAt, setScale, postPositions, frameSelection, insets } from "./app.js";
+import { openSeaEditor, removeSeaById, saveSeaPosition, seaEditing } from "./seas.js";
 import { registerRegion } from "./keys.js";
 
 const CLICK_SLOP = 4; // px of pointer travel before a press counts as a drag
@@ -32,7 +33,7 @@ const EDGE = 56;
 const EDGE_SPEED = 14;
 
 export function installInteractions(canvas) {
-  let drag = null; // { kind: "pan" | "node", slug, startX, startY, lastX, lastY, moved }
+  let drag = null; // { kind: "pan" | "node" | "sea", slug, sea, startX, startY, lastX, lastY, moved, ox, oy }
   let edgeFrame = 0;
 
   /** Puts the dragged island under the pointer. */
@@ -69,6 +70,13 @@ export function installInteractions(canvas) {
       if (Math.abs(e.clientX - drag.startX) + Math.abs(e.clientY - drag.startY) > CLICK_SLOP) drag.moved = true;
       if (drag.kind === "pan") {
         app.camera.panBy(dx, dy);
+      } else if (drag.kind === "sea") {
+        const sea = app.seas.find((s) => s.id === drag.sea);
+        if (sea && drag.moved) {
+          const w = app.camera.toWorld(e.clientX, e.clientY);
+          sea.x = w.x - drag.ox;
+          sea.y = w.y - drag.oy;
+        }
       } else if (drag.moved) {
         moveDragged(e.clientX, e.clientY);
         if (!edgeFrame) edgeFrame = requestAnimationFrame(edgePan);
@@ -77,23 +85,30 @@ export function installInteractions(canvas) {
     }
     const hit = hitTest(e.clientX, e.clientY);
     const slug = hit ? hit.slug : null;
-    if (slug !== app.hover) {
-      app.hover = slug;
-      canvas.classList.toggle("hover", Boolean(slug));
-    }
+    const sea = hit ? null : seaAt(e.clientX, e.clientY);
+    app.hoverSea = sea ? sea.id : null;
+    if (slug !== app.hover) app.hover = slug;
+    canvas.classList.toggle("hover", Boolean(slug || sea));
   });
 
   canvas.addEventListener("pointerdown", (e) => {
+    if (seaEditing()) return; // the click lands on the water: the field's blur keeps the name
     const hit = hitTest(e.clientX, e.clientY);
+    const sea = hit ? null : seaAt(e.clientX, e.clientY);
+    const w = app.camera.toWorld(e.clientX, e.clientY);
     drag = {
-      kind: hit ? "node" : "pan",
+      kind: hit ? "node" : sea ? "sea" : "pan",
       slug: hit ? hit.slug : null,
+      sea: sea ? sea.id : null,
+      ox: sea ? w.x - sea.x : 0,
+      oy: sea ? w.y - sea.y : 0,
       startX: e.clientX,
       startY: e.clientY,
       lastX: e.clientX,
       lastY: e.clientY,
       moved: false,
     };
+    if (sea) app.draggingSea = sea.id;
     canvas.setPointerCapture(e.pointerId); // released implicitly on pointerup
     canvas.classList.add("dragging");
   });
@@ -110,7 +125,15 @@ export function installInteractions(canvas) {
       if (node) postPositions([node]).catch((error) => console.error(error));
       return;
     }
+    if (d.kind === "sea") {
+      const sea = app.seas.find((s) => s.id === d.sea);
+      app.draggingSea = null;
+      app.selectedSea = d.sea; // a click or a drag selects the sea's name
+      if (sea && d.moved) void saveSeaPosition(sea);
+      return;
+    }
     if (d.moved) return;
+    app.selectedSea = null;
     const hit = hitTest(e.clientX, e.clientY);
     void select(hit ? hit.slug : null);
   });
@@ -122,7 +145,14 @@ export function installInteractions(canvas) {
 
   canvas.addEventListener("dblclick", (e) => {
     const hit = hitTest(e.clientX, e.clientY);
-    if (hit && hit.island.hasChildren) void setScale(hit.slug);
+    if (hit) {
+      if (hit.island.hasChildren) void setScale(hit.slug);
+      return;
+    }
+    // Double-click a sea's name to rename it; double-click open water to name a sea there.
+    const sea = seaAt(e.clientX, e.clientY);
+    if (sea) openSeaEditor({ sea });
+    else openSeaEditor({ at: app.camera.toWorld(e.clientX, e.clientY) });
   });
 
   canvas.addEventListener(
@@ -155,6 +185,8 @@ export function installInteractions(canvas) {
     return best;
   };
   registerRegion("map", {
+    seaSelected: () => app.selectedSea !== null,
+    clearSea: () => { app.selectedSea = null; },
     onKey(e) {
       switch (e.key) {
         case "Enter": {
@@ -170,6 +202,11 @@ export function installInteractions(canvas) {
         case "=": { const c = mapCentre(); app.camera.zoomAt(c.x, c.y, ZOOM); return true; }
         case "-": { const c = mapCentre(); app.camera.zoomAt(c.x, c.y, 1 / ZOOM); return true; }
         case "0": frameSelection(); return true;
+        case "Delete":
+        case "Backspace":
+          if (app.selectedSea === null) return false;
+          void removeSeaById(app.selectedSea);
+          return true;
         default: return false;
       }
     },

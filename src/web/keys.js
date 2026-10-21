@@ -86,6 +86,7 @@ function escape(e) {
     board: handlers.board?.isOpen?.() ?? false,
     cursor: current === "outline" && (handlers.outline?.hasCursor?.() ?? false),
     chart: handlers.pane?.chartOpen?.() ?? false,
+    sea: handlers.map?.seaSelected?.() ?? false,
     selected: Boolean(app.selected),
   });
   if (!rung) return;
@@ -105,6 +106,7 @@ function escape(e) {
     handlers.pane?.closeChart?.();
     if (current === "pane") setRegion("map");
   }
+  else if (rung === "sea") handlers.map?.clearSea?.();
   else if (rung === "deselect") {
     void select(null);
     if (current === "pane") setRegion("map");
