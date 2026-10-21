@@ -12,6 +12,17 @@ let nextId = 1;
 /** Open requests by id: `{ resolve, reject, controller }`; the controller exists once a stream has started. */
 const pending = new Map();
 
+// Leaving the page (a reload, New domain's navigation, the back-forward cache) ends its worker, so the database
+// file and its lock are free for the next page's worker at once. A page restored from the cache starts a new one.
+addEventListener("pagehide", () => {
+  if (!worker) return;
+  worker.terminate();
+  worker = null;
+  const error = new Error("the page was left");
+  for (const p of pending.values()) p.controller ? p.controller.error(error) : p.reject(error);
+  pending.clear();
+});
+
 function connect() {
   if (worker) return worker;
   worker = new Worker("/worker.js", { type: "module" });
