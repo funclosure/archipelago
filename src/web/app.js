@@ -411,6 +411,8 @@ async function boot() {
   } catch (error) {
     app.connected = false;
     renderStatus();
+    // No chart yet to fall back on: say why, as the domain list does above.
+    if (!app.snapshot) document.getElementById("breadcrumb").replaceChildren(error.message);
     console.error(error);
   }
   // A domain made on the page arrives with ?chart=start: open the cartographer and let it sketch.

@@ -12,7 +12,7 @@ import { createHandler, type PageMessage } from "./handler.ts";
 const FILE = "/archipelago.sqlite";
 /** What every request answers when the database would not open: the usual cause is a private window. */
 const STORAGE_FAILED =
-  "This browser would not open Archipelago's storage. Private windows block it: use a normal window in Chrome, Edge, Firefox, or Safari 17 or later.";
+  "This browser would not open Archipelago's storage. Another Archipelago tab may still hold it: close every other one, then reload. Private windows block it too: use a normal window in Chrome, Edge, Firefox, or Safari 17 or later.";
 const ANOTHER_TAB = "Archipelago is open in another tab or window. Close it, then reload this page.";
 
 /** The database file is one writer's at a time: this lock says whose, and is held for the worker's life. */
