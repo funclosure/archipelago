@@ -1,4 +1,4 @@
-import type { Database } from "bun:sqlite";
+import type { Database } from "./sql.ts";
 import type { Comment, CommentTargetType, Island, Landmark, SketchBody, Verdict, VerdictState, CommentKind } from "./types.ts";
 import { requireDomain } from "./repositories/domainRepository.ts";
 import { getIslandById, islandPath, listIslands, requireIsland } from "./repositories/islandRepository.ts";

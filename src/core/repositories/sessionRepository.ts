@@ -1,4 +1,4 @@
-import type { Database } from "bun:sqlite";
+import type { Database } from "../sql.ts";
 import { NotFoundError } from "../errors.ts";
 import type { Session } from "../types.ts";
 

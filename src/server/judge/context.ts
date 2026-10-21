@@ -1,4 +1,4 @@
-import type { Database } from "bun:sqlite";
+import type { Database } from "../../core/sql.ts";
 import { requireDomain } from "../../core/repositories/domainRepository.ts";
 import { getIslandById, islandPath, listIslands, requireIsland } from "../../core/repositories/islandRepository.ts";
 import { listStraits } from "../../core/repositories/straitRepository.ts";

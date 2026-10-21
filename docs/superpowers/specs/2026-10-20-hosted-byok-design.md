@@ -1,7 +1,7 @@
 # Archipelago on the web: bring your own key
 
 **Date:** 2026-10-20
-**Status:** proposed
+**Status:** slice 1 built (2026-10-21); slice 2 next
 **Builds on:** the API runner (`2026-10-20-api-runner-design.md`), the cartographer in the app (`2026-10-20-cartographer-in-app-design.md`)
 **Route:** 2 of the distribution routes (1 is the Claude Code plugin, PR #1; 3 is the Claude.ai connector).
 

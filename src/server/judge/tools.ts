@@ -1,4 +1,4 @@
-import type { Database } from "bun:sqlite";
+import type { Database } from "../../core/sql.ts";
 import { openDatabase } from "../../core/db.ts";
 import { ArchipelagoError } from "../../core/errors.ts";
 import { requireDomain } from "../../core/repositories/domainRepository.ts";

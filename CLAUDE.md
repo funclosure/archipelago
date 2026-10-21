@@ -7,11 +7,13 @@ Chart what you understand about a domain, as islands in open water. Brief: `docs
 ```bash
 bun install
 bun test                              # all tests (bun test, NOT vitest — vitest cannot resolve bun:sqlite)
+bun run test:wasm                     # core, server, web tests again on the WebAssembly SQLite (the hosted build's database)
 bunx tsc --noEmit                     # typecheck
 bun run src/cli/index.ts <command>    # the CLI; `bun link` registers it as `archipelago`
 bun run src/cli/index.ts serve        # map server on 127.0.0.1:4480, opens the browser
 bun run src/cli/index.ts serve --stub # judge without a Claude login
 bun run src/cli/index.ts serve --judge api   # judge on the Messages API (needs ANTHROPIC_API_KEY)
+bun run build:web                     # the hosted build: a static site in dist/web/ (serve it on localhost to try it)
 claude plugin validate .              # the plugin and marketplace manifests
 claude --plugin-dir .                 # try the plugin from this checkout
 ```
@@ -21,29 +23,32 @@ claude --plugin-dir .                 # try the plugin from this checkout
 Two brains, one database. Claude in the terminal is the cartographer (skill → CLI → SQLite): it sketches islands, islets, and straits. The judge runs inside the server (`src/server/judge/`), one thread per island, on one of three runners behind `JudgeRunner`: `api` (the Messages API, `api.ts`), `sdk` (the Claude Agent SDK, `sdk.ts`), or `stub`, and writes verdicts through the same repositories. The mentor runs on the same runner as a second persona (`src/server/judge/persona.ts`: protocol file, closed tool list, renderers, stub), with its own thread per island (`messages.mode`), its protocol in `MENTOR.md`, and a learner block (solid ground across every domain, confirmed reefs, the note in `learner`) at the top of its context. The browser is the consumer (server → JSON API → canvas page polling `/api/version`) and the judge's chat surface (`POST /api/probe` streaming server-sent events). The outline (`outline.js`) reads `GET /api/outline`, the whole tree, refreshed with every snapshot. Comments and focus flow back through the same database.
 
 ```
-src/core/       types.ts, errors.ts, validators.ts, db.ts, migrate.ts, migrations/ (0001_initial.sql, 0002_positions.sql, 0003_threads.sql, 0004_landmarks.sql, 0005_harbour.sql, 0006_asks.sql, 0007_board.sql, 0008_mentor.sql, 0009_cartographer.sql), repositories/, view-model.ts, targets.ts
+src/core/       types.ts, errors.ts, validators.ts, sql.ts, sql-wasm.ts, db.ts, migrate.ts, migrations/ (index.ts, 0001_initial.sql, 0002_positions.sql, 0003_threads.sql, 0004_landmarks.sql, 0005_harbour.sql, 0006_asks.sql, 0007_board.sql, 0008_mentor.sql, 0009_cartographer.sql), repositories/, view-model.ts, targets.ts
 src/cli/        index.ts (commander), io.ts
-src/server/     index.ts (startServer), routes.ts (handleRequest), vendor.ts, vendor/ (shiki-entry.js), judge/ (PROTOCOL.md, MENTOR.md, CARTOGRAPHER.md, protocol.ts, persona.ts, context.ts, chart.ts, tools.ts, tool-specs.ts, runner.ts, stub.ts, sdk.ts, api.ts)
-src/web/        index.html, styles.css, app.js, view-model.js, layout.js, camera.js, draw.js, contour.js, interactions.js, card.js, cta.js, outline.js, outline-model.js, keys.js, keys-model.js, markdown.js, stream.js, thread.js, code.js, code-model.js, board.js, board-model.js, mode-model.js, learner.js, chart.js, chart-model.js, new-domain.js, fonts/ (PaperMono.woff2, OFL.txt)
+src/server/     index.ts (startServer), routes.ts (handleRequest: static files, vendor bundles), api-routes.ts (handleApiRequest: everything under /api/), vendor.ts, vendor/ (shiki-entry.js), judge/ (PROTOCOL.md, MENTOR.md, CARTOGRAPHER.md, protocol.ts, persona.ts, context.ts, chart.ts, tools.ts, tool-specs.ts, runner.ts, stub.ts, sdk.ts, api.ts)
+src/web/        index.html, styles.css, app.js, view-model.js, layout.js, camera.js, draw.js, contour.js, interactions.js, card.js, cta.js, outline.js, outline-model.js, keys.js, keys-model.js, markdown.js, stream.js, thread.js, code.js, code-model.js, board.js, board-model.js, mode-model.js, learner.js, chart.js, chart-model.js, new-domain.js, transport.js, fonts/ (PaperMono.woff2, OFL.txt)
 .claude/skills/archipelago-chart/SKILL.md
 .claude-plugin/  plugin.json, marketplace.json (the repo is its own marketplace)
 bin/archipelago  the plugin's command (Claude Code puts bin/ on the Bash tool's PATH)
-tests/          core/, cli/, server/, web/
+src/hosted/     worker.ts, handler.ts, db.ts, protocol.ts, no-sdk.ts (the hosted build's server, in a Web Worker)
+scripts/        build-web.ts
+tests/          core/, cli/, server/, web/, hosted/, support/ (wasm-driver.ts)
 ```
 
 ## Conventions
 
 - Plugin: the repo root is the plugin. `plugin.json` points `skills` at `./.claude/skills`, so the same SKILL.md serves the plugin and the in-repo project skill; it calls `archipelago`, never `bun run src/cli/index.ts`. Claude Code installs dependencies from `package.json` + `bun.lock` with `--ignore-scripts` and a 60 s limit, so every dependency is pinned exactly and nothing may need an install script. Mermaid is committed at `src/server/vendor/mermaid.min.js` (a devDependency; `bun run vendor:mermaid` refreshes it) because it was the slowest download. Bump `version` in `plugin.json` to ship an update.
 - One database per user: `~/.archipelago/archipelago.sqlite` (`DEFAULT_DB_PATH`), `ARCHIPELAGO_DB_PATH` overrides.
-- `bun:sqlite`, numbered migrations in `src/core/migrations/`, snake_case columns aliased to camelCase in every `select`.
+- `bun:sqlite`, numbered migrations in `src/core/migrations/`, snake_case columns aliased to camelCase in every `select`. Repositories type their connection as `Database` from `src/core/sql.ts` (the subset they use), never from `bun:sqlite`, so they also run on the WebAssembly adapter `sql-wasm.ts`; `bun run test:wasm` proves it by swapping `openDatabase` for the adapter across the core, server, and web suites.
 - Open water is the absence of a verdict. Never store or render an "open" state as a score.
 - Verdicts are append-only; latest `id` wins. Island slugs are unique per domain. Straits join siblings only.
 - Every write bumps `view_state.version` via SQL triggers; the page polls that integer every 2s.
 - CLI: JSON always; pretty on a TTY, compact with `--json` or when piped; `--stdin` merges JSON under flags; errors exit 1 with `{ error, valid? }`.
 - Server opens and closes the database per request. Static files are read fresh (`Cache-Control: no-cache`); no build step for the page.
+- Hosted build (spec `docs/superpowers/specs/2026-10-20-hosted-byok-design.md`): the same page and the same `/api/` routes, with the server in a Web Worker. `api-routes.ts` holds everything under `/api/` and must stay free of Bun and Node calls; `routes.ts` adds static files and vendor bundles for `archipelago serve`. The page's requests all go through `transport.js` (`request`): `fetch` locally, a message to `/worker.js` when `index.html` sets `ARCHIPELAGO_HOSTED` (only `build:web` does). The worker (`src/hosted/worker.ts`) opens SQLite-WASM on OPFS (`opfs-sahpool`) once, migrates, and answers through `handler.ts`; `build-web.ts` swaps three modules for browser twins (`core/db.ts` → `hosted/db.ts`, `judge/protocol.ts` → `hosted/protocol.ts`, `judge/sdk.ts` → `hosted/no-sdk.ts`). A browser that won't open the storage (private windows) gets one sentence on the page. Slice 1 runs the stub only; the key, the API runner, export/import, and the deploy are slice 2. `@sqlite.org/sqlite-wasm` is a devDependency, so the plugin's install doesn't grow.
 - Page: no framework, no bundler, no `innerHTML`. Pure helpers in `view-model.js`, `thread.js` (markdown, log items), and `camera.js` are unit-tested; the canvas and the pane are checked by hand. The pane (`card.js`) is head, log, foot: the log is the only scroll region. Selecting an island frames it at the centre of the map area beside the pane at 1.5× the home scale (`frameSelection` in `app.js`).
 - Map positions live on `islands.x`/`islands.y` in a fixed 1000×1000 world per scale (null = unplaced). The page places unplaced islands once (existing ones pinned) and posts `/api/positions`; the simulation never runs when everything is placed. Every island at a scale shares one radius (`islandRadius(count)`); it is the coast radius 62 of Contour's 200-unit box (`src/web/contour.js`), so marks scale with the map and elevation never changes size. `draw.js` is stateless and reads derived fields only; the write animations run off `node.litAt` and `node.stateAt`. The palette is Contour's (sea, line at alphas, lamp, reef, sand, grass, snow); the chrome's old token names are aliases onto it.
-- Schema changes go in a new numbered migration under `src/core/migrations/`; `0001_initial.sql` is frozen.
+- Schema changes go in a new numbered migration under `src/core/migrations/` and a line in `migrations/index.ts` (imported as text, so the hosted build bundles them; `db.test.ts` fails if the two drift); `0001_initial.sql` is frozen.
 - The judge writes only through its seven tools: `island_context` reads; `set_landmarks`, `unlock_landmark`, `record_verdict` (sandbar, settled, mountainous), `propose_reef`, `ask_reader` (records a question with 2–4 options, attached by the route to the reply), and `board_write` (pins, updates, or removes a card on the island's board; only its own cards) write. A reef is written only when the reader confirms it via `POST /api/probe/reef`.
 - `ConflictError` → 409. `POST /api/probe` holds one turn per island at a time.
 - Behaviour lives in protocol text before code: the terminal cartographer's in `.claude/skills/archipelago-chart/SKILL.md`, the in-app cartographer's in `src/server/judge/CARTOGRAPHER.md`, the judge's in `src/server/judge/PROTOCOL.md`, the mentor's in `src/server/judge/MENTOR.md`. The sketch numbers (6–10 top-level islands, 4–8 islets, 4–6 landmarks) live in both cartographer files and in `SKETCH_LIMITS`; `tests/server/protocol.test.ts` fails if they drift.

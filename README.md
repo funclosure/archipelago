@@ -56,6 +56,7 @@ Every island carries 4–6 **landmarks**, the key concepts on it. The cartograph
 src/core/      types, validators, migrations, repositories, view-model   (bun:sqlite)
 src/cli/       the archipelago command
 src/server/    Bun.serve JSON API + static files
+src/hosted/    the same API in a Web Worker, on SQLite-WASM, for the static web build
 src/web/       one-canvas map and the conversation pane, plain ES modules
 src/web/contour.js   the island geometry, box units, pure
 src/web/outline.js   the outline panel
@@ -69,7 +70,9 @@ src/server/judge/PROTOCOL.md   the judge's protocol (system prompt), read at run
 
 ```bash
 bun test              # bun's test runner (Vitest cannot load bun:sqlite)
+bun run test:wasm     # the same tests on the WebAssembly SQLite
 bunx tsc --noEmit     # typecheck
+bun run build:web     # the hosted build, a static site in dist/web/
 ```
 
 Data lives in `~/.archipelago/archipelago.sqlite` unless `ARCHIPELAGO_DB_PATH` says otherwise.

@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 import { Command, CommanderError } from "commander";
-import type { Database } from "bun:sqlite";
+import type { Database } from "../core/sql.ts";
 import { openDatabase } from "../core/db.ts";
 import { ArchipelagoError } from "../core/errors.ts";
 import {

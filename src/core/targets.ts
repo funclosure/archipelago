@@ -1,4 +1,4 @@
-import type { Database } from "bun:sqlite";
+import type { Database } from "./sql.ts";
 import { ArchipelagoError } from "./errors.ts";
 import { getIslandById, requireIsland } from "./repositories/islandRepository.ts";
 import { requireStrait } from "./repositories/straitRepository.ts";

@@ -1,6 +1,6 @@
 // The cartographer's side of a turn: what it sees at one scale, its two tools, and how its context and
 // thread are rendered. It proposes sketches; the reader approves them through POST /api/sketch.
-import type { Database } from "bun:sqlite";
+import type { Database } from "../../core/sql.ts";
 import { openDatabase } from "../../core/db.ts";
 import { requireDomain } from "../../core/repositories/domainRepository.ts";
 import { islandPath, listIslands, listIslandSlugs, requireIsland, getIslandById } from "../../core/repositories/islandRepository.ts";

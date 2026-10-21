@@ -1,4 +1,4 @@
-import type { Database } from "bun:sqlite";
+import type { Database } from "../sql.ts";
 import { z } from "zod";
 import { ConflictError, NotFoundError } from "../errors.ts";
 import { reefStatuses, type Message, type MessageKind, type MessageMode, type MessageRole, type ReefProposal, type ReefStatus } from "../types.ts";

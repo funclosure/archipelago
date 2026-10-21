@@ -1,4 +1,4 @@
-import type { Database } from "bun:sqlite";
+import type { Database } from "../sql.ts";
 import { ArchipelagoError, ConflictError, NotFoundError } from "../errors.ts";
 import { sketchBodySchema } from "../validators.ts";
 import type { Sketch, SketchBody, SketchStatus } from "../types.ts";
