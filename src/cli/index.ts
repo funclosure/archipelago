@@ -134,7 +134,7 @@ common(
 common(
   island.command("update")
     .option("--domain <slug>").option("--slug <slug>").option("--name <name>").option("--summary <text>").option("--order <n>")
-    .option("--x <n>", "map position, 0..1000").option("--y <n>", "map position, 0..1000"),
+    .option("--x <n>", "map position in world units (a fresh scale spans about 0..1000; any number works)").option("--y <n>", "map position in world units"),
 ).action(
   run((o) =>
     withDb((db) => {

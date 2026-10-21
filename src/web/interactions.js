@@ -27,8 +27,38 @@ function nodeBySlug(slug) {
   return app.nodes.find((n) => n.slug === slug) ?? null;
 }
 
+/** Dragging an island this close to the map area's edge pans the sea, up to EDGE_SPEED px a frame at the edge. */
+const EDGE = 56;
+const EDGE_SPEED = 14;
+
 export function installInteractions(canvas) {
   let drag = null; // { kind: "pan" | "node", slug, startX, startY, lastX, lastY, moved }
+  let edgeFrame = 0;
+
+  /** Puts the dragged island under the pointer. */
+  function moveDragged(px, py) {
+    const node = nodeBySlug(drag.slug);
+    if (!node) return;
+    const w = app.camera.toWorld(px, py);
+    node.x = w.x;
+    node.y = w.y;
+    node.pinned = true; // a dragged island is placed by hand from now on
+  }
+
+  /** While an island is held near an edge, the sea scrolls under it, so it can be pushed out into open water. */
+  function edgePan() {
+    edgeFrame = 0;
+    if (!drag || drag.kind !== "node" || !drag.moved) return;
+    const { left, right, top, bottom } = insets();
+    const { w, h } = app.size;
+    const push = (d) => (d < EDGE ? ((EDGE - Math.max(0, d)) / EDGE) * EDGE_SPEED : 0);
+    const dx = push(drag.lastX - left) - push(w - right - drag.lastX);
+    const dy = push(drag.lastY - top) - push(h - bottom - drag.lastY);
+    if (!dx && !dy) return;
+    app.camera.panBy(dx, dy);
+    moveDragged(drag.lastX, drag.lastY);
+    edgeFrame = requestAnimationFrame(edgePan);
+  }
 
   canvas.addEventListener("pointermove", (e) => {
     if (drag) {
@@ -40,12 +70,8 @@ export function installInteractions(canvas) {
       if (drag.kind === "pan") {
         app.camera.panBy(dx, dy);
       } else if (drag.moved) {
-        const node = nodeBySlug(drag.slug);
-        if (!node) return;
-        const w = app.camera.toWorld(e.clientX, e.clientY);
-        node.x = w.x;
-        node.y = w.y;
-        node.pinned = true; // a dragged island is placed by hand from now on
+        moveDragged(e.clientX, e.clientY);
+        if (!edgeFrame) edgeFrame = requestAnimationFrame(edgePan);
       }
       return;
     }
@@ -74,6 +100,8 @@ export function installInteractions(canvas) {
 
   canvas.addEventListener("pointerup", (e) => {
     canvas.classList.remove("dragging");
+    cancelAnimationFrame(edgeFrame);
+    edgeFrame = 0;
     const d = drag;
     drag = null;
     if (!d) return;

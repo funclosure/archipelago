@@ -2,6 +2,7 @@
 import { draftIslands, draftStraits, sketchSummary } from "./chart-model.js";
 // Coordinates are world units: a fixed 1000 × 1000 square per scale, origin top-left.
 
+/** The unit of the map, not its edge: a fresh scale is laid out around WORLD / 2, and islands may go anywhere. */
 export const WORLD = 1000;
 
 export function hashSeed(text) {
@@ -30,12 +31,12 @@ export function islandRadius(count) {
   return Math.min(88, Math.max(48, 220 / Math.sqrt(Math.max(1, count))));
 }
 
-export const clampWorld = (v) => Math.min(WORLD, Math.max(0, v));
 const now = () => (typeof performance !== "undefined" ? performance.now() : Date.now());
 
 /**
- * A starting spot for an island the page has not placed yet: near the centroid of its placed
- * strait neighbours, else near the world centre, offset by a seeded angle so siblings never coincide.
+ * A starting spot for an island the page has not placed yet, offset by a seeded angle so siblings never coincide:
+ * beside the centroid of its placed strait neighbours; else just outside the islands already placed, in open water
+ * beside the reader's arrangement rather than in the middle of it; else around the centre of a fresh scale.
  */
 function provisionalPosition(snapshot, island, placedBySlug, radius) {
   const rnd = seededRandom(hashSeed(snapshot.domain.slug + "/" + island.slug));
@@ -45,13 +46,18 @@ function provisionalPosition(snapshot, island, placedBySlug, radius) {
     .filter((s) => s.from === island.slug || s.to === island.slug)
     .map((s) => placedBySlug.get(s.from === island.slug ? s.to : s.from))
     .filter(Boolean);
-  let cx = WORLD / 2;
-  let cy = WORLD / 2;
+  const centroid = (list) => ({ x: list.reduce((sum, n) => sum + n.x, 0) / list.length, y: list.reduce((sum, n) => sum + n.y, 0) / list.length });
   if (neighbours.length) {
-    cx = neighbours.reduce((sum, n) => sum + n.x, 0) / neighbours.length;
-    cy = neighbours.reduce((sum, n) => sum + n.y, 0) / neighbours.length;
+    const c = centroid(neighbours);
+    return { x: c.x + Math.cos(angle) * offset, y: c.y + Math.sin(angle) * offset };
   }
-  return { x: clampWorld(cx + Math.cos(angle) * offset), y: clampWorld(cy + Math.sin(angle) * offset) };
+  const placed = [...placedBySlug.values()];
+  if (placed.length) {
+    const c = centroid(placed);
+    const reach = Math.max(...placed.map((p) => Math.hypot(p.x - c.x, p.y - c.y))) + radius * 2.5;
+    return { x: c.x + Math.cos(angle) * reach, y: c.y + Math.sin(angle) * reach };
+  }
+  return { x: WORLD / 2 + Math.cos(angle) * offset, y: WORLD / 2 + Math.sin(angle) * offset };
 }
 
 // ---- lenses: the judge's (what you have demonstrated) and the mentor's (where you have explored) ----

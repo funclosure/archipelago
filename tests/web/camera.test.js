@@ -65,3 +65,16 @@ test("atHome holds until the reader pans", () => {
   cam.panBy(10, 0);
   expect(cam.atHome()).toBe(false);
 });
+
+test("home frames the islands, wherever they are, and never zooms closer than MAX_HOME", () => {
+  const cam = createCamera();
+  // islands spread far to the left of the old square: home takes them all in
+  const far = cam.fit(1000, 800, {}, { x0: -2000, y0: 0, x1: 1000, y1: 1000 });
+  expect(-2000 * far.scale + far.x).toBeGreaterThanOrEqual(0);
+  expect(1000 * far.scale + far.x).toBeLessThanOrEqual(1000);
+  expect((-2000 + 1000) / 2 * far.scale + far.x).toBeCloseTo(500); // centred
+  // one small island: capped, not filling the screen
+  const one = cam.fit(1000, 800, {}, { x0: 400, y0: 400, x1: 600, y1: 600 });
+  expect(one.scale).toBeCloseTo(((800 * 0.88) / WORLD) * 1.4);
+  expect(500 * one.scale + one.y).toBeCloseTo(400);
+});
