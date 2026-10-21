@@ -392,13 +392,9 @@ async function boot() {
       return failedToStart(error);
     }
     if (domains.length === 0) {
-      const nav = document.getElementById("breadcrumb");
-      const b = document.createElement("button");
-      b.className = "crumb start";
-      b.textContent = "New domain…";
-      b.addEventListener("click", () => openNewDomain());
-      nav.replaceChildren("No domains yet. ", b);
-      openNewDomain();
+      // Nothing to show but the start: the page is the New domain field, with no outline and no chrome around it.
+      document.body.classList.add("empty");
+      openNewDomain({ first: true });
       return;
     }
     app.domain = domains[0].slug;

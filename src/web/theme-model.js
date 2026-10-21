@@ -3,6 +3,8 @@
 // The user picks; the system setting is never read.
 export const THEMES = [
   { id: "night", name: "Night", dark: true },
+  { id: "ink", name: "Ink", dark: true },
+  { id: "tide", name: "Tide", dark: true },
   { id: "chart", name: "Paper chart", dark: false },
 ];
 export const DEFAULT_THEME = THEMES[0].id;

@@ -4,7 +4,7 @@ import { THEMES, DEFAULT_THEME, PALETTE_TOKENS, storedTheme, nextTheme, mermaidV
 test("the registry: unique ids, the first is the default", () => {
   expect(new Set(THEMES.map((t) => t.id)).size).toBe(THEMES.length);
   expect(THEMES[0].id).toBe(DEFAULT_THEME);
-  expect(THEMES.map((t) => t.id)).toEqual(["night", "chart"]);
+  expect(THEMES.map((t) => t.id)).toEqual(["night", "ink", "tide", "chart"]);
   expect(Object.keys(PALETTE_TOKENS)).toEqual(["sea", "line", "lamp", "reef", "sand", "grass", "snow", "explore"]);
 });
 
@@ -16,7 +16,8 @@ test("storedTheme keeps a known id and falls back otherwise", () => {
 });
 
 test("nextTheme walks the list and wraps", () => {
-  expect(nextTheme("night")).toBe("chart");
+  expect(nextTheme("night")).toBe("ink");
+  expect(nextTheme("tide")).toBe("chart");
   expect(nextTheme("chart")).toBe("night");
   expect(nextTheme("nope")).toBe("night");
 });
