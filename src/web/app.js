@@ -42,7 +42,7 @@ export const app = {
 export async function api(path, init) {
   const res = await request(path, init);
   const body = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(body.error || res.statusText);
+  if (!res.ok) throw Object.assign(new Error(body.error || res.statusText), { status: res.status });
   return body;
 }
 
@@ -409,6 +409,11 @@ async function boot() {
   try {
     await refresh();
   } catch (error) {
+    // A link or a restored tab can name a domain this database never had (each browser keeps its own): start over.
+    if (!app.snapshot && error.status === 404 && params.has("domain")) {
+      location.replace(location.pathname);
+      return;
+    }
     app.connected = false;
     renderStatus();
     // No chart yet to fall back on: say why, as the domain list does above.
