@@ -136,7 +136,7 @@ test("positions persist as a batch and reject unknown slugs whole", async () => 
   expect((await get("/api/snapshot?domain=sd")).json.islands.find((i: any) => i.slug === "caching")).toMatchObject({ x: 100, y: 200 });
   expect((await get("/api/version?domain=sd")).json.version).toBe(v1 + 2);
 
-  expect((await post("/api/positions", { domain: "sd", positions: [{ island: "caching", x: 5000, y: 1 }] })).status).toBe(400);
+  expect((await post("/api/positions", { domain: "sd", positions: [{ island: "caching", x: 5_000_000, y: 1 }] })).status).toBe(400); // past COORDINATE_MAX
   expect((await post("/api/positions", { domain: "sd", positions: [] })).status).toBe(400);
   const foreign = await fetch(base + "/api/positions", {
     method: "POST",

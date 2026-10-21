@@ -9,8 +9,9 @@ export const slugSchema = z
 /** A number, or a non-empty string coerced to one; "" is rejected instead of becoming 0. */
 const numberInput = z.union([z.number(), z.string().trim().min(1, "expected a number")]).pipe(z.coerce.number());
 
-/** A map coordinate in the 1000-unit world. */
-const coordinate = numberInput.pipe(z.number().min(0).max(1000));
+/** A map coordinate in world units. The sea has no edge; the bound only keeps a runaway value out of the database. */
+export const COORDINATE_MAX = 1_000_000;
+const coordinate = numberInput.pipe(z.number().min(-COORDINATE_MAX).max(COORDINATE_MAX));
 
 /** A domain's description, the reader's words on what they want to chart and why: a paragraph at most. Empty means none. */
 export const DESCRIPTION_MAX = 500;

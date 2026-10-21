@@ -37,7 +37,7 @@ test("placed islands sit exactly at their stored coordinates, pinned, across reb
   expect(next[0].stateAt).toBeGreaterThan(0);
 });
 
-test("unplaced islands start near their placed strait neighbours, else near the centre, and keep provisional spots", () => {
+test("unplaced islands start near their placed strait neighbours, else just outside the placed islands, and keep provisional spots", () => {
   const snap = snapshot(
     [island("a", null, { x: 100, y: 100 }), island("b", null, { x: 300, y: 100 }), island("c"), island("d")],
     [{ from: "a", to: "c", name: null, verdict: null }, { from: "b", to: "c", name: null, verdict: null }],
@@ -47,14 +47,10 @@ test("unplaced islands start near their placed strait neighbours, else near the 
   const d = nodes.find((n) => n.slug === "d");
   expect(c.placed).toBe(false);
   expect(Math.hypot(c.x - 200, c.y - 100)).toBeLessThan(200);
-  expect(Math.hypot(d.x - WORLD / 2, d.y - WORLD / 2)).toBeLessThan(200);
+  // d has no placed neighbour: it lands in open water beyond a and b, not between them
+  const fromCentroid = (n) => Math.hypot(n.x - 200, n.y - 100);
+  expect(fromCentroid(d)).toBeGreaterThan(100 + d.radius * 2);
   expect(Math.hypot(c.x - d.x, c.y - d.y)).toBeGreaterThan(1);
-  for (const n of nodes) {
-    expect(n.x).toBeGreaterThanOrEqual(0);
-    expect(n.x).toBeLessThanOrEqual(WORLD);
-    expect(n.y).toBeGreaterThanOrEqual(0);
-    expect(n.y).toBeLessThanOrEqual(WORLD);
-  }
   const previous = new Map(nodes.map((n) => [n.slug, { ...n, x: 777, y: 888 }]));
   const again = buildNodes(snap, previous);
   expect(again.find((n) => n.slug === "c")).toMatchObject({ x: 777, y: 888, placed: false, pinned: false });

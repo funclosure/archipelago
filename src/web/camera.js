@@ -4,6 +4,8 @@
 import { WORLD } from "./view-model.js";
 
 const MARGIN = 0.06; // of the shorter viewport side, each edge
+/** Home never zooms closer than this × the scale that fits a whole 1000-unit scale: two islands stay island-sized. */
+const MAX_HOME = 1.4;
 const SELECT_ZOOM = 1.5; // × home scale when an island is selected
 
 export function createCamera() {
@@ -17,14 +19,21 @@ export function createCamera() {
       return home;
     },
     /**
-     * The framing that fits the whole world into the area between the insets, centred, with a margin. The insets
+     * Home: the framing that fits `bounds` (the islands, in world units; a fresh 1000-unit scale when there are
+     * none) into the area between the insets, centred, with a margin, and never closer than MAX_HOME. The insets
      * are what covers the map: the outline (left), the pane (right), the header (top), the bottom card (bottom).
      */
-    fit(w, h, { left = 0, right = 0, top = 0, bottom = 0 } = {}) {
+    fit(w, h, { left = 0, right = 0, top = 0, bottom = 0 } = {}, bounds = null) {
+      const b = bounds ?? { x0: 0, y0: 0, x1: WORLD, y1: WORLD };
       const aw = Math.max(1, w - left - right);
       const ah = Math.max(1, h - top - bottom);
-      const scale = (Math.min(aw, ah) * (1 - 2 * MARGIN)) / WORLD;
-      home = { x: left + (aw - WORLD * scale) / 2, y: top + (ah - WORLD * scale) / 2, scale };
+      const bw = Math.max(1, b.x1 - b.x0);
+      const bh = Math.max(1, b.y1 - b.y0);
+      const cap = ((Math.min(aw, ah) * (1 - 2 * MARGIN)) / WORLD) * MAX_HOME;
+      const scale = Math.min(cap, Math.min(aw / bw, ah / bh) * (1 - 2 * MARGIN));
+      const cx = (b.x0 + b.x1) / 2;
+      const cy = (b.y0 + b.y1) / 2;
+      home = { x: left + aw / 2 - cx * scale, y: top + ah / 2 - cy * scale, scale };
       return home;
     },
     /** The framing at `scale` that puts a world point at the centre of the area between the insets. */

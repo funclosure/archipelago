@@ -10,7 +10,7 @@ const snapshot = (islands, straits = []) => ({
   version: 1, domain: { slug: "sd", name: "SD" }, scale: { path: [] }, islands, straits, focus: null, unreadComments: 0, nearestOpenWater: [], reefs: [],
 });
 
-test("the simulation settles nodes inside the world inset, and stops on its own", () => {
+test("the simulation settles on its own and draws a stray island toward the centre; there are no walls", () => {
   const nodes = buildNodes(snapshot([island("a"), island("b")]));
   const a = nodes.find((n) => n.slug === "a");
   a.x = -500;
@@ -31,10 +31,7 @@ test("the simulation settles nodes inside the world inset, and stops on its own"
   }
 
   expect(settled).toBe(true);
-  for (const n of nodes) {
-    expect(n.x).toBeGreaterThanOrEqual(n.radius);
-    expect(n.x).toBeLessThanOrEqual(WORLD - n.radius);
-    expect(n.y).toBeGreaterThanOrEqual(n.radius);
-    expect(n.y).toBeLessThanOrEqual(WORLD - n.radius);
-  }
+  for (const n of nodes) expect(Number.isFinite(n.x) && Number.isFinite(n.y)).toBe(true);
+  // a started at (-500, 2000): nothing clamps it, and gravity has drawn it in
+  expect(Math.hypot(a.x - 500, a.y - 500)).toBeLessThan(Math.hypot(-500 - 500, 2000 - 500));
 });

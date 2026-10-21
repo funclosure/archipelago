@@ -35,7 +35,7 @@ If the user has not opened it, start it once in the background and tell them the
 archipelago serve --domain <slug>
 ```
 
-The judge runs inside that server: on the Messages API when `ANTHROPIC_API_KEY` is set in the server's environment, otherwise on the Claude Agent SDK through the user's Claude Code login. The startup line names which. Islands keep fixed positions once the map has placed them; if the user wants one moved, they drag it, or you run `archipelago island update --domain <slug> --slug <island> --x <n> --y <n>` with world coordinates 0..1000.
+The judge runs inside that server: on the Messages API when `ANTHROPIC_API_KEY` is set in the server's environment, otherwise on the Claude Agent SDK through the user's Claude Code login. The startup line names which. Islands keep fixed positions once the map has placed them; if the user wants one moved, they drag it, or you run `archipelago island update --domain <slug> --slug <island> --x <n> --y <n>` in world units (a fresh scale spans about 0..1000, but the sea has no edge).
 
 ## 1. Setup: a new domain
 

@@ -56,7 +56,7 @@ function resize() {
   canvas.height = Math.round(app.size.h * dpr);
   canvas.style.width = app.size.w + "px";
   canvas.style.height = app.size.h + "px";
-  app.camera.fit(app.size.w, app.size.h, insets());
+  fitHome(insets());
   if (app.selected) frameSelection();
   else app.camera.snapHome();
 }
@@ -141,6 +141,10 @@ function applySnapshot(snapshot) {
   app.nodes = buildNodes(snapshot, previous, app.mode);
   app.links = buildLinks(snapshot, app.nodes, app.mode);
   // The simulation exists only to place islands that have no stored position; placed ones are pinned.
+  // New islands gather around the reader's arrangement, not around a fixed point of the sea.
+  const anchored = app.nodes.filter((n) => n.placed);
+  if (anchored.length) app.sim.setCenter(anchored.reduce((s, n) => s + n.x, 0) / anchored.length, anchored.reduce((s, n) => s + n.y, 0) / anchored.length);
+  else app.sim.setCenter(WORLD / 2, WORLD / 2);
   app.sim.setGraph(app.nodes, app.links, app.nodes.some((n) => !n.placed) ? (sameScale ? 0.5 : 1) : 0); // drafts are laid out too, never saved
   if (!sameScale) {
     app.placementGen += 1;          // a post that resolves for the old scale must not touch this set
@@ -232,18 +236,38 @@ export function reframe() {
   if (key === lastInsets || !app.size.w) return;
   lastInsets = key;
   const wasHome = app.camera.atHome();
-  app.camera.fit(app.size.w, app.size.h, ins);
+  fitHome(ins);
   if (app.selected) frameSelection();
   else if (wasHome) app.camera.animateTo(app.camera.home, FRAME_MS);
 }
 
 const FRAME_MS = 450;
 
+/**
+ * What home frames: every island at this scale (drafts too) with room for its lamps and its name, so the map
+ * fills the window around the reader's own arrangement. Null with no islands: home is a fresh 1000-unit scale.
+ */
+export function homeBounds() {
+  if (app.nodes.length === 0) return null;
+  const b = { x0: Infinity, y0: Infinity, x1: -Infinity, y1: -Infinity };
+  for (const n of app.nodes) {
+    b.x0 = Math.min(b.x0, n.x - n.radius * 2.8); // a name can sit beside the coast
+    b.x1 = Math.max(b.x1, n.x + n.radius * 2.8);
+    b.y0 = Math.min(b.y0, n.y - n.radius * 1.6);
+    b.y1 = Math.max(b.y1, n.y + n.radius * 2.9);
+  }
+  return b;
+}
+
+function fitHome(ins) {
+  return app.camera.fit(app.size.w, app.size.h, ins, homeBounds());
+}
+
 /** Frames the selected island at the centre of the map area beside the pane, or returns home. */
 export function frameSelection() {
   const { w, h } = app.size;
   const ins = insets();
-  app.camera.fit(w, h, ins);
+  fitHome(ins);
   const node = app.selected ? app.nodes.find((n) => n.slug === app.selected) : null;
   if (node) app.camera.animateTo(app.camera.centreOn(node, w, h, ins, app.camera.closer()), FRAME_MS);
   else app.camera.animateTo(app.camera.home, FRAME_MS);
@@ -254,13 +278,9 @@ export function unplaced() {
   return app.nodes.filter((n) => !n.placed && !n.draft);
 }
 
-/** Persists positions for the given nodes; coordinates are clamped to the world so the server accepts them. */
+/** Persists positions for the given nodes. The sea has no edge: any finite spot is the reader's to choose. */
 export async function postPositions(nodes) {
-  const positions = nodes.map((n) => {
-    n.x = Math.min(WORLD - n.radius, Math.max(n.radius, n.x));
-    n.y = Math.min(WORLD - n.radius, Math.max(n.radius, n.y));
-    return { island: n.slug, x: n.x, y: n.y };
-  });
+  const positions = nodes.map((n) => ({ island: n.slug, x: n.x, y: n.y }));
   return api("/api/positions", {
     method: "POST",
     headers: { "content-type": "application/json" },
@@ -403,8 +423,15 @@ function measureName(text) {
   return w;
 }
 
+let laying = false; // the simulation was placing islands on the last frame
 function frame(now) {
   const moving = app.sim.tick();
+  // New islands have found their places: if the reader has not moved the map since, home grows to take them in.
+  if (laying && !moving && !app.selected && app.camera.atHome()) {
+    fitHome(insets());
+    app.camera.animateTo(app.camera.home, FRAME_MS);
+  }
+  laying = moving;
   if (!moving && app.placing.size > 0 && !app.placementInFlight) void persistPlacement();
   app.camera.tick(now);
   const { w, h, dpr } = app.size;

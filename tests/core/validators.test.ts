@@ -34,17 +34,19 @@ test("errors serialise to { error, valid }", () => {
   expect(new ArchipelagoError("plain").toJSON()).toEqual({ error: "plain" });
 });
 
-test("positions are 0..1000 numbers and never empty", () => {
+test("positions are any finite numbers within COORDINATE_MAX, and never empty", () => {
   const ok = positionsInputSchema.safeParse({ domain: "sd", positions: [{ island: "caching", x: "12.5", y: 999 }] });
   expect(ok.success).toBe(true);
   expect(ok.data!.positions[0]).toEqual({ island: "caching", x: 12.5, y: 999 });
   expect(positionsInputSchema.safeParse({ domain: "sd", positions: [] }).success).toBe(false);
-  expect(positionsInputSchema.safeParse({ domain: "sd", positions: [{ island: "caching", x: 1001, y: 0 }] }).success).toBe(false);
-  expect(positionsInputSchema.safeParse({ domain: "sd", positions: [{ island: "caching", x: -1, y: 0 }] }).success).toBe(false);
+  // the sea has no edge: off the old 1000-unit square is fine
+  expect(positionsInputSchema.safeParse({ domain: "sd", positions: [{ island: "caching", x: 1001, y: -250 }] }).success).toBe(true);
+  expect(positionsInputSchema.safeParse({ domain: "sd", positions: [{ island: "caching", x: -1_000_001, y: 0 }] }).success).toBe(false);
   expect(positionsInputSchema.safeParse({ domain: "sd", positions: [{ island: "caching", x: "", y: 0 }] }).success).toBe(false);
   expect(positionsInputSchema.safeParse({ domain: "sd", positions: [{ island: "Caching", x: 1, y: 0 }] }).success).toBe(false);
   expect(islandUpdateSchema.safeParse({ domain: "sd", slug: "caching", x: "40", y: "10" }).success).toBe(true);
-  expect(islandUpdateSchema.safeParse({ domain: "sd", slug: "caching", y: 2000 }).success).toBe(false);
+  expect(islandUpdateSchema.safeParse({ domain: "sd", slug: "caching", x: -40, y: 2000 }).success).toBe(true);
+  expect(islandUpdateSchema.safeParse({ domain: "sd", slug: "caching", x: 0, y: 2_000_000 }).success).toBe(false);
   expect(positionsInputSchema.safeParse({
     domain: "sd",
     positions: Array.from({ length: 1001 }, (_, i) => ({ island: `island-${i}`, x: 0, y: 0 })),
