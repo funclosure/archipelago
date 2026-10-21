@@ -324,7 +324,9 @@ function stripItem({ label, value, hint, action }) {
   l.className = "strip-label";
   l.textContent = label;
   const v = document.createElement("span");
+  v.className = "strip-value";
   v.textContent = value;
+  v.title = value; // a long value is cut to one line; the full text is here
   const h = document.createElement("div");
   h.className = "hint";
   h.textContent = hint;
@@ -340,8 +342,8 @@ function stripItem({ label, value, hint, action }) {
 }
 
 /**
- * The mode switch that leads the strip, labelled like the other cells: who you talk to in the pane, each with what
- * it does ("asks and grades", "explains, no grades"), and a hint card saying what the map shows in that mode.
+ * The mode switch beside the domain's name: who you talk to in the pane, each with what it does ("asks and
+ * grades", "explains, no grades") on the same line, and a hint card saying what the map shows in that mode.
  */
 function modeSwitchEl() {
   const cell = document.createElement("div");
@@ -379,7 +381,8 @@ function modeSwitchEl() {
 function renderStrip() {
   const strip = document.getElementById("strip");
   if (!app.snapshot) return;
-  strip.replaceChildren(modeSwitchEl(), ...stripItems(app.snapshot, app.mode).map(stripItem));
+  strip.replaceChildren(...stripItems(app.snapshot, app.mode).map(stripItem));
+  document.getElementById("mode").replaceChildren(modeSwitchEl());
 }
 
 function renderStatus() {

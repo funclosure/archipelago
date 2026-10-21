@@ -74,10 +74,14 @@ html, body { margin: 0; height: 100%; background: var(--water); color: var(--tex
 #map.dragging { cursor: grabbing; }
 #map.hover { cursor: pointer; }
 
-.chrome { position: fixed; left: var(--outline-w); display: flex; padding: 16px 20px; pointer-events: none; transition: left .18s ease; }
+.chrome { position: fixed; left: var(--outline-w); right: 0; display: flex; padding: 16px 20px; pointer-events: none; transition: left .18s ease, right .18s ease; }
+body.pane-open .chrome { right: var(--pane-w); }
 .chrome > * { pointer-events: auto; }
 .top { top: 0; }
-.chrome-stack { display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
+.chrome-stack { display: flex; flex-direction: column; gap: 10px; align-items: flex-start; min-width: 0; max-width: 100%; }
+/* the title row: the domain (and scale) on the left, the mode switch beside it */
+.title-row { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; min-width: 0; }
+.mode:empty { display: none; }
 
 .breadcrumb { display: flex; align-items: center; gap: 8px; font-family: Georgia, serif; font-size: 18px; }
 .crumb { background: none; border: 0; color: var(--muted); font: inherit; cursor: pointer; padding: 0; }
@@ -87,7 +91,8 @@ html, body { margin: 0; height: 100%; background: var(--water); color: var(--tex
 .status { font-size: 12px; color: var(--muted); }
 .status.off { color: var(--reef); }
 
-.strip { display: flex; gap: 24px; font-size: 12px; }
+.strip { display: flex; flex-wrap: wrap; gap: 8px 28px; font-size: 12px; max-width: 100%; }
+.strip-value { max-width: 42ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .strip-item { display: flex; flex-direction: column; gap: 2px; position: relative; cursor: help; }
 .strip-item .hint { display: none; position: absolute; top: calc(100% + 8px); left: 0; width: 260px; background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
   padding: 8px 10px; box-shadow: 0 8px 24px var(--shadow); font-size: 12px; line-height: 1.45; color: var(--text); text-transform: none; letter-spacing: 0; z-index: 4; }
@@ -95,13 +100,14 @@ html, body { margin: 0; height: 100%; background: var(--water); color: var(--tex
 .strip-item:hover .hint, .strip-item.open .hint { display: block; }
 .strip-label { color: var(--muted); text-transform: uppercase; letter-spacing: .08em; font-size: 10px; }
 /* the lens switch: Keeper (what you have demonstrated) or Mentor (where you have explored) */
-.mode-cell { cursor: default; gap: 4px; }
-.mode-switch { display: inline-flex; align-self: flex-start; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
-.mode-switch .seg { background: transparent; border: 0; color: var(--muted); font: 12px system-ui, sans-serif; padding: 4px 10px 5px; cursor: pointer;
-  display: grid; justify-items: start; gap: 0; text-align: left; }
+.mode-cell { cursor: default; }
+.mode-cell > .strip-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); } /* named for screen readers; the segments say the rest */
+.mode-switch { display: inline-flex; border: 1px solid var(--line); border-radius: 999px; overflow: hidden; }
+.mode-switch .seg { background: transparent; border: 0; color: var(--muted); font: 12px system-ui, sans-serif; padding: 4px 12px; cursor: pointer;
+  display: inline-flex; align-items: baseline; gap: 6px; }
 .mode-switch .seg + .seg { border-left: 1px solid var(--line); }
 .mode-switch .seg .name { font-weight: 600; letter-spacing: .02em; }
-.mode-switch .seg .role { font-size: 10px; opacity: .85; white-space: nowrap; }
+.mode-switch .seg .role { font-size: 11px; opacity: .8; white-space: nowrap; }
 .mode-switch .seg .name { white-space: nowrap; }
 .mode-switch .seg:hover { color: var(--text); }
 .mode-switch .seg.on { background: var(--panel-2); color: var(--text); }
@@ -561,3 +567,9 @@ body.empty .outline, body.empty .chrome, body.empty #map-focus, body.empty #boar
 .outline .mi-row:hover .edit, .outline .mi-row:focus-within .edit { opacity: 1; }
 .outline .mi-row .edit:hover { color: var(--lamp); }
 @media (hover: none) { .outline .mi-row .edit { opacity: 1; } }
+
+/* the pane head: the name has the whole width; the pills wrap under it */
+.head .row { flex-wrap: wrap; justify-content: flex-start; row-gap: 6px; }
+.head .row h2 { flex: 1 1 100%; text-wrap: balance; }
+.head .pills { flex-wrap: wrap; }
+.outline .menu .themes { display: grid; gap: 2px; }

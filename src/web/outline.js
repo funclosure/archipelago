@@ -5,7 +5,7 @@ import { FULL_W, RAIL_W, visibleRows, collapsible, dashClass, countNodes, summar
 import { registerRegion, region } from "./keys.js";
 import { moveCursor } from "./keys-model.js";
 import { THEMES } from "./theme-model.js";
-import { applyTheme, currentTheme } from "./theme.js";
+import { applyTheme, endPreview, savedTheme } from "./theme.js";
 import { openAbout } from "./learner.js";
 import { exportDatabase, importDatabase, isHosted, openYourKey } from "./hosted.js";
 import { openDomainEdit, openNewDomain } from "./new-domain.js";
@@ -131,6 +131,7 @@ function hidePeek() {
 }
 
 function closeMenu() {
+  if (state.themesOpen) endPreview(); // a theme hovered and not picked does not stay
   state.menuOpen = false;
   state.themesOpen = false;
   state.domains = null;
@@ -236,8 +237,9 @@ function headerEl(outline) {
       menu.append(row);
     }
     menu.append(button("New domain…", () => { closeMenu(); openNewDomain(); }, "mi new"));
-    // Theme: one row naming the current theme; a click opens the list under it, a pick applies it and closes the menu.
-    const cur = currentTheme();
+    // Theme: one row naming the chosen theme; a click opens the list under it. Hovering a theme previews it on the
+    // whole page; leaving the list (or closing the menu) goes back; a click keeps it and closes the menu.
+    const cur = savedTheme();
     const themeRow = button("", (e) => {
       e.stopPropagation(); // the menu's outside-click listener must not close it
       state.themesOpen = !state.themesOpen;
@@ -247,11 +249,18 @@ function headerEl(outline) {
     themeRow.append(el("span", null, "Theme"), el("span", "cur", THEMES.find((t) => t.id === cur)?.name ?? ""), el("span", "chev", state.themesOpen ? "▾" : "▸"));
     menu.append(el("div", "sep"), themeRow);
     if (state.themesOpen) {
+      const list = el("div", "themes");
       for (const t of THEMES) {
         const item = button(t.name, () => { applyTheme(t.id); closeMenu(); }, `mi sub${t.id === cur ? " on" : ""}`);
         item.setAttribute("aria-current", String(t.id === cur));
-        menu.append(item);
+        const preview = () => applyTheme(t.id, { persist: false });
+        item.addEventListener("mouseenter", preview);
+        item.addEventListener("focus", preview);
+        list.append(item);
       }
+      list.addEventListener("mouseleave", () => endPreview());
+      list.addEventListener("focusout", (e) => { if (!list.contains(e.relatedTarget)) endPreview(); });
+      menu.append(list);
     }
     menu.append(el("div", "sep"));
     menu.append(button("About you", () => { closeMenu(); void openAbout(); }, "mi"));

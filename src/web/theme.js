@@ -18,13 +18,17 @@ export function readTokens(names = TOKEN_NAMES) {
   return out;
 }
 
-export function applyTheme(id) {
+/** Wears a theme. `persist: false` is a preview (hovering a theme in the menu): nothing is stored. */
+export function applyTheme(id, { persist = true } = {}) {
   const theme = THEMES.find((t) => t.id === id) ?? THEMES[0];
+  if (document.documentElement.dataset.theme === theme.id && !persist) return;
   document.documentElement.dataset.theme = theme.id;
-  try {
-    localStorage.setItem(KEY, theme.id);
-  } catch {
-    /* storage unavailable */
+  if (persist) {
+    try {
+      localStorage.setItem(KEY, theme.id);
+    } catch {
+      /* storage unavailable */
+    }
   }
   const tokens = readTokens();
   const palette = {};
@@ -32,6 +36,20 @@ export function applyTheme(id) {
   setPalette(palette);
   applyMermaidTheme(mermaidVariables(tokens, theme.dark));
   document.dispatchEvent(new CustomEvent("theme", { detail: { id: theme.id } }));
+}
+
+/** The theme the reader chose, as stored: what a preview goes back to. */
+export function savedTheme() {
+  try {
+    return storedTheme(localStorage.getItem(KEY));
+  } catch {
+    return currentTheme();
+  }
+}
+
+/** Ends a preview: back to the stored theme, if a preview changed it. */
+export function endPreview() {
+  applyTheme(savedTheme(), { persist: false });
 }
 
 export function cycleTheme() {
