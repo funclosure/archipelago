@@ -91,7 +91,7 @@ The hosted build sets `window.ARCHIPELAGO_HOSTED = true` in its `index.html` and
 ## Slices
 
 1. **The worker and the database.** Covers `sql.ts` and the adapter, the tests on both drivers, the `*.browser.ts` twins and the split of `migrate.ts`, the worker, `transport.js`, `build:web`, and the stub path working end to end in a browser. The local tool's behaviour doesn't change.
-2. **Ready for people.** Covers the welcome screen and key handling, the API runner in the worker, export/import and `archipelago export`, the one-tab lock, persistent storage, CSP and `_headers`, and the Cloudflare Pages deploy (a GitHub Action on `main`, or `wrangler pages deploy` by hand).
+2. **Ready for people.** Covers a phone layout (the iPhone test clipped the strip and the pane in portrait: the outline becomes a rail by default, the strip wraps, the pane goes full screen), the welcome screen and key handling, the API runner in the worker, export/import and `archipelago export`, the one-tab lock, persistent storage, CSP and `_headers`, and the Cloudflare Pages deploy (a GitHub Action on `main`, or `wrangler pages deploy` by hand).
 
 ## Out of scope
 
@@ -106,4 +106,7 @@ The hosted build sets `window.ARCHIPELAGO_HOSTED = true` in its `index.html` and
 1. **Domain.** The free `*.pages.dev` address on Cloudflare Pages. A custom domain can be added later without any code change.
 2. **License.** The repo stays private and `UNLICENSED` stays. The site is public but its source is not. This gets revisited before inviting contributors.
 3. **Default model.** The hosted build defaults to `claude-sonnet-5-5`, still at `high` effort, because it is much cheaper for someone trying it out. The welcome screen and **Your key** offer Opus 5.5 one click away. The choice is stored beside the key, never in the database. The local tool keeps `claude-opus-5-5`.
-4. **Safari.** Slice 1 tests `opfs-sahpool` on the iPhone over `tailscale serve`. If it fails, Safari gets a clear "use Chrome or Firefox for now" message instead of a broken map, and a fallback storage path is a later decision.
+4. **Safari.** Tested on the iPhone on 2026-10-21, in Safari and in an in-app Safari view: `opfs-sahpool` works, and the data survives a reload, so no fallback is needed. The test found three bugs, all fixed in slice 1:
+   - Safari's back-forward cache kept the old page's worker, which held the file. The page now terminates its worker on `pagehide`, and a Web Lock gives one tab at a time.
+   - A failed first load said only "disconnected". The page now shows the reason.
+   - A restored URL could name a domain that this browser's database never had. The page now falls back to the start screen.
