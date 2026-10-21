@@ -9,6 +9,8 @@ import { installAbout } from "./learner.js";
 import { installKeys } from "./keys.js";
 import { installBoard } from "./board.js";
 import { installTheme } from "./theme.js";
+import { openChart } from "./chart.js";
+import { installNewDomain, openNewDomain } from "./new-domain.js";
 import { MODES, MODE_LABELS, MODE_HINTS, modeKey, storedMode, nextMode } from "./mode-model.js";
 
 const canvas = document.getElementById("map");
@@ -135,7 +137,7 @@ function applySnapshot(snapshot) {
   app.nodes = buildNodes(snapshot, previous, app.mode);
   app.links = buildLinks(snapshot, app.nodes, app.mode);
   // The simulation exists only to place islands that have no stored position; placed ones are pinned.
-  app.sim.setGraph(app.nodes, app.links, unplaced().length ? (sameScale ? 0.5 : 1) : 0);
+  app.sim.setGraph(app.nodes, app.links, app.nodes.some((n) => !n.placed) ? (sameScale ? 0.5 : 1) : 0); // drafts are laid out too, never saved
   if (!sameScale) {
     app.placementGen += 1;          // a post that resolves for the old scale must not touch this set
     app.placing = new Set(unplaced().map((n) => n.slug));
@@ -173,6 +175,7 @@ export function hitTest(px, py) {
   let best = null;
   let bestD = Infinity;
   for (const n of app.nodes) {
+    if (n.draft) continue; // a draft is not an island yet: nothing to select
     const d = Math.hypot(n.x - x, n.y - y);
     if (d < n.radius + 6 && d < bestD) {
       best = n;
@@ -214,9 +217,9 @@ export function frameSelection() {
   else app.camera.animateTo(app.camera.home, FRAME_MS);
 }
 
-/** Nodes the page still has to place (no stored coordinates). */
+/** Nodes the page still has to place and save (no stored coordinates). Drafts are laid out but never saved. */
 export function unplaced() {
-  return app.nodes.filter((n) => !n.placed);
+  return app.nodes.filter((n) => !n.placed && !n.draft);
 }
 
 /** Persists positions for the given nodes; coordinates are clamped to the world so the server accepts them. */
@@ -282,7 +285,7 @@ function renderBreadcrumb() {
   });
 }
 
-function stripItem({ label, value, hint }) {
+function stripItem({ label, value, hint, action }) {
   const el = document.createElement("div");
   el.className = "strip-item";
   const l = document.createElement("span");
@@ -294,7 +297,13 @@ function stripItem({ label, value, hint }) {
   h.className = "hint";
   h.textContent = hint;
   el.append(l, v, h);
-  el.addEventListener("click", () => el.classList.toggle("open")); // hover shows the hint; a click (or a tap) pins it
+  if (action === "chart") {
+    // The cartographer's cell opens it at this scale; hover still shows the hint.
+    el.classList.add("action");
+    el.addEventListener("click", () => openChart());
+  } else {
+    el.addEventListener("click", () => el.classList.toggle("open")); // hover shows the hint; a click (or a tap) pins it
+  }
   return el;
 }
 
@@ -358,10 +367,17 @@ function frame(now) {
 }
 
 async function boot() {
+  installNewDomain();
   if (!app.domain) {
     const { domains } = await api("/api/domains");
     if (domains.length === 0) {
-      document.getElementById("breadcrumb").textContent = "No domains yet — run: archipelago domain add --slug <slug> --name <name>";
+      const nav = document.getElementById("breadcrumb");
+      const b = document.createElement("button");
+      b.className = "crumb start";
+      b.textContent = "New domain…";
+      b.addEventListener("click", () => openNewDomain());
+      nav.replaceChildren("No domains yet. ", b);
+      openNewDomain();
       return;
     }
     app.domain = domains[0].slug;
@@ -387,6 +403,13 @@ async function boot() {
     app.connected = false;
     renderStatus();
     console.error(error);
+  }
+  // A domain made on the page arrives with ?chart=start: open the cartographer and let it sketch.
+  if (params.get("chart") === "start") {
+    const url = new URL(location.href);
+    url.searchParams.delete("chart");
+    history.replaceState(null, "", url);
+    openChart(null, { start: true });
   }
   setInterval(poll, 2000);
   requestAnimationFrame(frame);

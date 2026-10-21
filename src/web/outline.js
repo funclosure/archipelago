@@ -7,6 +7,7 @@ import { moveCursor } from "./keys-model.js";
 import { THEMES } from "./theme-model.js";
 import { applyTheme, currentTheme } from "./theme.js";
 import { openAbout } from "./learner.js";
+import { openNewDomain } from "./new-domain.js";
 
 // app.js imports installOutline from here and this file imports app: fine, because nothing below reads app or select at module evaluation.
 
@@ -196,6 +197,7 @@ function headerEl(outline) {
       }, `mi${d.slug === app.domain ? " on" : ""}`);
       menu.append(item);
     }
+    menu.append(button("New domain…", () => { closeMenu(); openNewDomain(); }, "mi new"));
     menu.append(el("div", "sep"), el("div", "ml", "Theme"));
     const cur = currentTheme();
     for (const t of THEMES) {
@@ -296,6 +298,10 @@ function scrollCursorIntoView() {
 
 const outlineHandler = {
   onKey(e) {
+    if (e.key === "n") {
+      openNewDomain();
+      return true;
+    }
     if (e.key === "Enter") {
       const row = cursorRows().find((r) => r.node.slug === state.cursor);
       if (!row) return false;

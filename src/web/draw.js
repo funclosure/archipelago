@@ -205,7 +205,36 @@ function drawName(ctx, node, lifted = false) {
   ctx.fillText(node.name, CENTRE, NAME_Y);
 }
 
+/** A draft from the cartographer's pending sketch: a dashed coast in the lamp's colour, its name, and "draft". No elevation, no lamps. */
+function drawDraft(ctx, node, dim) {
+  const s = boxScale(node.radius);
+  ctx.save();
+  ctx.translate(node.x - CENTRE * s, node.y - CENTRE * s);
+  ctx.scale(s, s);
+  ctx.globalAlpha = dim ? 0.28 : 1;
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+  const coast = ringPoints(node.seed, COAST);
+  traceRing(ctx, coast);
+  ctx.fillStyle = alpha(PALETTE.lamp, 0.06);
+  ctx.fill();
+  ctx.setLineDash([6, 5]);
+  ctx.lineWidth = 1.4;
+  ctx.strokeStyle = alpha(PALETTE.lamp, 0.8);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  if (node.island.harbour) drawAnchor(ctx);
+  drawName(ctx, node, true);
+  ctx.font = "italic 13px Georgia, 'Times New Roman', serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "top";
+  ctx.fillStyle = alpha(PALETTE.lamp, 0.85);
+  ctx.fillText("draft", CENTRE, NAME_Y + 26);
+  ctx.restore();
+}
+
 export function drawIsland(ctx, node, { dim = false, selected = false, hovered = false, now = 0 } = {}) {
+  if (node.draft) return drawDraft(ctx, node, dim);
   const isl = node.island;
   const s = boxScale(node.radius);
   ctx.save();

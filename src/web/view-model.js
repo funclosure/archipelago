@@ -1,4 +1,5 @@
 // Pure helpers: snapshot → drawable nodes and links. No DOM.
+import { draftIslands, draftStraits, sketchSummary } from "./chart-model.js";
 // Coordinates are world units: a fixed 1000 × 1000 square per scale, origin top-left.
 
 export const WORLD = 1000;
@@ -86,10 +87,16 @@ function litTimes(marks, prev) {
   return litAt;
 }
 
+/**
+ * The snapshot's islands, then the pending sketch's drafts. Drafts are laid out like unplaced islands but never
+ * saved; they share the scale's radius so the map shows what it will look like once approved.
+ */
 export function buildNodes(snapshot, previous = new Map(), lens = "judge") {
-  const radius = islandRadius(snapshot.islands.length);
+  const drafts = draftIslands(snapshot);
+  const radius = islandRadius(snapshot.islands.length + drafts.length);
   const placedBySlug = new Map(snapshot.islands.filter((i) => i.x !== null && i.y !== null).map((i) => [i.slug, i]));
-  return snapshot.islands.map((island) => {
+  const withDrafts = { ...snapshot, straits: [...snapshot.straits, ...draftStraits(snapshot)] };
+  return [...snapshot.islands, ...drafts].map((island) => {
     const prev = previous.get(island.slug);
     // A lens switch is not a write: a node last seen in the other lens starts with nothing animating.
     const seen = prev && prev.lens === lens ? prev : null;
@@ -105,12 +112,13 @@ export function buildNodes(snapshot, previous = new Map(), lens = "judge") {
       x = prev.x;
       y = prev.y;
     } else {
-      ({ x, y } = provisionalPosition(snapshot, island, placedBySlug, radius));
+      ({ x, y } = provisionalPosition(withDrafts, island, placedBySlug, radius));
     }
     return {
       slug: island.slug,
       name: island.name,
       island,
+      draft: Boolean(island.draft),
       state,
       lens,
       marks,
@@ -131,16 +139,15 @@ export function buildNodes(snapshot, previous = new Map(), lens = "judge") {
   });
 }
 
-/** Straits are verdict marks: the mentor lens hides them. */
+/** Straits are verdict marks: the mentor lens hides them. A draft's straits only pull it into place; they are never drawn. */
 export function buildLinks(snapshot, nodes, lens = "judge") {
   const bySlug = new Map(nodes.map((n) => [n.slug, n]));
-  return snapshot.straits
+  return [...snapshot.straits, ...draftStraits(snapshot)]
     .filter((s) => bySlug.has(s.from) && bySlug.has(s.to))
-    .map((s) => ({ source: bySlug.get(s.from), target: bySlug.get(s.to), strait: s, state: s.verdict ? s.verdict.state : "open", hidden: lens === "mentor" }));
+    .map((s) => ({ source: bySlug.get(s.from), target: bySlug.get(s.to), strait: s, state: s.verdict ? s.verdict.state : "open", hidden: lens === "mentor" || Boolean(s.draft) }));
 }
 
 // ---- the strip: what the chrome says about this scale, each cell with a hint that explains it ----
-export const KIND_WORDS = { sail_closer: "sail closer", note: "note", probe_me: "probe", dispute: "dispute" };
 export const HINTS = {
   harbour: "The harbour: where to set out from at this scale. The cartographer sets it; the anchor marks it on the map.",
   homePort: "The harbour, already charted. Sail on from here to the nearest open water.",
@@ -148,7 +155,7 @@ export const HINTS = {
   reefs: "A reef is a confident claim the Keeper found wrong. Open the island and answer the Keeper to clear it.",
   explored: "Landmarks you have explored with the mentor at this scale. Exploring is not charting: the Keeper still probes every one.",
   unexplored: "Islands where you have explored nothing yet, in map order. Select one and press Explore with the mentor.",
-  cartographer: "Requests waiting for the cartographer, Claude in the terminal, who sketches the islands. Open a terminal in this project and run /archipelago-chart: it reads these first and marks them read.",
+  cartographer: "The cartographer sketches the islands at this scale. Click to open it: ask for a new island, a split, or a better summary. A sketch it proposes shows as drafts on the map and is drawn only when you approve it.",
 };
 
 /** The strip's cells for a snapshot in a lens: `[{ label, value, hint }]`. */
@@ -172,14 +179,8 @@ export function stripItems(s, lens = "judge") {
     const reefs = s.reefs.map((r) => (r.startsWith("island:") ? nameOf(r.slice(7)) : r.replace("strait:", "strait ")));
     items.push({ label: "Reefs", value: reefs.length ? reefs.join(" · ") : "none charted", hint: HINTS.reefs });
   }
-  const unread = s.unread ?? [];
-  if (unread.length) {
-    const words = unread.map((c) => {
-      const kind = KIND_WORDS[c.kind] ?? c.kind;
-      return c.target.startsWith("island:") ? `${kind} · ${nameOf(c.target.slice(7))}` : kind;
-    });
-    const value = words.slice(0, 2).join(" · ") + (words.length > 2 ? ` +${words.length - 2}` : "");
-    items.push({ label: "For the cartographer", value, hint: HINTS.cartographer });
-  }
+  // The last cell opens the cartographer at this scale; it names a pending sketch when there is one.
+  const sketch = s.sketch ? sketchSummary(s.sketch.body, s.islands) : null;
+  items.push({ label: "Cartographer", value: sketch ? `sketch to approve · ${sketch}` : "ask to sketch or change", hint: HINTS.cartographer, action: "chart" });
   return items;
 }

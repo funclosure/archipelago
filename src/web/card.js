@@ -9,6 +9,7 @@ import { renderCta } from "./cta.js";
 import { select } from "./interactions.js";
 import { registerRegion, region } from "./keys.js";
 import { isImeKey } from "./keys-model.js";
+import { chartKey, chartSend, chartTurning, closeChart, decideSketch, dropChart, focusChartAnswer, installChart, isChartOpen, openChart, renderChart, stopChartTurn } from "./chart.js";
 
 const pane = document.getElementById("pane");
 const STICK_PX = 40;            // within this of the bottom, the log follows new content
@@ -26,7 +27,6 @@ const PANE_MAX = 760;
 
 let noteDraft = "";       // note text survives re-renders
 let noteOpen = false;     // the "Note to cartographer" field is showing
-let lastSent = null;      // { slug, text } shown under the head
 let renderId = 0;         // guards async appends against stale renders
 let loadGen = 0;          // monotonic across islands, so a slow load can never overwrite a newer one
 /** Bumped whenever the thread is reset or a turn starts: a stream only writes into the turn that started it. */
@@ -76,11 +76,15 @@ export function installCard() {
   }
   app.listeners.add(() => render());
   loadHighlighter(() => render());
+  installChart({ render: () => render() });
   registerRegion("pane", {
-    focusAnswer: () => focusAnswer(),
-    turning: () => thread.inFlight && turnAbort !== null,
-    stop: () => stopTurn(),
+    focusAnswer: () => (isChartOpen() ? focusChartAnswer() : focusAnswer()),
+    turning: () => (isChartOpen() ? chartTurning() : thread.inFlight && turnAbort !== null),
+    stop: () => (isChartOpen() ? stopChartTurn() : stopTurn()),
+    chartOpen: () => isChartOpen(),
+    closeChart: () => closeChart(),
     send() {
+      if (isChartOpen()) return chartSend();
       const form = pane.querySelector("#answer-form");
       const ta = pane.querySelector("#answer");
       if (!form || !ta || ta.disabled || !ta.value.trim()) return false;
@@ -88,6 +92,7 @@ export function installCard() {
       return true;
     },
     onKey(e) {
+      if (isChartOpen()) return chartKey(e);
       const log = pane.querySelector(".log");
       if (log && Object.hasOwn(SCROLL_BY, e.key)) { // reading the log is fine mid-turn, so this sits above the in-flight guard
         log.scrollBy(0, SCROLL_BY[e.key](log));
@@ -152,25 +157,13 @@ function button(label, onClick, className = "btn") {
 const pct = (v) => `${Math.round(v * 100)}%`;
 const atBottom = (log) => log.scrollHeight - log.scrollTop - log.clientHeight < STICK_PX;
 
-// Requests go to the cartographer (Claude in the terminal), never to the Keeper: say where they are read.
-const SENT_TEXT = {
-  sail_closer: "Asked the cartographer to sketch this island's islets. It reads requests in the terminal: run /archipelago-chart there.",
-  note: "Note sent to the cartographer. It reads notes in the terminal at the start of its next charting turn: run /archipelago-chart there. The Keeper never sees it.",
-};
-const NOTE_HELP = "For the cartographer, Claude in the terminal, who sketches the map: a wrong summary, a split you want, where to sail next. The Keeper never sees it.";
+// Requests go to the cartographer, never to the Keeper: they open its pane at this scale.
+const NOTE_HELP = "For the cartographer, who sketches the map: a wrong summary, a split you want, where to sail next. It answers in its own pane; the Keeper never sees it.";
 
-async function sendComment(island, kind, body) {
-  try {
-    await api("/api/comment", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ domain: app.domain, targetType: "island", targetId: island.slug, body, kind }),
-    });
-    lastSent = { slug: island.slug, text: SENT_TEXT[kind] };
-  } catch (error) {
-    lastSent = { slug: island.slug, text: `Could not send: ${error.message}` };
-  }
-  render();
+/** Sail closer: go inside the island and let the cartographer sketch its islets. */
+async function sailCloser(island) {
+  await setScale(island.slug);
+  openChart(island.slug, { start: true });
 }
 
 function post(path, body) {
@@ -429,7 +422,7 @@ function noteForm(island) {
     if (!body) return;
     noteDraft = "";
     noteOpen = false;
-    void sendComment(island, "note", body);
+    openChart(app.scale ?? null, { message: `About ${island.name} (${island.slug}): ${body}` });
   });
   return form;
 }
@@ -464,7 +457,7 @@ function headEl(island) {
   sub.append(el("span", null, parts.join(" · ")));
   const links = el("span", "links");
   if (island.hasChildren) links.append(button("Sail in", () => setScale(island.slug), "link"));
-  else links.append(button("Sail closer", () => sendComment(island, "sail_closer", ""), "link"));
+  else links.append(button("Sail closer", () => void sailCloser(island), "link"));
   const noteToggle = button("Note to cartographer", () => {
     noteOpen = !noteOpen;
     render();
@@ -486,7 +479,6 @@ function headEl(island) {
   earlier.hidden = true; // filled by renderHistory when the island has more than one verdict
   head.append(earlier);
   if (noteOpen) head.append(noteForm(island), el("p", "note-help", NOTE_HELP));
-  if (lastSent && lastSent.slug === island.slug) head.append(el("div", "sent", lastSent.text));
   return head;
 }
 
@@ -721,6 +713,11 @@ function ctaModel(island) {
       render();
     },
     onHandoff: () => setMode("judge"),
+    // The cartographer's pending sketch at this scale: approve it from the map, or open its pane to read it.
+    sketch: app.snapshot?.sketch ?? null,
+    chartOpen: isChartOpen(),
+    onApproveSketch: (id) => void decideSketch(id, "approve"),
+    onOpenChart: () => openChart(),
   };
 }
 
@@ -732,6 +729,14 @@ function render() {
   renderHeld = false;
   const s = app.snapshot;
   const island = s && app.selected ? s.islands.find((i) => i.slug === app.selected) : null;
+  if (island) dropChart(); // selecting an island closes the cartographer; the island takes the pane
+  else if (isChartOpen() && s) {
+    document.body.classList.add("pane-open");
+    if (thread.slug !== null) resetThread(null);
+    renderChart(pane);
+    renderCta(ctaModel(null));
+    return;
+  }
   document.body.classList.toggle("pane-open", Boolean(island));
   if (!island) {
     pane.hidden = true;

@@ -401,3 +401,33 @@ body.pane-open .board-toggle { right: calc(var(--pane-w) + 16px); }
 .about-card .count { font-size: 11px; color: var(--muted); text-align: right; }
 .about-card .count.at-limit { color: var(--reef); }
 .about-card .row { display: flex; gap: 6px; }
+
+/* The cartographer: its pane reuses the island pane's head, log, and foot; its colour is the lamp's. */
+.pill.mode.cartographer { border-color: var(--lamp); color: var(--lamp); }
+.msg.cartographer { font-family: Georgia, serif; font-size: 14.5px; }
+.btn.send.cartographer { background: var(--lamp); color: var(--on-land); }
+.strip-item.action { cursor: pointer; }
+.strip-item.action:hover > span:nth-child(2) { color: var(--lamp); }
+.sketch-card { border: 1px dashed var(--lamp); border-radius: 8px; padding: 10px 12px; display: grid; gap: 6px; }
+.sketch-card .lbl { font-size: 10px; text-transform: uppercase; letter-spacing: .1em; color: var(--lamp); }
+.sketch-card .sum { font-size: 12px; color: var(--muted); }
+.sketch-card .isles { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.sketch-card .isles .name { font-family: Georgia, serif; font-size: 14.5px; display: flex; align-items: center; gap: 6px; }
+.sketch-card .isles .blurb { font-size: 12.5px; color: var(--text-2); }
+.sketch-card .isles .marks { font-size: 11px; color: var(--muted); }
+.sketch-card .sec { font-size: 10px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin-top: 4px; }
+.sketch-card .straits, .sketch-card .update { font-size: 12px; color: var(--text-2); }
+.sketch-card .actions { display: flex; gap: 6px; margin-top: 4px; }
+.crumb.start { color: var(--lamp); text-decoration: underline; }
+.menu .mi.new { color: var(--lamp); }
+
+/* New domain: one field, centred over the map. */
+.new-domain { position: fixed; top: 96px; left: 50%; transform: translateX(-50%); z-index: 6; }
+.new-domain[hidden] { display: none; }
+.new-domain-card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; box-shadow: 0 12px 32px var(--shadow);
+  width: min(420px, calc(100vw - 32px)); display: grid; gap: 8px; }
+.new-domain-card .lbl { font-size: 10px; text-transform: uppercase; letter-spacing: .1em; color: var(--lamp); }
+.new-domain-card .help { margin: 0; font-size: 12px; color: var(--muted); }
+.new-domain-card input { background: var(--water); border: 1px solid var(--line); border-radius: 6px; color: var(--text); padding: 8px 10px; font: inherit; font-size: 14px; }
+.new-domain-card .row { display: flex; gap: 6px; }
+.new-domain-card .error { margin: 0; font-size: 12px; color: var(--reef); }
