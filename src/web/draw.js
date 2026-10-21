@@ -6,14 +6,14 @@ import {
 } from "./contour.js";
 
 export const PALETTE = {
-  sea: "#1B3F5B",
-  line: "#FFFFFF",
-  lamp: "#F5C242",
-  reef: "#D9473A",
-  sand: "#E7D39A",
-  grass: "#6FAF5E",
-  snow: "#F2F4F1",
-  explore: "#5EC8D8",
+  sea: "#0E293A",
+  line: "#F0F6F9",
+  lamp: "#FDC44F",
+  reef: "#FD7466",
+  sand: "#EAD297",
+  grass: "#79C77C",
+  snow: "#F8F7F2",
+  explore: "#65D8E4",
 };
 
 const LAMP_MS = 300;

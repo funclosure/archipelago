@@ -3,16 +3,17 @@
 
 :root {
   --font-mono: "Paper Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
-  /* Contour palette */
-  --sea: #1B3F5B; --line-1: #FFFFFF; --line-07: rgba(255, 255, 255, .7); --line-03: rgba(255, 255, 255, .45);
-  --lamp: #F5C242; --reef: #D9473A; --sand-fill: #E7D39A; --grass: #6FAF5E; --snow: #F2F4F1; --explore: #5EC8D8;
+  /* Contour palette. The default theme is Ink: neutral graphite chrome around a deep, desaturated sea, so the map reads
+     as water and the chrome as tools (OKLCH, after Stamen's dark maps; every text and mark at least 4.4:1). */
+  --sea: #0E293A; --line-1: #F0F6F9; --line-07: rgba(240, 246, 249, .72); --line-03: rgba(240, 246, 249, .48);
+  --lamp: #FDC44F; --reef: #FD7466; --sand-fill: #EAD297; --grass: #79C77C; --snow: #F8F7F2; --explore: #65D8E4;
   /* the chrome's names, aliased onto the palette */
-  --water: var(--sea); --text: rgba(255, 255, 255, .92); --muted: rgba(255, 255, 255, .65);
+  --water: var(--sea); --text: rgba(255, 255, 255, .93); --muted: rgba(255, 255, 255, .68);
   --sand: var(--lamp); --land: var(--grass); --ridge: var(--snow);
-  --panel: #0E2233; --panel-2: #245069; --line: rgba(255, 255, 255, .14); --open: rgba(255, 255, 255, .40);
-  --text-2: rgba(255, 255, 255, .78); --on-land: #10283A;
-  --shadow: rgba(0, 0, 0, .45); --shadow-soft: rgba(0, 0, 0, .35); --shadow-deep: rgba(0, 0, 0, .5); --scrim: rgba(0, 0, 0, .28);
-  --lamp-tint: rgba(245, 194, 66, .12); --lamp-ring: rgba(245, 194, 66, .55); --lamp-pulse: rgba(245, 194, 66, .8); --reef-tint: rgba(217, 71, 58, .35);
+  --panel: #121519; --panel-2: #282F36; --line: rgba(255, 255, 255, .14); --open: rgba(255, 255, 255, .48);
+  --text-2: rgba(255, 255, 255, .8); --on-land: #121519;
+  --shadow: rgba(0, 0, 0, .5); --shadow-soft: rgba(0, 0, 0, .38); --shadow-deep: rgba(0, 0, 0, .55); --scrim: rgba(0, 0, 0, .34);
+  --lamp-tint: rgba(253, 196, 79, .13); --lamp-ring: rgba(253, 196, 79, .6); --lamp-pulse: rgba(253, 196, 79, .85); --reef-tint: rgba(253, 116, 102, .38);
   /* code slots; a theme switch changes these six and nothing in the highlighter */
   --code-fg: var(--text); --code-keyword: var(--lamp); --code-string: var(--sand-fill);
   --code-comment: var(--muted); --code-type: var(--snow); --code-number: var(--grass);
@@ -32,17 +33,6 @@
   --reef-tint: rgba(179, 56, 48, .3);
   --code-keyword: #7A5208; --code-string: #6E5A1C; --code-type: #233F5B;
 }
-:root[data-theme="ink"] {
-  /* Ink: neutral graphite chrome around a deep, desaturated sea, so the map reads as water and the chrome as tools; brighter accents (OKLCH, every text and mark ≥ 4.4:1). */
-  --sea: #0E293A; --line-1: #F0F6F9; --line-07: rgba(240, 246, 249, .72); --line-03: rgba(240, 246, 249, .48);
-  --lamp: #FDC44F; --reef: #FD7466; --sand-fill: #EAD297; --grass: #79C77C; --snow: #F8F7F2; --explore: #65D8E4;
-  --text: rgba(255, 255, 255, 0.93); --muted: rgba(255, 255, 255, 0.68); --text-2: rgba(255, 255, 255, 0.8);
-  --panel: #121519; --panel-2: #282F36; --line: rgba(255, 255, 255, 0.14); --open: rgba(255, 255, 255, 0.48);
-  --on-land: #121519;
-  --shadow: rgba(0, 0, 0, .5); --shadow-soft: rgba(0, 0, 0, .38); --shadow-deep: rgba(0, 0, 0, .55); --scrim: rgba(0, 0, 0, .34);
-  --lamp-tint: rgba(253, 196, 79, .13); --lamp-ring: rgba(253, 196, 79, .6); --lamp-pulse: rgba(253, 196, 79, .85); --reef-tint: rgba(253, 116, 102, .38);
-  --code-keyword: #FDC44F; --code-string: #EAD297; --code-type: #F8F7F2;
-}
 :root[data-theme="tide"] {
   /* Tide: Night's blues, darker and calmer, with the chrome a step below the sea and brighter accents (OKLCH, every text and mark ≥ 4:1). */
   --sea: #143446; --line-1: #F0F6F9; --line-07: rgba(240, 246, 249, .72); --line-03: rgba(240, 246, 249, .48);
@@ -53,6 +43,30 @@
   --shadow: rgba(0, 0, 0, .5); --shadow-soft: rgba(0, 0, 0, .38); --shadow-deep: rgba(0, 0, 0, .55); --scrim: rgba(0, 0, 0, .34);
   --lamp-tint: rgba(255, 199, 83, .13); --lamp-ring: rgba(255, 199, 83, .6); --lamp-pulse: rgba(255, 199, 83, .85); --reef-tint: rgba(255, 126, 112, .38);
   --code-keyword: #FFC753; --code-string: #EED59B; --code-type: #F8F7F2;
+}
+:root[data-theme="moonlight"] {
+  /* Moonlight: low contrast for long night sessions, dimmer whites and softer accents; text still at least 4.5:1. */
+  --sea: #162330; --line-1: #C9D3DA; --line-07: rgba(201, 211, 218, .72); --line-03: rgba(201, 211, 218, .48);
+  --lamp: #D5B36A; --reef: #D2736C; --sand-fill: #CDBC9A; --grass: #7AAD84; --snow: #DBDEE1; --explore: #77BAC6;
+  --text: rgba(224, 229, 235, 0.86); --muted: rgba(224, 229, 235, 0.6); --text-2: rgba(224, 229, 235, 0.72);
+  --panel: #10171F; --panel-2: #232C38; --line: rgba(224, 229, 235, 0.12); --open: rgba(224, 229, 235, 0.42);
+  --on-land: #10171F;
+  --shadow: rgba(0, 0, 0, .5); --shadow-soft: rgba(0, 0, 0, .38); --shadow-deep: rgba(0, 0, 0, .55); --scrim: rgba(0, 0, 0, .34);
+  --lamp-tint: rgba(213, 179, 106, .12); --lamp-ring: rgba(213, 179, 106, .55); --lamp-pulse: rgba(213, 179, 106, .75); --reef-tint: rgba(210, 115, 108, .34);
+  --code-keyword: #D5B36A; --code-string: #CDBC9A; --code-type: #DBDEE1;
+}
+:root[data-theme="vellum"] {
+  /* Vellum: a NOAA paper chart. White paper, pale-blue water, buff land, and chart magenta, the colour of lights on a chart, for lit landmarks. */
+  --sea: #DAF0F7; --line-1: #132E50; --line-07: rgba(19, 46, 80, .7); --line-03: rgba(19, 46, 80, .5);
+  --lamp: #AA167D; --reef: #B6322B; --sand-fill: #E6C58F; --grass: #5A8143; --snow: #FFFFFF; --explore: #097689;
+  --text: rgba(12, 23, 35, 0.94); --muted: rgba(12, 23, 35, 0.68); --text-2: rgba(12, 23, 35, 0.8);
+  --panel: #FBFAF7; --panel-2: #E7E4DD; --line: rgba(19, 46, 80, 0.18); --open: rgba(19, 46, 80, 0.5);
+  --on-land: #FFFFFF;
+  --shadow: rgba(19, 46, 80, .16); --shadow-soft: rgba(19, 46, 80, .12); --shadow-deep: rgba(19, 46, 80, .22);
+  --scrim: rgba(19, 46, 80, .14);
+  --lamp-tint: rgba(170, 22, 125, .1); --lamp-ring: rgba(170, 22, 125, .5); --lamp-pulse: rgba(170, 22, 125, .65);
+  --reef-tint: rgba(182, 50, 43, .28);
+  --code-keyword: #AA167D; --code-string: #7A5A1E; --code-type: #132E50;
 }
 html, body { margin: 0; height: 100%; background: var(--water); color: var(--text);
   font: 14px/1.5 system-ui, -apple-system, sans-serif; overflow: hidden; }
