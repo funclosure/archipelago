@@ -157,6 +157,25 @@ async function toggleMenu() {
   render();
 }
 
+/** A pencil: the current domain's edit button. */
+function pencilIcon() {
+  const NS = "http://www.w3.org/2000/svg";
+  const svg = document.createElementNS(NS, "svg");
+  svg.setAttribute("width", "14");
+  svg.setAttribute("height", "14");
+  svg.setAttribute("viewBox", "0 0 16 16");
+  svg.setAttribute("aria-hidden", "true");
+  const path = document.createElementNS(NS, "path");
+  path.setAttribute("d", "M11.2 2.3a1.6 1.6 0 0 1 2.3 2.3L5.6 12.5 2.5 13.5l1-3.1z M9.8 3.7l2.5 2.5");
+  path.setAttribute("fill", "none");
+  path.setAttribute("stroke", "currentColor");
+  path.setAttribute("stroke-width", "1.4");
+  path.setAttribute("stroke-linejoin", "round");
+  path.setAttribute("stroke-linecap", "round");
+  svg.append(path);
+  return svg;
+}
+
 /** A sidebar icon: a panel with its left column filled while the outline is a rail, hollow while it is open. */
 function panelIcon(rail) {
   const NS = "http://www.w3.org/2000/svg";
@@ -203,10 +222,20 @@ function headerEl(outline) {
         url.searchParams.delete("scale");
         location.href = url.toString();
       }, `mi${d.slug === app.domain ? " on" : ""}`);
-      menu.append(item);
+      if (d.slug !== app.domain) {
+        menu.append(item);
+        continue;
+      }
+      // The current domain's row carries its edit button, shown on hover or focus (always on a touch screen).
+      const row = el("div", "mi-row");
+      const edit = button("", () => { closeMenu(); void openDomainEdit(d.slug); }, "ib edit");
+      edit.title = "Edit domain";
+      edit.setAttribute("aria-label", `Edit ${d.name}`);
+      edit.append(pencilIcon());
+      row.append(item, edit);
+      menu.append(row);
     }
     menu.append(button("New domain…", () => { closeMenu(); openNewDomain(); }, "mi new"));
-    if (app.domain) menu.append(button("Edit domain…", () => { closeMenu(); void openDomainEdit(app.domain); }, "mi"));
     // Theme: one row naming the current theme; a click opens the list under it, a pick applies it and closes the menu.
     const cur = currentTheme();
     const themeRow = button("", (e) => {
