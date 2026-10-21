@@ -4,11 +4,13 @@
 export const MODES = ["judge", "mentor"];
 export const DEFAULT_MODE = MODES[0];
 export const PERSONA_NAMES = { judge: "the Keeper", mentor: "the mentor" };
-/** The strip switch's two segments. */
+/** The strip switch's two segments: the name, and in two or three words what it does with you. */
 export const MODE_LABELS = { judge: "Keeper", mentor: "Mentor" };
+export const MODE_ROLES = { judge: "asks and grades", mentor: "explains, no grades" };
+/** The switch's hint card, and the segments' tooltips: what each mode does and what the map shows in it. */
 export const MODE_HINTS = {
-  judge: "What you have demonstrated: verdicts and lit landmarks. The Keeper answers in the pane.",
-  mentor: "Where you have explored: landmarks you engaged with the mentor, no verdicts. The mentor answers in the pane.",
+  judge: "The Keeper asks you questions and charts what you show: lit landmarks and a verdict per island. The map shows what you have demonstrated.",
+  mentor: "The mentor explains, answers your questions, and never grades. The map shows the landmarks you explored together; nothing here becomes a verdict.",
 };
 
 /** The localStorage key for a domain's mode. */

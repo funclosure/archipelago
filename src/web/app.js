@@ -15,7 +15,7 @@ import { openChart } from "./chart.js";
 import { request } from "./transport.js";
 import { installNewDomain, openNewDomain } from "./new-domain.js";
 import { anotherTab, installHosted, welcomeGate } from "./hosted.js";
-import { MODES, MODE_LABELS, MODE_HINTS, modeKey, storedMode, nextMode } from "./mode-model.js";
+import { MODES, MODE_LABELS, MODE_ROLES, MODE_HINTS, modeKey, storedMode, nextMode } from "./mode-model.js";
 
 const canvas = document.getElementById("map");
 const ctx = canvas.getContext("2d");
@@ -339,23 +339,41 @@ function stripItem({ label, value, hint, action }) {
   return el;
 }
 
-/** The two-segment lens switch that leads the strip. */
+/**
+ * The mode switch that leads the strip, labelled like the other cells: who you talk to in the pane, each with what
+ * it does ("asks and grades", "explains, no grades"), and a hint card saying what the map shows in that mode.
+ */
 function modeSwitchEl() {
+  const cell = document.createElement("div");
+  cell.className = "strip-item mode-cell";
+  const label = document.createElement("span");
+  label.className = "strip-label";
+  label.textContent = "Talk to";
   const wrap = document.createElement("div");
   wrap.className = "mode-switch";
   wrap.setAttribute("role", "group");
-  wrap.setAttribute("aria-label", "Lens");
+  wrap.setAttribute("aria-label", "Talk to the Keeper or the mentor");
   for (const m of MODES) {
     const b = document.createElement("button");
     b.type = "button";
-    b.className = `seg${m === app.mode ? " on" : ""}`;
-    b.textContent = MODE_LABELS[m];
+    b.className = `seg ${m}${m === app.mode ? " on" : ""}`;
+    const name = document.createElement("span");
+    name.className = "name";
+    name.textContent = MODE_LABELS[m];
+    const role = document.createElement("span");
+    role.className = "role";
+    role.textContent = MODE_ROLES[m];
+    b.append(name, role);
     b.title = `${MODE_HINTS[m]}  [m]`;
     b.setAttribute("aria-pressed", String(m === app.mode));
     b.addEventListener("click", () => setMode(m));
     wrap.append(b);
   }
-  return wrap;
+  const hint = document.createElement("div");
+  hint.className = "hint";
+  hint.textContent = `${MODE_HINTS[app.mode]} Press m to switch.`;
+  cell.append(label, wrap, hint);
+  return cell;
 }
 
 function renderStrip() {
