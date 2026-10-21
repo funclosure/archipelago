@@ -1,7 +1,7 @@
 # Archipelago on the web: bring your own key
 
 **Date:** 2026-10-20
-**Status:** slices 1 and 2 built (2026-10-21); the first deploy and a live turn per persona with a real key are next
+**Status:** slices 1 and 2 built and deployed (2026-10-21) at https://archipelago-c24.pages.dev
 **Builds on:** the API runner (`2026-10-20-api-runner-design.md`), the cartographer in the app (`2026-10-20-cartographer-in-app-design.md`)
 **Route:** 2 of the distribution routes (1 is the Claude Code plugin, PR #1; 3 is the Claude.ai connector).
 
@@ -134,4 +134,5 @@ Where the build differs from the plan above, it is recorded here.
   - export, then a second tab taking over;
   - import into a fresh browser, both of that export and of an `archipelago export` file, plus a junk file refused;
   - the phone layout at 393 px.
-- **Still open:** one live turn per persona with a real key, and the first deploy (it needs `wrangler login` for the Cloudflare account).
+- **Deployed** on 2026-10-21 to the Pages project `archipelago`. The name `archipelago.pages.dev` was taken, so the site is https://archipelago-c24.pages.dev. Wrangler 4.148 sends `pages` commands to Workers, so the project was created once with `pages project create --force`; `deploy:web` needs no flag after that. The same browser check passed against the live site, with `_headers` applied.
+- **Live turns:** the cartographer ran on a real key (Sonnet 5.5) on 2026-10-21. A judge and a mentor turn on a real key are still to be checked.
