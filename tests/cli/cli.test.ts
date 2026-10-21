@@ -319,11 +319,11 @@ test("export writes one file the hosted app imports, and never overwrites", () =
   expect(again.json.error).toContain("already exists");
 });
 
-test("domain add --angle stores it; domain angle shows, sets, and clears it", () => {
-  const added = cli(["domain", "add", "--slug", "rn", "--name", "React Native", "--angle", "From iOS."]);
-  expect(added.json).toMatchObject({ slug: "rn", angle: "From iOS." });
-  expect(cli(["domain", "angle", "--slug", "rn"]).json.angle).toBe("From iOS.");
-  expect(cli(["domain", "angle", "--slug", "rn", "--set", "For an interview."]).json.angle).toBe("For an interview.");
-  expect(cli(["domain", "angle", "--slug", "rn", "--set", ""]).json.angle).toBeNull();
-  expect(cli(["domain", "show", "--slug", "rn"]).json.angle).toBeNull();
+test("domain add --description stores it; domain update renames and changes or clears it", () => {
+  const added = cli(["domain", "add", "--slug", "rn", "--name", "React Native", "--description", "From iOS."]);
+  expect(added.json).toMatchObject({ slug: "rn", description: "From iOS.", provisional: 0 });
+  expect(cli(["domain", "update", "--slug", "rn", "--description", "For an interview."]).json.description).toBe("For an interview.");
+  expect(cli(["domain", "update", "--slug", "rn", "--name", "RN", "--description", ""]).json).toMatchObject({ name: "RN", description: null });
+  expect(cli(["domain", "update", "--slug", "rn"]).code).toBe(1);
+  expect(cli(["domain", "show", "--slug", "rn"]).json.description).toBeNull();
 });

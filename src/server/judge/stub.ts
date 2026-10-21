@@ -176,6 +176,8 @@ export async function cartographerStubTurn({ dbPath, domain, island, emit }: Jud
       islands,
       straits: islands.slice(1).map((isle, i) => ({ from: islands[i]!.slug, to: isle.slug })),
       harbour: islands[0]!.slug,
+      // A domain made from a description alone gets a name: its provisional one, title-cased, says the stub was here.
+      ...(!ctx.scale && ctx.domain.provisional ? { name: `${ctx.domain.name.replace(/…$/, "")} (charted)` } : {}),
     });
     return say(`Here is a first sketch of ${ctx.scale ? ctx.scale.name : ctx.domain.name}: ${islands.length} islands. Approve it, or say what to change.`);
   }

@@ -12,21 +12,26 @@ const numberInput = z.union([z.number(), z.string().trim().min(1, "expected a nu
 /** A map coordinate in the 1000-unit world. */
 const coordinate = numberInput.pipe(z.number().min(0).max(1000));
 
-/** A domain's angle: one paragraph at most. Empty means none. */
-export const ANGLE_MAX = 500;
-const angleSchema = z
+/** A domain's description, the reader's words on what they want to chart and why: a paragraph at most. Empty means none. */
+export const DESCRIPTION_MAX = 500;
+const descriptionSchema = z
   .string()
   .trim()
-  .max(ANGLE_MAX, `an angle is at most ${ANGLE_MAX} characters`)
+  .max(DESCRIPTION_MAX, `a description is at most ${DESCRIPTION_MAX} characters`)
   .transform((a) => a || null);
 
 export const domainInputSchema = z.object({
   slug: slugSchema,
   name: z.string().min(1),
-  angle: angleSchema.optional(),
+  description: descriptionSchema.optional(),
 });
 
-export const domainAngleSchema = z.object({ domain: slugSchema, angle: z.union([angleSchema, z.null()]) });
+const domainName = z.string().pipe(z.string().trim().min(1, "a name cannot be empty").max(80)).refine((n) => !/[\r\n]/.test(n), { message: "a name is one line" });
+
+/** A change to a domain from the page or the terminal: its name, its description (null or "" clears it), or both. */
+export const domainUpdateSchema = z
+  .object({ domain: slugSchema, name: domainName.optional(), description: z.union([descriptionSchema, z.null()]).optional() })
+  .refine((u) => u.name !== undefined || u.description !== undefined, { message: "an update changes the name, the description, or both" });
 
 export const islandInputSchema = z.object({
   domain: slugSchema,
@@ -232,6 +237,8 @@ export const sketchBodySchema = z
     islands: z.array(z.object({ slug: slugSchema, name: oneLine, summary: oneLine, landmarks: landmarkItems })).max(10).default([]),
     straits: z.array(z.object({ from: slugSchema, to: slugSchema, name: oneLine.optional() })).max(40).default([]),
     harbour: slugSchema.optional(),
+    /** The domain's name, from the cartographer's first sketch of a provisionally named domain. Top scale only. */
+    name: domainName.optional(),
     updates: z
       .array(
         z
@@ -241,10 +248,13 @@ export const sketchBodySchema = z
       .max(20)
       .default([]),
   })
-  .refine((b) => b.islands.length + b.straits.length + b.updates.length > 0 || b.harbour !== undefined, { message: "a sketch proposes something" });
+  .refine((b) => b.islands.length + b.straits.length + b.updates.length > 0 || b.harbour !== undefined || b.name !== undefined, { message: "a sketch proposes something" });
 
 /** A new domain from the page: the slug defaults to the name in kebab case. */
-export const domainCreateSchema = z.object({ name: oneLine.pipe(z.string().max(80)), slug: slugSchema.optional(), angle: angleSchema.optional() });
+/** A new domain from the page: a description, a name, or both. With no name, the domain starts under a provisional one. */
+export const domainCreateSchema = z
+  .object({ name: domainName.optional(), slug: slugSchema.optional(), description: descriptionSchema.optional() })
+  .refine((d) => d.name !== undefined || Boolean(d.description), { message: "say what you want to chart" });
 
 export const sketchDecisionSchema = z.object({
   domain: slugSchema,

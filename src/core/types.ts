@@ -10,8 +10,11 @@ export type CommentTargetType = (typeof commentTargetTypes)[number];
 export const commentKinds = ["note", "probe_me", "sail_closer", "dispute"] as const;
 export type CommentKind = (typeof commentKinds)[number];
 
-/** `angle`: the reader's words on where they chart the domain from and why; null when they gave none. */
-export type Domain = { id: number; slug: string; name: string; angle: string | null; createdAt: string };
+/**
+ * `description`: the reader's own words on what they want to chart and why; null when they gave none.
+ * `provisional`: 1 while the name is the page's placeholder taken from the description, until a sketch names it.
+ */
+export type Domain = { id: number; slug: string; name: string; description: string | null; provisional: 0 | 1; createdAt: string };
 
 export type Island = {
   id: number;
@@ -171,6 +174,8 @@ export type SketchBody = {
   islands: { slug: string; name: string; summary: string; landmarks: { slug: string; name: string }[] }[];
   straits: { from: string; to: string; name?: string }[];
   harbour?: string;
+  /** The domain's name: only in a top-scale sketch of a provisionally named domain. */
+  name?: string;
   updates: { slug: string; name?: string; summary?: string }[];
 };
 

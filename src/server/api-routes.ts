@@ -6,13 +6,13 @@ import { z } from "zod";
 import { openDatabase } from "../core/db.ts";
 import { ArchipelagoError, ConflictError, NotFoundError } from "../core/errors.ts";
 import {
-  boardPostInputSchema, commentInputSchema, domainAngleSchema, domainCreateSchema, focusInputSchema, kebab, learnerInputSchema, modeSchema, positionsInputSchema, probeInputSchema,
+  boardPostInputSchema, commentInputSchema, domainCreateSchema, domainUpdateSchema, focusInputSchema, learnerInputSchema, modeSchema, positionsInputSchema, probeInputSchema,
   reefAnswerInputSchema, sketchDecisionSchema, slugSchema,
 } from "../core/validators.ts";
 import { attachAsks, listAsks, pickAsk, requireAsk } from "../core/repositories/askRepository.ts";
 import { listCards } from "../core/repositories/boardRepository.ts";
 import { getLearner, setLearnerNote } from "../core/repositories/learnerRepository.ts";
-import { getDomain, listDomains, requireDomain, setDomainAngle, upsertDomain } from "../core/repositories/domainRepository.ts";
+import { createDomain, listDomains, requireDomain, updateDomain } from "../core/repositories/domainRepository.ts";
 import { getIslandById, requireIsland, setIslandPositions } from "../core/repositories/islandRepository.ts";
 import { addVerdict, verdictHistory } from "../core/repositories/verdictRepository.ts";
 import { addComment } from "../core/repositories/commentRepository.ts";
@@ -265,19 +265,12 @@ async function handleApi(req: Request, url: URL, ctx: ApiContext): Promise<Respo
 
   if (route === "POST /api/domains") {
     const input = domainCreateSchema.parse(await req.json());
-    const slug = input.slug ?? kebab(input.name);
-    if (!slug) throw new ArchipelagoError("a domain name needs at least one letter or digit");
-    return json(
-      withDb(ctx, (db) => {
-        if (getDomain(db, slug)) throw new ConflictError(`the domain ${slug} already exists`);
-        return { domain: upsertDomain(db, { slug, name: input.name, angle: input.angle ?? null }) };
-      }),
-    );
+    return json({ domain: withDb(ctx, (db) => createDomain(db, input)) });
   }
 
-  if (route === "POST /api/domains/angle") {
-    const input = domainAngleSchema.parse(await req.json());
-    return json({ domain: withDb(ctx, (db) => setDomainAngle(db, input.domain, input.angle)) });
+  if (route === "POST /api/domains/update") {
+    const { domain, ...change } = domainUpdateSchema.parse(await req.json());
+    return json({ domain: withDb(ctx, (db) => updateDomain(db, domain, change)) });
   }
 
   if (route === "POST /api/sketch") {

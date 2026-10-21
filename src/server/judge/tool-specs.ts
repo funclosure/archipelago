@@ -16,7 +16,7 @@ const DESCRIPTIONS: Record<ToolName, string> = {
   board_write: "Pin, update, or remove a card on this island's board (see the board section of your protocol). op add: kind (diagram | note | code), body (mermaid source, markdown, or code), lang for code, and an optional one-line title. op update: id plus the fields to change. op remove: id. You may only update or remove cards you wrote.",
   mark_explored: "Mark one landmark explored: the reader engaged it in their own words (asked about it, restated it, or tried it on an example). Evidence is a verbatim quote of at least two words and twelve characters from the reader's latest message; anything else is refused. Marking it again changes nothing.",
   chart_context: "This scale: the islands and straits here, at island scale the island's landmarks, board, and two threads, every slug taken in the domain, how many islands the next sketch may add, the pending sketch, and your thread. Read fresh.",
-  propose_sketch: "Propose a sketch at this scale: new islands (slug, name, one-line summary, 4–6 landmarks each), straits between islands at this scale, an optional harbour, and name or summary updates to islands already here. It replaces any pending sketch. Nothing reaches the map until the reader approves it there.",
+  propose_sketch: "Propose a sketch at this scale: new islands (slug, name, one-line summary, 4–6 landmarks each), straits between islands at this scale, an optional harbour, name or summary updates to islands already here, and, when the context says the domain's name is provisional, the domain's name (top scale only). It replaces any pending sketch. Nothing reaches the map until the reader approves it there.",
 };
 
 const MENTOR_DESCRIPTIONS: Partial<Record<ToolName, string>> = {
@@ -71,6 +71,7 @@ export const TOOL_SHAPES: Record<ToolName, z.ZodRawShape> = {
       .optional(),
     straits: z.array(z.object({ from: z.string(), to: z.string(), name: z.string().optional() })).optional(),
     harbour: z.string().optional(),
+    name: z.string().optional(),
     updates: z.array(z.object({ slug: z.string(), name: z.string().optional(), summary: z.string().optional() })).optional(),
   },
 };

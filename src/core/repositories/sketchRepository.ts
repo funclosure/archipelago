@@ -6,6 +6,7 @@ import { getIsland, listIslands, listIslandSlugs, setHarbour, updateIsland, upse
 import { setLandmarks } from "./landmarkRepository.ts";
 import { listStraits, upsertStrait } from "./straitRepository.ts";
 import { addMessage } from "./messageRepository.ts";
+import { nameDomain } from "./domainRepository.ts";
 
 const COLS =
   "id, domain_id as domainId, parent_island_id as parentIslandId, body, status, message_id as messageId, created_at as createdAt, decided_at as decidedAt";
@@ -32,6 +33,7 @@ export function validateSketch(db: Database, domainId: number, parentIslandId: n
   const siblings = listIslands(db, domainId, parentIslandId);
   const [min, max] = SKETCH_LIMITS[parentIslandId === null ? "top" : "islets"][siblings.length === 0 ? "first" : "more"];
   const where = parentIslandId === null ? "at the top scale" : "among these islets";
+  if (body.name !== undefined && parentIslandId !== null) throw new ArchipelagoError("a sketch names the domain only at the top scale");
   if (body.islands.length < min || body.islands.length > max) {
     throw new ArchipelagoError(`a sketch ${where} adds ${min === max ? min : `${min}–${max}`} islands, not ${body.islands.length}`);
   }
@@ -133,7 +135,8 @@ export function discardSketch(db: Database, domainId: number, id: number): Sketc
   return db.transaction(() => setStatus(db, requirePending(db, domainId, id).id, "discarded"))();
 }
 
-export type ApprovedSketch = { sketch: Sketch; islands: number; straits: number; updates: number; harbour: string | null };
+/** `domain`: its slug and name after the approval; a sketch that named a provisional domain may have changed both. */
+export type ApprovedSketch = { sketch: Sketch; islands: number; straits: number; updates: number; harbour: string | null; domain: { slug: string; name: string } };
 
 /**
  * Writes a pending sketch to the map in one transaction, through the repositories the CLI uses, and records
@@ -155,14 +158,19 @@ export function approveSketch(db: Database, domainId: number, id: number): Appro
     }
     for (const update of body.updates) updateIsland(db, domainId, update.slug, { name: update.name, summary: update.summary });
     if (body.harbour !== undefined) setHarbour(db, domainId, body.harbour);
+    const domain = body.name !== undefined ? nameDomain(db, domainId, body.name) : db.query<{ slug: string; name: string }, [number]>("select slug, name from domains where id = ?").get(domainId)!;
     const approved = setStatus(db, sketch.id, "approved");
     const parts = [
+      body.name !== undefined && `named ${body.name}`,
       body.islands.length && `${body.islands.length} ${body.islands.length === 1 ? "island" : "islands"}`,
       body.straits.length && `${body.straits.length} ${body.straits.length === 1 ? "strait" : "straits"}`,
       body.updates.length && `${body.updates.length} ${body.updates.length === 1 ? "update" : "updates"}`,
       body.harbour !== undefined && `harbour ${body.harbour}`,
     ].filter(Boolean);
     addMessage(db, { domainId, islandId: sketch.parentIslandId, role: "cartographer", kind: "system", body: `sketch approved: ${parts.join(", ")}`, mode: "cartographer" });
-    return { sketch: approved, islands: body.islands.length, straits: body.straits.length, updates: body.updates.length, harbour: body.harbour ?? null };
+    return {
+      sketch: approved, islands: body.islands.length, straits: body.straits.length, updates: body.updates.length, harbour: body.harbour ?? null,
+      domain: { slug: domain.slug, name: domain.name },
+    };
   })();
 }

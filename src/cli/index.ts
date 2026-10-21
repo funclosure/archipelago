@@ -4,10 +4,10 @@ import type { Database } from "../core/sql.ts";
 import { openDatabase } from "../core/db.ts";
 import { ArchipelagoError } from "../core/errors.ts";
 import {
-  domainInputSchema, domainAngleSchema, islandInputSchema, islandUpdateSchema, straitInputSchema, verdictInputSchema,
+  domainInputSchema, domainUpdateSchema, islandInputSchema, islandUpdateSchema, straitInputSchema, verdictInputSchema,
   sessionEndInputSchema, slugSchema, landmarkInputSchema, learnerInputSchema, modeSchema,
 } from "../core/validators.ts";
-import { listDomains, requireDomain, setDomainAngle, upsertDomain } from "../core/repositories/domainRepository.ts";
+import { listDomains, requireDomain, updateDomain, upsertDomain } from "../core/repositories/domainRepository.ts";
 import {
   getIsland, getIslandById, islandPath, listIslands, requireIsland, updateIsland, upsertIsland,
   setHarbour, clearHarbour, getHarbour,
@@ -83,14 +83,13 @@ function openInBrowser(url: string) {
 }
 
 const domain = program.command("domain").description("Domains (one per archipelago)");
-common(domain.command("add").option("--slug <slug>").option("--name <name>").option("--angle <text>", "where the reader charts it from and why")).action(
+common(domain.command("add").option("--slug <slug>").option("--name <name>").option("--description <text>", "the user's words on what they want to chart and why")).action(
   run((o) => withDb((db) => upsertDomain(db, domainInputSchema.parse(o)))),
 );
-common(domain.command("angle").option("--slug <slug>").option("--set <text>", "the new angle (\"\" clears it); without it, shows the domain")).action(
+common(domain.command("update").option("--slug <slug>").option("--name <name>").option("--description <text>", "\"\" clears it")).action(
   run((o) => withDb((db) => {
-    if (o.set === undefined) return requireDomain(db, slugSchema.parse(o.slug));
-    const { domain: slug, angle } = domainAngleSchema.parse({ domain: o.slug, angle: o.set });
-    return setDomainAngle(db, slug, angle);
+    const { domain: slug, ...change } = domainUpdateSchema.parse({ domain: o.slug, name: o.name, description: o.description });
+    return updateDomain(db, slug, change);
   })),
 );
 common(domain.command("list")).action(run(() => withDb((db) => ({ domains: listDomains(db) }))));

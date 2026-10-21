@@ -13,14 +13,15 @@ import { pendingSketch, proposeSketch, SKETCH_LIMITS } from "../../core/reposito
 import type { Ask, BoardCard, Landmark, Message, Sketch, VerdictState } from "../../core/types.ts";
 import { getLearner } from "../../core/repositories/learnerRepository.ts";
 import { NOTE_MAX } from "../../core/validators.ts";
-import { indent, renderAngle, renderReplay, stateOf } from "./context.ts";
+import { indent, renderDescription, renderReplay, stateOf } from "./context.ts";
 
 /** Where a cartographer turn reads and writes: a domain, and the island whose islets it sketches (absent: the top scale). */
 export type ChartDeps = { dbPath?: string; domain: string; island?: string };
 
 export type ChartContext = {
   mode: "cartographer";
-  domain: { slug: string; name: string; angle: string | null };
+  /** `provisional`: the name is a placeholder taken from the description; the first sketch names the domain. */
+  domain: { slug: string; name: string; description: string | null; provisional: boolean };
   /** The reader's About you note, the same one the mentor reads; empty when they wrote none. */
   learnerNote: string;
   /** The island whose islets this scale holds; null at the domain's top scale. */
@@ -68,7 +69,7 @@ export function buildChartContext(db: Database, domainSlug: string, islandSlug?:
   const straitVerdicts = latestVerdicts(db, "strait", straits.map((s) => s.id));
   return {
     mode: "cartographer",
-    domain: { slug: domain.slug, name: domain.name, angle: domain.angle },
+    domain: { slug: domain.slug, name: domain.name, description: domain.description, provisional: domain.provisional === 1 },
     learnerNote: getLearner(db).note.slice(0, NOTE_MAX).trim(),
     scale: island && {
       slug: island.slug,
@@ -129,7 +130,9 @@ function renderThread(label: string, thread: Message[]): string[] {
 /** The cartographer's block, appended to CARTOGRAPHER.md. */
 export function renderChartContext(ctx: ChartContext): string {
   const [min, max] = ctx.limits;
-  const lines = [`## This scale`, ``, `Domain: ${ctx.domain.name} (${ctx.domain.slug})`, ...renderAngle(ctx.domain.angle)];
+  const lines = [`## This scale`, ``, `Domain: ${ctx.domain.name} (${ctx.domain.slug})`];
+  if (ctx.domain.provisional) lines.push(`Name: provisional, taken from the reader's description. Name the domain in this sketch (§1).`);
+  lines.push(...renderDescription(ctx.domain.description));
   lines.push(`About the reader (their note): ${ctx.learnerNote ? indent(ctx.learnerNote) : "none written"}`);
   lines.push(`Scale: ${scaleName(ctx)}`);
   if (ctx.scale) {
