@@ -14,7 +14,7 @@ bun run src/cli/index.ts serve        # map server on 127.0.0.1:4480, opens the 
 bun run src/cli/index.ts serve --stub # judge without a Claude login
 bun run src/cli/index.ts serve --judge api   # judge on the Messages API (needs ANTHROPIC_API_KEY)
 bun run build:web                     # the hosted build: a static site in dist/web/ (serve it on localhost to try it)
-bun run deploy:web                    # build, then `wrangler pages deploy` to the Cloudflare Pages project archipelago
+bun run deploy:web                    # build, then `wrangler pages deploy` to the Cloudflare Pages project archipelago (https://archipelago-c24.pages.dev)
 bun run src/cli/index.ts export [--out f]   # the whole database as one file (VACUUM INTO); the hosted app imports it
 claude plugin validate .              # the plugin and marketplace manifests
 claude --plugin-dir .                 # try the plugin from this checkout

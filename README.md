@@ -28,7 +28,7 @@ From a clone instead: `bun install`, then `bun link` puts `archipelago` on your 
 
 ## In the browser, with your own key
 
-The hosted build is the same map as a static site, with nothing to install. Open it, paste an Anthropic API key (or choose **Try without a key** to see how a turn goes on a scripted stand-in), and press **New domain…**: say what you want to chart and why, in your own words. The cartographer names the domain and sketches the islands and the judge runs in the page, on your key, with Sonnet 5.5 by default and Opus 5.5 one click away under **Your key** in the domain menu. Your key stays in that browser and is sent only to `api.anthropic.com`; every turn is billed to it.
+The hosted build is the same map as a static site, with nothing to install: https://archipelago-c24.pages.dev. Open it, paste an Anthropic API key (or choose **Try without a key** to see how a turn goes on a scripted stand-in), and press **New domain…**: say what you want to chart and why, in your own words. The cartographer names the domain and sketches the islands and the judge runs in the page, on your key, with Sonnet 5.5 by default and Opus 5.5 one click away under **Your key** in the domain menu. Your key stays in that browser and is sent only to `api.anthropic.com`; every turn is billed to it.
 
 Charts live in that browser's private storage, one tab at a time (a second tab offers **Use it here**). **Export database** in the domain menu downloads them as one `.sqlite` file, and **Import database…** replaces them with one. The two forms are the same file: `archipelago export` writes one from `~/.archipelago` that the browser imports, and an export from the browser opens locally with `ARCHIPELAGO_DB_PATH`.
 
