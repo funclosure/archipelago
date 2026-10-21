@@ -15,7 +15,7 @@ import { request } from "./transport.js";
 
 // ---- DOM ----
 
-const state = { rail: false, expanded: new Set(), menuOpen: false, domains: null, cursor: null, cursorCleared: false };
+const state = { rail: false, expanded: new Set(), menuOpen: false, themesOpen: false, domains: null, cursor: null, cursorCleared: false };
 let root = null;
 let peek = null;
 
@@ -132,12 +132,14 @@ function hidePeek() {
 
 function closeMenu() {
   state.menuOpen = false;
+  state.themesOpen = false;
   state.domains = null;
   render();
 }
 
 async function toggleMenu() {
   state.menuOpen = !state.menuOpen;
+  state.themesOpen = false;
   if (!state.menuOpen) {
     state.domains = null;
     render();
@@ -204,10 +206,22 @@ function headerEl(outline) {
       menu.append(item);
     }
     menu.append(button("New domain…", () => { closeMenu(); openNewDomain(); }, "mi new"));
-    menu.append(el("div", "sep"), el("div", "ml", "Theme"));
+    // Theme: one row naming the current theme; a click opens the list under it, a pick applies it and closes the menu.
     const cur = currentTheme();
-    for (const t of THEMES) {
-      menu.append(button(t.name, () => { applyTheme(t.id); closeMenu(); }, `mi${t.id === cur ? " on" : ""}`));
+    const themeRow = button("", (e) => {
+      e.stopPropagation(); // the menu's outside-click listener must not close it
+      state.themesOpen = !state.themesOpen;
+      render();
+    }, `mi theme-row${state.themesOpen ? " open" : ""}`);
+    themeRow.setAttribute("aria-expanded", String(state.themesOpen));
+    themeRow.append(el("span", null, "Theme"), el("span", "cur", THEMES.find((t) => t.id === cur)?.name ?? ""), el("span", "chev", state.themesOpen ? "▾" : "▸"));
+    menu.append(el("div", "sep"), themeRow);
+    if (state.themesOpen) {
+      for (const t of THEMES) {
+        const item = button(t.name, () => { applyTheme(t.id); closeMenu(); }, `mi sub${t.id === cur ? " on" : ""}`);
+        item.setAttribute("aria-current", String(t.id === cur));
+        menu.append(item);
+      }
     }
     menu.append(el("div", "sep"));
     if (app.domain) menu.append(button("Name and description…", () => { closeMenu(); void openDomainEdit(app.domain); }, "mi"));
