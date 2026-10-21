@@ -108,10 +108,10 @@ export function installInteractions(canvas) {
 
   const PAN_PX = 80;
   const ZOOM = 1.2;
-  /** The centre of the map area between the outline and the pane, in screen px. */
+  /** The centre of the map area between the outline, the pane, the header, and the bottom card, in screen px. */
   const mapCentre = () => {
-    const { left, right } = insets();
-    return { x: left + (app.size.w - left - right) / 2, y: app.size.h / 2 };
+    const { left, right, top, bottom } = insets();
+    return { x: left + (app.size.w - left - right) / 2, y: top + (app.size.h - top - bottom) / 2 };
   };
   const nearestToCentre = () => {
     const c = app.camera.toWorld(mapCentre().x, mapCentre().y);
