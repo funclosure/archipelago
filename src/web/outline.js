@@ -8,6 +8,7 @@ import { THEMES } from "./theme-model.js";
 import { applyTheme, currentTheme } from "./theme.js";
 import { openAbout } from "./learner.js";
 import { openNewDomain } from "./new-domain.js";
+import { request } from "./transport.js";
 
 // app.js imports installOutline from here and this file imports app: fine, because nothing below reads app or select at module evaluation.
 
@@ -139,7 +140,7 @@ async function toggleMenu() {
   }
   if (!state.domains) {
     try {
-      const res = await fetch("/api/domains");
+      const res = await request("/api/domains");
       state.domains = (await res.json()).domains;
     } catch {
       state.domains = [];

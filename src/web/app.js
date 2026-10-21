@@ -10,6 +10,7 @@ import { installKeys } from "./keys.js";
 import { installBoard } from "./board.js";
 import { installTheme } from "./theme.js";
 import { openChart } from "./chart.js";
+import { request } from "./transport.js";
 import { installNewDomain, openNewDomain } from "./new-domain.js";
 import { MODES, MODE_LABELS, MODE_HINTS, modeKey, storedMode, nextMode } from "./mode-model.js";
 
@@ -39,9 +40,9 @@ export const app = {
 };
 
 export async function api(path, init) {
-  const res = await fetch(path, init);
+  const res = await request(path, init);
   const body = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(body.error || res.statusText);
+  if (!res.ok) throw Object.assign(new Error(body.error || res.statusText), { status: res.status });
   return body;
 }
 
@@ -369,7 +370,15 @@ function frame(now) {
 async function boot() {
   installNewDomain();
   if (!app.domain) {
-    const { domains } = await api("/api/domains");
+    let domains;
+    try {
+      ({ domains } = await api("/api/domains"));
+    } catch (error) {
+      // Nothing to draw without the server (or, hosted, without the browser's storage): say why instead of a blank sea.
+      document.getElementById("breadcrumb").replaceChildren(error.message);
+      console.error(error);
+      return;
+    }
     if (domains.length === 0) {
       const nav = document.getElementById("breadcrumb");
       const b = document.createElement("button");
@@ -400,8 +409,15 @@ async function boot() {
   try {
     await refresh();
   } catch (error) {
+    // A link or a restored tab can name a domain this database never had (each browser keeps its own): start over.
+    if (!app.snapshot && error.status === 404 && params.has("domain")) {
+      location.replace(location.pathname);
+      return;
+    }
     app.connected = false;
     renderStatus();
+    // No chart yet to fall back on: say why, as the domain list does above.
+    if (!app.snapshot) document.getElementById("breadcrumb").replaceChildren(error.message);
     console.error(error);
   }
   // A domain made on the page arrives with ?chart=start: open the cartographer and let it sketch.

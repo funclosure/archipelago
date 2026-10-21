@@ -1,4 +1,5 @@
-// Server-sent events over a POST. The parser is pure; streamPost is the only fetch.
+// Server-sent events over a POST. The parser is pure; streamPost is the only request.
+import { request } from "./transport.js";
 
 /** Splits a growing SSE text buffer into complete events and the leftover partial frame. */
 export function parseSseBuffer(buffer) {
@@ -43,7 +44,7 @@ function markAborted(error, signal) {
 export async function streamPost(url, body, onEvent, signal) {
   let res;
   try {
-    res = await fetch(url, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body), signal });
+    res = await request(url, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body), signal });
   } catch (error) {
     throw markAborted(error, signal);
   }

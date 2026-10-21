@@ -1,4 +1,4 @@
-import type { Database } from "bun:sqlite";
+import type { Database } from "../sql.ts";
 import { ConflictError, NotFoundError } from "../errors.ts";
 import type { Island, Strait } from "../types.ts";
 import { getIslandById } from "./islandRepository.ts";

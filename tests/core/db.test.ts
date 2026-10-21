@@ -1,10 +1,14 @@
 import { test, expect } from "bun:test";
 import { Database } from "bun:sqlite";
-import { readFileSync, readdirSync, mkdtempSync, rmSync } from "node:fs";
+import { mkdtempSync, readFileSync, readdirSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { homedir, tmpdir } from "node:os";
 import { openDatabase, resolveDbPath } from "../../src/core/db.ts";
 import { migrateDatabase } from "../../src/core/migrate.ts";
+import { MIGRATIONS } from "../../src/core/migrations/index.ts";
+
+/** Under `bun run test:wasm` these check the Bun file setup in db.ts, which the hosted build does not use. */
+const BUN_ONLY = process.env.ARCHIPELAGO_TEST_DRIVER === "wasm";
 
 test("openDatabase creates the schema", () => {
   const db = openDatabase(":memory:");
@@ -17,7 +21,7 @@ test("openDatabase creates the schema", () => {
   }
 });
 
-test("the default database lives under the home directory, not the working directory", () => {
+test.skipIf(BUN_ONLY)("the default database lives under the home directory, not the working directory", () => {
   const saved = process.env.ARCHIPELAGO_DB_PATH;
   delete process.env.ARCHIPELAGO_DB_PATH;
   try {
@@ -150,7 +154,7 @@ test("0006 adds asks with insert and update version triggers", () => {
   expect(db.query<{ message_id: number | null }, []>("select message_id from asks").get()!.message_id).toBeNull();
 });
 
-test("every connection waits on a busy database instead of failing at once", () => {
+test.skipIf(BUN_ONLY)("every connection waits on a busy database instead of failing at once", () => {
   const db = openDatabase(":memory:");
   expect(db.query<{ timeout: number }, []>("pragma busy_timeout").get()!.timeout).toBe(5000);
   db.close();
@@ -265,4 +269,9 @@ test("0009 rebuilds messages in place: ids, islands, and modes survive; only the
   const before = version();
   db.run("insert into sketches (domain_id, body) values (1, '{}')");
   expect(version()).toBe(before + 1);
+});
+
+test("the migrations list names every .sql file in the folder, in order", () => {
+  const files = readdirSync(new URL("../../src/core/migrations/", import.meta.url)).filter((f) => f.endsWith(".sql")).sort();
+  expect(MIGRATIONS.map((m) => `${m.version}.sql`)).toEqual(files);
 });

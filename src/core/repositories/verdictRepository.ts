@@ -1,4 +1,4 @@
-import type { Database } from "bun:sqlite";
+import type { Database } from "../sql.ts";
 import type { Verdict, VerdictState, VerdictTargetType } from "../types.ts";
 
 const COLS =

@@ -1,4 +1,4 @@
-import type { Database } from "bun:sqlite";
+import type { Database } from "../sql.ts";
 import type { Learner } from "../types.ts";
 import { listLandmarksByIsland } from "./landmarkRepository.ts";
 import { parseProposal } from "./messageRepository.ts";

@@ -1,14 +1,10 @@
-import type { Database } from "bun:sqlite";
-import { readdirSync, readFileSync } from "node:fs";
-import { join } from "node:path";
-import { fileURLToPath } from "node:url";
-
-const MIGRATIONS_DIR = fileURLToPath(new URL("./migrations/", import.meta.url));
+import type { Database } from "./sql.ts";
+import { MIGRATIONS } from "./migrations/index.ts";
 
 /** A migration whose first line is this runs with foreign keys off, so it can rebuild a table others reference. */
 const FOREIGN_KEYS_OFF = "-- foreign_keys: off";
 
-/** Applies every unapplied migration in filename order. Returns the versions applied by this call. */
+/** Applies every unapplied migration in order. Returns the versions applied by this call. */
 export function migrateDatabase(db: Database): string[] {
   db.exec(
     "create table if not exists schema_migrations (version text primary key, applied_at text not null default (strftime('%Y-%m-%dT%H:%M:%fZ','now')))",
@@ -16,12 +12,9 @@ export function migrateDatabase(db: Database): string[] {
   const applied = new Set(
     db.query<{ version: string }, []>("select version from schema_migrations").all().map((r) => r.version),
   );
-  const files = readdirSync(MIGRATIONS_DIR).filter((f) => f.endsWith(".sql")).sort();
   const ran: string[] = [];
-  for (const file of files) {
-    const version = file.replace(/\.sql$/, "");
+  for (const { version, sql } of MIGRATIONS) {
     if (applied.has(version)) continue;
-    const sql = readFileSync(join(MIGRATIONS_DIR, file), "utf8");
     // `pragma foreign_keys` is a no-op inside a transaction: switch it here, outside, and restore it after.
     const fkOff = sql.startsWith(FOREIGN_KEYS_OFF);
     const fkWas = db.query<{ foreign_keys: number }, []>("pragma foreign_keys").get()!.foreign_keys;
