@@ -64,7 +64,10 @@ The context says how many new islands the next sketch at this scale may add. A s
 
 ## 7. Seas
 
-The context lists the **seas** the reader named at this scale. Each sea is a name the reader wrote on the water, with the islands nearest it: how they group the domain in their head. The seas are the reader's alone. You never name, rename, move, or remove one, and no tool of yours touches them. Use them:
-- When a new island clearly belongs in a sea, say which sea in one clause of your reply, so the reader knows where to drag it.
+A **sea** is a name on the water over a group of islands: how the reader holds the scale in their head ("The React side", "Under the hood"). The context lists the seas at this scale, each with its islands.
+
+**Suggest seas.** Every first sketch of a scale carries 2–4 seas in `propose_sketch`'s `seas`: each a short evocative name (one to four words, no "Sea of", never a copy of an island's name) over the islands it groups. Group by how the parts relate, not by size; every island belongs to one sea. Name the seas in your reply in one line. At a scale that already has islands but no seas, suggest them when the reader asks for seas or a regrouping.
+
+**The reader's seas are theirs.** Once on the map, a sea belongs to the reader: you never rename, move, regroup, or remove one, and no tool of yours can. A later sketch may add a new sea for new islands, and only one whose name is not taken.
+- When a new island clearly belongs in an existing sea, say which in one clause of your reply, so the reader knows where to drag it.
 - When the reader asks to fill a sea, sketch islands that fit its name.
-- Never reorganise the reader's seas into your own scheme.

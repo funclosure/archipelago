@@ -28,6 +28,11 @@ export function draftStraits(snapshot) {
   return sketch.body.straits.map((s) => ({ from: s.from, to: s.to, name: s.name ?? null, verdict: null, draft: true }));
 }
 
+/** The seas the pending sketch suggests: `[{ name, islands }]` (a sketch from before seas has none). */
+export function draftSeas(snapshot) {
+  return snapshot?.sketch?.body.seas ?? [];
+}
+
 const plural = (n, one, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 
 /** One line naming what the sketch would do, e.g. "named React Native · 6 islands · 5 straits · harbour Foundations". */
@@ -38,6 +43,7 @@ export function sketchSummary(body, islands = []) {
   if (body.islands.length) parts.push(plural(body.islands.length, "island"));
   if (body.straits.length) parts.push(plural(body.straits.length, "strait"));
   if (body.updates.length) parts.push(plural(body.updates.length, "update"));
+  if (body.seas?.length) parts.push(plural(body.seas.length, "sea"));
   if (body.harbour) parts.push(`harbour ${nameOf(body.harbour)}`);
   return parts.join(" · ");
 }
@@ -56,6 +62,7 @@ export function sketchRows(body, islands = []) {
       const changes = [u.name !== undefined && `name → ${u.name}`, u.summary !== undefined && `summary → ${u.summary}`].filter(Boolean);
       return `${was?.name ?? u.slug}: ${changes.join("; ")}`;
     }),
+    seas: (body.seas ?? []).map((s) => ({ name: s.name, islands: s.islands.map(nameOf).join(" · ") })),
     harbour: body.harbour && !body.islands.some((i) => i.slug === body.harbour) ? nameOf(body.harbour) : null,
   };
 }

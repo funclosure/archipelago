@@ -1,5 +1,5 @@
 // Pure helpers: snapshot → drawable nodes and links. No DOM.
-import { draftIslands, draftStraits, sketchSummary } from "./chart-model.js";
+import { draftIslands, draftStraits, draftSeas, sketchSummary } from "./chart-model.js";
 // Coordinates are world units: a fixed 1000 × 1000 square per scale, origin top-left.
 
 /** The unit of the map, not its edge: a fresh scale is laid out around WORLD / 2, and islands may go anywhere. */
@@ -148,9 +148,30 @@ export function buildNodes(snapshot, previous = new Map(), lens = "judge") {
 /** Straits are verdict marks: the mentor lens hides them. A draft's straits only pull it into place; they are never drawn. */
 export function buildLinks(snapshot, nodes, lens = "judge") {
   const bySlug = new Map(nodes.map((n) => [n.slug, n]));
-  return [...snapshot.straits, ...draftStraits(snapshot)]
+  const straits = [...snapshot.straits, ...draftStraits(snapshot)]
     .filter((s) => bySlug.has(s.from) && bySlug.has(s.to))
     .map((s) => ({ source: bySlug.get(s.from), target: bySlug.get(s.to), strait: s, state: s.verdict ? s.verdict.state : "open", hidden: lens === "mentor" || Boolean(s.draft) }));
+  return [...straits, ...seaTethers(snapshot, bySlug)];
+}
+
+/** How hard a sea tether pulls, against a strait's 1. */
+export const TETHER = 0.35;
+
+/**
+ * Invisible links between the islands of a suggested sea (in the pending sketch, or approved and not placed yet),
+ * so the layout gathers each sea's islands before the page sets its name over them. Only unplaced islands move,
+ * so they never rearrange the reader's map.
+ */
+export function seaTethers(snapshot, bySlug) {
+  const groups = [...draftSeas(snapshot), ...(snapshot.seas ?? []).filter((s) => s.x === null && s.anchor).map((s) => ({ islands: s.anchor }))];
+  const out = [];
+  for (const g of groups) {
+    const members = g.islands.map((slug) => bySlug.get(slug)).filter(Boolean);
+    for (let i = 0; i < members.length; i++) {
+      for (let j = i + 1; j < members.length; j++) out.push({ source: members[i], target: members[j], tether: true, weight: TETHER, hidden: true });
+    }
+  }
+  return out;
 }
 
 // ---- the strip: what the chrome says about this scale, each cell with a hint that explains it ----

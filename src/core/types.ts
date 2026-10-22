@@ -177,10 +177,16 @@ export type SketchBody = {
   /** The domain's name: only in a top-scale sketch of a provisionally named domain. */
   name?: string;
   updates: { slug: string; name?: string; summary?: string }[];
+  /** Seas the cartographer suggests, each over the islands it groups; approving writes them without a position. */
+  seas: { name: string; islands: string[] }[];
 };
 
 /** A name the reader wrote on the water at one scale (`parentIslandId` null = the top), at a world position. */
-export type Sea = { id: number; domainId: number; parentIslandId: number | null; name: string; x: number; y: number; createdAt: string; updatedAt: string };
+/**
+ * A name on the water at one scale. `x`/`y` are null for a sea a sketch suggested that the page has not placed yet;
+ * until then `anchor` holds the islands it was suggested for, and the page sets the name over them.
+ */
+export type Sea = { id: number; domainId: number; parentIslandId: number | null; name: string; x: number | null; y: number | null; anchor: string[] | null; createdAt: string; updatedAt: string };
 
 export type Sketch = {
   id: number;

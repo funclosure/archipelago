@@ -11,7 +11,7 @@ import {
 } from "../core/validators.ts";
 import { attachAsks, listAsks, pickAsk, requireAsk } from "../core/repositories/askRepository.ts";
 import { listCards } from "../core/repositories/boardRepository.ts";
-import { addSea, removeSea, updateSea } from "../core/repositories/seaRepository.ts";
+import { addSeaFrom, removeSea, updateSea } from "../core/repositories/seaRepository.ts";
 import { getLearner, setLearnerNote } from "../core/repositories/learnerRepository.ts";
 import { createDomain, listDomains, requireDomain, updateDomain } from "../core/repositories/domainRepository.ts";
 import { getIslandById, requireIsland, setIslandPositions } from "../core/repositories/islandRepository.ts";
@@ -216,14 +216,14 @@ async function handleApi(req: Request, url: URL, ctx: ApiContext): Promise<Respo
   }
 
   if (route === "POST /api/seas") {
-    // The reader's names on the water. Only the reader writes them: no persona has a tool for seas.
+    // Names on the water. Only the reader writes them here; the cartographer only suggests seas in a sketch the reader approves.
     const input = seaWriteSchema.parse(await req.json());
     return json(
       withDb(ctx, (db) => {
         const d = requireDomain(db, input.domain);
         const sea =
           input.op === "add"
-            ? addSea(db, { domainId: d.id, parentIslandId: input.island ? requireIsland(db, d.id, input.island).id : null, name: input.name, x: input.x, y: input.y })
+            ? addSeaFrom(db, { domainId: d.id, parentIslandId: input.island ? requireIsland(db, d.id, input.island).id : null, name: input.name, x: input.x, y: input.y, islands: input.islands })
             : input.op === "update"
               ? updateSea(db, d.id, input.id, { name: input.name, x: input.x, y: input.y })
               : (removeSea(db, d.id, input.id), null);

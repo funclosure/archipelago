@@ -12,8 +12,9 @@ export const TRACK_MAX = 1.4;
  * Each sea's islands: every island goes to the nearest sea name within REACH radii, so two seas never claim the
  * same water. `nodes` carry slug, x, y, radius. Returns a Map sea id → nodes.
  */
-export function seaMembers(seas, nodes) {
-  const out = new Map(seas.map((s) => [s.id, []]));
+export function seaMembers(allSeas, nodes) {
+  const out = new Map(allSeas.map((s) => [s.id, []]));
+  const seas = allSeas.filter((s) => s.x !== null && s.x !== undefined); // a suggested sea not placed yet claims no water
   for (const n of nodes) {
     let best = null;
     let bestD = REACH * n.radius;
@@ -44,6 +45,49 @@ export function lettering(name, members, radius, measure) {
   const gaps = Math.max(1, chars.length - 1);
   const track = Math.min(font * TRACK_MAX, Math.max(font * TRACK_MIN, (span * 0.66 - ink) / gaps));
   return { text, font, widths, track, total: ink + track * (chars.length - 1) };
+}
+
+/**
+ * Where a suggested sea's name goes: the clearest water near the islands it groups. Candidates lie on a grid over
+ * the group's box (a radius beyond it sideways, two and a half above and below); each scores how clear the name's
+ * box would be of every coast and every island's name (under the coast), less a pull toward the group's centre. `members` and `others` carry x, y;
+ * `halfWidth` is half the lettered name's width (`lettering(...).total / 2`). Returns { x, y }.
+ */
+export function seaSpot(members, others, radius, halfWidth = radius * 2) {
+  const cx = members.reduce((s, m) => s + m.x, 0) / members.length;
+  const cy = members.reduce((s, m) => s + m.y, 0) / members.length;
+  const xs = members.map((m) => m.x);
+  const ys = members.map((m) => m.y);
+  const x0 = Math.min(...xs) - radius;
+  const x1 = Math.max(...xs) + radius;
+  const y0 = Math.min(...ys) - radius * 2.5; // a name above or below a row of islands sits more than a radius off
+  const y1 = Math.max(...ys) + radius * 2.5;
+  // each mark: a point and how far around it is already ink (the coast's radius; half a wrapped island name's width)
+  const marks = others.flatMap((n) => [{ x: n.x, y: n.y, r: radius }, { x: n.x, y: n.y + radius * 1.55, r: radius * 1.2 }]);
+  const font = SEA_FONT * radius;
+  const clearance = (x, y) =>
+    Math.min(
+      ...marks.map((m) => {
+        const dx = Math.max(0, Math.abs(m.x - x) - halfWidth);
+        const dy = Math.max(0, m.y < y - font ? y - font - m.y : m.y > y + font * 0.6 ? m.y - y - font * 0.6 : 0);
+        return Math.hypot(dx, dy) - m.r;
+      }),
+    );
+  const STEPS = 12;
+  let best = { x: cx, y: cy };
+  let bestScore = -Infinity;
+  for (let i = 0; i <= STEPS; i++) {
+    for (let j = 0; j <= STEPS; j++) {
+      const x = x0 + ((x1 - x0) * i) / STEPS;
+      const y = y0 + ((y1 - y0) * j) / STEPS;
+      const score = clearance(x, y) - 0.25 * Math.hypot(x - cx, y - cy);
+      if (score > bestScore) {
+        best = { x, y };
+        bestScore = score;
+      }
+    }
+  }
+  return best;
 }
 
 /** The name's box in world units, for hit-testing and the selection outline. */

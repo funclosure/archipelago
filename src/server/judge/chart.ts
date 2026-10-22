@@ -41,7 +41,7 @@ export type ChartContext = {
   };
   islands: { slug: string; name: string; summary: string | null; state: VerdictState | null; harbour: boolean; landmarks: string[] }[];
   straits: { a: string; b: string; name: string | null; state: VerdictState | null }[];
-  /** The seas the reader named at this scale, each with the islands nearest its name: how they group the domain. */
+  /** The seas at this scale, each with its islands (nearest its name; a suggested sea not placed yet, the ones it was suggested for). */
   seas: { name: string; islands: string[] }[];
   /** Every island slug in the domain, so a sketch never takes one. */
   slugs: string[];
@@ -162,7 +162,7 @@ export function renderChartContext(ctx: ChartContext): string {
   lines.push(``, `Straits at this scale:`);
   if (ctx.straits.length === 0) lines.push(`- none`);
   for (const s of ctx.straits) lines.push(`- ${s.a}~${s.b}${s.name ? ` "${s.name}"` : ""}: ${stateOf(s.state)}`);
-  lines.push(``, `Seas the reader named at this scale (their own grouping; each island belongs to the nearest name):`);
+  lines.push(``, `Seas at this scale (the reader's grouping, named by them or approved from a sketch; each island belongs to the nearest name):`);
   if (ctx.seas.length === 0) lines.push(`- none`);
   for (const s of ctx.seas) lines.push(`- "${indent(s.name)}": ${s.islands.length ? s.islands.join(", ") : "no islands near it yet"}`);
   lines.push(``, `Slugs already taken in this domain: ${ctx.slugs.length ? ctx.slugs.join(", ") : "none"}`);

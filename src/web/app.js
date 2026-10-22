@@ -2,8 +2,9 @@ import { buildNodes, buildLinks, WORLD, stripItems } from "./view-model.js";
 import { createSimulation } from "./layout.js";
 import { createCamera } from "./camera.js";
 import { clear, drawIsland, drawStrait, drawSeaWater, drawSeaName, drawMarquee, drawPress, NAME_FONT } from "./draw.js";
-import { seaMembers, lettering, letteringBox, stippleDots, SEA_FONT } from "./sea-model.js";
-import { placeRemoveButton } from "./seas.js";
+import { seaMembers, lettering, letteringBox, stippleDots, seaSpot, SEA_FONT } from "./sea-model.js";
+import { placeRemoveButton, saveSeaPosition } from "./seas.js";
+import { draftSeas } from "./chart-model.js";
 import { layoutLabels } from "./labels.js";
 import { emptyGroup, pruneGroup } from "./group-model.js";
 import { LONG_PRESS_MS } from "./gesture-model.js";
@@ -280,6 +281,7 @@ export function homeBounds() {
   if (app.nodes.length === 0) return null;
   const b = { x0: Infinity, y0: Infinity, x1: -Infinity, y1: -Infinity };
   for (const s of app.seas) {
+    if (s.x === null) continue; // a suggested sea not placed yet
     const box = app.seaSets.has(s.id) ? letteringBox(s, app.seaSets.get(s.id)) : { x0: s.x, x1: s.x, y0: s.y, y1: s.y };
     b.x0 = Math.min(b.x0, box.x0);
     b.x1 = Math.max(b.x1, box.x1);
@@ -475,13 +477,21 @@ function seaDots(sea, members, radius) {
 function drawSeas(radius) {
   const members = seaMembers(app.seas, app.nodes);
   app.seaSets = new Map();
-  for (const s of app.seas) {
+  const placed = app.seas.filter((s) => s.x !== null);
+  for (const s of placed) {
     const m = members.get(s.id) ?? [];
     const set = lettering(s.name, m, radius, measureSeaChar(SEA_FONT * radius));
     app.seaSets.set(s.id, set);
     drawSeaWater(ctx, seaDots(s, m, radius), radius);
   }
-  for (const s of app.seas) drawSeaName(ctx, s, app.seaSets.get(s.id), { selected: s.id === app.selectedSea || app.group.seas.has(s.id), hover: s.id === app.hoverSea });
+  for (const s of placed) drawSeaName(ctx, s, app.seaSets.get(s.id), { selected: s.id === app.selectedSea || app.group.seas.has(s.id), hover: s.id === app.hoverSea });
+  // The pending sketch's seas: their names over the draft islands, in lamp, with no water until approved.
+  for (const d of draftSeas(app.snapshot)) {
+    const m = app.nodes.filter((n) => d.islands.includes(n.slug));
+    if (!m.length) continue;
+    const set = lettering(d.name, m, radius, measureSeaChar(SEA_FONT * radius));
+    drawSeaName(ctx, seaSpot(m, app.nodes, radius, set.total / 2), set, { draft: true });
+  }
   const chosen = app.seas.find((s) => s.id === app.selectedSea);
   placeRemoveButton(chosen ? letteringBox(chosen, app.seaSets.get(chosen.id)) : null);
 }
@@ -496,6 +506,23 @@ function measureName(text) {
   return w;
 }
 
+const placingSeas = new Set(); // ids of suggested seas whose position is being posted
+
+/**
+ * A suggested sea (approved from a sketch) has no position: once the islands it groups are placed and saved, the
+ * page sets its name over them, and from then on it is the reader's like any other.
+ */
+function placeSuggestedSeas(radius) {
+  for (const s of app.seas) {
+    if (s.x !== null || placingSeas.has(s.id)) continue;
+    const m = app.nodes.filter((n) => !n.draft && s.anchor?.includes(n.slug));
+    if (!m.length || m.some((n) => !n.placed)) continue;
+    const spot = seaSpot(m, app.nodes, radius, lettering(s.name, m, radius, measureSeaChar(SEA_FONT * radius)).total / 2);
+    placingSeas.add(s.id);
+    void saveSeaPosition({ id: s.id, ...spot }).finally(() => placingSeas.delete(s.id));
+  }
+}
+
 let laying = false; // the simulation was placing islands on the last frame
 function frame(now) {
   const moving = app.sim.tick();
@@ -506,6 +533,7 @@ function frame(now) {
   }
   laying = moving;
   if (!moving && app.placing.size > 0 && !app.placementInFlight) void persistPlacement();
+  if (!moving && app.placing.size === 0 && !app.placementInFlight) placeSuggestedSeas(app.nodes[0]?.radius ?? 62);
   app.camera.tick(now);
   const { w, h, dpr } = app.size;
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);

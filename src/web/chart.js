@@ -266,6 +266,14 @@ function sketchCard(sketch) {
     card.append(list);
   }
   if (rows.straits.length) card.append(el("div", "sec", "Straits"), el("div", "straits", rows.straits.join(" · ")));
+  if (rows.seas.length) {
+    card.append(el("div", "sec", "Seas"));
+    for (const s of rows.seas) {
+      const row = el("div", "update");
+      row.append(el("span", "name", s.name), ` ${s.islands}`);
+      card.append(row);
+    }
+  }
   if (rows.updates.length) {
     card.append(el("div", "sec", "Updates"));
     for (const u of rows.updates) card.append(el("div", "update", u));

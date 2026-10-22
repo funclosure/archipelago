@@ -34,9 +34,13 @@ const domainName = z.string().pipe(z.string().trim().min(1, "a name cannot be em
 export const SEA_NAME_MAX = 40;
 const seaName = z.string().pipe(z.string().trim().min(1, "a sea needs a name").max(SEA_NAME_MAX)).refine((n) => !/[\r\n]/.test(n), { message: "a sea's name is one line" });
 const seaId = numberInput.pipe(z.number().int().positive());
-/** POST /api/seas: add one at a scale (`island` = the scale, absent = the top), rename or move one, or remove one. */
+/**
+ * POST /api/seas: add one at a scale (`island` = the scale, absent = the top) at x, y, or over `islands` (slugs at
+ * that scale; the page places the name over them), rename or move one, or remove one.
+ */
 export const seaWriteSchema = z.discriminatedUnion("op", [
-  z.object({ op: z.literal("add"), domain: slugSchema, island: slugSchema.optional(), name: seaName, x: coordinate, y: coordinate }),
+  z.object({ op: z.literal("add"), domain: slugSchema, island: slugSchema.optional(), name: seaName, x: coordinate.optional(), y: coordinate.optional(), islands: z.array(slugSchema).min(1).max(10).optional() })
+    .refine((a) => (a.x !== undefined && a.y !== undefined) !== (a.islands !== undefined), { message: "a new sea goes at x and y, or over islands" }),
   z.object({ op: z.literal("update"), domain: slugSchema, id: seaId, name: seaName.optional(), x: coordinate.optional(), y: coordinate.optional() })
     .refine((u) => u.name !== undefined || (u.x !== undefined && u.y !== undefined), { message: "an update renames the sea, or moves it with both x and y" }),
   z.object({ op: z.literal("remove"), domain: slugSchema, id: seaId }),
@@ -252,6 +256,10 @@ export const sketchBodySchema = z
     harbour: slugSchema.optional(),
     /** The domain's name, from the cartographer's first sketch of a provisionally named domain. Top scale only. */
     name: domainName.optional(),
+    seas: z
+      .array(z.object({ name: seaName, islands: z.array(slugSchema).min(1).max(10) }))
+      .max(6)
+      .default([]),
     updates: z
       .array(
         z
@@ -261,7 +269,7 @@ export const sketchBodySchema = z
       .max(20)
       .default([]),
   })
-  .refine((b) => b.islands.length + b.straits.length + b.updates.length > 0 || b.harbour !== undefined || b.name !== undefined, { message: "a sketch proposes something" });
+  .refine((b) => b.islands.length + b.straits.length + b.updates.length + b.seas.length > 0 || b.harbour !== undefined || b.name !== undefined, { message: "a sketch proposes something" });
 
 /** A new domain from the page: the slug defaults to the name in kebab case. */
 /** A new domain from the page: a description, a name, or both. With no name, the domain starts under a provisional one. */

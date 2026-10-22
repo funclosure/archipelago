@@ -1,4 +1,4 @@
-// Seas: the reader's names on the water, per scale. Only the reader writes them (POST /api/seas, the CLI); the
+// Seas: names on the water, per scale. The reader writes them (POST /api/seas, the CLI) or approves them in a sketch; the
 // snapshot carries them, and the cartographer reads them with the islands nearest each name.
 import { test, expect, beforeEach, afterEach } from "bun:test";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
@@ -55,7 +55,7 @@ test("a sea is added, renamed, moved, and removed; each write bumps the version 
   expect(made.json.sea).toMatchObject({ name: "The React side", x: 150, y: 20, parentIslandId: null });
   expect(made.json.version).toBeGreaterThan(v0);
   const id = made.json.sea.id;
-  expect((await snapshot()).seas).toEqual([{ id, name: "The React side", x: 150, y: 20 }]);
+  expect((await snapshot()).seas).toEqual([{ id, name: "The React side", x: 150, y: 20, anchor: null }]);
   expect((await post({ domain: "rn", op: "update", id, name: "React" })).json.sea).toMatchObject({ name: "React", x: 150, y: 20 });
   expect((await post({ domain: "rn", op: "update", id, x: -3000, y: 40 })).json.sea).toMatchObject({ name: "React", x: -3000, y: 40 }); // no edge
   expect((await post({ domain: "rn", op: "remove", id })).json.sea).toBeNull();
@@ -113,4 +113,94 @@ test("removing an island's scale removes its seas", () => {
   db.run("delete from islands where id = ?", [inner.id]);
   expect(listSeas(db, d.id, inner.id)).toEqual([]);
   db.close();
+});
+
+// ---- suggested seas: proposed in a sketch, written unplaced on approval, placed by the page ----
+import { proposeSketch, approveSketch } from "../../src/core/repositories/sketchRepository.ts";
+import { updateSea } from "../../src/core/repositories/seaRepository.ts";
+// @ts-ignore
+import { seaSpot } from "../../src/web/sea-model.js";
+// @ts-ignore
+import { seaTethers, TETHER } from "../../src/web/view-model.js";
+// @ts-ignore
+import { sketchRows, sketchSummary } from "../../src/web/chart-model.js";
+
+test("a sketch's seas are checked: islands at the scale, one sea each, names not taken", () => {
+  const db = openDatabase(dbPath);
+  const d = upsertDomain(db, { slug: "rn", name: "React Native" });
+  addSea(db, { domainId: d.id, parentIslandId: null, name: "The React side", x: 0, y: 0 });
+  const propose = (seas: unknown) => () => proposeSketch(db, d.id, null, { seas });
+  expect(propose([{ name: "Far", islands: ["nowhere"] }])).toThrow(/"nowhere" is not an island/);
+  expect(propose([{ name: "A", islands: ["hooks"] }, { name: "B", islands: ["hooks", "state"] }])).toThrow(/already in another sea/);
+  expect(propose([{ name: "the react side", islands: ["hooks"] }])).toThrow(/already/);
+  expect(propose([{ name: "Twice", islands: ["hooks"] }, { name: "twice", islands: ["state"] }])).toThrow(/already/);
+  expect(proposeSketch(db, d.id, null, { seas: [{ name: "Near", islands: ["hooks", "state"] }] }).body.seas).toHaveLength(1);
+  db.close();
+});
+
+test("approving writes each suggested sea unplaced over its islands; placing it makes it an ordinary sea", async () => {
+  const db = openDatabase(dbPath);
+  const d = upsertDomain(db, { slug: "rn", name: "React Native" });
+  const sketch = proposeSketch(db, d.id, null, { seas: [{ name: "Near", islands: ["hooks", "state"] }] });
+  expect(approveSketch(db, d.id, sketch.id).seas).toBe(1);
+  const [sea] = listSeas(db, d.id, null);
+  expect(sea).toMatchObject({ name: "Near", x: null, y: null, anchor: ["hooks", "state"] });
+  // before it is placed, the cartographer still sees which islands it groups
+  expect(renderChartContext(buildChartContext(db, "rn"))).toContain(`- "Near": hooks, state`);
+  db.close();
+  expect((await snapshot()).seas).toEqual([{ id: sea!.id, name: "Near", x: null, y: null, anchor: ["hooks", "state"] }]);
+  const placed = (await post({ op: "update", domain: "rn", id: sea!.id, x: 150, y: 0 })).json.sea;
+  expect(placed).toMatchObject({ x: 150, y: 0, anchor: null });
+});
+
+test("a renamed suggested sea keeps its islands until it is placed", () => {
+  const db = openDatabase(dbPath);
+  const d = upsertDomain(db, { slug: "rn", name: "React Native" });
+  const sea = addSea(db, { domainId: d.id, parentIslandId: null, name: "Near", anchor: ["hooks"] });
+  expect(updateSea(db, d.id, sea.id, { name: "Close" })).toMatchObject({ name: "Close", x: null, anchor: ["hooks"] });
+  db.close();
+});
+
+test("the terminal adds a sea over islands, and refuses islands from another scale", async () => {
+  expect((await post({ op: "add", domain: "rn", name: "Near", islands: ["hooks", "state"] })).json.sea).toMatchObject({ x: null, anchor: ["hooks", "state"] });
+  const res = await fetch(base + "/api/seas", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ op: "add", domain: "rn", name: "Bad", islands: ["ghost"] }) });
+  expect(res.status).toBe(400);
+  const both = await fetch(base + "/api/seas", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ op: "add", domain: "rn", name: "Bad", x: 1, y: 1, islands: ["hooks"] }) });
+  expect(both.status).toBe(400);
+});
+
+test("membership: an unplaced suggested sea holds its anchor and claims no water, on both sides", () => {
+  const islands = [{ slug: "a", x: 0, y: 0 }, { slug: "b", x: 100, y: 0 }];
+  const seas = [{ id: 1, x: null, y: null, anchor: ["b"] }, { id: 2, x: 10, y: 0, anchor: null }];
+  expect(seaMembers(seas, islands).get(1)).toEqual(["b"]);
+  expect(seaMembers(seas, islands).get(2)).toEqual(["a", "b"]);
+  const web = webSeaMembers(seas, islands.map((i) => ({ ...i, radius: 60 })));
+  expect(web.get(2).map((n: any) => n.slug)).toEqual(["a", "b"]);
+});
+
+test("the page sets a suggested name in clear water near its islands, off every coast and island name", () => {
+  const r = 60;
+  const isles = [{ x: 0, y: 100 }, { x: 400, y: 100 }, { x: 200, y: 100 }];
+  const half = 150;
+  const spot = seaSpot(isles, isles, r, half);
+  // the name's box clears every coast and every island name
+  for (const n of isles) {
+    const clearOf = (y: number, reach: number) => Math.abs(n.x - spot.x) > half + reach || Math.abs(y - spot.y) > reach;
+    expect(clearOf(n.y, r)).toBe(true);
+    expect(clearOf(n.y + r * 1.55, r * 0.5)).toBe(true);
+  }
+  expect(Math.abs(spot.x - 200)).toBeLessThan(400); // and still over its own group
+  expect(spot.y).toBeGreaterThanOrEqual(100 - 2.5 * r);
+  expect(spot.y).toBeLessThanOrEqual(100 + 2.5 * r);
+});
+
+test("a suggested sea's islands are tethered while they are laid out, and the card lists the seas", () => {
+  const bySlug = new Map(["a", "b", "c"].map((slug) => [slug, { slug }]));
+  const snap = { sketch: { body: { islands: [], straits: [], updates: [], seas: [{ name: "S", islands: ["a", "b", "c"] }] } }, seas: [{ id: 9, x: 1, y: 1, anchor: null }] };
+  const tethers = seaTethers(snap, bySlug);
+  expect(tethers).toHaveLength(3);
+  expect(tethers.every((t: any) => t.hidden && t.weight === TETHER)).toBe(true);
+  const body = { islands: [], straits: [], updates: [], seas: [{ name: "Near", islands: ["hooks", "state"] }] };
+  expect(sketchSummary(body)).toBe("1 sea");
+  expect(sketchRows(body, [{ slug: "hooks", name: "Hooks" }, { slug: "state", name: "State" }]).seas).toEqual([{ name: "Near", islands: "Hooks · State" }]);
 });
