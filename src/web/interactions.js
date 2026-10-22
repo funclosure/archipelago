@@ -1,9 +1,9 @@
 import { app, api, hitTest, seaAt, setScale, postPositions, frameSelection, insets } from "./app.js";
 import { openSeaEditor, removeSeaById, saveSeaPosition, seaEditing } from "./seas.js";
 import { registerRegion } from "./keys.js";
+import { LONG_PRESS_MS, pinchStep, pressAction, slopFor } from "./gesture-model.js";
 import { boxBetween, emptyGroup, gatherBox, groupOffsets, groupSize, moveGroup, toggleMember } from "./group-model.js";
 
-const CLICK_SLOP = 4; // px of pointer travel before a press counts as a drag
 
 let focusQueue = Promise.resolve();
 
@@ -35,8 +35,16 @@ const EDGE_SPEED = 14;
 
 export function installInteractions(canvas) {
   // kind: "pan" | "node" | "sea" | "group" (a gathered member: all of them move) | "toggle" (shift-click) | "box" (shift-drag on water)
-  let drag = null; // { kind, slug, sea, startX, startY, lastX, lastY, moved, ox, oy, offsets, from }
+  // | "press" (a finger held still: acts on lift) | "pinch" (two fingers: pan and zoom)
+  let drag = null; // { kind, slug, sea, startX, startY, lastX, lastY, moved, slop, ox, oy, offsets, from, timer }
   let edgeFrame = 0;
+  const fingers = new Map(); // pointerId → { x, y } for every touch on the map
+
+  /** A finger that holds still stops counting toward a long-press the moment it wanders. */
+  function stopPress(d) {
+    clearTimeout(d.timer);
+    app.press = null;
+  }
 
   /** Puts the dragged island, or the whole gathered group, under the pointer. */
   function moveDragged(px, py) {
@@ -65,12 +73,28 @@ export function installInteractions(canvas) {
   }
 
   canvas.addEventListener("pointermove", (e) => {
+    if (fingers.has(e.pointerId)) {
+      const last = fingers.get(e.pointerId);
+      fingers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (drag?.kind === "pinch") {
+        const [ida, idb] = [...fingers.keys()];
+        const other = fingers.get(e.pointerId === ida ? idb : ida);
+        const step = pinchStep(last, other, fingers.get(e.pointerId), other);
+        app.camera.zoomAt(step.at.x, step.at.y, step.factor);
+        app.camera.panBy(step.dx, step.dy);
+        return;
+      }
+    }
     if (drag) {
       const dx = e.clientX - drag.lastX;
       const dy = e.clientY - drag.lastY;
       drag.lastX = e.clientX;
       drag.lastY = e.clientY;
-      if (Math.abs(e.clientX - drag.startX) + Math.abs(e.clientY - drag.startY) > CLICK_SLOP) drag.moved = true;
+      if (drag.kind === "press") return; // the long-press already counted: lifting the finger acts
+      if (Math.abs(e.clientX - drag.startX) + Math.abs(e.clientY - drag.startY) > drag.slop) {
+        drag.moved = true;
+        stopPress(drag);
+      }
       if (drag.kind === "pan") {
         app.camera.panBy(dx, dy);
       } else if (drag.kind === "toggle") {
@@ -100,6 +124,20 @@ export function installInteractions(canvas) {
 
   canvas.addEventListener("pointerdown", (e) => {
     if (seaEditing()) return; // the click lands on the water: the field's blur keeps the name
+    if (e.pointerType === "touch") {
+      e.preventDefault(); // no compatibility mousedown after the finger lifts: it would focus the map and close a sea's field
+      fingers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    }
+    if (fingers.size === 2) {
+      // A second finger: pinch, unless the first is already carrying something (then the second is ignored).
+      if (drag && drag.moved) return;
+      if (drag) stopPress(drag);
+      releaseHolds(drag);
+      drag = { kind: "pinch", moved: true };
+      canvas.setPointerCapture(e.pointerId);
+      return;
+    }
+    if (drag) return; // a third finger, or a stray press mid-gesture
     const hit = hitTest(e.clientX, e.clientY);
     const sea = hit ? null : seaAt(e.clientX, e.clientY);
     const w = app.camera.toWorld(e.clientX, e.clientY);
@@ -118,20 +156,55 @@ export function installInteractions(canvas) {
       lastX: e.clientX,
       lastY: e.clientY,
       moved: false,
+      slop: slopFor(e.pointerType),
+      timer: 0,
     };
+    if (e.pointerType !== "mouse" && !e.shiftKey) {
+      // Phones have no double-click and no shift: a finger held still gathers an island, renames a sea, or names one.
+      const d = drag;
+      app.press = { x: w.x, y: w.y, start: performance.now() };
+      d.timer = setTimeout(() => {
+        if (drag !== d || d.moved) return;
+        releaseHolds(d);
+        d.kind = "press";
+        navigator.vibrate?.(12);
+      }, LONG_PRESS_MS);
+    }
     if (kind === "sea") app.heldSeas.add(sea.id);
     if (kind === "group") for (const id of app.group.seas) app.heldSeas.add(id);
     canvas.setPointerCapture(e.pointerId); // released implicitly on pointerup
     canvas.classList.add("dragging");
   });
 
-  canvas.addEventListener("pointerup", (e) => {
+  /** Seas held so a refresh mid-drag keeps them where the pointer put them; let go when a drag ends unsaved. */
+  function releaseHolds(d) {
+    if (d?.kind === "sea") app.heldSeas.delete(d.sea);
+    if (d?.kind === "group") for (const id of app.group.seas) app.heldSeas.delete(id);
+  }
+
+  /** Ends the gesture on pointerup, or on pointercancel (`cancelled`): a move is kept, a click or a press is not. */
+  function finish(e, cancelled) {
+    fingers.delete(e.pointerId);
+    if (drag?.kind === "pinch") {
+      if (fingers.size === 0) drag = null; // the last finger up ends the pinch; one left behind does not start a drag
+      return;
+    }
     canvas.classList.remove("dragging");
     cancelAnimationFrame(edgeFrame);
     edgeFrame = 0;
     const d = drag;
     drag = null;
     if (!d) return;
+    stopPress(d);
+    app.marquee = cancelled ? null : app.marquee;
+    if (cancelled && !d.moved) return releaseHolds(d);
+    if (d.kind === "press") {
+      const action = pressAction({ island: d.slug, sea: d.sea });
+      if (action === "gather") app.group = toggleMember(app.group, "islands", d.slug);
+      else if (action === "rename") openSeaEditor({ sea: app.seas.find((s) => s.id === d.sea) });
+      else openSeaEditor({ at: d.from });
+      return;
+    }
     if (d.kind === "toggle") {
       app.group = d.slug ? toggleMember(app.group, "islands", d.slug) : toggleMember(app.group, "seas", d.sea);
       return;
@@ -164,7 +237,11 @@ export function installInteractions(canvas) {
     app.selectedSea = null;
     const hit = hitTest(e.clientX, e.clientY);
     void select(hit ? hit.slug : null);
-  });
+  }
+
+  canvas.addEventListener("pointerup", (e) => finish(e, false));
+  canvas.addEventListener("pointercancel", (e) => finish(e, true));
+  canvas.addEventListener("contextmenu", (e) => e.preventDefault()); // a long-press is the map's, not the browser's menu
 
   /** Saves where a moved group now sits: its islands in one post, then each sea name. */
   async function saveGroup() {
