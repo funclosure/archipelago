@@ -97,6 +97,88 @@ export function drawPress(ctx, press, scale, progress) {
   ctx.restore();
 }
 
+/** Where the three coasts of the sketching chart sit, in px from its centre, with the seeds that shape them. */
+const SKETCH_ISLES = [
+  { dx: -92, dy: 6, seed: 7 },
+  { dx: 0, dy: -38, seed: 23 },
+  { dx: 96, dy: 14, seed: 41 },
+];
+/** One loop of the sketching chart, in ms: each coast traces in turn, the straits follow, then it fades and redraws. */
+const SKETCH_LOOP = 4800;
+
+/**
+ * The cartographer at work on an empty scale, in screen px around `at`: three coasts trace themselves one after
+ * another in lamp, dotted straits join them, and the whole fades and starts over; under it the title and the step.
+ * `still` (reduced motion) draws it once, complete.
+ */
+export function drawSketching(ctx, at, now, { title, step, still = false }) {
+  const t = still ? SKETCH_LOOP * 0.7 : now % SKETCH_LOOP;
+  const fade = still ? 1 : t < 300 ? t / 300 : t > SKETCH_LOOP - 700 ? (SKETCH_LOOP - t) / 700 : 1;
+  const s = 34 / COAST; // box units → px: a coast of 34px
+  ctx.save();
+  ctx.globalAlpha = fade;
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+  const done = [];
+  SKETCH_ISLES.forEach((isle, i) => {
+    const p = Math.max(0, Math.min(1, (t - 200 - i * 650) / 1300));
+    if (p <= 0) return;
+    const pts = ringPoints(isle.seed, COAST).map((q) => ({ x: at.x + isle.dx + (q.x - CENTRE) * s, y: at.y + isle.dy + (q.y - CENTRE) * s }));
+    traceRing(ctx, pts, p * pts.length);
+    if (p === 1) {
+      ctx.fillStyle = alpha(PALETTE.lamp, 0.06);
+      ctx.fill();
+      done.push(isle);
+    }
+    ctx.setLineDash([3, 4]);
+    ctx.strokeStyle = alpha(PALETTE.lamp, 0.85);
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+    ctx.setLineDash([]);
+    // the pen: a lamp dot where the line is being drawn
+    if (p < 1) {
+      const head = pts[Math.min(pts.length - 1, Math.floor(p * pts.length))];
+      ctx.beginPath();
+      ctx.arc(head.x, head.y, 2.5, 0, Math.PI * 2);
+      ctx.fillStyle = alpha(PALETTE.lamp, 0.95);
+      ctx.fill();
+    }
+  });
+  // dotted straits between finished neighbours, drawn out from each coast
+  for (let i = 1; i < done.length; i++) {
+    const a = done[i - 1];
+    const b = done[i];
+    const p = Math.max(0, Math.min(1, (t - 200 - i * 650 - 1300) / 500));
+    const dx = b.dx - a.dx;
+    const dy = b.dy - a.dy;
+    const d = Math.hypot(dx, dy);
+    const ux = dx / d;
+    const uy = dy / d;
+    const x1 = at.x + a.dx + ux * 42;
+    const y1 = at.y + a.dy + uy * 42;
+    const len = (d - 84) * p;
+    ctx.beginPath();
+    ctx.moveTo(x1, y1);
+    ctx.lineTo(x1 + ux * len, y1 + uy * len);
+    ctx.setLineDash([1, 5]);
+    ctx.strokeStyle = alpha(PALETTE.lamp, 0.7);
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+  ctx.globalAlpha = 1;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "alphabetic";
+  ctx.font = "italic 20px Georgia, 'Times New Roman', serif";
+  ctx.fillStyle = alpha(PALETTE.line, 0.85);
+  ctx.fillText(title, at.x, at.y + 92);
+  ctx.font = "12px system-ui, sans-serif";
+  ctx.fillStyle = alpha(PALETTE.line, 0.55);
+  const dots = still ? "…" : ".".repeat(1 + (Math.floor(now / 400) % 3));
+  ctx.fillText(`${step}${dots}`, at.x, at.y + 116);
+  ctx.restore();
+}
+
 export function clear(ctx, w, h) {
   ctx.fillStyle = PALETTE.sea;
   ctx.fillRect(0, 0, w, h);

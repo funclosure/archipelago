@@ -6,6 +6,8 @@ import { renderMarkdown } from "./markdown.js";
 import { select } from "./interactions.js";
 import { isImeKey } from "./keys-model.js";
 import { chartOpening, sketchRows, sketchSummary } from "./chart-model.js";
+import { thinkingLine } from "./progress-model.js";
+import { thinkingEl } from "./thinking.js";
 
 const STICK_PX = 40;
 const LOG_STEP = 80;
@@ -46,6 +48,8 @@ export function installChart({ render }) {
 
 export const isChartOpen = () => chart.open;
 export const chartTurning = () => chart.inFlight && turnAbort !== null;
+/** The tool in flight while the cartographer works at the map's scale (null while it thinks), or undefined when it is not working there. */
+export const chartWorkingHere = () => (chart.inFlight && (chart.scale ?? null) === (app.scale ?? null) ? chart.progress : undefined);
 
 function reset(scale) {
   turnGen += 1; // a stream from an earlier scale is no longer ours
@@ -208,17 +212,15 @@ function renderLive() {
   if (!live || !progress || !log) return;
   const stuck = atBottom(log);
   if (chart.inFlight && !chart.live) {
-    const thinking = el("span", "thinking", "The cartographer is thinking");
-    thinking.append(el("span", "caret"));
-    live.replaceChildren(thinking);
+    live.replaceChildren(thinkingEl(thinkingLine("the cartographer", chart.progress)));
   } else if (chart.live) {
     live.replaceChildren(renderMarkdown(chart.live));
   } else {
     live.replaceChildren();
   }
   live.hidden = !(chart.live || chart.inFlight);
-  progress.textContent = chart.progress === "propose_sketch" ? "The cartographer is drawing a sketch" : chart.progress ? `The cartographer: ${chart.progress}` : "";
-  progress.hidden = !chart.progress;
+  progress.textContent = chart.progress && chart.live ? `${thinkingLine("the cartographer", chart.progress)}…` : "";
+  progress.hidden = !progress.textContent;
   if (stuck) log.scrollTop = log.scrollHeight;
 }
 
