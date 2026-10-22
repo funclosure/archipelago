@@ -8,7 +8,7 @@ import {
   sessionEndInputSchema, slugSchema, landmarkInputSchema, learnerInputSchema, modeSchema,
 } from "../core/validators.ts";
 import { listDomains, requireDomain, updateDomain, upsertDomain } from "../core/repositories/domainRepository.ts";
-import { addSea, listSeas, removeSea, updateSea } from "../core/repositories/seaRepository.ts";
+import { addSeaFrom, listSeas, removeSea, updateSea } from "../core/repositories/seaRepository.ts";
 import {
   getIsland, getIslandById, islandPath, listIslands, requireIsland, updateIsland, upsertIsland,
   setHarbour, clearHarbour, getHarbour,
@@ -431,12 +431,13 @@ common(sea.command("list").option("--domain <slug>").option("--island <slug>", "
     return { seas: listSeas(db, d.id, seaScale(db, d.id, o.island)) };
   })),
 );
-common(sea.command("add").option("--domain <slug>").option("--island <slug>", "add among this island's islets").option("--name <name>").option("--x <n>").option("--y <n>")).action(
+common(sea.command("add").option("--domain <slug>").option("--island <slug>", "add among this island's islets").option("--name <name>").option("--x <n>").option("--y <n>").option("--islands <slugs>", "comma-separated: the map sets the name over these islands once they are placed")).action(
   run((o) => withDb((db) => {
-    const input = seaWriteSchema.parse({ op: "add", domain: o.domain, island: o.island, name: o.name, x: o.x, y: o.y });
+    const islands = typeof o.islands === "string" ? o.islands.split(",").map((s: string) => s.trim()).filter(Boolean) : undefined;
+    const input = seaWriteSchema.parse({ op: "add", domain: o.domain, island: o.island, name: o.name, x: o.x, y: o.y, islands });
     if (input.op !== "add") throw new Error("unreachable");
     const d = requireDomain(db, input.domain);
-    return addSea(db, { domainId: d.id, parentIslandId: seaScale(db, d.id, input.island), name: input.name, x: input.x, y: input.y });
+    return addSeaFrom(db, { domainId: d.id, parentIslandId: seaScale(db, d.id, input.island), name: input.name, x: input.x, y: input.y, islands: input.islands });
   })),
 );
 common(sea.command("update").option("--domain <slug>").option("--id <n>").option("--name <name>").option("--x <n>").option("--y <n>")).action(

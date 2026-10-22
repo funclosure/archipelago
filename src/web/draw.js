@@ -50,12 +50,12 @@ export function drawSeaWater(ctx, dots, radius, dim = false) {
 }
 
 /** A sea's name: upright capitals, tracked as `set` says (sea-model.js `lettering`), faint until hovered or selected. */
-export function drawSeaName(ctx, sea, set, { selected = false, hover = false, dim = false } = {}) {
+export function drawSeaName(ctx, sea, set, { selected = false, hover = false, dim = false, draft = false } = {}) {
   ctx.save();
   ctx.font = `${set.font}px Georgia, 'Times New Roman', serif`;
   ctx.textAlign = "left";
   ctx.textBaseline = "alphabetic";
-  ctx.fillStyle = alpha(PALETTE.line, (selected || hover ? 0.72 : 0.4) * (dim ? 0.5 : 1));
+  ctx.fillStyle = draft ? alpha(PALETTE.lamp, 0.6) : alpha(PALETTE.line, (selected || hover ? 0.72 : 0.4) * (dim ? 0.5 : 1));
   let x = sea.x - set.total / 2;
   [...set.text].forEach((ch, i) => {
     ctx.fillText(ch, x, sea.y + set.font * 0.35);

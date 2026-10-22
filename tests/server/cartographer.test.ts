@@ -78,7 +78,7 @@ test("approving the sketch draws it; the thread says so; discarding a second one
   expect((await post("/api/sketch", { domain: "sd", sketchId: second.id, action: "discard" })).json.sketch.status).toBe("discarded");
   const t = await get("/api/thread?domain=sd&mode=cartographer");
   expect(t.sketch).toBeNull();
-  expect(t.messages.filter((m: any) => m.kind === "system").map((m: any) => m.body)).toEqual(["sketch approved: 6 islands, 5 straits, harbour foundations", "sketch discarded"]);
+  expect(t.messages.filter((m: any) => m.kind === "system").map((m: any) => m.body)).toEqual(["sketch approved: 6 islands, 5 straits, 2 seas, harbour foundations", "sketch discarded"]);
 });
 
 test("sailing closer: the cartographer at an island's scale proposes islets in that island's thread", async () => {

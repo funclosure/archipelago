@@ -155,7 +155,7 @@ const canned = (prefix: string, slug: string) => ({
 
 /**
  * No-login cartographer for `serve --stub` and tests, through the same tool: an empty scale → propose_sketch
- * (six canned islands at the top, four islets inside an island, chained by straits, the first as harbour) ·
+ * (six canned islands at the top, four islets inside an island, chained by straits, the first as harbour, two seas) ·
  * "rename" → propose_sketch updating the first island's summary · "fail" → throws · else a canned line.
  * A function declaration, not a const: persona.ts imports it while this module may still be evaluating.
  */
@@ -176,6 +176,10 @@ export async function cartographerStubTurn({ dbPath, domain, island, emit }: Jud
       islands,
       straits: islands.slice(1).map((isle, i) => ({ from: islands[i]!.slug, to: isle.slug })),
       harbour: islands[0]!.slug,
+      seas: [
+        { name: "Shallows", islands: islands.slice(0, Math.ceil(islands.length / 2)).map((i) => i.slug) },
+        { name: "Deeps", islands: islands.slice(Math.ceil(islands.length / 2)).map((i) => i.slug) },
+      ],
       // A domain made from a description alone gets a name: its provisional one, title-cased, says the stub was here.
       ...(!ctx.scale && ctx.domain.provisional ? { name: `${ctx.domain.name.replace(/…$/, "")} (charted)` } : {}),
     });

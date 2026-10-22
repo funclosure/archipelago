@@ -42,8 +42,8 @@ export type Snapshot = {
   reefs: string[];
   /** The cartographer's pending sketch at this scale, drawn as drafts until the reader approves it. */
   sketch: { id: number; body: SketchBody; messageId: number | null } | null;
-  /** The seas the reader named at this scale. */
-  seas: { id: number; name: string; x: number; y: number }[];
+  /** The seas at this scale. A suggested sea not placed yet has null x/y and the islands it groups as `anchor`. */
+  seas: { id: number; name: string; x: number | null; y: number | null; anchor: string[] | null }[];
 };
 export type CommentView = Comment & { target: string };
 
@@ -152,7 +152,7 @@ export function buildSnapshot(db: Database, domainSlug: string, scaleSlug: strin
       ...straitViews.filter((s) => s.verdict?.state === "reef").map((s) => `strait:${s.from}~${s.to}`),
     ],
     sketch: pending ? { id: pending.id, body: pending.body, messageId: pending.messageId } : null,
-    seas: listSeas(db, domain.id, parentId).map((s) => ({ id: s.id, name: s.name, x: s.x, y: s.y })),
+    seas: listSeas(db, domain.id, parentId).map((s) => ({ id: s.id, name: s.name, x: s.x, y: s.y, anchor: s.anchor })),
   };
 }
 

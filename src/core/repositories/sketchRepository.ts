@@ -7,6 +7,7 @@ import { setLandmarks } from "./landmarkRepository.ts";
 import { listStraits, upsertStrait } from "./straitRepository.ts";
 import { addMessage } from "./messageRepository.ts";
 import { nameDomain } from "./domainRepository.ts";
+import { addSea, listSeas } from "./seaRepository.ts";
 
 const COLS =
   "id, domain_id as domainId, parent_island_id as parentIslandId, body, status, message_id as messageId, created_at as createdAt, decided_at as decidedAt";
@@ -70,6 +71,19 @@ export function validateSketch(db: Database, domainId: number, parentIslandId: n
   const siblingSlugs = new Set(siblings.map((i) => i.slug));
   for (const update of body.updates) {
     if (!siblingSlugs.has(update.slug)) throw new ArchipelagoError(`update: "${update.slug}" is not an island already ${where}`);
+  }
+  // Seas: new names only (the reader's own are never renamed or regrouped), each island in at most one of them.
+  const named = new Set(listSeas(db, domainId, parentIslandId).map((s) => s.name.toLowerCase()));
+  const grouped = new Set<string>();
+  for (const sea of body.seas) {
+    const key = sea.name.toLowerCase();
+    if (named.has(key)) throw new ArchipelagoError(`a sea named "${sea.name}" is already ${where === "at the top scale" ? "on the map" : "among these islets"} or in the sketch`);
+    named.add(key);
+    for (const slug of sea.islands) {
+      if (!atScale.has(slug)) throw new ArchipelagoError(`sea "${sea.name}": "${slug}" is not an island ${where}`);
+      if (grouped.has(slug)) throw new ArchipelagoError(`sea "${sea.name}": "${slug}" is already in another sea of the sketch`);
+      grouped.add(slug);
+    }
   }
   return body;
 }
@@ -136,7 +150,7 @@ export function discardSketch(db: Database, domainId: number, id: number): Sketc
 }
 
 /** `domain`: its slug and name after the approval; a sketch that named a provisional domain may have changed both. */
-export type ApprovedSketch = { sketch: Sketch; islands: number; straits: number; updates: number; harbour: string | null; domain: { slug: string; name: string } };
+export type ApprovedSketch = { sketch: Sketch; islands: number; straits: number; updates: number; seas: number; harbour: string | null; domain: { slug: string; name: string } };
 
 /**
  * Writes a pending sketch to the map in one transaction, through the repositories the CLI uses, and records
@@ -158,6 +172,7 @@ export function approveSketch(db: Database, domainId: number, id: number): Appro
     }
     for (const update of body.updates) updateIsland(db, domainId, update.slug, { name: update.name, summary: update.summary });
     if (body.harbour !== undefined) setHarbour(db, domainId, body.harbour);
+    for (const sea of body.seas) addSea(db, { domainId, parentIslandId: sketch.parentIslandId, name: sea.name, anchor: sea.islands });
     const domain = body.name !== undefined ? nameDomain(db, domainId, body.name) : db.query<{ slug: string; name: string }, [number]>("select slug, name from domains where id = ?").get(domainId)!;
     const approved = setStatus(db, sketch.id, "approved");
     const parts = [
@@ -165,11 +180,12 @@ export function approveSketch(db: Database, domainId: number, id: number): Appro
       body.islands.length && `${body.islands.length} ${body.islands.length === 1 ? "island" : "islands"}`,
       body.straits.length && `${body.straits.length} ${body.straits.length === 1 ? "strait" : "straits"}`,
       body.updates.length && `${body.updates.length} ${body.updates.length === 1 ? "update" : "updates"}`,
+      body.seas.length && `${body.seas.length} ${body.seas.length === 1 ? "sea" : "seas"}`,
       body.harbour !== undefined && `harbour ${body.harbour}`,
     ].filter(Boolean);
     addMessage(db, { domainId, islandId: sketch.parentIslandId, role: "cartographer", kind: "system", body: `sketch approved: ${parts.join(", ")}`, mode: "cartographer" });
     return {
-      sketch: approved, islands: body.islands.length, straits: body.straits.length, updates: body.updates.length, harbour: body.harbour ?? null,
+      sketch: approved, islands: body.islands.length, straits: body.straits.length, updates: body.updates.length, seas: body.seas.length, harbour: body.harbour ?? null,
       domain: { slug: domain.slug, name: domain.name },
     };
   })();

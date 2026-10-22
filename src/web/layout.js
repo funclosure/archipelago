@@ -66,7 +66,7 @@ export function createSimulation() {
       const dy = b.y - a.y;
       const d = Math.sqrt(dx * dx + dy * dy) || 1;
       const rest = a.radius + b.radius + REST_GAP;
-      const f = (d - rest) * SPRING * alpha;
+      const f = (d - rest) * SPRING * (l.weight ?? 1) * alpha;
       const fx = (dx / d) * f;
       const fy = (dy / d) * f;
       a.vx += fx / a.mass;

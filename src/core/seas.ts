@@ -10,10 +10,17 @@ export function islandRadius(count: number): number {
   return Math.min(88, Math.max(48, 220 / Math.sqrt(Math.max(1, count))));
 }
 
-/** Each sea's island slugs, in the islands' order. Unplaced islands (no position yet) belong to no sea. */
-export function seaMembers(seas: Pick<Sea, "id" | "x" | "y">[], islands: { slug: string; x: number | null; y: number | null }[]): Map<number, string[]> {
+/**
+ * Each sea's island slugs, in the islands' order. Unplaced islands (no position yet) belong to no sea. A suggested
+ * sea the page has not placed yet holds the islands it was suggested for, and takes no part in the nearest rule.
+ */
+export function seaMembers(
+  allSeas: (Pick<Sea, "id" | "x" | "y"> & { anchor?: string[] | null })[],
+  islands: { slug: string; x: number | null; y: number | null }[],
+): Map<number, string[]> {
   const radius = islandRadius(islands.length);
-  const out = new Map(seas.map((s) => [s.id, [] as string[]]));
+  const out = new Map(allSeas.map((s) => [s.id, s.x === null ? islands.filter((i) => s.anchor?.includes(i.slug)).map((i) => i.slug) : ([] as string[])]));
+  const seas = allSeas.filter((s): s is typeof s & { x: number; y: number } => s.x !== null && s.y !== null);
   for (const i of islands) {
     if (i.x === null || i.y === null) continue;
     let best: number | null = null;
