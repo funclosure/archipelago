@@ -64,6 +64,12 @@ export function nameDomain(db: Database, domainId: number, name: string): Domain
   return db.query<Domain, [string, string, number]>(`update domains set name = ?, slug = ?, provisional = 0 where id = ? returning ${COLS}`).get(name, slug, domainId)!;
 }
 
+/** Deletes a domain and everything in it: islands, threads, verdicts, boards, sketches, seas all cascade. */
+export function removeDomain(db: Database, slug: string): void {
+  const d = requireDomain(db, slug);
+  db.run("delete from domains where id = ?", [d.id]);
+}
+
 export function listDomains(db: Database): Domain[] {
   return db.query<Domain, []>(`select ${COLS} from domains order by slug`).all();
 }

@@ -46,6 +46,8 @@ export const seaWriteSchema = z.discriminatedUnion("op", [
   z.object({ op: z.literal("remove"), domain: slugSchema, id: seaId }),
 ]);
 
+export const domainRemoveSchema = z.object({ domain: slugSchema });
+
 export const domainUpdateSchema = z
   .object({ domain: slugSchema, name: domainName.optional(), description: z.union([descriptionSchema, z.null()]).optional() })
   .refine((u) => u.name !== undefined || u.description !== undefined, { message: "an update changes the name, the description, or both" });
