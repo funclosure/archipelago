@@ -4,6 +4,7 @@
 // rebuilds the pane and the board) comes back in the right tokens with nothing to invalidate.
 import { PALETTE } from "./draw.js";
 import { parsePlot, plotSize, plotOptions, plotColours, plotLegend } from "./plot-model.js";
+import { t } from "./i18n.js";
 
 let plotter = null;
 let loading = null;
@@ -84,7 +85,7 @@ function draw(holder, source, options) {
     const legend = legendEl(options); // rebuilt with each draw, so a theme switch recolours the swatches too
     if (legend) holder.append(legend);
   } catch (e) {
-    holder.replaceChildren(fallback(source, e instanceof Error ? e.message : "the plot did not draw"));
+    holder.replaceChildren(fallback(source, e instanceof Error ? e.message : t("plot.didNotDraw")));
   }
 }
 
@@ -134,7 +135,7 @@ export function plotElement(source) {
   box.addEventListener("wheel", (e) => e.stopPropagation(), { capture: true });
   const cap = document.createElement("div");
   cap.className = "cap";
-  cap.textContent = "plot";
+  cap.textContent = t("plot.plot");
   box.append(cap);
   const holder = document.createElement("div");
   holder.className = "holder";
@@ -145,10 +146,10 @@ export function plotElement(source) {
     holder.append(fallback(source, parsed.error));
     return box;
   }
-  holder.textContent = "drawing a plot…";
+  holder.textContent = t("plot.drawing");
   load().then((ready) => {
     if (!ready) {
-      holder.replaceChildren(fallback(source, "plots unavailable"));
+      holder.replaceChildren(fallback(source, t("plot.unavailable")));
       return;
     }
     // A background tab never fires rAF, so draw straight away; the ResizeObserver corrects

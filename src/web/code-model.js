@@ -1,5 +1,6 @@
 // Pure, DOM-free: what the highlighter knows about languages and how its tokens become spans.
 // The colours live in styles.css as --code-<slot>; here every slot is a sentinel hex shiki hands back.
+import { t as translate } from "./i18n.js";
 
 export const SLOTS = ["fg", "keyword", "string", "comment", "type", "number"];
 export const SENTINELS = SLOTS.map((_, i) => `#00000${i + 1}`);
@@ -47,7 +48,7 @@ export function resolveLang(tag) {
 /** The caption for a fence tag. */
 export function labelOf(tag) {
   const t = String(tag ?? "");
-  if (!t) return "code";
+  if (!t) return translate("codeModel.code");
   const lang = resolveLang(t);
   return lang ? LABELS[lang] : t;
 }

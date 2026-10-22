@@ -19,8 +19,8 @@ export type LearnerView = { note: string; ground: GroundItem[]; reefs: ReefClaim
 export type JudgeContext = {
   /** Whose turn this context is for. */
   mode: MessageMode;
-  /** `description`: the reader's words on what they want to chart and why, or null. */
-  domain: { slug: string; name: string; description: string | null };
+  /** `description`: the reader's words on what they want to chart and why, or null. `language`: the page's, or null. */
+  domain: { slug: string; name: string; description: string | null; language: string | null };
   island: { slug: string; name: string; summary: string | null; path: string[] };
   verdict: Verdict | null;
   history: Verdict[];
@@ -75,7 +75,7 @@ export function buildJudgeContext(db: Database, domainSlug: string, islandSlug: 
     .filter((p) => p.proposal.status === "pending");
   return {
     mode,
-    domain: { slug: domain.slug, name: domain.name, description: domain.description },
+    domain: { slug: domain.slug, name: domain.name, description: domain.description, language: getLearner(db).language },
     island: { slug: island.slug, name: island.name, summary: island.summary, path: islandPath(db, island.id).map((i) => i.slug) },
     verdict: latestVerdict(db, "island", island.id),
     history: verdictHistory(db, "island", island.id),
@@ -116,7 +116,7 @@ export const indent = (body: string) => body.replace(/\r?\n/g, "\n  ");
 export function renderIslandHead(ctx: JudgeContext): string[] {
   const lines = [`# This island`, ``];
   lines.push(`Domain: ${ctx.domain.name} (${ctx.domain.slug})`);
-  lines.push(...renderDescription(ctx.domain.description));
+  lines.push(...renderDescription(ctx.domain.description, ctx.domain.language));
   lines.push(`Island: ${ctx.island.name} (island:${ctx.island.slug}), at ${ctx.island.path.join(" › ")}`);
   if (ctx.island.summary) lines.push(`Summary: ${indent(ctx.island.summary)}`);
   lines.push(
@@ -130,9 +130,17 @@ export function renderIslandHead(ctx: JudgeContext): string[] {
   return lines;
 }
 
-/** The domain's description, quoted as the reader wrote it: one line, or none when they gave none. */
-export function renderDescription(description: string | null): string[] {
-  return description ? [`Description (the reader's words on what they want to chart and why): ${indent(description)}`] : [];
+/** How the context names each page language. */
+const LANGUAGE_NAMES: Record<string, string> = { en: "English", "zh-TW": "Traditional Chinese (zh-TW, as written in Taiwan)" };
+
+/**
+ * The domain's description, quoted as the reader wrote it (none when they gave none), and the language of the
+ * reader's page when it is known: the Language section of each protocol says what to do with it.
+ */
+export function renderDescription(description: string | null, language: string | null = null): string[] {
+  const lines = description ? [`Description (the reader's words on what they want to chart and why): ${indent(description)}`] : [];
+  if (language) lines.push(`The reader's page is in ${LANGUAGE_NAMES[language] ?? language}.`);
+  return lines;
 }
 
 /** `## The learner`: the note, solid ground in every domain, and the claims never to build on. */

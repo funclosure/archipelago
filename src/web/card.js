@@ -1,8 +1,9 @@
 import { app, api, setScale, frameSelection, setMode } from "./app.js";
 import { streamPost } from "./stream.js";
-import { logItems, askFor, roundOf } from "./thread.js";
+import { logItems, askFor, roundOf, systemText } from "./thread.js";
 import { landmarkLit, allExplored } from "./view-model.js";
-import { PERSONA_NAMES, headPill } from "./mode-model.js";
+import { PERSONA_NAMES, headPill, stateLabel } from "./mode-model.js";
+import { t } from "./i18n.js";
 import { thinkingLine } from "./progress-model.js";
 import { thinkingEl } from "./thinking.js";
 import { renderMarkdown } from "./markdown.js";
@@ -160,7 +161,7 @@ const pct = (v) => `${Math.round(v * 100)}%`;
 const atBottom = (log) => log.scrollHeight - log.scrollTop - log.clientHeight < STICK_PX;
 
 // Requests go to the cartographer, never to the Keeper: they open its pane at this scale.
-const NOTE_HELP = "For the cartographer, who sketches the map: a wrong summary, a split you want, where to sail next. It answers in its own pane; the Keeper never sees it.";
+const NOTE_HELP = t("card.noteHelp");
 
 /** Sail closer: go inside the island and let the cartographer sketch its islets. */
 async function sailCloser(island) {
@@ -289,7 +290,7 @@ function quoteIntoAnswer(question) {
   const ta = pane.querySelector("#answer");
   if (!ta || ta.disabled) return;
   const line = `> ${question}`;
-  const reef = ta.placeholder === "what is wrong with this reef";
+  const reef = ta.placeholder === t("card.disputePlaceholder");
   const current = reef ? thread.disputeDraft : thread.draft;
   if (!current.split("\n").includes(line)) {
     const next = current.trim() ? `${line}\n${current}` : `${line}\n`;
@@ -400,7 +401,7 @@ function chipsEl(island) {
   for (const l of island.landmarks.items) {
     const lit = landmarkLit(l, thread.mode);
     const chip = el("span", `chip${lit ? ` ${on}` : ""}`, l.name);
-    if (lit && thread.mode === "judge" && l.evidence) chip.title = `“${l.evidence}”`;
+    if (lit && thread.mode === "judge" && l.evidence) chip.title = t("card.evidence", { evidence: l.evidence });
     if (lit && thread.litSeen && !thread.litSeen.has(l.slug)) chip.classList.add("just-lit");
     row.append(chip);
   }
@@ -411,10 +412,10 @@ function noteForm(island) {
   const form = el("form", "note");
   const input = el("input");
   input.id = "note";
-  input.placeholder = "a note for the cartographer";
+  input.placeholder = t("card.notePlaceholder");
   input.value = noteDraft;
   input.addEventListener("input", () => (noteDraft = input.value));
-  const send = button("Send", null);
+  const send = button(t("card.send"), null);
   send.type = "submit";
   form.append(input, send);
   form.addEventListener("submit", (e) => {
@@ -423,7 +424,7 @@ function noteForm(island) {
     if (!body) return;
     noteDraft = "";
     noteOpen = false;
-    openChart(app.scale ?? null, { message: `About ${island.name} (${island.slug}): ${body}` });
+    openChart(app.scale ?? null, { message: t("card.noteMessage", { name: island.name, slug: island.slug, body }) });
   });
   return form;
 }
@@ -435,9 +436,9 @@ function headEl(island) {
   const pill = headPill(island, thread.mode);
   const pills = el("span", "pills");
   pills.append(el("span", pill.cls, pill.text));
-  if (island.harbour) pills.append(el("span", "pill harbour", "harbour"));
+  if (island.harbour) pills.append(el("span", "pill harbour", t("card.harbour")));
   // The head names who answers here.
-  pills.append(el("span", `pill mode ${thread.mode}`, thread.mode === "mentor" ? "with the mentor" : "with the Keeper"));
+  pills.append(el("span", `pill mode ${thread.mode}`, t(thread.mode === "mentor" ? "card.withMentor" : "card.withKeeper")));
   row.append(pills);
   head.append(row);
   if (island.summary) head.append(el("p", "summary", island.summary));
@@ -449,17 +450,17 @@ function headEl(island) {
   if (hasLandmarks) {
     parts.push(
       thread.mode === "mentor"
-        ? `${island.landmarks.explored ?? 0} of ${island.landmarks.total} explored`
-        : `${island.landmarks.unlocked} of ${island.landmarks.total} charted`,
+        ? t("card.exploredOf", { explored: island.landmarks.explored ?? 0, total: island.landmarks.total })
+        : t("card.chartedOf", { n: island.landmarks.unlocked, total: island.landmarks.total }),
     );
   }
   const round = thread.mode === "judge" ? roundOf(thread.messages) : 0; // the mentor has no rounds
-  if (round > 0) parts.push(`round ${Math.min(round, ROUNDS)} of ${ROUNDS}`); // the opening turn is not a round yet
-  sub.append(el("span", null, parts.join(" · ")));
+  if (round > 0) parts.push(t("card.round", { n: Math.min(round, ROUNDS), total: ROUNDS })); // the opening turn is not a round yet
+  sub.append(el("span", null, parts.join(t("card.partsJoin"))));
   const links = el("span", "links");
-  if (island.hasChildren) links.append(button("Sail in", () => setScale(island.slug), "link"));
-  else links.append(button("Sail closer", () => void sailCloser(island), "link"));
-  const noteToggle = button("Note to cartographer", () => {
+  if (island.hasChildren) links.append(button(t("card.sailIn"), () => setScale(island.slug), "link"));
+  else links.append(button(t("card.sailCloser"), () => void sailCloser(island), "link"));
+  const noteToggle = button(t("card.noteToggle"), () => {
     noteOpen = !noteOpen;
     render();
     if (noteOpen) pane.querySelector("#note")?.focus();
@@ -467,15 +468,15 @@ function headEl(island) {
   noteToggle.id = "note-toggle";
   links.append(noteToggle);
   // On a phone the pane covers the map and its board button, and there is no Escape key: these two reach them.
-  links.append(button("Board", () => document.getElementById("board-toggle").click(), "link phone-only"));
-  links.append(button("Map", () => void select(null), "link phone-only pane-close"));
+  links.append(button(t("card.board"), () => document.getElementById("board-toggle").click(), "link phone-only"));
+  links.append(button(t("card.map"), () => void select(null), "link phone-only pane-close"));
   sub.append(links);
   head.append(sub);
 
   if (island.children.total) {
     const b = island.children.byState;
     head.append(
-      el("p", "muted", `${island.children.total} islets: ${b.mountainous} mountainous, ${b.settled} settled, ${b.sandbar} sandbar, ${b.reef} reef, ${b.open} open`),
+      el("p", "muted", t("card.islets", { total: island.children.total, mountainous: b.mountainous, settled: b.settled, sandbar: b.sandbar, reef: b.reef, open: b.open })),
     );
   }
   const earlier = el("div", "earlier");
@@ -491,7 +492,7 @@ function headEl(island) {
 function retryButton() {
   const actions = el("div", "actions");
   actions.append(
-    button("Retry", () => {
+    button(t("card.retry"), () => {
       thread.version = null; // the render below refetches
       render();
     }),
@@ -502,8 +503,8 @@ function retryButton() {
 function verdictEl(v) {
   const card = el("div", "verdict-card");
   const row = el("div", "row");
-  row.append(el("span", `pill${v.state === "reef" ? " reef" : ""}`, `charted as ${v.state}`));
-  row.append(el("span", "conf", `confidence ${pct(v.confidence)} · ${v.at.slice(0, 10)}`));
+  row.append(el("span", `pill${v.state === "reef" ? " reef" : ""}`, t("card.chartedAs", { state: stateLabel(v.state) })));
+  row.append(el("span", "conf", t("card.confidence", { pct: pct(v.confidence), date: v.at.slice(0, 10) })));
   card.append(row);
   card.append(el("q", null, v.evidence));
   if (v.rationale) card.append(el("div", "why", v.rationale));
@@ -514,17 +515,17 @@ function verdictEl(v) {
 function reefEl(item) {
   const p = item.proposal;
   const box = el("div", "reef-block");
-  box.append(el("div", "reef-title", "Reef?"));
+  box.append(el("div", "reef-title", t("card.reefTitle")));
   box.append(el("p", null, p.claim));
-  box.append(el("p", "muted", `If so: ${p.consequence}`));
-  const status = p.status === "pending" ? "pending — answer below" : p.status === "confirmed" ? "confirmed, charted as reef" : "disputed";
+  box.append(el("p", "muted", t("card.ifSo", { consequence: p.consequence })));
+  const status = t(p.status === "pending" ? "card.reefPending" : p.status === "confirmed" ? "card.reefConfirmed" : "card.reefDisputed");
   box.append(el("div", "muted", status));
   return box;
 }
 
 function choicesEl(ask, reefPending) {
   const box = el("div", "choices");
-  box.append(el("div", "q", ask.picked !== null ? "you chose" : "choose one, or answer below"));
+  box.append(el("div", "q", t(ask.picked !== null ? "card.youChose" : "card.chooseOne")));
   for (const option of ask.options) {
     const b = button(option, () => answerAsk(thread.slug, ask, option), "choice");
     if (ask.picked !== null) {
@@ -542,7 +543,7 @@ function itemEl(item, reefPending) {
   if (item.kind === "landmark") return el("div", "lit-line", `◆ ${item.names.join(" · ")}`);
   if (item.kind === "explored") return el("div", "explored-line", `◇ ${item.names.join(" · ")}`);
   if (item.kind === "verdict") return verdictEl(item.verdict);
-  if (item.kind === "system") return el("div", "msg system", item.text);
+  if (item.kind === "system") return el("div", "msg system", systemText(item.text));
   if (item.kind === "reef_proposal") return reefEl(item);
   const m = el("div", `msg ${item.role}`);
   const persona = item.role === "judge" || item.role === "mentor";
@@ -556,7 +557,7 @@ function logEl(island) {
   const log = el("div", "log");
   if (!thread.loaded) {
     if (!thread.loadError) {
-      log.append(el("p", "muted", "loading the thread…"));
+      log.append(el("p", "muted", t("card.loading")));
       return log;
     }
     log.append(el("p", "error", thread.loadError), retryButton());
@@ -564,20 +565,20 @@ function logEl(island) {
   }
   if (thread.loadError) {
     // the messages below are the last good ones; only the refetch failed
-    log.append(el("p", "muted", `could not refresh the thread: ${thread.loadError}`), retryButton());
+    log.append(el("p", "muted", t("card.refreshFailed", { error: thread.loadError })), retryButton());
   }
   const items = logItems(thread.messages, island);
   if (items.length === 0 && !thread.inFlight) {
     const empty = el("div", "empty");
     if (thread.mode === "mentor") {
-      empty.append(el("p", "muted", "Nothing explored here yet. The mentor opens with the coastline and one analogy from what you know; then you lead."));
-      const b = button("Explore with the mentor", () => void runTurn(island.slug, null));
+      empty.append(el("p", "muted", t("card.mentorEmpty")));
+      const b = button(t("card.exploreWithMentor"), () => void runTurn(island.slug, null));
       b.id = "landfall";
       empty.append(b);
     } else {
       if (island.verdict) empty.append(verdictEl(island.verdict));
-      empty.append(el("p", "muted", island.verdict ? "No thread yet. The Keeper asks first." : "Unsurveyed. The Keeper asks first."));
-      const b = button(island.verdict ? "Explore it" : "Make landfall", () => void runTurn(island.slug, null));
+      empty.append(el("p", "muted", t(island.verdict ? "card.keeperEmptyThread" : "card.keeperUnsurveyed")));
+      const b = button(t(island.verdict ? "card.exploreIt" : "card.makeLandfall"), () => void runTurn(island.slug, null));
       b.id = "landfall";
       empty.append(b);
     }
@@ -596,7 +597,7 @@ function logEl(island) {
   progress.id = "progress";
   progress.hidden = true;
   log.append(live, progress);
-  if (thread.stopped) log.append(el("div", "stopped", "stopped · the reply was not kept"));
+  if (thread.stopped) log.append(el("div", "stopped", t("card.stopped")));
   if (thread.error) log.append(el("div", "error", thread.error));
   return log;
 }
@@ -616,14 +617,14 @@ function footEl(island) {
   const busy = thread.inFlight || thread.answering;
   ta.disabled = !thread.loaded || busy || empty;
   ta.placeholder = pending
-      ? "what is wrong with this reef"
+      ? t("card.disputePlaceholder")
       : empty
         ? thread.mode === "mentor"
-          ? "press Explore with the mentor to begin"
-          : island.verdict ? "press Explore it to begin" : "press Make landfall to begin"
+          ? t("card.beginMentor")
+          : t(island.verdict ? "card.beginExplore" : "card.beginLandfall")
         : ask
-          ? "or answer in your own words"
-          : thread.mode === "mentor" ? "ask, restate, or try an example" : "your answer";
+          ? t("card.ownWords")
+          : t(thread.mode === "mentor" ? "card.mentorPlaceholder" : "card.answerPlaceholder");
   ta.value = pending ? thread.disputeDraft : thread.draft;
   ta.addEventListener("input", () => {
     if (pending) thread.disputeDraft = ta.value;
@@ -651,7 +652,7 @@ function footEl(island) {
   });
   form.append(ta);
   if (pending) {
-    const dispute = button("Dispute", null, "btn ghost");
+    const dispute = button(t("card.dispute"), null, "btn ghost");
     dispute.type = "submit";
     dispute.disabled = busy;
     form.append(dispute);
@@ -663,12 +664,12 @@ function footEl(island) {
   } else {
     if (thread.inFlight && turnAbort) {
       // While a reply streams, Send is Stop (Escape does the same).
-      const stop = button("Stop", () => stopTurn(), "btn ghost");
+      const stop = button(t("card.stop"), () => stopTurn(), "btn ghost");
       stop.type = "button";
       stop.id = "stop";
       form.append(stop);
     } else {
-      const send = button("Send", null, `btn send ${thread.mode}`); // tinted by who it goes to, like the head's mode pill
+      const send = button(t("card.send"), null, `btn send ${thread.mode}`); // tinted by who it goes to, like the head's mode pill
       send.type = "submit";
       send.disabled = ta.disabled;
       form.append(send);
@@ -686,8 +687,7 @@ function footEl(island) {
   }
   foot.append(form);
   const meta = el("div", "meta");
-  meta.append(el("span", null, pending ? "Confirm at the bottom of the map · Dispute sends your objection"
-    : thread.inFlight ? "Esc to stop" : "Enter to send · Shift-Enter for a new line"));
+  meta.append(el("span", null, t(pending ? "card.metaReef" : thread.inFlight ? "card.metaStop" : "card.metaSend")));
   foot.append(meta);
   return foot;
 }
@@ -794,7 +794,7 @@ function nearestOpen() {
 
 function gripEl() {
   const grip = el("div", "grip");
-  grip.title = "drag to resize";
+  grip.title = t("card.resize");
   grip.addEventListener("pointerdown", (e) => {
     e.preventDefault();
     pane.classList.add("resizing");
@@ -833,7 +833,7 @@ async function renderHistory(island, id) {
     if (id !== renderId || app.selected !== island.slug || history.length < 2) return;
     const earlier = pane.querySelector("#earlier");
     if (!earlier) return;
-    earlier.textContent = `earlier: ${history.slice(1).map((v) => `${v.state} · ${v.createdAt.slice(0, 10)}`).join("; ")}`;
+    earlier.textContent = t("card.earlier", { list: history.slice(1).map((v) => t("card.earlierItem", { state: stateLabel(v.state), date: v.createdAt.slice(0, 10) })).join(t("card.earlierJoin")) });
     earlier.hidden = false;
   } catch (error) {
     console.error(error);

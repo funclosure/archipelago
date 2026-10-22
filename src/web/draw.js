@@ -5,6 +5,7 @@ import {
   boxScale, ringPoints, arcRanges, arcIndices, polar, rollupSegments, hatchLines, polylineLength,
 } from "./contour.js";
 import { LINE_H } from "./labels.js";
+import { t as tr } from "./i18n.js"; // `t` is the animation clock in this file
 
 export const PALETTE = {
   sea: "#0E293A",
@@ -391,7 +392,7 @@ function drawDraft(ctx, node, dim, label) {
     ctx.textAlign = "center";
     ctx.textBaseline = "top";
     ctx.fillStyle = alpha(PALETTE.lamp, 0.85);
-    ctx.fillText("draft", under.cx, under.y + 3);
+    ctx.fillText(tr("draw.draft"), under.cx, under.y + 3);
   }
   ctx.restore();
 }

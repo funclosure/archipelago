@@ -1,4 +1,5 @@
 // The outline's pure helpers: no DOM, no app state. Tested in tests/web/outline.test.js.
+import { t } from "./i18n.js";
 
 export const FULL_W = 232;
 export const RAIL_W = 44;
@@ -61,6 +62,7 @@ export function countNodes(islands) {
 }
 
 export function summaryLine(outline, lens = "judge") {
-  if (lens === "mentor") return `${outline.exploredIslands} of ${countNodes(outline.islands)} explored · ${outline.explored} landmarks`;
-  return `${outline.charted} of ${countNodes(outline.islands)} charted · ${outline.lit} lit`;
+  const total = countNodes(outline.islands);
+  if (lens === "mentor") return t("outlineModel.summaryMentor", { islands: outline.exploredIslands, total, explored: outline.explored });
+  return t("outlineModel.summary", { charted: outline.charted, total, lit: outline.lit });
 }

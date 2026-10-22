@@ -1,5 +1,5 @@
 import { test, expect } from "bun:test";
-import { seaMembers, lettering, letteringBox, stippleDots, REACH, SEA_FONT, TRACK_MIN, TRACK_MAX } from "../../src/web/sea-model.js";
+import { seaMembers, lettering, letteringBox, stippleDots, REACH, SEA_FONT, TRACK_MIN, TRACK_MAX, TRACK_MAX_CJK } from "../../src/web/sea-model.js";
 
 const R = 62;
 const node = (slug, x, y) => ({ slug, x, y, radius: R });
@@ -27,6 +27,21 @@ test("lettering is upright capitals, tracked to spread across the sea and kept w
   const box = letteringBox({ x: 10, y: 20 }, mid);
   expect(box.x0).toBeLessThan(10 - mid.total / 2);
   expect(box.x1).toBeGreaterThan(10 + mid.total / 2);
+});
+
+test("a CJK sea name keeps its characters and spreads at most TRACK_MAX_CJK ems", () => {
+  const font = SEA_FONT * R;
+  const wide = [node("a", 0, 0), node("b", 1200, 0)];
+  const han = lettering("東方海域", wide, R, measure);
+  expect(han.text).toBe("東方海域");
+  expect(han.track).toBe(font * TRACK_MAX_CJK); // the same wide sea that tracks Latin at TRACK_MAX
+  expect(TRACK_MAX_CJK).toBeLessThan(TRACK_MAX);
+  expect(lettering("にほん", wide, R, measure).track).toBe(font * TRACK_MAX_CJK);
+  expect(lettering("동해", wide, R, measure).track).toBe(font * TRACK_MAX_CJK);
+  expect(lettering("東海", [], R, measure).track).toBe(font * TRACK_MIN); // never below the floor
+  const mixed = lettering("Mare 東", wide, R, measure);
+  expect(mixed.text).toBe("Mare 東"); // any CJK character keeps the name as written
+  expect(lettering("Mare", wide, R, measure).track).toBe(font * TRACK_MAX);
 });
 
 test("stippled water surrounds the sea's islands, never on land, the same every time", () => {

@@ -598,3 +598,9 @@ body.empty .outline, body.empty .chrome, body.empty #map-focus, body.empty #boar
   border-radius: 999px; font: 12px system-ui, sans-serif; padding: 3px 10px; cursor: pointer; }
 .sea-remove:hover { border-color: var(--reef); color: var(--reef); }
 .sea-remove[hidden] { display: none; }
+
+/* Chinese: tracked small capitals scatter Han characters, a 10px glyph blurs, and synthetic italic slants them.
+   Labels that track Latin are set close and a size up, and italic lines stand upright. */
+:lang(zh) :is(.strip-label, .pill, .msg.system, .reef-title, .outline .menu .ml, .outline .sec, .pane-width, .diagram .cap, .plot .cap, .codeblock .cap, .choices .q, .cta-card .lbl, .keys-card .lbl, .keys-card .sec, .board .card > .cap .kind, .board .editor .ehead .kind, .about-card .lbl, .sketch-card .lbl, .sketch-card .sec, .new-domain-card .lbl, .hosted-card .lbl) { letter-spacing: .02em; }
+:lang(zh) :is(.strip-label, .pill, .outline .sec, .pane-width, .cta-card .lbl, .keys-card .lbl, .keys-card .sec, .about-card .lbl, .sketch-card .lbl, .sketch-card .sec, .new-domain-card .lbl, .hosted-card .lbl) { font-size: 11px; }
+:lang(zh) :is(.stopped, .progress, .thinking) { font-style: normal; }

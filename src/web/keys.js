@@ -4,6 +4,7 @@ import { app, toggleMode } from "./app.js";
 import { select } from "./interactions.js";
 import { REGIONS, nextRegion, isTyping, escapeRung, aboutKey, cheatSheet, isImeKey } from "./keys-model.js";
 import { cycleTheme } from "./theme.js";
+import { t } from "./i18n.js";
 
 const handlers = {}; // region name → handler
 let current = "outline";
@@ -54,7 +55,7 @@ function renderSheet() {
   box.replaceChildren();
   if (!sheetOpen) return;
   const card = el("div", "keys-card");
-  card.append(el("div", "lbl", "Keys"));
+  card.append(el("div", "lbl", t("keys.title")));
   const cols = el("div", "cols");
   for (const section of cheatSheet(current, { board: handlers.board?.isOpen?.() ?? false, chart: handlers.pane?.chartOpen?.() ?? false })) {
     const col = el("div", "col");

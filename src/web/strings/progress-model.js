@@ -1,0 +1,32 @@
+// Strings for progress-model.js. Keys are camelCase; keep en and zh-TW in step (tests/web/strings.test.js).
+// A step is a phrase that completes "{who} is {step}" in English and "{who}正在{step}" in Chinese.
+export default {
+  en: {
+    line: "{who} is {step}",
+    thinking: "thinking",
+    chartContext: "reading the chart",
+    proposeSketch: "drawing the sketch",
+    islandContext: "reading the island",
+    setLandmarks: "setting the landmarks",
+    unlockLandmark: "lighting a landmark",
+    markExplored: "marking what you explored",
+    recordVerdict: "recording a verdict",
+    proposeReef: "marking a reef",
+    askReader: "writing a question",
+    boardWrite: "pinning to the board",
+  },
+  "zh-TW": {
+    line: "{who}正在{step}",
+    thinking: "思考",
+    chartContext: "讀取海圖",
+    proposeSketch: "繪製草圖",
+    islandContext: "讀取這座島",
+    setLandmarks: "設定地標",
+    unlockLandmark: "點亮地標",
+    markExplored: "標記你探索過的地方",
+    recordVerdict: "記錄判定",
+    proposeReef: "標記暗礁",
+    askReader: "寫下一個問題",
+    boardWrite: "釘到白板上",
+  },
+};

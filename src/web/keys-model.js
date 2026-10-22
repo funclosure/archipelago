@@ -1,4 +1,5 @@
 // Pure, DOM-free: which region is next, what Escape does, where the outline cursor goes, what the cheat sheet says.
+import { t } from "./i18n.js";
 
 export const REGIONS = ["outline", "map", "pane"];
 
@@ -81,20 +82,22 @@ export function moveCursor(rows, cursorSlug, key) {
   }
 }
 
-const EVERYWHERE = [["Tab", "next region"], ["⇧Tab", "previous region"], ["[", "outline"], ["/", "answer"], ["b", "board"], ["m", "keeper / mentor"], ["t", "theme"], ["?", "keys"], ["Esc", "back"]];
-const CHART_KEYS = { title: "Cartographer", keys: [["↵ /", "answer"], ["l", "start the sketch"], ["⌘↵", "approve sketch"], ["↑ ↓", "scroll"], ["Esc", "close"]] };
+const k = (key) => t(`keysModel.${key}`);
+const EVERYWHERE = [["Tab", k("nextRegion")], ["⇧Tab", k("previousRegion")], ["[", k("outlineKey")], ["/", k("answer")], ["b", k("boardKey")], ["m", k("mode")], ["t", k("theme")], ["?", k("keys")], ["Esc", k("back")]];
+const CHART_KEYS = { title: k("cartographer"), keys: [["↵ /", k("answer")], ["l", k("startSketch")], ["⌘↵", k("approveSketch")], ["↑ ↓", k("scroll")], ["Esc", k("close")]] };
 const REGION_KEYS = {
-  outline: { title: "Outline", keys: [["↓ j", "move"], ["↑ k", "move"], ["↵", "select"], ["→ ←", "expand / collapse"], ["Home End", "first / last"], ["n", "new domain"]] },
-  map: { title: "Map", keys: [["↵", "select"], ["← → ↑ ↓", "pan"], ["+ −", "zoom"], ["0", "home"], ["Esc", "deselect"], ["double-click water", "name a sea"], ["Del", "remove the selected sea"], ["⇧click", "gather an island or sea"], ["⇧drag water", "gather everything in a box"], ["drag a gathered one", "move them together"]] },
-  pane: { title: "Pane", keys: [["↵ /", "answer"], ["l", "make landfall"], ["n", "note"], ["1–4", "pick option"], ["c", "confirm reef"], ["d", "dispute"], ["↑ ↓", "scroll"], ["⌘↵", "send"]] },
-  board: { title: "Board", keys: [["↓ j", "move"], ["↑ k", "move"], ["↵", "edit"], ["d n c", "add diagram / note / code"], ["x", "remove"], ["⌘↵", "save"], ["b", "map"]] },
+  outline: { title: k("outline"), keys: [["↓ j", k("move")], ["↑ k", k("move")], ["↵", k("select")], ["→ ←", k("expandCollapse")], ["Home End", k("firstLast")], ["n", k("newDomain")]] },
+  map: { title: k("map"), keys: [["↵", k("select")], ["← → ↑ ↓", k("pan")], ["+ −", k("zoom")], ["0", k("home")], ["Esc", k("deselect")], [k("doubleClickWater"), k("nameSea")], ["Del", k("removeSea")], [k("shiftClick"), k("gather")], [k("shiftDragWater"), k("gatherBox")], [k("dragGathered"), k("moveTogether")]] },
+  pane: { title: k("pane"), keys: [["↵ /", k("answer")], ["l", k("landfall")], ["n", k("note")], ["1–4", k("pickOption")], ["c", k("confirmReef")], ["d", k("dispute")], ["↑ ↓", k("scroll")], ["⌘↵", k("send")]] },
+  board: { title: k("board"), keys: [["↓ j", k("move")], ["↑ k", k("move")], ["↵", k("edit")], ["d n c", k("addCard")], ["x", k("remove")], ["⌘↵", k("save")], ["b", k("mapKey")]] },
 };
+const EVERYWHERE_SECTION = { title: k("everywhere"), keys: EVERYWHERE };
 
 /** The cheat sheet's sections for a region. With `board`, the map's slot shows the board's keys; with `chart`, the pane's shows the cartographer's. */
 export function cheatSheet(region, { board = false, chart = false } = {}) {
-  if (region === "pane" && chart) return [{ title: "Everywhere", keys: EVERYWHERE }, CHART_KEYS];
+  if (region === "pane" && chart) return [EVERYWHERE_SECTION, CHART_KEYS];
   const key = region === "map" && board ? "board" : region;
-  return [{ title: "Everywhere", keys: EVERYWHERE }, REGION_KEYS[key] ?? REGION_KEYS.outline];
+  return [EVERYWHERE_SECTION, REGION_KEYS[key] ?? REGION_KEYS.outline];
 }
 
 /**

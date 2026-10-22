@@ -1,5 +1,6 @@
 // Pure, DOM-free: what the cartographer's pending sketch puts on the page. Drafts on the map, the lines of
 // the sketch card, the pane's opening words. chart.js and view-model.js read these; nothing here fetches.
+import { t } from "./i18n.js";
 
 /** The sketch's new islands as island views the map can lay out and draw: no verdict, no position, `draft` set. */
 export function draftIslands(snapshot) {
@@ -33,18 +34,16 @@ export function draftSeas(snapshot) {
   return snapshot?.sketch?.body.seas ?? [];
 }
 
-const plural = (n, one, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
-
 /** One line naming what the sketch would do, e.g. "named React Native · 6 islands · 5 straits · harbour Foundations". */
 export function sketchSummary(body, islands = []) {
   const nameOf = (slug) => body.islands.find((i) => i.slug === slug)?.name ?? islands.find((i) => i.slug === slug)?.name ?? slug;
   const parts = [];
-  if (body.name) parts.push(`named ${body.name}`);
-  if (body.islands.length) parts.push(plural(body.islands.length, "island"));
-  if (body.straits.length) parts.push(plural(body.straits.length, "strait"));
-  if (body.updates.length) parts.push(plural(body.updates.length, "update"));
-  if (body.seas?.length) parts.push(plural(body.seas.length, "sea"));
-  if (body.harbour) parts.push(`harbour ${nameOf(body.harbour)}`);
+  if (body.name) parts.push(t("chartModel.named", { name: body.name }));
+  if (body.islands.length) parts.push(t("chartModel.islands", { n: body.islands.length }));
+  if (body.straits.length) parts.push(t("chartModel.straits", { n: body.straits.length }));
+  if (body.updates.length) parts.push(t("chartModel.updates", { n: body.updates.length }));
+  if (body.seas?.length) parts.push(t("chartModel.seas", { n: body.seas.length }));
+  if (body.harbour) parts.push(t("chartModel.harbour", { name: nameOf(body.harbour) }));
   return parts.join(" · ");
 }
 
@@ -56,11 +55,11 @@ export function sketchRows(body, islands = []) {
   const nameOf = (slug) => body.islands.find((i) => i.slug === slug)?.name ?? islands.find((i) => i.slug === slug)?.name ?? slug;
   return {
     islands: body.islands.map((i) => ({ name: i.name, summary: i.summary, landmarks: i.landmarks.map((l) => l.name).join(" · "), harbour: body.harbour === i.slug })),
-    straits: body.straits.map((s) => `${nameOf(s.from)} ~ ${nameOf(s.to)}${s.name ? ` (${s.name})` : ""}`),
+    straits: body.straits.map((s) => t(s.name ? "chartModel.straitNamed" : "chartModel.strait", { a: nameOf(s.from), b: nameOf(s.to), name: s.name })),
     updates: body.updates.map((u) => {
       const was = islands.find((i) => i.slug === u.slug);
-      const changes = [u.name !== undefined && `name → ${u.name}`, u.summary !== undefined && `summary → ${u.summary}`].filter(Boolean);
-      return `${was?.name ?? u.slug}: ${changes.join("; ")}`;
+      const changes = [u.name !== undefined && t("chartModel.newName", { name: u.name }), u.summary !== undefined && t("chartModel.newSummary", { summary: u.summary })].filter(Boolean);
+      return t("chartModel.update", { name: was?.name ?? u.slug, changes: changes.join(t("chartModel.changeSep")) });
     }),
     seas: (body.seas ?? []).map((s) => ({ name: s.name, islands: s.islands.map(nameOf).join(" · ") })),
     harbour: body.harbour && !body.islands.some((i) => i.slug === body.harbour) ? nameOf(body.harbour) : null,
@@ -72,10 +71,11 @@ export function chartOpening(snapshot) {
   const scale = snapshot.scale.path.at(-1) ?? null;
   const empty = snapshot.islands.length === 0;
   if (empty && !scale) {
-    return { text: `No islands yet. The cartographer sketches ${snapshot.domain.name} as 6–10 islands; you approve the sketch before anything is drawn.`, action: `Sketch ${snapshot.domain.name}` };
+    const name = snapshot.domain.name;
+    return { text: t("chartModel.openingTop", { name }), action: t("chartModel.actionTop", { name }) };
   }
   if (empty) {
-    return { text: `${scale.name} has no islets yet. The cartographer reads its threads and board, then sketches 4–8 islets for you to approve.`, action: `Sketch the islets of ${scale.name}` };
+    return { text: t("chartModel.openingScale", { name: scale.name }), action: t("chartModel.actionScale", { name: scale.name }) };
   }
-  return { text: "Ask for a change at this scale: a missing island, a split, a better summary, a harbour.", action: null };
+  return { text: t("chartModel.openingMore"), action: null };
 }

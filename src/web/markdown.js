@@ -4,6 +4,7 @@ import { mdBlocks, inlineSegments, questionRuns } from "./thread.js";
 import { codeElement } from "./code.js";
 import { plotElement } from "./plot.js";
 import { PLOT_LANGS } from "./plot-model.js";
+import { t } from "./i18n.js";
 
 const nodeCache = new Map(); // diagram source → parsed SVG node, cloned on repeat appends
 const pending = new Map(); // diagram source → in-flight render promise, shared across frames
@@ -65,7 +66,7 @@ export function diagramElement(source, { cache = true } = {}) {
   box.className = "diagram";
   const cap = document.createElement("div");
   cap.className = "cap";
-  cap.textContent = "diagram";
+  cap.textContent = t("markdown.diagram");
   box.append(cap);
   const holder = document.createElement("div");
   box.append(holder);
@@ -77,7 +78,7 @@ export function diagramElement(source, { cache = true } = {}) {
     holder.append(sourceBlock(source));
     return box;
   }
-  holder.textContent = "drawing a diagram…";
+  holder.textContent = t("markdown.drawingDiagram");
   let p = cache ? pending.get(source) : undefined;
   if (!p) {
     p = window.mermaid
@@ -122,7 +123,7 @@ function askSpan(run, onQuestion) {
   span.className = "ask";
   span.setAttribute("role", "button");
   span.tabIndex = 0;
-  span.title = "answer this";
+  span.title = t("markdown.answerThis");
   appendInline(span, inlineSegments(run.text));
   const fire = () => onQuestion(run.text.trim());
   span.addEventListener("click", fire);
@@ -179,11 +180,11 @@ export function renderMarkdown(text, { onQuestion = null } = {}) {
     } else if (b.type === "code" && b.lang === "mermaid" && b.closed) {
       frag.append(diagramElement(b.text));
     } else if (b.type === "code" && b.lang === "mermaid") {
-      frag.append(sourceBlock("drawing a diagram…"));
+      frag.append(sourceBlock(t("markdown.drawingDiagram")));
     } else if (b.type === "code" && PLOT_LANGS.has(b.lang) && b.closed) {
       frag.append(plotElement(b.text));
     } else if (b.type === "code" && PLOT_LANGS.has(b.lang)) {
-      frag.append(sourceBlock("drawing a plot…"));
+      frag.append(sourceBlock(t("markdown.drawingPlot")));
     } else if (b.type === "code") {
       frag.append(codeElement(b.lang, b.text, b.closed));
     }

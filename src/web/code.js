@@ -3,6 +3,7 @@
 // (/vendor/onig.wasm), so building it is async; until it lands, and for languages it lacks, the
 // block is plain text under the same caption. A failed load warns and leaves the page plain.
 import { LANGS, contourTheme, resolveLang, labelOf, spansOf } from "./code-model.js";
+import { t } from "./i18n.js";
 
 const CACHE_MAX = 64;
 const COPIED_MS = 1500;
@@ -84,13 +85,13 @@ function copyButton(text) {
   const b = document.createElement("button");
   b.type = "button";
   b.className = "copy";
-  b.textContent = "Copy";
+  b.textContent = t("code.copy");
   let timer = 0;
   b.addEventListener("click", () => {
     navigator.clipboard.writeText(text).then(() => {
-      b.textContent = "Copied";
+      b.textContent = t("code.copied");
       clearTimeout(timer);
-      timer = setTimeout(() => (b.textContent = "Copy"), COPIED_MS);
+      timer = setTimeout(() => (b.textContent = t("code.copy")), COPIED_MS);
     }).catch(() => {});
   });
   return b;

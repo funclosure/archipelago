@@ -17,7 +17,8 @@ import { installKeys } from "./keys.js";
 import { installBoard } from "./board.js";
 import { installTheme } from "./theme.js";
 import { openChart, chartWorkingHere } from "./chart.js";
-import { stepPhrase } from "./progress-model.js";
+import { thinkingLine } from "./progress-model.js";
+import { language, t } from "./i18n.js";
 import { request } from "./transport.js";
 import { installNewDomain, openNewDomain } from "./new-domain.js";
 import { anotherTab, installHosted, welcomeGate } from "./hosted.js";
@@ -409,11 +410,11 @@ function modeSwitchEl() {
   cell.className = "strip-item mode-cell";
   const label = document.createElement("span");
   label.className = "strip-label";
-  label.textContent = "Talk to";
+  label.textContent = t("app.talkTo");
   const wrap = document.createElement("div");
   wrap.className = "mode-switch";
   wrap.setAttribute("role", "group");
-  wrap.setAttribute("aria-label", "Talk to the Keeper or the mentor");
+  wrap.setAttribute("aria-label", t("app.talkToLabel"));
   for (const m of MODES) {
     const b = document.createElement("button");
     b.type = "button";
@@ -432,7 +433,7 @@ function modeSwitchEl() {
   }
   const hint = document.createElement("div");
   hint.className = "hint";
-  hint.textContent = `${MODE_HINTS[app.mode]} Press m to switch.`;
+  hint.textContent = t("app.modeHint", { hint: MODE_HINTS[app.mode] });
   cell.append(label, wrap, hint);
   return cell;
 }
@@ -446,7 +447,7 @@ function renderStrip() {
 
 function renderStatus() {
   const el = document.getElementById("status");
-  el.textContent = app.connected ? "" : "disconnected — showing the last chart";
+  el.textContent = app.connected ? "" : t("app.disconnected");
   el.classList.toggle("off", !app.connected);
 }
 
@@ -578,7 +579,7 @@ function drawSketchingHere(now) {
   const name = app.snapshot.scale.path.at(-1)?.name ?? app.snapshot.domain.name;
   const { dpr } = app.size;
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0); // screen px: it stays put however the map is panned
-  drawSketching(ctx, at, now, { title: `Sketching ${name}`, step: tool ? `The cartographer is ${stepPhrase(tool)}` : "The cartographer is thinking", still: Boolean(stillMotion?.matches) });
+  drawSketching(ctx, at, now, { title: t("app.sketching", { name }), step: thinkingLine("cartographer", tool || null), still: Boolean(stillMotion?.matches) });
 }
 
 /** Nothing to draw without the server (or, hosted, without the browser's storage): say why instead of a blank sea. */
@@ -589,7 +590,26 @@ function failedToStart(error) {
   console.error(error);
 }
 
+/** index.html is static: its labels take the page's language here. The head script already stamped `lang`. */
+function labelStatics() {
+  document.documentElement.lang = language();
+  const labels = { map: "app.mapLabel", outline: "app.outlineLabel", breadcrumb: "app.scaleLabel", board: "app.boardLabel", about: "app.aboutLabel", "new-domain": "app.newDomainLabel" };
+  for (const [id, key] of Object.entries(labels)) document.getElementById(id)?.setAttribute("aria-label", t(key));
+}
+
+/** Tells the server which language the page is in, so the personas write in it. Once a load, after the first snapshot. */
+async function syncLanguage() {
+  try {
+    const learner = await api("/api/learner");
+    if (learner.language === language()) return;
+    await api("/api/learner", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ language: language() }) });
+  } catch (error) {
+    console.error(error);
+  }
+}
+
 async function boot() {
+  labelStatics();
   installNewDomain();
   installHosted();
   try {
@@ -643,6 +663,7 @@ async function boot() {
     if (!app.snapshot) failedToStart(error);
     else console.error(error);
   }
+  if (app.snapshot) void syncLanguage();
   // A domain made on the page arrives with ?chart=start: open the cartographer and let it sketch.
   if (params.get("chart") === "start") {
     const url = new URL(location.href);

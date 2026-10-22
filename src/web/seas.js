@@ -1,6 +1,7 @@
 // The reader's seas on the map: naming one where they double-click the water, renaming, moving, and removing.
 // Every write goes to POST /api/seas; the snapshot brings the seas back. Pure parts live in sea-model.js.
 import { app, api, refresh } from "./app.js";
+import { t } from "./i18n.js";
 
 /** Mirrors SEA_NAME_MAX in src/core/validators.ts. */
 export const SEA_NAME_MAX = 40;
@@ -31,8 +32,8 @@ export function openSeaEditor({ sea = null, at = null }) {
   input.className = "sea-edit";
   input.id = "sea-name";
   input.maxLength = SEA_NAME_MAX;
-  input.placeholder = "Name this sea";
-  input.setAttribute("aria-label", sea ? `Rename ${sea.name}` : "Name a sea here");
+  input.placeholder = t("seas.placeholder");
+  input.setAttribute("aria-label", sea ? t("seas.rename", { name: sea.name }) : t("seas.nameHere"));
   input.value = sea ? sea.name : "";
   const w = sea ?? at;
   const c = app.camera.state;
@@ -90,7 +91,7 @@ export function placeRemoveButton(box) {
     removeButton = document.createElement("button");
     removeButton.type = "button";
     removeButton.className = "sea-remove";
-    removeButton.textContent = "Remove sea";
+    removeButton.textContent = t("seas.remove");
     removeButton.addEventListener("click", () => app.selectedSea !== null && void removeSeaById(app.selectedSea));
     document.body.append(removeButton);
   }

@@ -1,17 +1,27 @@
 // Pure, DOM-free: the two modes, the one stored per domain, and what the page calls them.
 // A mode is both a lens on the map and who answers in the pane. PROTOCOL and code say judge; the page says the Keeper.
+import { t } from "./i18n.js";
 
 export const MODES = ["judge", "mentor"];
 export const DEFAULT_MODE = MODES[0];
-export const PERSONA_NAMES = { judge: "the Keeper", mentor: "the mentor" };
-/** The strip switch's two segments: the name, and in two or three words what it does with you. */
-export const MODE_LABELS = { judge: "Keeper", mentor: "Mentor" };
-export const MODE_ROLES = { judge: "asks and grades", mentor: "explains, no grades" };
-/** The switch's hint card, and the segments' tooltips: what each mode does and what the map shows in it. */
-export const MODE_HINTS = {
-  judge: "The Keeper asks you questions and charts what you show: lit landmarks and a verdict per island. The map shows what you have demonstrated.",
-  mentor: "The mentor explains, answers your questions, and never grades. The map shows the landmarks you explored together; nothing here becomes a verdict.",
+/** Who answers, as a sentence names them; the cartographer is here too, for the waiting line in its pane. */
+export const PERSONA_NAMES = {
+  judge: t("modeModel.personaJudge"),
+  mentor: t("modeModel.personaMentor"),
+  cartographer: t("modeModel.personaCartographer"),
 };
+/** The strip switch's two segments: the name, and in two or three words what it does with you. */
+export const MODE_LABELS = { judge: t("modeModel.labelJudge"), mentor: t("modeModel.labelMentor") };
+export const MODE_ROLES = { judge: t("modeModel.roleJudge"), mentor: t("modeModel.roleMentor") };
+/** The switch's hint card, and the segments' tooltips: what each mode does and what the map shows in it. */
+export const MODE_HINTS = { judge: t("modeModel.hintJudge"), mentor: t("modeModel.hintMentor") };
+
+const STATE_KEYS = { sandbar: "stateSandbar", settled: "stateSettled", mountainous: "stateMountainous", reef: "stateReef" };
+
+/** A verdict state as the page says it; an unknown state reads as itself. */
+export function stateLabel(state) {
+  return STATE_KEYS[state] ? t(`modeModel.${STATE_KEYS[state]}`) : String(state);
+}
 
 /** The localStorage key for a domain's mode. */
 export const modeKey = (domain) => `mode:${domain}`;
@@ -33,9 +43,9 @@ const pct = (v) => `${Math.round(v * 100)}%`;
 export function headPill(island, lens) {
   if (lens === "mentor") {
     const { total, explored = 0 } = island.landmarks ?? { total: 0 };
-    return explored ? { cls: "pill explore", text: `explored · ${explored} of ${total}` } : { cls: "pill open", text: "open water" };
+    return explored ? { cls: "pill explore", text: t("modeModel.pillExplored", { explored, total }) } : { cls: "pill open", text: t("modeModel.pillOpen") };
   }
   const v = island.verdict;
-  if (v) return { cls: `pill${v.state === "reef" ? " reef" : ""}`, text: `${v.state} · ${pct(v.confidence)}` };
-  return { cls: "pill open", text: island.children?.total ? "open water · islets below" : "open water" };
+  if (v) return { cls: `pill${v.state === "reef" ? " reef" : ""}`, text: t("modeModel.pillVerdict", { state: stateLabel(v.state), pct: pct(v.confidence) }) };
+  return { cls: "pill open", text: t(island.children?.total ? "modeModel.pillOpenIslets" : "modeModel.pillOpen") };
 }

@@ -20,7 +20,7 @@ import { markCommentsRead } from "../core/repositories/commentRepository.ts";
 import { listMessages, listScaleMessages } from "../core/repositories/messageRepository.ts";
 import { listSketches } from "../core/repositories/sketchRepository.ts";
 import { listCards } from "../core/repositories/boardRepository.ts";
-import { getLearner, setLearnerNote } from "../core/repositories/learnerRepository.ts";
+import { getLearner, setLearnerLanguage, setLearnerNote } from "../core/repositories/learnerRepository.ts";
 import { listLandmarks, upsertLandmark } from "../core/repositories/landmarkRepository.ts";
 import { getViewState, setFocus } from "../core/repositories/viewStateRepository.ts";
 import { buildSnapshot, listCommentViews } from "../core/view-model.ts";
@@ -466,8 +466,12 @@ common(sea.command("remove").option("--domain <slug>").option("--id <n>")).actio
 // ---- learner ----
 const learner = program.command("learner").description("The note the mentor reads about you, in every domain");
 common(learner.command("show")).action(run(() => withDb((db) => getLearner(db))));
-common(learner.command("set").option("--note <text>")).action(
-  run((o) => withDb((db) => setLearnerNote(db, learnerInputSchema.parse(o).note))),
+common(learner.command("set").option("--note <text>").option("--language <lang>", "the page's language: en or zh-TW")).action(
+  run((o) => withDb((db) => {
+    const input = learnerInputSchema.parse({ note: o.note, language: o.language });
+    if (input.language !== undefined) setLearnerLanguage(db, input.language);
+    return input.note !== undefined ? setLearnerNote(db, input.note) : getLearner(db);
+  })),
 );
 
 // ---- snapshot ----

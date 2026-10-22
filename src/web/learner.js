@@ -1,6 +1,7 @@
 // "About you": the one learner note the mentor reads every turn, in every domain. Opened from the outline's domain menu.
 import { api } from "./app.js";
 import { registerRegion, region, setRegion } from "./keys.js";
+import { t } from "./i18n.js";
 
 /** Mirrors NOTE_MAX in src/core/validators.ts. */
 export const NOTE_MAX = 1000;
@@ -37,7 +38,7 @@ async function load() {
     state.loaded = true;
   } catch (error) {
     if (stale()) return;
-    state.error = `could not read the note: ${error.message}`;
+    state.error = t("learner.readFailed", { error: error.message });
   }
   render();
   focusField();
@@ -85,15 +86,15 @@ function render() {
   root.replaceChildren();
   if (!state.open) return;
   const card = el("div", "about-card");
-  card.append(el("div", "lbl", "About you"));
-  card.append(el("p", "help", "The mentor reads this every turn to choose analogies from what you already know: your work, the languages you think in, how you like to learn. The Keeper never sees it. One note for every domain."));
+  card.append(el("div", "lbl", t("learner.title")));
+  card.append(el("p", "help", t("learner.help")));
   const ta = el("textarea");
   ta.id = "about-note";
   ta.rows = 6;
   ta.maxLength = NOTE_MAX;
   ta.value = state.draft;
   ta.disabled = !state.loaded;
-  ta.placeholder = "e.g. iOS engineer, ten years of UIKit; I learn best from code";
+  ta.placeholder = t("learner.placeholder");
   const count = el("div", "count", `${state.draft.length} / ${NOTE_MAX}`);
   const tally = () => {
     count.textContent = `${state.draft.length} / ${NOTE_MAX}`;
@@ -111,11 +112,11 @@ function render() {
     }
   });
   const row = el("div", "row");
-  const saveBtn = button(state.saving ? "Saving…" : "Save", () => void save(), "btn");
+  const saveBtn = button(state.saving ? t("learner.saving") : t("learner.save"), () => void save(), "btn");
   saveBtn.disabled = state.saving || !state.loaded;
   row.append(saveBtn);
-  if (!state.loaded && state.error) row.append(button("Retry", () => void load(), "btn"));
-  row.append(button("Cancel", close, "btn ghost"));
+  if (!state.loaded && state.error) row.append(button(t("learner.retry"), () => void load(), "btn"));
+  row.append(button(t("learner.cancel"), close, "btn ghost"));
   card.append(ta, count, row);
   if (state.error) card.append(el("div", "error", state.error));
   root.append(card);

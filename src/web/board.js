@@ -5,7 +5,8 @@ import { renderMarkdown, diagramElement } from "./markdown.js";
 import { codeElement, fillCode } from "./code.js";
 import { LANGS } from "./code-model.js";
 import { registerRegion, setRegion, region } from "./keys.js";
-import { startAdd, startEdit, canSave, writeOf, moveCard, keepCursor, authorLabel, KIND_KEYS, PLAIN } from "./board-model.js";
+import { startAdd, startEdit, canSave, writeOf, moveCard, keepCursor, authorLabel, kindLabel, KIND_KEYS, PLAIN } from "./board-model.js";
+import { t } from "./i18n.js";
 
 const PREVIEW_MS = 500;
 const board = document.getElementById("board");
@@ -133,7 +134,7 @@ async function saveEditor() {
   const ed = state.editor;
   if (!ed || !canSave(ed) || state.saving) return false;
   state.saving = true;
-  setStatus("saving…");
+  setStatus(t("board.saving"));
   try {
     const result = await post(writeOf(ed));
     state.saving = false;
@@ -187,11 +188,11 @@ function cardEl(card) {
   const box = el("article", `card${card.id === state.cursor ? " cur" : ""}`);
   box.dataset.id = String(card.id);
   const cap = el("div", "cap");
-  cap.append(el("span", "kind", card.kind + (card.lang ? ` · ${card.lang}` : "")));
+  cap.append(el("span", "kind", kindLabel(card.kind) + (card.lang ? ` · ${card.lang}` : "")));
   if (card.title) cap.append(el("span", "title", card.title)); // the Keeper may name a card; the reader never has to
   cap.append(el("span", `who ${card.author}`, authorLabel(card.author)));
   const acts = el("span", "acts");
-  acts.append(button("edit", () => edit(card)), button("remove", () => void remove(card.id)));
+  acts.append(button(t("board.edit"), () => edit(card)), button(t("board.remove"), () => void remove(card.id)));
   cap.append(acts);
   box.append(cap, bodyEl(card.kind, card.body, card.lang));
   box.addEventListener("mousedown", () => {
@@ -202,11 +203,10 @@ function cardEl(card) {
 }
 
 const PLACEHOLDER = {
-  diagram: "flowchart TB\n  app[App] --> cache[Cache]\n  cache --> db[(Database)]",
-  note: "Write a note. Markdown is fine: **bold**, lists, > quotes.",
-  code: "Three to twelve lines is plenty.",
+  diagram: t("board.placeholderDiagram"),
+  note: t("board.placeholderNote"),
+  code: t("board.placeholderCode"),
 };
-const KIND_LABEL = { diagram: "diagram", note: "note", code: "code" };
 const GROW_MIN = 160;   // px, the writing surface never shrinks below this
 const GROW_MAX = 0.6;   // of the viewport, then it scrolls
 
@@ -222,7 +222,7 @@ function grow(ta) {
 function langSelect(ed, onChange) {
   const sel = document.createElement("select");
   sel.dataset.field = "lang";
-  sel.setAttribute("aria-label", "language");
+  sel.setAttribute("aria-label", t("board.language"));
   for (const l of [...LANGS, PLAIN]) {
     const o = document.createElement("option");
     o.value = l;
@@ -237,12 +237,12 @@ function langSelect(ed, onChange) {
   return sel;
 }
 
-/** A two-way segmented switch (Write | Preview); `onPick(name)` runs on change. */
-function tabs(names, current, onPick) {
+/** A two-way segmented switch (Write | Preview); `onPick(name)` runs on change. `labels` says each name on the page. */
+function tabs(names, current, onPick, labels = {}) {
   const box = el("div", "tabs");
   box.setAttribute("role", "tablist");
   const buttons = names.map((name) => {
-    const b = button(name, () => {
+    const b = button(labels[name] ?? name, () => {
       if (b.getAttribute("aria-selected") === "true") return;
       for (const other of buttons) other.setAttribute("aria-selected", String(other === b));
       onPick(name);
@@ -271,7 +271,7 @@ function liveCode(ed, onInput) {
   ta.spellcheck = false;
   ta.wrap = "off";
   ta.dataset.field = "body";
-  ta.setAttribute("aria-label", "code");
+  ta.setAttribute("aria-label", kindLabel("code"));
   wrap.append(pre, ta);
   let frame = 0;
   const follow = () => {
@@ -309,7 +309,7 @@ function liveCode(ed, onInput) {
 function renderPreview(ed, preview, err) {
   const seq = ++previewSeq;
   if (!ed.body.trim()) {
-    preview.replaceChildren(el("div", "empty", "nothing to preview yet"));
+    preview.replaceChildren(el("div", "empty", t("board.nothingToPreview")));
     return;
   }
   if (ed.kind === "diagram" && window.mermaid) {
@@ -337,16 +337,16 @@ function renderPreview(ed, preview, err) {
 function editorEl(ed) {
   const box = el("section", `editor ${ed.kind}`);
   box.tabIndex = -1;
-  box.setAttribute("aria-label", `${ed.id === null ? "new" : "edit"} ${KIND_LABEL[ed.kind]}`);
+  box.setAttribute("aria-label", t(ed.id === null ? "board.ariaNew" : "board.ariaEdit", { kind: kindLabel(ed.kind) }));
   const head = el("div", "ehead");
-  head.append(el("span", "kind", ed.id === null ? `new ${KIND_LABEL[ed.kind]}` : KIND_LABEL[ed.kind]));
+  head.append(el("span", "kind", ed.id === null ? t("board.newKind", { kind: kindLabel(ed.kind) }) : kindLabel(ed.kind)));
   const body = el("div", "ebody");
   const foot = el("div", "efoot");
-  const save = button("save", () => void saveEditor(), "primary");
-  foot.append(save, button("cancel", cancelEditor));
-  if (ed.id !== null) foot.append(button("remove", () => void remove(ed.id), "danger"));
+  const save = button(t("board.save"), () => void saveEditor(), "primary");
+  foot.append(save, button(t("board.cancel"), cancelEditor));
+  if (ed.id !== null) foot.append(button(t("board.remove"), () => void remove(ed.id), "danger"));
   const hint = el("span", "hint");
-  hint.append(el("kbd", null, "⌘↵"), " save ", el("kbd", null, "esc"), " cancel");
+  hint.append(el("kbd", null, "⌘↵"), t("board.hintSave"), el("kbd", null, "esc"), t("board.hintCancel"));
   const status = el("span", "status");
   foot.append(hint, status);
   const updateSave = () => {
@@ -365,7 +365,7 @@ function editorEl(ed) {
     ta.placeholder = PLACEHOLDER[ed.kind];
     ta.spellcheck = ed.kind === "note";
     ta.dataset.field = "body";
-    ta.setAttribute("aria-label", KIND_LABEL[ed.kind]);
+    ta.setAttribute("aria-label", kindLabel(ed.kind));
     const preview = el("div", "preview");
     preview.hidden = true;
     const err = el("div", "err");
@@ -405,7 +405,7 @@ function editorEl(ed) {
         grow(ta);
       }
     };
-    head.append(el("span", "spacer"), tabs(["Write", "Preview"], "Write", pick));
+    head.append(el("span", "spacer"), tabs(["Write", "Preview"], "Write", pick, { Write: t("board.write"), Preview: t("board.preview") }));
     body.append(ta, preview, err);
     editorFocus = () => {
       ta.focus();
@@ -453,8 +453,8 @@ function closeIcon() {
 function close() {
   const b = button("", () => setOpen(false), "close");
   b.append(closeIcon());
-  b.title = "back to the map (Esc)";
-  b.setAttribute("aria-label", "back to the map");
+  b.title = t("board.backTitle");
+  b.setAttribute("aria-label", t("board.back"));
   return b;
 }
 
@@ -486,8 +486,8 @@ function setVisible(show) {
 
 function headEl(island) {
   const head = el("div", "head");
-  head.append(el("span", "name", island.name), el("span", "count", `${state.cards.length} ${state.cards.length === 1 ? "card" : "cards"}`), el("span", "spacer"));
-  head.append(button("+ diagram", () => add("diagram")), button("+ note", () => add("note")), button("+ code", () => add("code")), close());
+  head.append(el("span", "name", island.name), el("span", "count", t("board.cards", { n: state.cards.length })), el("span", "spacer"));
+  head.append(...["diagram", "note", "code"].map((kind) => button(t("board.addKind", { kind: kindLabel(kind) }), () => add(kind))), close());
   return head;
 }
 
@@ -496,7 +496,7 @@ function columnEl() {
   if (state.loadError) col.append(el("div", "err-line", state.loadError));
   if (state.editor && state.editor.id === null) col.append(currentEditor());
   if (state.loaded && state.cards.length === 0 && !state.editor) {
-    col.append(el("div", "empty", "Nothing pinned yet. The Keeper pins what you keep pointing at; you can add a diagram, a note, or code."));
+    col.append(el("div", "empty", t("board.empty")));
   }
   for (const card of state.cards) col.append(state.editor && state.editor.id === card.id ? currentEditor() : cardEl(card));
   return col;
@@ -505,7 +505,7 @@ function columnEl() {
 function render() {
   const island = app.snapshot && state.slug ? app.snapshot.islands.find((i) => i.slug === state.slug) ?? null : null;
   toggle.hidden = !island || state.open;
-  if (island) toggle.replaceChildren(el("span", null, `board · ${state.cards.length}`), el("kbd", null, "b"));
+  if (island) toggle.replaceChildren(el("span", null, t("board.toggle", { n: state.cards.length })), el("kbd", null, "b"));
   const show = Boolean(island) && state.open;
   if (!show) {
     setVisible(false);
