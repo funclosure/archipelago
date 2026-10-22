@@ -258,6 +258,8 @@ export const sketchBodySchema = z
     harbour: slugSchema.optional(),
     /** The domain's name, from the cartographer's first sketch of a provisionally named domain. Top scale only. */
     name: domainName.optional(),
+    /** The domain's slug to go with `name`, for a name that has no ASCII of its own (「分散式系統」 → distributed-systems). */
+    slug: slugSchema.optional(),
     seas: z
       .array(z.object({ name: seaName, islands: z.array(slugSchema).min(1).max(10) }))
       .max(6)

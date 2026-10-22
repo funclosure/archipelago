@@ -56,10 +56,11 @@ export function updateDomain(db: Database, slug: string, input: { name?: string;
 /**
  * The cartographer's name for a domain, applied when its sketch is approved. A provisional domain also takes the
  * name's slug when it is free, so the URL and the terminal read like the name; a domain already named keeps its slug.
+ * `given` stands in for a name with no ASCII of its own (a Chinese name kebab-cases to nothing).
  */
-export function nameDomain(db: Database, domainId: number, name: string): Domain {
+export function nameDomain(db: Database, domainId: number, name: string, given?: string): Domain {
   const d = db.query<Domain, [number]>(`select ${COLS} from domains where id = ?`).get(domainId)!;
-  const wanted = kebab(name);
+  const wanted = given ?? kebab(name);
   const slug = d.provisional && wanted && !getDomain(db, wanted) ? wanted : d.slug;
   return db.query<Domain, [string, string, number]>(`update domains set name = ?, slug = ?, provisional = 0 where id = ? returning ${COLS}`).get(name, slug, domainId)!;
 }

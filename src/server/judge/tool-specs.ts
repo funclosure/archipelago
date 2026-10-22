@@ -14,9 +14,9 @@ const DESCRIPTIONS: Record<ToolName, string> = {
   unlock_landmark: "Light one landmark the reader's latest answer covered: they explained or applied it, not merely named it. Evidence is a verbatim quote from that answer.",
   ask_reader: "Ask the reader to choose: a question and 2–4 short options, one of them what they would say if they already understood. The options appear under your reply; end the reply with the question and stop.",
   board_write: "Pin, update, or remove a card on this island's board (see the board section of your protocol). op add: kind (diagram | note | code), body (mermaid source, markdown, or code), lang for code, and an optional one-line title. op update: id plus the fields to change. op remove: id. You may only update or remove cards you wrote.",
-  mark_explored: "Mark one landmark explored: the reader engaged it in their own words (asked about it, restated it, or tried it on an example). Evidence is a verbatim quote of at least two words and twelve characters from the reader's latest message; anything else is refused. Marking it again changes nothing.",
+  mark_explored: "Mark one landmark explored: the reader engaged it in their own words (asked about it, restated it, or tried it on an example). Evidence is a verbatim quote of at least two words and twelve characters (or six Chinese, Japanese, or Korean characters) from the reader's latest message; anything else is refused. Marking it again changes nothing.",
   chart_context: "This scale: the islands and straits here, at island scale the island's landmarks, board, and two threads, every slug taken in the domain, how many islands the next sketch may add, the pending sketch, and your thread. Read fresh.",
-  propose_sketch: "Propose a sketch at this scale: new islands (slug, name, one-line summary, 4–6 landmarks each), straits between islands at this scale, an optional harbour, name or summary updates to islands already here, seas (a name on the water over the islands it groups; new seas only, each island in at most one), and, when the context says the domain's name is provisional, the domain's name (top scale only). It replaces any pending sketch. Nothing reaches the map until the reader approves it there.",
+  propose_sketch: "Propose a sketch at this scale: new islands (slug, name, one-line summary, 4–6 landmarks each), straits between islands at this scale, an optional harbour, name or summary updates to islands already here, seas (a name on the water over the islands it groups; new seas only, each island in at most one), and, when the context says the domain's name is provisional, the domain's name (top scale only) with its ASCII kebab-case slug. It replaces any pending sketch. Nothing reaches the map until the reader approves it there.",
 };
 
 const MENTOR_DESCRIPTIONS: Partial<Record<ToolName, string>> = {
@@ -25,7 +25,7 @@ const MENTOR_DESCRIPTIONS: Partial<Record<ToolName, string>> = {
   ask_reader:
     "Ask the reader a check-in: a question and 2–4 short options, all plausible. The options appear under your reply; end the reply with the question and stop.",
   mark_explored:
-    "Mark one landmark explored: the reader engaged it in their own words. Evidence is a verbatim quote of at least two words and twelve characters from the reader's latest message; a pick from your own ask_reader options is not their words (own words typed instead are). Anything else is refused.",
+    "Mark one landmark explored: the reader engaged it in their own words. Evidence is a verbatim quote of at least two words and twelve characters (or six Chinese, Japanese, or Korean characters) from the reader's latest message; a pick from your own ask_reader options is not their words (own words typed instead are). Anything else is refused.",
 };
 
 /** Each of the persona's tools with the description it sees, in the persona's tool order. */
@@ -72,6 +72,7 @@ export const TOOL_SHAPES: Record<ToolName, z.ZodRawShape> = {
     straits: z.array(z.object({ from: z.string(), to: z.string(), name: z.string().optional() })).optional(),
     harbour: z.string().optional(),
     name: z.string().optional(),
+    slug: z.string().optional(),
     updates: z.array(z.object({ slug: z.string(), name: z.string().optional(), summary: z.string().optional() })).optional(),
     seas: z.array(z.object({ name: z.string(), islands: z.array(z.string()) })).optional(),
   },

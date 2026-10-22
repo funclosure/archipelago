@@ -23,6 +23,7 @@ import {
   askReader,
   boardWrite,
   markExplored,
+  isRecognisableQuote,
 } from "../../src/server/judge/tools.ts";
 
 let dir: string;
@@ -410,7 +411,7 @@ test("mark_explored refuses a token quote (a space, a letter, one word) and trim
     return out;
   };
   for (const evidence of [" ", "e", "NSCache", "   is   "]) {
-    expect(() => markExplored(mentorDeps, { slug: "eviction", evidence })).toThrow(/at least two words \(12\+ characters\)/);
+    expect(() => markExplored(mentorDeps, { slug: "eviction", evidence })).toThrow(/at least two words \(12\+ characters\), or 6 Chinese/);
     expect(state()).toEqual({ explored: 0, system: 0 });
   }
   const out = markExplored(mentorDeps, { slug: "eviction", evidence: "  NSCache dropping things  " });
@@ -418,6 +419,25 @@ test("mark_explored refuses a token quote (a space, a letter, one word) and trim
   const db2 = openDatabase(dbPath);
   expect(listLandmarks(db2, ids.caching).find((l) => l.slug === "eviction")).toMatchObject({ exploredEvidence: "NSCache dropping things" });
   db2.close();
+});
+
+test("mark_explored takes a Chinese quote by its characters, since Chinese puts no spaces between words", () => {
+  setLandmarksTool(deps(), { items: landmarkItems });
+  const mentorDeps = { ...deps(), mode: "mentor" as const };
+  const db = openDatabase(dbPath);
+  addMessage(db, { domainId: ids.domain, islandId: ids.caching, role: "you", kind: "text", body: "淘汰就像記憶體吃緊時 NSCache 會自己丟掉東西", mode: "mentor" });
+  db.close();
+  expect(() => markExplored(mentorDeps, { slug: "eviction", evidence: "記憶體" })).toThrow(/six Chinese|6 Chinese/);
+  expect(markExplored(mentorDeps, { slug: "eviction", evidence: "記憶體吃緊時" })).toMatchObject({ slug: "eviction", explored: 1 });
+});
+
+test("a quote is the reader's own words: two words and twelve characters, or six CJK characters", () => {
+  expect(isRecognisableQuote("NSCache dropping")).toBe(true);
+  expect(isRecognisableQuote("NSCache")).toBe(false);
+  expect(isRecognisableQuote("快取失效會雪崩")).toBe(true);
+  expect(isRecognisableQuote("快取失效")).toBe(false);
+  expect(isRecognisableQuote("キャッシュが消える")).toBe(true);
+  expect(isRecognisableQuote("快取 invalidation")).toBe(true); // two words, fifteen characters
 });
 
 test("mark_explored marks a landmark on this island from a verbatim quote of the reader's latest mentor message, once", () => {

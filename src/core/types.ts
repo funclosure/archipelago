@@ -176,6 +176,8 @@ export type SketchBody = {
   harbour?: string;
   /** The domain's name: only in a top-scale sketch of a provisionally named domain. */
   name?: string;
+  /** The domain's slug to go with `name`, when the name has no ASCII of its own. */
+  slug?: string;
   updates: { slug: string; name?: string; summary?: string }[];
   /** Seas the cartographer suggests, each over the islands it groups; approving writes them without a position. */
   seas: { name: string; islands: string[] }[];
