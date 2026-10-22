@@ -2,6 +2,7 @@
 // `ARCHIPELAGO_HOSTED`), the server runs in a worker (`/worker.js`, from `src/hosted/worker.ts`) and each request
 // is a message to it; the reply comes back as a Response, an event stream as a ReadableStream, so callers see no
 // difference. `api` in app.js, `streamPost` in stream.js, and the outline's domain list all come through here.
+import { t } from "./i18n.js";
 
 export function request(path, init = {}) {
   return globalThis.ARCHIPELAGO_HOSTED === true ? viaWorker(path, init) : fetch(path, init);
@@ -14,7 +15,7 @@ const pending = new Map();
 
 // Leaving the page (a reload, New domain's navigation, the back-forward cache) ends its worker, so the database
 // file and its lock are free for the next page's worker at once. A page restored from the cache starts a new one.
-addEventListener("pagehide", () => release("the page was left"));
+addEventListener("pagehide", () => release(t("transport.pageLeft")));
 
 /** Ends this page's worker and frees the database for another tab; open requests fail with `reason`. */
 export function release(reason) {
@@ -31,7 +32,7 @@ function connect() {
   worker = new Worker("/worker.js", { type: "module" });
   worker.addEventListener("message", (event) => receive(event.data));
   worker.addEventListener("error", (event) => {
-    const error = new Error(`the local server failed to start: ${event.message || "unknown error"}`);
+    const error = new Error(t("transport.failedToStart", { reason: event.message || t("transport.unknownError") }));
     for (const p of pending.values()) p.controller ? p.controller.error(error) : p.reject(error);
     pending.clear();
   });

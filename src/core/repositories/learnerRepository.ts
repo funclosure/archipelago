@@ -3,7 +3,7 @@ import type { Learner } from "../types.ts";
 import { listLandmarksByIsland } from "./landmarkRepository.ts";
 import { parseProposal } from "./messageRepository.ts";
 
-const COLS = "note, updated_at as updatedAt";
+const COLS = "note, language, updated_at as updatedAt";
 const NOW = "strftime('%Y-%m-%dT%H:%M:%fZ','now')";
 
 /** The one learner row (migration 0008 creates it). */
@@ -14,6 +14,11 @@ export function getLearner(db: Database): Learner {
 /** Replaces the note. `learner_au` bumps every domain's version: the note is global. */
 export function setLearnerNote(db: Database, note: string): Learner {
   return db.query<Learner, [string]>(`update learner set note = ?, updated_at = ${NOW} where id = 1 returning ${COLS}`).get(note)!;
+}
+
+/** Sets the page's language, which every persona's context names. */
+export function setLearnerLanguage(db: Database, language: string): Learner {
+  return db.query<Learner, [string]>(`update learner set language = ?, updated_at = ${NOW} where id = 1 returning ${COLS}`).get(language)!;
 }
 
 /** How many islands of solid ground the mentor is shown. */

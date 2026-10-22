@@ -1,5 +1,6 @@
 // Server-sent events over a POST. The parser is pure; streamPost is the only request.
 import { request } from "./transport.js";
+import { t } from "./i18n.js";
 
 /** Splits a growing SSE text buffer into complete events and the leftover partial frame. */
 export function parseSseBuffer(buffer) {
@@ -49,7 +50,7 @@ export async function streamPost(url, body, onEvent, signal) {
     throw markAborted(error, signal);
   }
   if (!res.ok || !res.body) {
-    let message = `request failed (${res.status})`;
+    let message = t("stream.requestFailed", { status: res.status });
     try {
       const json = await res.json();
       if (json && json.error) message = json.error;

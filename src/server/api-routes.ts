@@ -12,7 +12,7 @@ import {
 import { attachAsks, listAsks, pickAsk, requireAsk } from "../core/repositories/askRepository.ts";
 import { listCards } from "../core/repositories/boardRepository.ts";
 import { addSeaFrom, removeSea, updateSea } from "../core/repositories/seaRepository.ts";
-import { getLearner, setLearnerNote } from "../core/repositories/learnerRepository.ts";
+import { getLearner, setLearnerNote, setLearnerLanguage } from "../core/repositories/learnerRepository.ts";
 import { createDomain, listDomains, requireDomain, updateDomain, removeDomain } from "../core/repositories/domainRepository.ts";
 import { getIslandById, requireIsland, setIslandPositions } from "../core/repositories/islandRepository.ts";
 import { addVerdict, verdictHistory } from "../core/repositories/verdictRepository.ts";
@@ -236,7 +236,12 @@ async function handleApi(req: Request, url: URL, ctx: ApiContext): Promise<Respo
 
   if (route === "POST /api/learner") {
     const input = learnerInputSchema.parse(await req.json());
-    return json(withDb(ctx, (db) => setLearnerNote(db, input.note)));
+    return json(
+      withDb(ctx, (db) => {
+        if (input.language !== undefined) setLearnerLanguage(db, input.language);
+        return input.note !== undefined ? setLearnerNote(db, input.note) : getLearner(db);
+      }),
+    );
   }
 
   if (route === "POST /api/probe") {

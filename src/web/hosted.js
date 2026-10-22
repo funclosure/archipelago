@@ -3,14 +3,11 @@
 // (`src/hosted/settings.ts`); this page sends it once and reads back only its last four characters.
 import { request, release } from "./transport.js";
 import { registerRegion } from "./keys.js";
+import { t } from "./i18n.js";
 
 export const isHosted = () => globalThis.ARCHIPELAGO_HOSTED === true;
 
-const NOTICE = [
-  "Your key stays in this browser and is sent only to api.anthropic.com.",
-  "Each turn is billed to your key; a long session on Opus can cost a few dollars.",
-  "Your charts are stored in this browser only; export them from the domain menu to keep a copy.",
-];
+const NOTICE = t("hosted.notice");
 
 /** `open`: null, "welcome" (no way out but a choice), "key" (Your key), "import" (the replace warning), "elsewhere". */
 const state = { open: null, view: null, key: "", model: null, remember: true, saving: false, error: null, file: null };
@@ -52,7 +49,7 @@ export function installHosted() {
   if (isHosted() && typeof BroadcastChannel === "function") {
     new BroadcastChannel("archipelago").addEventListener("message", (event) => {
       if (event.data !== "takeover") return;
-      release("Archipelago moved to another tab");
+      release(t("hosted.movedReason"));
       open("elsewhere");
     });
   }
@@ -98,7 +95,7 @@ async function saveKey({ stub = false } = {}) {
   if (stub) patch.stub = true;
   else if (state.key.trim()) patch.apiKey = state.key.trim();
   else if (!state.view?.key) {
-    state.error = "Paste your API key, or choose Try without a key.";
+    state.error = t("hosted.pasteKey");
     return render();
   }
   state.saving = true;
@@ -139,7 +136,7 @@ export async function exportDatabase() {
     a.click();
     setTimeout(() => URL.revokeObjectURL(url), 10_000);
   } catch (error) {
-    alert(`Export failed: ${error.message}`);
+    alert(t("hosted.exportFailed", { message: error.message }));
   }
 }
 
@@ -177,14 +174,14 @@ async function replaceWith(file) {
 
 /** Shown in place of the map when another tab holds the database: one button moves it here. */
 export function anotherTab(nav) {
-  const take = el("button", "crumb start", "Use it here");
+  const take = el("button", "crumb start", t("hosted.useItHere"));
   take.type = "button";
   take.addEventListener("click", () => {
     take.disabled = true;
     new BroadcastChannel("archipelago").postMessage("takeover");
     setTimeout(() => location.reload(), 400); // the other tab's worker ends at once; its lock goes with it
   });
-  nav.replaceChildren("Archipelago is open in another tab or window. ", take);
+  nav.replaceChildren(t("hosted.openElsewhere"), take);
 }
 
 function render() {
@@ -197,8 +194,8 @@ function render() {
   if (state.open === "welcome" || state.open === "key") renderKey(card);
   else if (state.open === "import") renderImport(card);
   else if (state.open === "elsewhere") {
-    card.append(el("div", "lbl", "Archipelago"), el("p", "help", "Archipelago moved to another tab. Reload here to bring it back."));
-    card.append(row(button("Reload", () => location.reload())));
+    card.append(el("div", "lbl", "Archipelago"), el("p", "help", t("hosted.movedHelp")));
+    card.append(row(button(t("hosted.reload"), () => location.reload())));
   }
   if (state.error) card.append(el("p", "error", state.error));
   root.append(card);
@@ -212,17 +209,17 @@ function row(...children) {
 
 function renderKey(card) {
   const welcome = state.open === "welcome";
-  card.append(el("div", "lbl", welcome ? "Archipelago" : "Your key"));
-  if (welcome) card.append(el("p", "lede", "Chart what you know about a subject as islands on a map. Claude sketches the islands, then asks you about each one and marks how solid your answers are."));
+  card.append(el("div", "lbl", welcome ? "Archipelago" : t("hosted.yourKey")));
+  if (welcome) card.append(el("p", "lede", t("hosted.lede")));
   const form = el("form", "fields");
   const field = el("input");
   field.type = "password";
   field.autocomplete = "off";
   field.spellcheck = false;
-  field.placeholder = state.view?.keyHint ? `Key set (${state.view.keyHint}): paste a new one to replace it` : "sk-ant-…";
+  field.placeholder = state.view?.keyHint ? t("hosted.keySet", { hint: state.view.keyHint }) : "sk-ant-…";
   field.value = state.key;
   field.disabled = state.saving;
-  field.setAttribute("aria-label", "Anthropic API key");
+  field.setAttribute("aria-label", t("hosted.keyLabel"));
   field.addEventListener("input", () => (state.key = field.value));
   form.append(field);
 
@@ -244,16 +241,16 @@ function renderKey(card) {
   box.type = "checkbox";
   box.checked = state.remember;
   box.addEventListener("change", () => (state.remember = box.checked));
-  remember.append(box, " Remember on this device");
+  remember.append(box, ` ${t("hosted.remember")}`);
   form.append(remember);
 
-  const actions = row(button(state.saving ? "Saving…" : welcome ? "Start" : "Save", () => void saveKey()));
+  const actions = row(button(state.saving ? t("hosted.saving") : welcome ? t("hosted.start") : t("hosted.save"), () => void saveKey()));
   actions.firstChild.type = "submit";
   actions.firstChild.disabled = state.saving;
-  if (welcome) actions.append(button("Try without a key", () => void saveKey({ stub: true }), "btn ghost"));
+  if (welcome) actions.append(button(t("hosted.tryWithout"), () => void saveKey({ stub: true }), "btn ghost"));
   else {
-    if (state.view?.key) actions.append(button("Forget key", () => void forgetKey(), "btn ghost"));
-    actions.append(button("Cancel", close, "btn ghost"));
+    if (state.view?.key) actions.append(button(t("hosted.forgetKey"), () => void forgetKey(), "btn ghost"));
+    actions.append(button(t("hosted.cancel"), close, "btn ghost"));
   }
   form.append(actions);
   form.addEventListener("submit", (e) => {
@@ -267,21 +264,22 @@ function renderKey(card) {
     console_.href = "https://console.anthropic.com/settings/keys";
     console_.target = "_blank";
     console_.rel = "noopener noreferrer";
-    get.append("No key yet? Make one at ", console_, ", or try it first without one.");
-    card.append(get, row(button("Import a database…", importDatabase, "btn link")));
+    const [before, after = ""] = t("hosted.noKey").split("{link}");
+    get.append(before, console_, after);
+    card.append(get, row(button(t("hosted.importDatabase"), importDatabase, "btn link")));
   }
   const notice = el("p", "help");
-  notice.append(...NOTICE.join(" ").split(/(api\.anthropic\.com)/).map((part) => (part === "api.anthropic.com" ? el("code", null, part) : part)));
+  notice.append(...NOTICE.split(/(api\.anthropic\.com)/).map((part) => (part === "api.anthropic.com" ? el("code", null, part) : part)));
   card.append(notice);
-  if (!welcome) card.append(el("p", "help", "Try without a key answers with a scripted stand-in, so you can see how a turn goes. Forget key goes back to it."));
+  if (!welcome) card.append(el("p", "help", t("hosted.stubHelp")));
 }
 
 function renderImport(card) {
-  card.append(el("div", "lbl", "Import a database"));
-  card.append(el("p", "help", `${state.file.name} will replace every domain in this browser. Nothing is merged. Export first to keep what is here.`));
-  const actions = row(button(state.saving ? "Importing…" : "Replace", () => void replaceWith(state.file)));
+  card.append(el("div", "lbl", t("hosted.importTitle")));
+  card.append(el("p", "help", t("hosted.importHelp", { file: state.file.name })));
+  const actions = row(button(state.saving ? t("hosted.importing") : t("hosted.replace"), () => void replaceWith(state.file)));
   actions.firstChild.disabled = state.saving;
-  if (state.from !== "welcome") actions.append(button("Export first", () => void exportDatabase(), "btn ghost"));
-  actions.append(button("Cancel", () => (state.from === "welcome" ? open("welcome") : close()), "btn ghost"));
+  if (state.from !== "welcome") actions.append(button(t("hosted.exportFirst"), () => void exportDatabase(), "btn ghost"));
+  actions.append(button(t("hosted.cancel"), () => (state.from === "welcome" ? open("welcome") : close()), "btn ghost"));
   card.append(actions);
 }

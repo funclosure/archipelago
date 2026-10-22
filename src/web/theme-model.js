@@ -1,12 +1,14 @@
 // The themes the page can wear. A theme is one entry here plus one `:root[data-theme="<id>"]` block in styles.css
 // (tests/web/theme-tokens.test.js checks the block covers every colour token). The first entry is the default.
 // The user picks; the system setting is never read.
+import { t } from "./i18n.js";
+
 export const THEMES = [
-  { id: "ink", name: "Ink", dark: true },
-  { id: "tide", name: "Tide", dark: true },
-  { id: "moonlight", name: "Moonlight", dark: true },
-  { id: "chart", name: "Paper chart", dark: false },
-  { id: "vellum", name: "Vellum", dark: false },
+  { id: "ink", name: t("themeModel.ink"), dark: true },
+  { id: "tide", name: t("themeModel.tide"), dark: true },
+  { id: "moonlight", name: t("themeModel.moonlight"), dark: true },
+  { id: "chart", name: t("themeModel.chart"), dark: false },
+  { id: "vellum", name: t("themeModel.vellum"), dark: false },
 ];
 export const DEFAULT_THEME = THEMES[0].id;
 /** The canvas palette's names → the tokens they are read from (six-digit hex in every theme). */

@@ -7,6 +7,9 @@ export const REACH = 7.5;
 export const SEA_FONT = 0.48;
 export const TRACK_MIN = 0.3;
 export const TRACK_MAX = 1.4;
+/** A name in Han, kana, or Hangul reads badly spread wide: its tracking stops at this many ems. */
+export const TRACK_MAX_CJK = 0.6;
+const CJK = /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}]/u;
 
 /**
  * Each sea's islands: every island goes to the nearest sea name within REACH radii, so two seas never claim the
@@ -32,18 +35,19 @@ export function seaMembers(allSeas, nodes) {
 
 /**
  * How a sea's name is set: upright capitals, tracked so the name spreads across about two thirds of the water its
- * islands cover, as OCEANO ORIENTALE spreads across an ocean. `measure(ch)` is a character's width at `font`.
+ * islands cover, as OCEANO ORIENTALE spreads across an ocean. A CJK name keeps its case and spreads less (TRACK_MAX_CJK). `measure(ch)` is a character's width at `font`.
  * Returns { text, font, widths, track, total } in world units.
  */
 export function lettering(name, members, radius, measure) {
-  const text = name.toUpperCase();
+  const text = CJK.test(name) ? name : name.toUpperCase();
   const font = SEA_FONT * radius;
   const chars = [...text];
   const widths = chars.map(measure);
   const ink = widths.reduce((a, b) => a + b, 0);
   const span = members.length ? Math.max(...members.map((m) => m.x)) - Math.min(...members.map((m) => m.x)) + 2 * radius : 0;
   const gaps = Math.max(1, chars.length - 1);
-  const track = Math.min(font * TRACK_MAX, Math.max(font * TRACK_MIN, (span * 0.66 - ink) / gaps));
+  const max = CJK.test(name) ? Math.max(TRACK_MIN, TRACK_MAX_CJK) : TRACK_MAX;
+  const track = Math.min(font * max, Math.max(font * TRACK_MIN, (span * 0.66 - ink) / gaps));
   return { text, font, widths, track, total: ink + track * (chars.length - 1) };
 }
 

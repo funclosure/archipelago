@@ -2,6 +2,8 @@
 // colours the render pass paints on. The library is never imported here, and no colour is ever a literal:
 // every one comes from the canvas palette the theme pushed into draw.js.
 
+import { t } from "./i18n.js";
+
 /** The fence tags that draw a plot. shuttle reads the same three, so a body renders in either app. */
 export const PLOT_LANGS = new Set(["plot", "function-plot", "math-plot"]);
 
@@ -44,17 +46,17 @@ function hasUnsafeExpression(datum) {
  */
 export function parsePlot(body) {
   const trimmed = String(body ?? "").trim();
-  if (!trimmed) return { error: "nothing to plot" };
+  if (!trimmed) return { error: t("plotModel.nothing") };
   if (trimmed.startsWith("{") || trimmed.startsWith("[")) {
     let options;
     try {
       options = JSON.parse(trimmed);
     } catch (e) {
-      return { error: e instanceof Error ? e.message : "the plot config is not JSON" };
+      return { error: e instanceof Error ? e.message : t("plotModel.notJson") };
     }
-    if (!options || typeof options !== "object" || Array.isArray(options)) return { error: "the plot config is not an object" };
+    if (!options || typeof options !== "object" || Array.isArray(options)) return { error: t("plotModel.notObject") };
     if (Array.isArray(options.data) && options.data.some(hasUnsafeExpression)) {
-      return { error: "an expression cannot contain a bracket, a quote, or a backtick" };
+      return { error: t("plotModel.unsafe") };
     }
     return { options };
   }
@@ -63,8 +65,8 @@ export function parsePlot(body) {
     .map((line) => line.trim())
     .filter((line) => line.length > 0 && !COMMENT.test(line))
     .map((fn) => ({ fn }));
-  if (data.length === 0) return { error: "nothing to plot" };
-  if (data.some(hasUnsafeExpression)) return { error: "an expression cannot contain a bracket, a quote, or a backtick" };
+  if (data.length === 0) return { error: t("plotModel.nothing") };
+  if (data.some(hasUnsafeExpression)) return { error: t("plotModel.unsafe") };
   return { options: { data } };
 }
 
@@ -110,7 +112,7 @@ function seriesLabel(d, i) {
   const raw = title || (typeof d.fn === "string" && d.fn)
     || (typeof d.x === "string" && typeof d.y === "string" && `(${d.x}, ${d.y})`)
     || (typeof d.r === "string" && `r = ${d.r}`)
-    || `series ${i + 1}`;
+    || t("plotModel.series", { n: i + 1 });
   return raw.length > LABEL_MAX ? `${raw.slice(0, LABEL_MAX - 1)}…` : raw;
 }
 

@@ -1,4 +1,5 @@
 import { sketchSummary } from "./chart-model.js";
+import { t } from "./i18n.js";
 // The call-to-action card at the bottom centre of the map: actions about the map, never knowledge questions.
 // card.js hands it a model each render; it keeps no state of its own.
 
@@ -34,29 +35,29 @@ export function renderCta(model) {
   wrap.hidden = false;
   const card = el("div", "cta-card");
   if (showReef) {
-    card.append(el("div", "lbl", "reef?"), el("div", "q", pendingReef.proposal.claim));
+    card.append(el("div", "lbl", t("cta.reefLabel")), el("div", "q", pendingReef.proposal.claim));
     const row = el("div", "row");
-    const confirm = button("Confirm the reef", model.onConfirm, "reefy");
-    const dispute = button("Dispute below", model.onDispute);
+    const confirm = button(t("cta.confirmReef"), model.onConfirm, "reefy");
+    const dispute = button(t("cta.disputeBelow"), model.onDispute);
     confirm.disabled = dispute.disabled = Boolean(answering);
     row.append(confirm, dispute);
     card.append(row);
   } else if (showSketch) {
-    card.append(el("div", "lbl", "sketch"), el("div", "q", `The cartographer drew ${sketchSummary(sketch.body)}. Approve it to put it on the map.`));
+    card.append(el("div", "lbl", t("cta.sketchLabel")), el("div", "q", t("cta.sketchDrew", { summary: sketchSummary(sketch.body) })));
     const row = el("div", "row");
-    row.append(button("Approve sketch", () => model.onApproveSketch(sketch.id), "primary"));
-    if (!model.chartOpen) row.append(button("Read it", model.onOpenChart));
+    row.append(button(t("cta.approveSketch"), () => model.onApproveSketch(sketch.id), "primary"));
+    if (!model.chartOpen) row.append(button(t("cta.readIt"), model.onOpenChart));
     card.append(row);
   } else if (showNext) {
-    card.append(el("div", "lbl", "charted"));
+    card.append(el("div", "lbl", t("cta.chartedLabel")));
     const row = el("div", "row");
-    row.append(button(`Sail to ${nearest.name}`, () => model.onSail(nearest.slug), "primary"), button("Stay here", model.onStay));
+    row.append(button(t("cta.sailTo", { name: nearest.name }), () => model.onSail(nearest.slug), "primary"), button(t("cta.stayHere"), model.onStay));
     card.append(row);
   } else {
     // every landmark explored: the mentor's work here is done, and the Keeper can chart it
-    card.append(el("div", "lbl", "explored"));
+    card.append(el("div", "lbl", t("cta.exploredLabel")));
     const row = el("div", "row");
-    row.append(button("Chart with the judge", model.onHandoff, "primary"));
+    row.append(button(t("cta.chartWithJudge"), model.onHandoff, "primary"));
     card.append(row);
   }
   wrap.append(card);

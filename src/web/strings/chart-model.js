@@ -1,0 +1,43 @@
+// Strings for chart-model.js. Keys are camelCase; keep en and zh-TW in step (tests/web/strings.test.js).
+const plural = (n, one, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
+
+export default {
+  en: {
+    named: "named {name}",
+    islands: (v) => plural(v.n, "island"),
+    straits: (v) => plural(v.n, "strait"),
+    updates: (v) => plural(v.n, "update"),
+    seas: (v) => plural(v.n, "sea"),
+    harbour: "harbour {name}",
+    strait: "{a} ~ {b}",
+    straitNamed: "{a} ~ {b} ({name})",
+    newName: "name → {name}",
+    newSummary: "summary → {summary}",
+    update: "{name}: {changes}",
+    changeSep: "; ",
+    openingTop: "No islands yet. The cartographer sketches {name} as 6–10 islands; you approve the sketch before anything is drawn.",
+    actionTop: "Sketch {name}",
+    openingScale: "{name} has no islets yet. The cartographer reads its threads and board, then sketches 4–8 islets for you to approve.",
+    actionScale: "Sketch the islets of {name}",
+    openingMore: "Ask for a change at this scale: a missing island, a split, a better summary, a harbour.",
+  },
+  "zh-TW": {
+    named: "命名為「{name}」",
+    islands: (v) => `${v.n}座島嶼`,
+    straits: (v) => `${v.n}道海峽`,
+    updates: (v) => `${v.n}項更新`,
+    seas: (v) => `${v.n}片海域`,
+    harbour: "港口：{name}",
+    strait: "{a} ~ {b}",
+    straitNamed: "{a} ~ {b}（{name}）",
+    newName: "名稱 → {name}",
+    newSummary: "摘要 → {summary}",
+    update: "{name}：{changes}",
+    changeSep: "；",
+    openingTop: "還沒有島嶼。製圖師會把{name}畫成6–10座島嶼；你採用草圖之後，才會畫上地圖。",
+    actionTop: "繪製{name}",
+    openingScale: "{name}還沒有小島。製圖師會讀它的對話和白板，再畫出4–8座小島讓你採用。",
+    actionScale: "繪製{name}的小島",
+    openingMore: "在這個層級提出修改：缺少的島嶼、拆分、更好的摘要、港口。",
+  },
+};

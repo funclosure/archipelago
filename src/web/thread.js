@@ -1,4 +1,7 @@
 // Pure helpers for the island thread. No DOM.
+import { t } from "./i18n.js";
+import { stateLabel } from "./mode-model.js";
+import { kindLabel } from "./board-model.js";
 
 /** The parsed body of a reef proposal, or null when the body is not one. */
 export function proposalFromBody(body) {
@@ -198,4 +201,39 @@ export function questionRuns(line) {
     runs.push({ text: m[0], question: /\?\s*$/.test(m[0]) });
   }
   return runs;
+}
+
+const PART_KEYS = { island: "partIslands", islands: "partIslands", strait: "partStraits", straits: "partStraits", update: "partUpdates", updates: "partUpdates", sea: "partSeas", seas: "partSeas" };
+
+/** One part of a `sketch approved: …` line, in the page's language; a part it does not know stays as written. */
+function sketchPart(part) {
+  const named = part.match(/^named (.+)$/);
+  if (named) return t("thread.partNamed", { name: named[1] });
+  const harbour = part.match(/^harbour (.+)$/);
+  if (harbour) return t("thread.partHarbour", { name: harbour[1] });
+  const count = part.match(/^(\d+) (\w+)$/);
+  if (count && PART_KEYS[count[2]]) return t(`thread.${PART_KEYS[count[2]]}`, { n: Number(count[1]) });
+  return part;
+}
+
+/**
+ * A system line as the page shows it, in the page's language. The server stores these lines in English with fixed
+ * prefixes (they are data: the parsers above read them); this only changes how they read. A line it does not know
+ * shows as stored.
+ */
+export function systemText(body) {
+  if (typeof body !== "string") return body;
+  let m = body.match(/^charted as (\w+)$/);
+  if (m) return t("thread.chartedOwn", { state: stateLabel(m[1]) });
+  m = body.match(/^(island|strait) (.+) charted as (\w+)$/);
+  if (m) return t(m[1] === "island" ? "thread.chartedIsland" : "thread.chartedStrait", { target: m[2], state: stateLabel(m[3]) });
+  m = body.match(/^board: (pinned|updated|removed) (?:"(.*)"|a (\w+))$/s);
+  if (m) {
+    const what = m[2] !== undefined ? t("thread.boardTitle", { title: m[2] }) : t("thread.boardKind", { kind: kindLabel(m[3]) });
+    return t(`thread.board${m[1][0].toUpperCase()}${m[1].slice(1)}`, { what });
+  }
+  if (body === "sketch discarded") return t("thread.sketchDiscarded");
+  m = body.match(/^sketch approved: (.*)$/s);
+  if (m) return t("thread.sketchApproved", { parts: m[1].split(", ").map(sketchPart).join(t("thread.partsJoin")) });
+  return body;
 }

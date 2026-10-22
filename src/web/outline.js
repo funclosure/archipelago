@@ -1,5 +1,5 @@
 // The outline: the domain's tree on the left. Pure helpers first (tested), then the DOM.
-import { app, setScale, frameSelection } from "./app.js";
+import { app, api, setScale, frameSelection } from "./app.js";
 import { select } from "./interactions.js";
 import { FULL_W, RAIL_W, visibleRows, collapsible, dashClass, countNodes, summaryLine, rowMarks } from "./outline-model.js";
 import { registerRegion, region } from "./keys.js";
@@ -10,12 +10,13 @@ import { openAbout } from "./learner.js";
 import { exportDatabase, importDatabase, isHosted, openYourKey } from "./hosted.js";
 import { openDomainEdit, openNewDomain } from "./new-domain.js";
 import { request } from "./transport.js";
+import { LANGUAGES, language, setLanguage, t } from "./i18n.js";
 
 // app.js imports installOutline from here and this file imports app: fine, because nothing below reads app or select at module evaluation.
 
 // ---- DOM ----
 
-const state = { rail: false, expanded: new Set(), menuOpen: false, themesOpen: false, domains: null, cursor: null, cursorCleared: false };
+const state = { rail: false, expanded: new Set(), menuOpen: false, themesOpen: false, languagesOpen: false, domains: null, cursor: null, cursorCleared: false };
 let root = null;
 let peek = null;
 
@@ -134,6 +135,7 @@ function closeMenu() {
   if (state.themesOpen) endPreview(); // a theme hovered and not picked does not stay
   state.menuOpen = false;
   state.themesOpen = false;
+  state.languagesOpen = false;
   state.domains = null;
   render();
 }
@@ -141,6 +143,7 @@ function closeMenu() {
 async function toggleMenu() {
   state.menuOpen = !state.menuOpen;
   state.themesOpen = false;
+  state.languagesOpen = false;
   if (!state.menuOpen) {
     state.domains = null;
     render();
@@ -207,11 +210,11 @@ function headerEl(outline) {
   const head = el("div", "oh");
   const ws = button("", toggleMenu, "ws");
   ws.append(el("span", "name", outline.domain.name), el("span", "chev", "▾"));
-  ws.title = "switch domain";
+  ws.title = t("outline.switchDomain");
   head.append(ws, el("span", "sp"));
   const tog = button("", toggleRail, "ib");
   tog.append(panelIcon(state.rail));
-  tog.title = state.rail ? "expand the outline  [" : "collapse to a rail  [";
+  tog.title = t(state.rail ? "outline.expand" : "outline.collapse");
   tog.setAttribute("aria-label", tog.title.trim());
   head.append(tog);
   if (state.menuOpen && state.domains) {
@@ -230,13 +233,13 @@ function headerEl(outline) {
       // The current domain's row carries its edit button, shown on hover or focus (always on a touch screen).
       const row = el("div", "mi-row");
       const edit = button("", () => { closeMenu(); void openDomainEdit(d.slug); }, "ib edit");
-      edit.title = "Edit domain";
-      edit.setAttribute("aria-label", `Edit ${d.name}`);
+      edit.title = t("outline.editDomain");
+      edit.setAttribute("aria-label", t("outline.editNamed", { name: d.name }));
       edit.append(pencilIcon());
       row.append(item, edit);
       menu.append(row);
     }
-    menu.append(button("New domain…", () => { closeMenu(); openNewDomain(); }, "mi new"));
+    menu.append(button(t("outline.newDomain"), () => { closeMenu(); openNewDomain(); }, "mi new"));
     // Theme: one row naming the chosen theme; a click opens the list under it. Hovering a theme previews it on the
     // whole page; leaving the list (or closing the menu) goes back; a click keeps it and closes the menu.
     const cur = savedTheme();
@@ -246,14 +249,14 @@ function headerEl(outline) {
       render();
     }, `mi theme-row${state.themesOpen ? " open" : ""}`);
     themeRow.setAttribute("aria-expanded", String(state.themesOpen));
-    themeRow.append(el("span", null, "Theme"), el("span", "cur", THEMES.find((t) => t.id === cur)?.name ?? ""), el("span", "chev", state.themesOpen ? "▾" : "▸"));
+    themeRow.append(el("span", null, t("outline.theme")), el("span", "cur", THEMES.find((th) => th.id === cur)?.name ?? ""), el("span", "chev", state.themesOpen ? "▾" : "▸"));
     menu.append(el("div", "sep"), themeRow);
     if (state.themesOpen) {
       const list = el("div", "themes");
-      for (const t of THEMES) {
-        const item = button(t.name, () => { applyTheme(t.id); closeMenu(); }, `mi sub${t.id === cur ? " on" : ""}`);
-        item.setAttribute("aria-current", String(t.id === cur));
-        const preview = () => applyTheme(t.id, { persist: false });
+      for (const th of THEMES) {
+        const item = button(th.name, () => { applyTheme(th.id); closeMenu(); }, `mi sub${th.id === cur ? " on" : ""}`);
+        item.setAttribute("aria-current", String(th.id === cur));
+        const preview = () => applyTheme(th.id, { persist: false });
         item.addEventListener("mouseenter", preview);
         item.addEventListener("focus", preview);
         list.append(item);
@@ -262,15 +265,44 @@ function headerEl(outline) {
       list.addEventListener("focusout", (e) => { if (!list.contains(e.relatedTarget)) endPreview(); });
       menu.append(list);
     }
+    // Language: built like Theme, without the preview. A pick stores it, tells the server (the personas reply in it),
+    // and reloads, since every word on the page was drawn in the old one.
+    const lang = language();
+    const langRow = button("", (e) => {
+      e.stopPropagation();
+      state.languagesOpen = !state.languagesOpen;
+      render();
+    }, `mi theme-row${state.languagesOpen ? " open" : ""}`);
+    langRow.setAttribute("aria-expanded", String(state.languagesOpen));
+    langRow.append(el("span", null, t("outline.language")), el("span", "cur", LANGUAGES.find((l) => l.id === lang)?.name ?? ""), el("span", "chev", state.languagesOpen ? "▾" : "▸"));
+    menu.append(langRow);
+    if (state.languagesOpen) {
+      const list = el("div", "themes");
+      for (const l of LANGUAGES) {
+        const item = button(l.name, async () => {
+          setLanguage(l.id);
+          try {
+            await api("/api/learner", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ language: l.id }) });
+          } catch {
+            // the page still switches; the personas keep the old language until the next pick
+          }
+          location.reload();
+        }, `mi sub${l.id === lang ? " on" : ""}`);
+        item.setAttribute("aria-current", String(l.id === lang));
+        item.lang = l.id;
+        list.append(item);
+      }
+      menu.append(list);
+    }
     menu.append(el("div", "sep"));
-    menu.append(button("About you", () => { closeMenu(); void openAbout(); }, "mi"));
+    menu.append(button(t("outline.about"), () => { closeMenu(); void openAbout(); }, "mi"));
     if (isHosted()) {
-      menu.append(button("Your key", () => { closeMenu(); openYourKey(); }, "mi"));
+      menu.append(button(t("outline.yourKey"), () => { closeMenu(); openYourKey(); }, "mi"));
       // Everything saves in this browser as it happens; these two move a copy in and out of it.
-      const backup = button("Download a backup", () => { closeMenu(); void exportDatabase(); }, "mi");
-      backup.title = "Your charts save in this browser as you go. This downloads a copy of all of them as one .sqlite file.";
-      const restore = button("Restore a backup…", () => { closeMenu(); importDatabase(); }, "mi");
-      restore.title = "Replaces everything in this browser with the charts in a backup file.";
+      const backup = button(t("outline.backup"), () => { closeMenu(); void exportDatabase(); }, "mi");
+      backup.title = t("outline.backupHint");
+      const restore = button(t("outline.restore"), () => { closeMenu(); importDatabase(); }, "mi");
+      restore.title = t("outline.restoreHint");
       menu.append(backup, restore);
     }
     head.append(menu);
@@ -303,13 +335,13 @@ function render() {
   const frag = document.createDocumentFragment();
   frag.append(headerEl(outline));
   frag.append(el("div", "sum", summaryLine(outline, app.mode)));
-  frag.append(el("div", "sec", "Islands"));
+  frag.append(el("div", "sec", t("outline.islands")));
   frag.append(listEl(outline));
   frag.append(railEl(outline));
   const ft = el("div", "ft");
   const hint = el("span");
-  hint.append(el("kbd", null, "["), " outline · ", el("kbd", null, "?"), " keys");
-  ft.append(hint, el("span", null, `${countNodes(outline.islands)} islands`));
+  hint.append(el("kbd", null, "["), t("outline.outline"), el("kbd", null, "?"), t("outline.keys"));
+  ft.append(hint, el("span", null, t("outline.count", { n: countNodes(outline.islands) })));
   frag.append(ft);
   const top = root.querySelector(".list")?.scrollTop ?? 0;
   root.replaceChildren(frag);

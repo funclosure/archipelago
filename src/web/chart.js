@@ -8,6 +8,8 @@ import { isImeKey } from "./keys-model.js";
 import { chartOpening, sketchRows, sketchSummary } from "./chart-model.js";
 import { thinkingLine } from "./progress-model.js";
 import { thinkingEl } from "./thinking.js";
+import { systemText } from "./thread.js";
+import { t } from "./i18n.js";
 
 const STICK_PX = 40;
 const LOG_STEP = 80;
@@ -212,14 +214,14 @@ function renderLive() {
   if (!live || !progress || !log) return;
   const stuck = atBottom(log);
   if (chart.inFlight && !chart.live) {
-    live.replaceChildren(thinkingEl(thinkingLine("the cartographer", chart.progress)));
+    live.replaceChildren(thinkingEl(thinkingLine("cartographer", chart.progress)));
   } else if (chart.live) {
     live.replaceChildren(renderMarkdown(chart.live));
   } else {
     live.replaceChildren();
   }
   live.hidden = !(chart.live || chart.inFlight);
-  progress.textContent = chart.progress && chart.live ? `${thinkingLine("the cartographer", chart.progress)}…` : "";
+  progress.textContent = chart.progress && chart.live ? `${thinkingLine("cartographer", chart.progress)}…` : "";
   progress.hidden = !progress.textContent;
   if (stuck) log.scrollTop = log.scrollHeight;
 }
@@ -237,16 +239,16 @@ export function focusChartAnswer() {
 function headEl() {
   const head = el("div", "head");
   const row = el("div", "row");
-  row.append(el("h2", null, "Cartographer"));
+  row.append(el("h2", null, t("chart.title")));
   const pills = el("span", "pills");
-  pills.append(el("span", "pill mode cartographer", chart.scale ? `islets of ${scaleName()}` : `top of ${scaleName()}`));
+  pills.append(el("span", "pill mode cartographer", t(chart.scale ? "chart.isletsOf" : "chart.topOf", { name: scaleName() })));
   row.append(pills);
   head.append(row);
-  head.append(el("p", "summary", "Sketches the islands at this scale. Nothing is drawn until you approve the sketch."));
+  head.append(el("p", "summary", t("chart.summary")));
   const sub = el("div", "sub");
-  sub.append(el("span", null, chart.sketch ? `sketch to approve · ${sketchSummary(chart.sketch.body, app.snapshot?.islands ?? [])}` : ""));
+  sub.append(el("span", null, chart.sketch ? t("chart.toApprove", { summary: sketchSummary(chart.sketch.body, app.snapshot?.islands ?? []) }) : ""));
   const links = el("span", "links");
-  links.append(button("Close", () => closeChart(), "link"));
+  links.append(button(t("chart.close"), () => closeChart(), "link"));
   sub.append(links);
   head.append(sub);
   return head;
@@ -255,21 +257,21 @@ function headEl() {
 function sketchCard(sketch) {
   const card = el("div", "sketch-card");
   const rows = sketchRows(sketch.body, app.snapshot?.islands ?? []);
-  card.append(el("div", "lbl", "sketch"), el("div", "sum", sketchSummary(sketch.body, app.snapshot?.islands ?? [])));
+  card.append(el("div", "lbl", t("chart.sketch")), el("div", "sum", sketchSummary(sketch.body, app.snapshot?.islands ?? [])));
   if (rows.islands.length) {
     const list = el("ul", "isles");
     for (const i of rows.islands) {
       const li = el("li");
       const name = el("div", "name", i.name);
-      if (i.harbour) name.append(el("span", "pill harbour", "harbour"));
+      if (i.harbour) name.append(el("span", "pill harbour", t("chart.harbour")));
       li.append(name, el("div", "blurb", i.summary), el("div", "marks", i.landmarks)); // not "about": that class is the About you dialog's
       list.append(li);
     }
     card.append(list);
   }
-  if (rows.straits.length) card.append(el("div", "sec", "Straits"), el("div", "straits", rows.straits.join(" · ")));
+  if (rows.straits.length) card.append(el("div", "sec", t("chart.straits")), el("div", "straits", rows.straits.join(" · ")));
   if (rows.seas.length) {
-    card.append(el("div", "sec", "Seas"));
+    card.append(el("div", "sec", t("chart.seas")));
     for (const s of rows.seas) {
       const row = el("div", "update");
       row.append(el("span", "name", s.name), ` ${s.islands}`);
@@ -277,14 +279,14 @@ function sketchCard(sketch) {
     }
   }
   if (rows.updates.length) {
-    card.append(el("div", "sec", "Updates"));
+    card.append(el("div", "sec", t("chart.updates")));
     for (const u of rows.updates) card.append(el("div", "update", u));
   }
-  if (rows.harbour) card.append(el("div", "sec", `Harbour: ${rows.harbour}`));
+  if (rows.harbour) card.append(el("div", "sec", t("chart.harbourOf", { name: rows.harbour })));
   const actions = el("div", "actions");
-  const approve = button("Approve sketch", () => void decideSketch(sketch.id, "approve"));
+  const approve = button(t("chart.approve"), () => void decideSketch(sketch.id, "approve"));
   approve.id = "approve-sketch";
-  const discard = button("Discard", () => void decideSketch(sketch.id, "discard"), "btn ghost");
+  const discard = button(t("chart.discard"), () => void decideSketch(sketch.id, "discard"), "btn ghost");
   approve.disabled = discard.disabled = chart.deciding || chart.inFlight;
   actions.append(approve, discard);
   card.append(actions);
@@ -292,7 +294,7 @@ function sketchCard(sketch) {
 }
 
 function messageEl(m) {
-  if (m.kind === "system") return el("div", "msg system", m.body);
+  if (m.kind === "system") return el("div", "msg system", systemText(m.body));
   const box = el("div", `msg ${m.role === "you" ? "you" : "cartographer"}`);
   box.append(renderMarkdown(m.body));
   return box;
@@ -301,10 +303,10 @@ function messageEl(m) {
 function logEl() {
   const log = el("div", "log");
   if (!chart.loaded) {
-    log.append(el("p", chart.loadError ? "error" : "muted", chart.loadError ?? "loading the thread…"));
+    log.append(el("p", chart.loadError ? "error" : "muted", chart.loadError ?? t("chart.loading")));
     return log;
   }
-  if (chart.loadError) log.append(el("p", "muted", `could not refresh the thread: ${chart.loadError}`));
+  if (chart.loadError) log.append(el("p", "muted", t("chart.refreshFailed", { error: chart.loadError })));
   if (chart.messages.length === 0 && !chart.inFlight && app.snapshot) {
     const opening = chartOpening(app.snapshot);
     const empty = el("div", "empty");
@@ -332,7 +334,7 @@ function logEl() {
   progress.id = "progress";
   progress.hidden = true;
   log.append(live, progress);
-  if (chart.stopped) log.append(el("div", "stopped", "stopped · the reply was not kept"));
+  if (chart.stopped) log.append(el("div", "stopped", t("chart.stopped")));
   if (chart.error) log.append(el("div", "error", chart.error));
   return log;
 }
@@ -345,7 +347,7 @@ function footEl() {
   ta.id = "answer";
   ta.rows = 1;
   ta.disabled = !chart.loaded || chart.deciding;
-  ta.placeholder = chart.sketch ? "say what to change in the sketch" : "ask for an island, a split, a better summary";
+  ta.placeholder = t(chart.sketch ? "chart.placeholderSketch" : "chart.placeholder");
   ta.value = chart.draft;
   ta.addEventListener("input", () => {
     chart.draft = ta.value;
@@ -366,11 +368,11 @@ function footEl() {
   });
   form.append(ta);
   if (chart.inFlight && turnAbort) {
-    const stop = button("Stop", () => stopChartTurn(), "btn ghost");
+    const stop = button(t("chart.stop"), () => stopChartTurn(), "btn ghost");
     stop.id = "stop";
     form.append(stop);
   } else {
-    const send = button("Send", null, "btn send cartographer");
+    const send = button(t("chart.send"), null, "btn send cartographer");
     send.type = "submit";
     send.disabled = ta.disabled;
     form.append(send);
@@ -384,7 +386,7 @@ function footEl() {
   });
   foot.append(form);
   const meta = el("div", "meta");
-  meta.append(el("span", null, chart.inFlight ? "Esc to stop" : chart.sketch ? "Enter to send · ⌘↵ approves the sketch" : "Enter to send · Shift-Enter for a new line"));
+  meta.append(el("span", null, t(chart.inFlight ? "chart.metaStop" : chart.sketch ? "chart.metaSketch" : "chart.metaSend")));
   foot.append(meta);
   return foot;
 }

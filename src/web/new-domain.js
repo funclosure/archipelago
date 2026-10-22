@@ -5,14 +5,10 @@
 import { api } from "./app.js";
 import { registerRegion } from "./keys.js";
 import { CENTRE, COAST, RING_STEP, ringPoints } from "./contour.js";
+import { t } from "./i18n.js";
 
 /** Descriptions to start from: a click puts one in the field, to send or to edit. */
-export const EXAMPLES = [
-  "System design, for a staff engineer interview",
-  "React Native, coming from ten years of iOS",
-  "Wine, as a curious beginner",
-  "Linear algebra, to finally follow ML papers",
-];
+export const EXAMPLES = [t("newDomain.example1"), t("newDomain.example2"), t("newDomain.example3"), t("newDomain.example4")];
 
 /** Mirrors DESCRIPTION_MAX in src/core/validators.ts. */
 export const DESCRIPTION_MAX = 500;
@@ -120,16 +116,16 @@ async function removeDomain() {
 /** The edit dialog's second step: what deleting takes with it, and the two ways out. */
 function deleteConfirm() {
   const box = el("div", "delete-confirm");
-  box.append(el("p", "help", `Delete ${state.name} and everything charted in it: its islands, threads, verdicts, boards, and seas. This can't be undone.`));
-  if (globalThis.ARCHIPELAGO_HOSTED) box.append(el("p", "help", "To keep a copy, download a backup from the domain menu first."));
+  box.append(el("p", "help", t("newDomain.deleteHelp", { name: state.name })));
+  if (globalThis.ARCHIPELAGO_HOSTED) box.append(el("p", "help", t("newDomain.backupFirst")));
   if (state.error) box.append(el("p", "error", state.error));
   const row = el("div", "row");
-  const yes = el("button", "btn danger", state.saving ? "Deleting…" : "Delete for good");
+  const yes = el("button", "btn danger", state.saving ? t("newDomain.deleting") : t("newDomain.deleteForGood"));
   yes.type = "button";
   yes.id = "delete-domain-confirm";
   yes.disabled = state.saving;
   yes.addEventListener("click", () => void removeDomain());
-  const no = el("button", "btn ghost", "Keep it");
+  const no = el("button", "btn ghost", t("newDomain.keepIt"));
   no.type = "button";
   no.disabled = state.saving;
   no.addEventListener("click", () => {
@@ -159,42 +155,42 @@ function render() {
     }
   };
   if (state.editing && state.deleting) {
-    card.append(el("div", "lbl", "Delete domain"), deleteConfirm());
+    card.append(el("div", "lbl", t("newDomain.deleteTitle")), deleteConfirm());
     root.append(card);
     card.querySelector(".btn.ghost")?.focus();
     return;
   }
   if (state.editing) {
-    card.append(el("div", "lbl", "Edit domain"));
+    card.append(el("div", "lbl", t("newDomain.editTitle")));
     const name = el("input");
     name.id = "new-domain-name";
     name.maxLength = 80;
     name.value = state.name;
     name.disabled = state.saving;
-    name.setAttribute("aria-label", "Name");
+    name.setAttribute("aria-label", t("newDomain.name"));
     name.addEventListener("input", () => (state.name = name.value));
     name.addEventListener("keydown", keys);
-    card.append(name, el("p", "help", "The description is what the cartographer, the Keeper, and the mentor read about why you chart this. Islands already drawn stay as they are; ask the cartographer for changes."));
+    card.append(name, el("p", "help", t("newDomain.editHelp")));
   } else if (state.first) {
-    card.append(islandsArt(), el("div", "lbl", "Archipelago"), el("h1", "title", "What do you want to chart?"));
-    card.append(el("p", "help", "Say it your way: the subject, where you come from, what it is for. The cartographer names the domain and sketches it as islands; you approve the sketch, then the Keeper asks about each island and the map fills in."));
+    card.append(islandsArt(), el("div", "lbl", "Archipelago"), el("h1", "title", t("newDomain.firstTitle")));
+    card.append(el("p", "help", t("newDomain.firstHelp")));
   } else {
-    card.append(el("div", "lbl", "New domain"), el("p", "help", "What do you want to chart, and why? Say it your way: the subject, where you come from, what it is for. The cartographer names the domain and sketches its islands; you approve both."));
+    card.append(el("div", "lbl", t("newDomain.newTitle")), el("p", "help", t("newDomain.newHelp")));
   }
   const description = el("textarea");
   description.id = "new-domain-description";
   description.rows = 4;
   description.maxLength = DESCRIPTION_MAX;
-  description.placeholder = "e.g. React Native, coming from ten years of iOS (UIKit and SwiftUI); I have an interview soon.";
+  description.placeholder = t("newDomain.placeholder");
   description.value = state.description;
   description.disabled = state.saving;
-  description.setAttribute("aria-label", "Description");
+  description.setAttribute("aria-label", t("newDomain.description"));
   description.addEventListener("input", () => (state.description = description.value));
   description.addEventListener("keydown", keys);
   card.append(description);
   if (!state.editing) {
     const examples = el("div", "examples");
-    examples.append(el("span", "ex-lbl", "or start from"));
+    examples.append(el("span", "ex-lbl", t("newDomain.startFrom")));
     for (const text of EXAMPLES) {
       const chip = el("button", "ex", text);
       chip.type = "button";
@@ -210,17 +206,17 @@ function render() {
   }
   if (state.error) card.append(el("p", "error", state.error));
   const row = el("div", "row");
-  const make = el("button", "btn", state.saving ? (state.editing ? "Saving…" : "Creating…") : state.editing ? "Save" : "Create and sketch");
+  const make = el("button", "btn", state.saving ? (state.editing ? t("newDomain.saving") : t("newDomain.creating")) : state.editing ? t("newDomain.save") : t("newDomain.create"));
   make.type = "submit";
   make.disabled = state.saving;
-  const cancel = el("button", "btn ghost", "Cancel");
+  const cancel = el("button", "btn ghost", t("newDomain.cancel"));
   cancel.type = "button";
   cancel.addEventListener("click", close);
   row.append(make);
   if (!state.first) row.append(cancel);
   if (!state.editing) row.append(el("span", "hint", "⌘↵"));
   if (state.editing) {
-    const del = el("button", "btn ghost danger push", "Delete domain…");
+    const del = el("button", "btn ghost danger push", t("newDomain.deleteDomain"));
     del.type = "button";
     del.id = "delete-domain";
     del.disabled = state.saving;
@@ -264,7 +260,7 @@ function islandsArt() {
     const label = document.createElementNS(SVG, "text");
     label.setAttribute("x", String(CENTRE));
     label.setAttribute("y", "190");
-    label.textContent = state === "open" ? "open water" : state;
+    label.textContent = { open: t("newDomain.openWater"), sandbar: t("newDomain.sandbar"), settled: t("newDomain.settled") }[state];
     g.append(label);
     svg.append(g);
   });

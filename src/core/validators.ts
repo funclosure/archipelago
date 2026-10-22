@@ -235,9 +235,15 @@ export const modeSchema = z.enum(messageModes);
 
 /** The learner note's cap. The mentor's context slices to it as well, so an older, longer row cannot grow the prompt. */
 export const NOTE_MAX = 1000;
-export const learnerInputSchema = z.object({
-  note: z.string().trim().max(NOTE_MAX, `a note is at most ${NOTE_MAX} characters`),
-});
+/** The page's languages: the personas are told which one the reader reads in. */
+export const UI_LANGUAGES = ["en", "zh-TW"] as const;
+/** POST /api/learner: the note, the page's language, or both. */
+export const learnerInputSchema = z
+  .object({
+    note: z.string().trim().max(NOTE_MAX, `a note is at most ${NOTE_MAX} characters`).optional(),
+    language: z.enum(UI_LANGUAGES).optional(),
+  })
+  .refine((l) => l.note !== undefined || l.language !== undefined, { message: "say the note, the language, or both" });
 
 const oneLine = z
   .string()

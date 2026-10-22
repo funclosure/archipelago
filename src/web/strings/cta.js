@@ -1,0 +1,31 @@
+// Strings for cta.js. Keys are camelCase; keep en and zh-TW in step (tests/web/strings.test.js).
+export default {
+  en: {
+    reefLabel: "reef?",
+    confirmReef: "Confirm the reef",
+    disputeBelow: "Dispute below",
+    sketchLabel: "sketch",
+    sketchDrew: "The cartographer drew {summary}. Approve it to put it on the map.",
+    approveSketch: "Approve sketch",
+    readIt: "Read it",
+    chartedLabel: "charted",
+    sailTo: "Sail to {name}",
+    stayHere: "Stay here",
+    exploredLabel: "explored",
+    chartWithJudge: "Chart with the judge",
+  },
+  "zh-TW": {
+    reefLabel: "暗礁？",
+    confirmReef: "確認暗礁",
+    disputeBelow: "在下方提出異議",
+    sketchLabel: "草圖",
+    sketchDrew: "製圖師畫好了：{summary}。採用後就會放到地圖上。",
+    approveSketch: "採用草圖",
+    readIt: "看看內容",
+    chartedLabel: "已測繪",
+    sailTo: "航向{name}",
+    stayHere: "留在這裡",
+    exploredLabel: "已探索",
+    chartWithJudge: "交給守燈人測繪",
+  },
+};

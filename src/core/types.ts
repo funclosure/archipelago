@@ -164,7 +164,8 @@ export type Landmark = {
 };
 
 /** The one learner row: what the reader says about themselves, read by the mentor in every domain. */
-export type Learner = { note: string; updatedAt: string };
+/** `language`: the page's language (`UI_LANGUAGES`), null until one is chosen or reported. */
+export type Learner = { note: string; language: string | null; updatedAt: string };
 
 export const sketchStatuses = ["pending", "approved", "discarded", "superseded"] as const;
 export type SketchStatus = (typeof sketchStatuses)[number];

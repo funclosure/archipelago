@@ -23,7 +23,7 @@ export type ChartDeps = { dbPath?: string; domain: string; island?: string };
 export type ChartContext = {
   mode: "cartographer";
   /** `provisional`: the name is a placeholder taken from the description; the first sketch names the domain. */
-  domain: { slug: string; name: string; description: string | null; provisional: boolean };
+  domain: { slug: string; name: string; description: string | null; provisional: boolean; language: string | null };
   /** The reader's About you note, the same one the mentor reads; empty when they wrote none. */
   learnerNote: string;
   /** The island whose islets this scale holds; null at the domain's top scale. */
@@ -73,7 +73,7 @@ export function buildChartContext(db: Database, domainSlug: string, islandSlug?:
   const straitVerdicts = latestVerdicts(db, "strait", straits.map((s) => s.id));
   return {
     mode: "cartographer",
-    domain: { slug: domain.slug, name: domain.name, description: domain.description, provisional: domain.provisional === 1 },
+    domain: { slug: domain.slug, name: domain.name, description: domain.description, provisional: domain.provisional === 1, language: getLearner(db).language },
     learnerNote: getLearner(db).note.slice(0, NOTE_MAX).trim(),
     scale: island && {
       slug: island.slug,
@@ -141,7 +141,7 @@ export function renderChartContext(ctx: ChartContext): string {
   const [min, max] = ctx.limits;
   const lines = [`## This scale`, ``, `Domain: ${ctx.domain.name} (${ctx.domain.slug})`];
   if (ctx.domain.provisional) lines.push(`Name: provisional, taken from the reader's description. Name the domain in this sketch (§1).`);
-  lines.push(...renderDescription(ctx.domain.description));
+  lines.push(...renderDescription(ctx.domain.description, ctx.domain.language));
   lines.push(`About the reader (their note): ${ctx.learnerNote ? indent(ctx.learnerNote) : "none written"}`);
   lines.push(`Scale: ${scaleName(ctx)}`);
   if (ctx.scale) {

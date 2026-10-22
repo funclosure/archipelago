@@ -1,4 +1,5 @@
 // Pure, DOM-free: the board's editor state, the POST body it becomes, and the keyboard cursor over cards.
+import { t } from "./i18n.js";
 
 export const CARD_KINDS = ["diagram", "note", "code"];
 /** The key that adds each kind while the board is open. */
@@ -52,7 +53,14 @@ export function keepCursor(ids, cursor) {
 }
 
 /** Who wrote a card, as the board's caption says it. The page says the Keeper for the judge. */
-export const AUTHOR_LABELS = { judge: "the Keeper", mentor: "the mentor", you: "you" };
+export const AUTHOR_LABELS = { judge: t("boardModel.authorJudge"), mentor: t("boardModel.authorMentor"), you: t("boardModel.authorYou") };
+
+/** Each card kind as the page names it. */
+export const KIND_LABELS = { diagram: t("boardModel.kindDiagram"), note: t("boardModel.kindNote"), code: t("boardModel.kindCode") };
+
+export function kindLabel(kind) {
+  return KIND_LABELS[kind] ?? kind;
+}
 
 export function authorLabel(author) {
   return AUTHOR_LABELS[author] ?? author;
