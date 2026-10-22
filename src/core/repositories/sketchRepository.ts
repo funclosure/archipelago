@@ -35,6 +35,7 @@ export function validateSketch(db: Database, domainId: number, parentIslandId: n
   const [min, max] = SKETCH_LIMITS[parentIslandId === null ? "top" : "islets"][siblings.length === 0 ? "first" : "more"];
   const where = parentIslandId === null ? "at the top scale" : "among these islets";
   if (body.name !== undefined && parentIslandId !== null) throw new ArchipelagoError("a sketch names the domain only at the top scale");
+  if (body.slug !== undefined && body.name === undefined) throw new ArchipelagoError("a sketch gives the domain a slug only with its name");
   if (body.islands.length < min || body.islands.length > max) {
     throw new ArchipelagoError(`a sketch ${where} adds ${min === max ? min : `${min}–${max}`} islands, not ${body.islands.length}`);
   }
@@ -173,7 +174,7 @@ export function approveSketch(db: Database, domainId: number, id: number): Appro
     for (const update of body.updates) updateIsland(db, domainId, update.slug, { name: update.name, summary: update.summary });
     if (body.harbour !== undefined) setHarbour(db, domainId, body.harbour);
     for (const sea of body.seas) addSea(db, { domainId, parentIslandId: sketch.parentIslandId, name: sea.name, anchor: sea.islands });
-    const domain = body.name !== undefined ? nameDomain(db, domainId, body.name) : db.query<{ slug: string; name: string }, [number]>("select slug, name from domains where id = ?").get(domainId)!;
+    const domain = body.name !== undefined ? nameDomain(db, domainId, body.name, body.slug) : db.query<{ slug: string; name: string }, [number]>("select slug, name from domains where id = ?").get(domainId)!;
     const approved = setStatus(db, sketch.id, "approved");
     const parts = [
       body.name !== undefined && `named ${body.name}`,

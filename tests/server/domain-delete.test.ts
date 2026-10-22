@@ -86,3 +86,18 @@ test("removeDomain is what the terminal's domain remove runs", () => {
   expect(listDomains(db).map((d) => d.slug)).toEqual(["gone"]);
   db.close();
 });
+
+// ---- naming a domain whose name has no ASCII of its own ----
+import { createDomain } from "../../src/core/repositories/domainRepository.ts";
+import { approveSketch } from "../../src/core/repositories/sketchRepository.ts";
+
+test("a Chinese name from the cartographer takes the slug it passes, since the name kebab-cases to nothing", () => {
+  const db = openDatabase(dbPath);
+  const d = createDomain(db, { description: "分散式系統，準備面試" });
+  expect(d.provisional).toBeTruthy();
+  const isle = (slug: string) => ({ slug, name: slug, summary: "s", landmarks: ["a", "b", "c", "d"].map((l) => ({ slug: l, name: l })) });
+  const sketch = proposeSketch(db, d.id, null, { name: "分散式系統", slug: "distributed-systems", islands: ["a", "b", "c", "d", "e", "f"].map(isle) });
+  expect(approveSketch(db, d.id, sketch.id).domain).toEqual({ slug: "distributed-systems", name: "分散式系統" });
+  expect(() => proposeSketch(db, d.id, null, { slug: "lonely", harbour: "a" })).toThrow(/only with its name/);
+  db.close();
+});

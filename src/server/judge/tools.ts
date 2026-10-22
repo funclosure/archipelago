@@ -166,6 +166,16 @@ export function unlockLandmark(deps: ToolDeps, input: unknown): { slug: string; 
 // A quote must be one the reader could recognise as theirs, so a space, a letter, or a lone word is not one.
 const QUOTE_MIN_CHARS = 12;
 const QUOTE_MIN_WORDS = 2;
+// Chinese, Japanese, and Korean put no spaces between words and carry a word in one or two characters, so there a
+// quote is long enough at six of those characters (「快取失效會雪崩」), whatever the spaces say.
+const QUOTE_MIN_CJK = 6;
+const CJK = /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}]/gu;
+
+/** Whether a quote is long enough to be the reader's own words: two words and twelve characters, or six CJK characters. */
+export function isRecognisableQuote(evidence: string): boolean {
+  if ((evidence.match(CJK)?.length ?? 0) >= QUOTE_MIN_CJK) return true;
+  return evidence.length >= QUOTE_MIN_CHARS && evidence.split(/\s+/).length >= QUOTE_MIN_WORDS;
+}
 
 /**
  * Whether `answer` is the reader choosing one of an ask's options in this thread. POST /api/probe records a pick
@@ -185,8 +195,10 @@ function isOptionPick(thread: Message[], asks: Ask[], answer: Message): boolean 
 export function markExplored(deps: ToolDeps, input: unknown): { slug: string; name: string; explored: number; total: number; already: boolean } {
   const parsed = unlockInputSchema.parse(input);
   const evidence = parsed.evidence.trim();
-  if (evidence.length < QUOTE_MIN_CHARS || evidence.split(/\s+/).length < QUOTE_MIN_WORDS) {
-    throw new ArchipelagoError(`evidence must quote at least two words (${QUOTE_MIN_CHARS}+ characters) of the reader's latest message`);
+  if (!isRecognisableQuote(evidence)) {
+    throw new ArchipelagoError(
+      `evidence must quote at least two words (${QUOTE_MIN_CHARS}+ characters), or ${QUOTE_MIN_CJK} Chinese, Japanese, or Korean characters, of the reader's latest message`,
+    );
   }
   return withDb(deps.dbPath, (db) =>
     db.transaction(() => {
