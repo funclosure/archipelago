@@ -71,6 +71,18 @@ export function drawSeaName(ctx, sea, set, { selected = false, hover = false, di
   ctx.restore();
 }
 
+/** The box a shift-drag is drawing to gather islands, in world units; `scale` (px per world unit) keeps its line one px. */
+export function drawMarquee(ctx, box, scale) {
+  ctx.save();
+  ctx.fillStyle = alpha(PALETTE.lamp, 0.06);
+  ctx.fillRect(box.x0, box.y0, box.x1 - box.x0, box.y1 - box.y0);
+  ctx.setLineDash([4 / scale, 4 / scale]);
+  ctx.strokeStyle = alpha(PALETTE.lamp, 0.8);
+  ctx.lineWidth = 1 / scale;
+  ctx.strokeRect(box.x0, box.y0, box.x1 - box.x0, box.y1 - box.y0);
+  ctx.restore();
+}
+
 export function clear(ctx, w, h) {
   ctx.fillStyle = PALETTE.sea;
   ctx.fillRect(0, 0, w, h);
@@ -288,7 +300,7 @@ function drawDraft(ctx, node, dim, label) {
   ctx.restore();
 }
 
-export function drawIsland(ctx, node, { dim = false, selected = false, hovered = false, now = 0, label = null } = {}) {
+export function drawIsland(ctx, node, { dim = false, selected = false, gathered = false, hovered = false, now = 0, label = null } = {}) {
   if (node.draft) return drawDraft(ctx, node, dim, label);
   const isl = node.island;
   const s = boxScale(node.radius);
@@ -307,6 +319,16 @@ export function drawIsland(ctx, node, { dim = false, selected = false, hovered =
   drawCoast(ctx, node, coast, now);
   drawLamps(ctx, node, now);
   if (isl.harbour) drawAnchor(ctx);
+  if (gathered) {
+    // Gathered into a group: a dashed lamp ring just outside the halo, so it reads beside a selection too.
+    ctx.beginPath();
+    ctx.arc(CENTRE, CENTRE, HALO_R + 6, 0, Math.PI * 2);
+    ctx.setLineDash([5, 5]);
+    ctx.strokeStyle = alpha(PALETTE.lamp, 0.75);
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
   if (selected) {
     // The selection: a firm halo. Hover on the selected island adds nothing.
     ctx.beginPath();

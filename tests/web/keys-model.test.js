@@ -29,6 +29,12 @@ test("a selected sea lets go on Escape before the island is deselected", () => {
   expect(escapeRung({ sea: false, selected: true })).toBe("deselect");
 });
 
+test("a gathered group lets go on Escape before a selected sea or island", () => {
+  expect(escapeRung({ group: true, sea: true, selected: true })).toBe("group");
+  expect(escapeRung({ chart: true, group: true })).toBe("chart");
+  expect(escapeRung({ group: false, sea: true })).toBe("sea");
+});
+
 test("escapeRung returns the top rung only, in order", () => {
   const all = { sheetOpen: true, menuOpen: true, typing: true, cursor: true, selected: true };
   expect(escapeRung(all)).toBe("sheet");

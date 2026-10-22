@@ -1,6 +1,7 @@
 import { app, api, hitTest, seaAt, setScale, postPositions, frameSelection, insets } from "./app.js";
 import { openSeaEditor, removeSeaById, saveSeaPosition, seaEditing } from "./seas.js";
 import { registerRegion } from "./keys.js";
+import { boxBetween, emptyGroup, gatherBox, groupOffsets, groupSize, moveGroup, toggleMember } from "./group-model.js";
 
 const CLICK_SLOP = 4; // px of pointer travel before a press counts as a drag
 
@@ -33,14 +34,16 @@ const EDGE = 56;
 const EDGE_SPEED = 14;
 
 export function installInteractions(canvas) {
-  let drag = null; // { kind: "pan" | "node" | "sea", slug, sea, startX, startY, lastX, lastY, moved, ox, oy }
+  // kind: "pan" | "node" | "sea" | "group" (a gathered member: all of them move) | "toggle" (shift-click) | "box" (shift-drag on water)
+  let drag = null; // { kind, slug, sea, startX, startY, lastX, lastY, moved, ox, oy, offsets, from }
   let edgeFrame = 0;
 
-  /** Puts the dragged island under the pointer. */
+  /** Puts the dragged island, or the whole gathered group, under the pointer. */
   function moveDragged(px, py) {
+    const w = app.camera.toWorld(px, py);
+    if (drag.kind === "group") return moveGroup(drag.offsets, w, app.nodes, app.seas);
     const node = nodeBySlug(drag.slug);
     if (!node) return;
-    const w = app.camera.toWorld(px, py);
     node.x = w.x;
     node.y = w.y;
     node.pinned = true; // a dragged island is placed by hand from now on
@@ -49,7 +52,7 @@ export function installInteractions(canvas) {
   /** While an island is held near an edge, the sea scrolls under it, so it can be pushed out into open water. */
   function edgePan() {
     edgeFrame = 0;
-    if (!drag || drag.kind !== "node" || !drag.moved) return;
+    if (!drag || (drag.kind !== "node" && drag.kind !== "group") || !drag.moved) return;
     const { left, right, top, bottom } = insets();
     const { w, h } = app.size;
     const push = (d) => (d < EDGE ? ((EDGE - Math.max(0, d)) / EDGE) * EDGE_SPEED : 0);
@@ -70,6 +73,10 @@ export function installInteractions(canvas) {
       if (Math.abs(e.clientX - drag.startX) + Math.abs(e.clientY - drag.startY) > CLICK_SLOP) drag.moved = true;
       if (drag.kind === "pan") {
         app.camera.panBy(dx, dy);
+      } else if (drag.kind === "toggle") {
+        // a shift-press on an island or a name only gathers it; dragging it does nothing
+      } else if (drag.kind === "box") {
+        if (drag.moved) app.marquee = boxBetween(drag.from, app.camera.toWorld(e.clientX, e.clientY));
       } else if (drag.kind === "sea") {
         const sea = app.seas.find((s) => s.id === drag.sea);
         if (sea && drag.moved) {
@@ -96,8 +103,12 @@ export function installInteractions(canvas) {
     const hit = hitTest(e.clientX, e.clientY);
     const sea = hit ? null : seaAt(e.clientX, e.clientY);
     const w = app.camera.toWorld(e.clientX, e.clientY);
+    const gathered = (hit && app.group.islands.has(hit.slug)) || (sea && app.group.seas.has(sea.id));
+    const kind = e.shiftKey ? (hit || sea ? "toggle" : "box") : gathered && groupSize(app.group) > 1 ? "group" : hit ? "node" : sea ? "sea" : "pan";
     drag = {
-      kind: hit ? "node" : sea ? "sea" : "pan",
+      kind,
+      from: w,
+      offsets: kind === "group" ? groupOffsets(app.group, w, app.nodes, app.seas) : [],
       slug: hit ? hit.slug : null,
       sea: sea ? sea.id : null,
       ox: sea ? w.x - sea.x : 0,
@@ -108,7 +119,8 @@ export function installInteractions(canvas) {
       lastY: e.clientY,
       moved: false,
     };
-    if (sea) app.draggingSea = sea.id;
+    if (kind === "sea") app.heldSeas.add(sea.id);
+    if (kind === "group") for (const id of app.group.seas) app.heldSeas.add(id);
     canvas.setPointerCapture(e.pointerId); // released implicitly on pointerup
     canvas.classList.add("dragging");
   });
@@ -120,16 +132,32 @@ export function installInteractions(canvas) {
     const d = drag;
     drag = null;
     if (!d) return;
+    if (d.kind === "toggle") {
+      app.group = d.slug ? toggleMember(app.group, "islands", d.slug) : toggleMember(app.group, "seas", d.sea);
+      return;
+    }
+    if (d.kind === "box") {
+      if (app.marquee) app.group = gatherBox(app.group, app.marquee, app.nodes, app.seas);
+      app.marquee = null;
+      return;
+    }
+    if (d.kind === "group" && d.moved) {
+      void saveGroup();
+      return;
+    }
+    if (d.kind === "group") for (const id of app.group.seas) app.heldSeas.delete(id);
+    // A click or a drag of anything outside the group lets the group go; a click on a member keeps it, and so does panning.
+    else if (!(d.kind === "pan" && d.moved)) app.group = emptyGroup();
     if (d.kind === "node" && d.moved) {
       const node = nodeBySlug(d.slug);
       if (node) postPositions([node]).catch((error) => console.error(error));
       return;
     }
-    if (d.kind === "sea") {
+    if (d.sea !== null && d.slug === null) {
       const sea = app.seas.find((s) => s.id === d.sea);
-      app.draggingSea = null;
       app.selectedSea = d.sea; // a click or a drag selects the sea's name
-      if (sea && d.moved) void saveSeaPosition(sea);
+      if (sea && d.moved) void saveSeaPosition(sea).finally(() => app.heldSeas.delete(d.sea));
+      else app.heldSeas.delete(d.sea);
       return;
     }
     if (d.moved) return;
@@ -137,6 +165,20 @@ export function installInteractions(canvas) {
     const hit = hitTest(e.clientX, e.clientY);
     void select(hit ? hit.slug : null);
   });
+
+  /** Saves where a moved group now sits: its islands in one post, then each sea name. */
+  async function saveGroup() {
+    const nodes = app.nodes.filter((n) => app.group.islands.has(n.slug));
+    const seas = app.seas.filter((s) => app.group.seas.has(s.id));
+    try {
+      if (nodes.length) await postPositions(nodes);
+      for (const s of seas) await saveSeaPosition(s);
+    } catch (error) {
+      console.error(error);
+    } finally {
+      for (const s of seas) app.heldSeas.delete(s.id);
+    }
+  }
 
   canvas.addEventListener("pointerleave", () => {
     app.hover = null;
@@ -186,6 +228,8 @@ export function installInteractions(canvas) {
   };
   registerRegion("map", {
     seaSelected: () => app.selectedSea !== null,
+    gathered: () => groupSize(app.group) > 0,
+    clearGroup: () => { app.group = emptyGroup(); },
     clearSea: () => { app.selectedSea = null; },
     onKey(e) {
       switch (e.key) {

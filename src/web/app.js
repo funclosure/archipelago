@@ -1,10 +1,11 @@
 import { buildNodes, buildLinks, WORLD, stripItems } from "./view-model.js";
 import { createSimulation } from "./layout.js";
 import { createCamera } from "./camera.js";
-import { clear, drawIsland, drawStrait, drawSeaWater, drawSeaName, NAME_FONT } from "./draw.js";
+import { clear, drawIsland, drawStrait, drawSeaWater, drawSeaName, drawMarquee, NAME_FONT } from "./draw.js";
 import { seaMembers, lettering, letteringBox, stippleDots, SEA_FONT } from "./sea-model.js";
 import { placeRemoveButton } from "./seas.js";
 import { layoutLabels } from "./labels.js";
+import { emptyGroup, pruneGroup } from "./group-model.js";
 import { boxScale } from "./contour.js";
 import { installInteractions } from "./interactions.js";
 import { installCard } from "./card.js";
@@ -45,7 +46,9 @@ export const app = {
   seas: [],                  // the reader's names on the water at this scale: { id, name, x, y }
   selectedSea: null,         // id of the sea whose name is selected (dashed box, Delete removes it)
   hoverSea: null,
-  draggingSea: null,         // id of the sea being dragged: a snapshot mid-drag keeps its local position
+  heldSeas: new Set(),       // ids of seas being dragged or saved: a snapshot meanwhile keeps their local positions
+  group: emptyGroup(),       // islands and seas gathered by shift-click or a shift-drag box: one drag moves them all
+  marquee: null,             // the box a shift-drag is drawing, in world units: { x0, y0, x1, y1 }
   seaSets: new Map(),        // id → this frame's lettering, for hit-testing
 };
 
@@ -146,9 +149,10 @@ function applySnapshot(snapshot) {
   app.snapshot = snapshot;
   app.version = snapshot.version;
   app.nodes = buildNodes(snapshot, previous, app.mode);
-  const held = app.seas.find((s) => s.id === app.draggingSea);
-  app.seas = (snapshot.seas ?? []).map((s) => (held && s.id === held.id ? { ...s, x: held.x, y: held.y } : { ...s }));
+  const held = new Map(app.seas.filter((s) => app.heldSeas.has(s.id)).map((s) => [s.id, s]));
+  app.seas = (snapshot.seas ?? []).map((s) => (held.has(s.id) ? { ...s, x: held.get(s.id).x, y: held.get(s.id).y } : { ...s }));
   if (!app.seas.some((s) => s.id === app.selectedSea)) app.selectedSea = null;
+  app.group = sameScale ? pruneGroup(app.group, app.nodes, app.seas) : emptyGroup();
   app.links = buildLinks(snapshot, app.nodes, app.mode);
   // The simulation exists only to place islands that have no stored position; placed ones are pinned.
   // New islands gather around the reader's arrangement, not around a fixed point of the sea.
@@ -475,7 +479,7 @@ function drawSeas(radius) {
     app.seaSets.set(s.id, set);
     drawSeaWater(ctx, seaDots(s, m, radius), radius);
   }
-  for (const s of app.seas) drawSeaName(ctx, s, app.seaSets.get(s.id), { selected: s.id === app.selectedSea, hover: s.id === app.hoverSea });
+  for (const s of app.seas) drawSeaName(ctx, s, app.seaSets.get(s.id), { selected: s.id === app.selectedSea || app.group.seas.has(s.id), hover: s.id === app.hoverSea });
   const chosen = app.seas.find((s) => s.id === app.selectedSea);
   placeRemoveButton(chosen ? letteringBox(chosen, app.seaSets.get(chosen.id)) : null);
 }
@@ -522,8 +526,9 @@ function frame(now) {
   }
   const labels = layoutLabels(app.nodes, { measure: measureName, scale: (n) => boxScale(n.radius), focus: focusSlug, hover: app.hover });
   for (const n of app.nodes) {
-    drawIsland(ctx, n, { dim: Boolean(focusSlug) && !near.has(n.slug), selected: n.slug === focusSlug, hovered: n.slug === app.hover, now, label: labels.get(n.slug) });
+    drawIsland(ctx, n, { dim: Boolean(focusSlug) && !near.has(n.slug), selected: n.slug === focusSlug, gathered: app.group.islands.has(n.slug), hovered: n.slug === app.hover, now, label: labels.get(n.slug) });
   }
+  if (app.marquee) drawMarquee(ctx, app.marquee, app.camera.state.scale);
   requestAnimationFrame(frame);
 }
 
