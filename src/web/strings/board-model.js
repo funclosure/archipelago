@@ -9,8 +9,8 @@ export default {
     kindCode: "code",
   },
   "zh-TW": {
-    authorJudge: "守燈人",
-    authorMentor: "導師",
+    authorJudge: "守塔人",
+    authorMentor: "領航員",
     authorYou: "你",
     kindDiagram: "圖表",
     kindNote: "筆記",

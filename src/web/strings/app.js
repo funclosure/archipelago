@@ -15,7 +15,7 @@ export default {
   },
   "zh-TW": {
     talkTo: "對話對象",
-    talkToLabel: "和守燈人或導師對話",
+    talkToLabel: "和守塔人或領航員對話",
     modeHint: "{hint}按m切換。",
     disconnected: "連線中斷：顯示最後一次的海圖",
     sketching: "正在繪製{name}",

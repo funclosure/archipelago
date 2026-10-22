@@ -24,7 +24,7 @@ export default {
     setLandmarks: "設定地標",
     unlockLandmark: "點亮地標",
     markExplored: "標記你探索過的地方",
-    recordVerdict: "記錄判定",
+    recordVerdict: "記錄評定",
     proposeReef: "標記暗礁",
     askReader: "寫下一個問題",
     boardWrite: "釘到白板上",

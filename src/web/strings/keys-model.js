@@ -62,7 +62,7 @@ export default {
     outlineKey: "大綱",
     answer: "回答",
     boardKey: "白板",
-    mode: "守燈人／導師",
+    mode: "守塔人／領航員",
     theme: "主題",
     keys: "快捷鍵",
     back: "返回",

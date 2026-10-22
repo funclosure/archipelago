@@ -26,6 +26,6 @@ export default {
     sailTo: "航向{name}",
     stayHere: "留在這裡",
     exploredLabel: "已探索",
-    chartWithJudge: "交給守燈人測繪",
+    chartWithJudge: "交給守塔人測繪",
   },
 };
