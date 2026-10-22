@@ -7,7 +7,7 @@ import {
   domainInputSchema, domainUpdateSchema, seaWriteSchema, islandInputSchema, islandUpdateSchema, straitInputSchema, verdictInputSchema,
   sessionEndInputSchema, slugSchema, landmarkInputSchema, learnerInputSchema, modeSchema,
 } from "../core/validators.ts";
-import { listDomains, requireDomain, updateDomain, upsertDomain } from "../core/repositories/domainRepository.ts";
+import { listDomains, requireDomain, updateDomain, upsertDomain, removeDomain } from "../core/repositories/domainRepository.ts";
 import { addSeaFrom, listSeas, removeSea, updateSea } from "../core/repositories/seaRepository.ts";
 import {
   getIsland, getIslandById, islandPath, listIslands, requireIsland, updateIsland, upsertIsland,
@@ -91,6 +91,13 @@ common(domain.command("update").option("--slug <slug>").option("--name <name>").
   run((o) => withDb((db) => {
     const { domain: slug, ...change } = domainUpdateSchema.parse({ domain: o.slug, name: o.name, description: o.description });
     return updateDomain(db, slug, change);
+  })),
+);
+common(domain.command("remove").description("Deletes a domain and everything charted in it; only when the user asks").option("--slug <slug>")).action(
+  run((o) => withDb((db) => {
+    const slug = slugSchema.parse(o.slug);
+    removeDomain(db, slug);
+    return { removed: slug };
   })),
 );
 common(domain.command("list")).action(run(() => withDb((db) => ({ domains: listDomains(db) }))));

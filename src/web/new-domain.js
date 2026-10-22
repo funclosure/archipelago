@@ -18,7 +18,8 @@ export const EXAMPLES = [
 export const DESCRIPTION_MAX = 500;
 
 /** `editing`: null for a new domain, else the slug of the domain being edited. `first`: there are no domains yet, so the dialog is the page. */
-const state = { open: false, name: "", description: "", editing: null, first: false, saving: false, error: null };
+/** `deleting`: the edit dialog is asking whether to delete the domain. */
+const state = { open: false, name: "", description: "", editing: null, first: false, saving: false, error: null, deleting: false };
 let root = null;
 
 function el(tag, className, text) {
@@ -35,7 +36,7 @@ export function installNewDomain() {
 
 export function openNewDomain({ first = false } = {}) {
   if (!root) return;
-  Object.assign(state, { open: true, name: "", description: "", editing: null, first, saving: false, error: null });
+  Object.assign(state, { open: true, name: "", description: "", editing: null, first, saving: false, error: null, deleting: false });
   render();
   root.querySelector("#new-domain-description")?.focus();
 }
@@ -46,13 +47,20 @@ export async function openDomainEdit(slug) {
   const { domains } = await api("/api/domains");
   const domain = domains.find((d) => d.slug === slug);
   if (!domain) return;
-  Object.assign(state, { open: true, name: domain.name, description: domain.description ?? "", editing: slug, first: false, saving: false, error: null });
+  Object.assign(state, { open: true, name: domain.name, description: domain.description ?? "", editing: slug, first: false, saving: false, error: null, deleting: false });
   render();
   root.querySelector("#new-domain-description")?.focus();
 }
 
 function close() {
   if (state.first) return; // nothing behind it to go back to
+  if (state.deleting && !state.saving) {
+    // Escape on the delete question backs out to the edit dialog
+    state.deleting = false;
+    state.error = null;
+    render();
+    return;
+  }
   state.open = false;
   render();
 }
@@ -86,6 +94,54 @@ async function submit() {
   }
 }
 
+/** Deletes the domain being edited, then opens whichever domain is left (or the empty start when none is). */
+async function removeDomain() {
+  if (state.saving) return;
+  state.saving = true;
+  state.error = null;
+  render();
+  try {
+    await post("/api/domains/delete", { domain: state.editing });
+    for (const key of [`outline:${state.editing}`, `mode:${state.editing}`]) {
+      try {
+        localStorage.removeItem(key);
+      } catch {
+        // storage may be blocked; the keys are only conveniences
+      }
+    }
+    location.replace(location.pathname);
+  } catch (error) {
+    state.saving = false;
+    state.error = error.message;
+    render();
+  }
+}
+
+/** The edit dialog's second step: what deleting takes with it, and the two ways out. */
+function deleteConfirm() {
+  const box = el("div", "delete-confirm");
+  box.append(el("p", "help", `Delete ${state.name} and everything charted in it: its islands, threads, verdicts, boards, and seas. This can't be undone.`));
+  if (globalThis.ARCHIPELAGO_HOSTED) box.append(el("p", "help", "To keep a copy, download a backup from the domain menu first."));
+  if (state.error) box.append(el("p", "error", state.error));
+  const row = el("div", "row");
+  const yes = el("button", "btn danger", state.saving ? "Deleting…" : "Delete for good");
+  yes.type = "button";
+  yes.id = "delete-domain-confirm";
+  yes.disabled = state.saving;
+  yes.addEventListener("click", () => void removeDomain());
+  const no = el("button", "btn ghost", "Keep it");
+  no.type = "button";
+  no.disabled = state.saving;
+  no.addEventListener("click", () => {
+    state.deleting = false;
+    state.error = null;
+    render();
+  });
+  row.append(yes, no);
+  box.append(row);
+  return box;
+}
+
 function render() {
   if (!root) return;
   root.hidden = !state.open;
@@ -102,6 +158,12 @@ function render() {
       void submit();
     }
   };
+  if (state.editing && state.deleting) {
+    card.append(el("div", "lbl", "Delete domain"), deleteConfirm());
+    root.append(card);
+    card.querySelector(".btn.ghost")?.focus();
+    return;
+  }
   if (state.editing) {
     card.append(el("div", "lbl", "Edit domain"));
     const name = el("input");
@@ -156,7 +218,19 @@ function render() {
   cancel.addEventListener("click", close);
   row.append(make);
   if (!state.first) row.append(cancel);
-  row.append(el("span", "hint", "⌘↵"));
+  if (!state.editing) row.append(el("span", "hint", "⌘↵"));
+  if (state.editing) {
+    const del = el("button", "btn ghost danger push", "Delete domain…");
+    del.type = "button";
+    del.id = "delete-domain";
+    del.disabled = state.saving;
+    del.addEventListener("click", () => {
+      state.deleting = true;
+      state.error = null;
+      render();
+    });
+    row.append(del);
+  }
   card.append(row);
   card.addEventListener("submit", (e) => {
     e.preventDefault();

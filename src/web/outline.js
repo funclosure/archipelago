@@ -266,8 +266,12 @@ function headerEl(outline) {
     menu.append(button("About you", () => { closeMenu(); void openAbout(); }, "mi"));
     if (isHosted()) {
       menu.append(button("Your key", () => { closeMenu(); openYourKey(); }, "mi"));
-      menu.append(button("Export database", () => { closeMenu(); void exportDatabase(); }, "mi"));
-      menu.append(button("Import database…", () => { closeMenu(); importDatabase(); }, "mi"));
+      // Everything saves in this browser as it happens; these two move a copy in and out of it.
+      const backup = button("Download a backup", () => { closeMenu(); void exportDatabase(); }, "mi");
+      backup.title = "Your charts save in this browser as you go. This downloads a copy of all of them as one .sqlite file.";
+      const restore = button("Restore a backup…", () => { closeMenu(); importDatabase(); }, "mi");
+      restore.title = "Replaces everything in this browser with the charts in a backup file.";
+      menu.append(backup, restore);
     }
     head.append(menu);
   }

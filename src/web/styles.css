@@ -474,6 +474,11 @@ body.pane-open .board-toggle { right: calc(var(--pane-w) + 16px); }
 /* New domain: one field, over a scrim on the map; with no domains yet (.first) it is the whole page. */
 .new-domain { position: fixed; inset: 0; z-index: 6; display: flex; justify-content: center; align-items: flex-start; padding: 12vh 16px 16px; background: var(--scrim); overflow-y: auto; }
 .new-domain[hidden] { display: none; }
+.new-domain-card .btn.push { margin-left: auto; }
+.new-domain-card .btn.danger { border: 1px solid var(--reef); color: var(--reef); background: transparent; }
+.new-domain-card .btn.danger:hover:not(:disabled) { background: var(--reef); color: var(--text); }
+.new-domain-card .btn.danger:not(.ghost) { background: var(--reef); color: var(--text); }
+.new-domain-card .btn.danger:not(.ghost):hover:not(:disabled) { filter: brightness(1.1); }
 .new-domain-card textarea:focus, .new-domain-card input:focus { outline: none; border-color: var(--lamp); box-shadow: 0 0 0 3px var(--lamp-tint); }
 .new-domain-card .examples { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
 .new-domain-card .ex-lbl { font-size: 11px; color: var(--muted); margin-right: 2px; }

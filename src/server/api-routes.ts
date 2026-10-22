@@ -6,14 +6,14 @@ import { z } from "zod";
 import { openDatabase } from "../core/db.ts";
 import { ArchipelagoError, ConflictError, NotFoundError } from "../core/errors.ts";
 import {
-  boardPostInputSchema, commentInputSchema, domainCreateSchema, domainUpdateSchema, seaWriteSchema, focusInputSchema, learnerInputSchema, modeSchema, positionsInputSchema, probeInputSchema,
+  boardPostInputSchema, commentInputSchema, domainCreateSchema, domainUpdateSchema, domainRemoveSchema, seaWriteSchema, focusInputSchema, learnerInputSchema, modeSchema, positionsInputSchema, probeInputSchema,
   reefAnswerInputSchema, sketchDecisionSchema, slugSchema,
 } from "../core/validators.ts";
 import { attachAsks, listAsks, pickAsk, requireAsk } from "../core/repositories/askRepository.ts";
 import { listCards } from "../core/repositories/boardRepository.ts";
 import { addSeaFrom, removeSea, updateSea } from "../core/repositories/seaRepository.ts";
 import { getLearner, setLearnerNote } from "../core/repositories/learnerRepository.ts";
-import { createDomain, listDomains, requireDomain, updateDomain } from "../core/repositories/domainRepository.ts";
+import { createDomain, listDomains, requireDomain, updateDomain, removeDomain } from "../core/repositories/domainRepository.ts";
 import { getIslandById, requireIsland, setIslandPositions } from "../core/repositories/islandRepository.ts";
 import { addVerdict, verdictHistory } from "../core/repositories/verdictRepository.ts";
 import { addComment } from "../core/repositories/commentRepository.ts";
@@ -289,6 +289,13 @@ async function handleApi(req: Request, url: URL, ctx: ApiContext): Promise<Respo
   if (route === "POST /api/domains/update") {
     const { domain, ...change } = domainUpdateSchema.parse(await req.json());
     return json({ domain: withDb(ctx, (db) => updateDomain(db, domain, change)) });
+  }
+
+  if (route === "POST /api/domains/delete") {
+    const { domain } = domainRemoveSchema.parse(await req.json());
+    if ([...inFlight.keys()].some((key) => key.startsWith(`${domain}/`))) throw new ConflictError("a turn is running in this domain; delete it when the turn ends");
+    withDb(ctx, (db) => removeDomain(db, domain));
+    return json({ removed: domain });
   }
 
   if (route === "POST /api/sketch") {
