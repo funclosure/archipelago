@@ -3,6 +3,8 @@ import { streamPost } from "./stream.js";
 import { logItems, askFor, roundOf } from "./thread.js";
 import { landmarkLit, allExplored } from "./view-model.js";
 import { PERSONA_NAMES, headPill } from "./mode-model.js";
+import { thinkingLine } from "./progress-model.js";
+import { thinkingEl } from "./thinking.js";
 import { renderMarkdown } from "./markdown.js";
 import { loadHighlighter } from "./code.js";
 import { renderCta } from "./cta.js";
@@ -352,9 +354,7 @@ function renderLive() {
   const stuck = atBottom(log);
   if (thread.inFlight && !thread.live) {
     // Nothing has arrived yet: the reply's own line says so, where the words will land.
-    const thinking = el("span", "thinking", `${PERSONA_NAMES[thread.mode]} is thinking`);
-    thinking.append(el("span", "caret"));
-    live.replaceChildren(thinking);
+    live.replaceChildren(thinkingEl(thinkingLine(PERSONA_NAMES[thread.mode], thread.progress)));
   } else if (thread.live) {
     live.replaceChildren(renderMarkdown(thread.live, { onQuestion: quoteIntoAnswer }));
     // Descend to the deepest last block (e.g. into a list's last <li>) so the caret
@@ -367,8 +367,9 @@ function renderLive() {
     live.replaceChildren();
   }
   live.hidden = !(thread.live || thread.inFlight);
-  progress.textContent = thread.progress ? `${PERSONA_NAMES[thread.mode]}: ${thread.progress}` : "";
-  progress.hidden = !thread.progress;
+  // Before any words, the waiting line itself names the step; once words stream, the step goes under them.
+  progress.textContent = thread.progress && thread.live ? `${thinkingLine(PERSONA_NAMES[thread.mode], thread.progress)}…` : "";
+  progress.hidden = !progress.textContent;
   if (stuck) log.scrollTop = log.scrollHeight;
 }
 

@@ -185,7 +185,17 @@ pre, code, kbd { font-family: var(--font-mono); }
 .reef-block p { margin: 0 0 4px; }
 .reef-title { font-size: 11px; text-transform: uppercase; letter-spacing: .1em; color: var(--reef); margin-bottom: 4px; }
 .progress { font-size: 11px; color: var(--muted); font-style: italic; }
-.thinking { color: var(--muted); font-style: italic; }
+.thinking { color: var(--muted); font-style: italic; display: inline-flex; align-items: baseline; gap: 6px; }
+/* a band of light sweeps across the words, left to right, while the turn is under way */
+.thinking .words { background: linear-gradient(90deg, var(--muted) 0%, var(--muted) 35%, var(--text) 50%, var(--muted) 65%, var(--muted) 100%);
+  background-size: 300% 100%; -webkit-background-clip: text; background-clip: text; color: transparent; animation: shimmer 2.2s linear infinite; }
+@keyframes shimmer { from { background-position: 100% 0; } to { background-position: 0% 0; } }
+.thinking .dots { display: inline-flex; gap: 3px; }
+.thinking .dots i { width: 4px; height: 4px; border-radius: 50%; background: var(--lamp); opacity: .25; animation: dot 1.2s ease-in-out infinite; }
+.thinking .dots i:nth-child(2) { animation-delay: .15s; }
+.thinking .dots i:nth-child(3) { animation-delay: .3s; }
+@keyframes dot { 0%, 60%, 100% { opacity: .25; transform: translateY(0); } 30% { opacity: 1; transform: translateY(-3px); } }
+@media (prefers-reduced-motion: reduce) { .thinking .words { animation: none; color: var(--muted); background: none; } .thinking .dots i { animation: none; opacity: .6; } }
 .caret { display: inline-block; width: 2px; height: 1em; background: var(--sand); vertical-align: -2px; margin-left: 2px;
   animation: blink 1s steps(2) infinite; }
 @keyframes blink { to { visibility: hidden; } }

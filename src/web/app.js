@@ -1,7 +1,7 @@
 import { buildNodes, buildLinks, WORLD, stripItems } from "./view-model.js";
 import { createSimulation } from "./layout.js";
 import { createCamera } from "./camera.js";
-import { clear, drawIsland, drawStrait, drawSeaWater, drawSeaName, drawMarquee, drawPress, NAME_FONT } from "./draw.js";
+import { clear, drawIsland, drawStrait, drawSeaWater, drawSeaName, drawMarquee, drawPress, drawSketching, NAME_FONT } from "./draw.js";
 import { seaMembers, lettering, letteringBox, stippleDots, seaSpot, SEA_FONT } from "./sea-model.js";
 import { placeRemoveButton, saveSeaPosition } from "./seas.js";
 import { draftSeas } from "./chart-model.js";
@@ -16,7 +16,8 @@ import { installAbout } from "./learner.js";
 import { installKeys } from "./keys.js";
 import { installBoard } from "./board.js";
 import { installTheme } from "./theme.js";
-import { openChart } from "./chart.js";
+import { openChart, chartWorkingHere } from "./chart.js";
+import { stepPhrase } from "./progress-model.js";
 import { request } from "./transport.js";
 import { installNewDomain, openNewDomain } from "./new-domain.js";
 import { anotherTab, installHosted, welcomeGate } from "./hosted.js";
@@ -560,7 +561,24 @@ function frame(now) {
   }
   if (app.marquee) drawMarquee(ctx, app.marquee, app.camera.state.scale);
   if (app.press) drawPress(ctx, app.press, app.camera.state.scale, Math.min(1, (now - app.press.start) / LONG_PRESS_MS));
+  drawSketchingHere(now);
   requestAnimationFrame(frame);
+}
+
+const stillMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)");
+/**
+ * While the cartographer works on a scale with nothing on it yet, the middle of the map says so: coasts tracing
+ * themselves, the scale's name, and the step in flight. The sketch's drafts take its place when the turn ends.
+ */
+function drawSketchingHere(now) {
+  const tool = chartWorkingHere();
+  if (tool === undefined || app.nodes.length > 0 || !app.snapshot) return;
+  const { left, right, top, bottom } = insets();
+  const at = { x: left + (app.size.w - left - right) / 2, y: top + (app.size.h - top - bottom) / 2 - 40 };
+  const name = app.snapshot.scale.path.at(-1)?.name ?? app.snapshot.domain.name;
+  const { dpr } = app.size;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0); // screen px: it stays put however the map is panned
+  drawSketching(ctx, at, now, { title: `Sketching ${name}`, step: tool ? `The cartographer is ${stepPhrase(tool)}` : "The cartographer is thinking", still: Boolean(stillMotion?.matches) });
 }
 
 /** Nothing to draw without the server (or, hosted, without the browser's storage): say why instead of a blank sea. */
