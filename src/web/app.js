@@ -1,11 +1,12 @@
 import { buildNodes, buildLinks, WORLD, stripItems } from "./view-model.js";
 import { createSimulation } from "./layout.js";
 import { createCamera } from "./camera.js";
-import { clear, drawIsland, drawStrait, drawSeaWater, drawSeaName, drawMarquee, NAME_FONT } from "./draw.js";
+import { clear, drawIsland, drawStrait, drawSeaWater, drawSeaName, drawMarquee, drawPress, NAME_FONT } from "./draw.js";
 import { seaMembers, lettering, letteringBox, stippleDots, SEA_FONT } from "./sea-model.js";
 import { placeRemoveButton } from "./seas.js";
 import { layoutLabels } from "./labels.js";
 import { emptyGroup, pruneGroup } from "./group-model.js";
+import { LONG_PRESS_MS } from "./gesture-model.js";
 import { boxScale } from "./contour.js";
 import { installInteractions } from "./interactions.js";
 import { installCard } from "./card.js";
@@ -48,6 +49,7 @@ export const app = {
   hoverSea: null,
   heldSeas: new Set(),       // ids of seas being dragged or saved: a snapshot meanwhile keeps their local positions
   group: emptyGroup(),       // islands and seas gathered by shift-click or a shift-drag box: one drag moves them all
+  press: null,               // a finger held on the map: { x, y (world), start }; a ring fills until it counts as a long-press
   marquee: null,             // the box a shift-drag is drawing, in world units: { x0, y0, x1, y1 }
   seaSets: new Map(),        // id → this frame's lettering, for hit-testing
 };
@@ -529,6 +531,7 @@ function frame(now) {
     drawIsland(ctx, n, { dim: Boolean(focusSlug) && !near.has(n.slug), selected: n.slug === focusSlug, gathered: app.group.islands.has(n.slug), hovered: n.slug === app.hover, now, label: labels.get(n.slug) });
   }
   if (app.marquee) drawMarquee(ctx, app.marquee, app.camera.state.scale);
+  if (app.press) drawPress(ctx, app.press, app.camera.state.scale, Math.min(1, (now - app.press.start) / LONG_PRESS_MS));
   requestAnimationFrame(frame);
 }
 

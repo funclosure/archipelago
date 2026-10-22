@@ -70,7 +70,7 @@
 }
 html, body { margin: 0; height: 100%; background: var(--water); color: var(--text);
   font: 14px/1.5 system-ui, -apple-system, sans-serif; overflow: hidden; }
-#map { position: fixed; inset: 0; display: block; cursor: grab; }
+#map { position: fixed; inset: 0; display: block; cursor: grab; touch-action: none; -webkit-touch-callout: none; user-select: none; -webkit-user-select: none; }
 #map.dragging { cursor: grabbing; }
 #map.hover { cursor: pointer; }
 

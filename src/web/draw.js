@@ -83,6 +83,20 @@ export function drawMarquee(ctx, box, scale) {
   ctx.restore();
 }
 
+/** A finger held on the map: a lamp ring that closes as the press nears a long-press, a fixed size on screen. */
+export function drawPress(ctx, press, scale, progress) {
+  if (progress < 0.15) return; // a tap or the start of a drag shows nothing
+  const r = 28 / scale;
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(press.x, press.y, r, -Math.PI / 2, -Math.PI / 2 + progress * Math.PI * 2);
+  ctx.strokeStyle = alpha(PALETTE.lamp, progress < 1 ? 0.6 : 0.9);
+  ctx.lineWidth = 3 / scale;
+  ctx.lineCap = "round";
+  ctx.stroke();
+  ctx.restore();
+}
+
 export function clear(ctx, w, h) {
   ctx.fillStyle = PALETTE.sea;
   ctx.fillRect(0, 0, w, h);
