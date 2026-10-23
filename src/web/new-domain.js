@@ -8,7 +8,7 @@ import { CENTRE, COAST, RING_STEP, ringPoints } from "./contour.js";
 import { t } from "./i18n.js";
 
 /** Descriptions to start from: a click puts one in the field, to send or to edit. */
-export const EXAMPLES = [t("newDomain.example1"), t("newDomain.example2"), t("newDomain.example3"), t("newDomain.example4")];
+export const EXAMPLES = [1, 2, 3, 4, 5, 6].map((n) => t(`newDomain.example${n}`));
 
 /** Mirrors DESCRIPTION_MAX in src/core/validators.ts. */
 export const DESCRIPTION_MAX = 500;
