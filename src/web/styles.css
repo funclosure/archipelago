@@ -3,6 +3,8 @@
 
 :root {
   --font-mono: "Paper Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  /* The conversation's face, both sides of it: Noto Sans TC (fonts/noto-sans-tc.css) carries Latin and Chinese alike. */
+  --font-text: "Noto Sans TC", -apple-system, BlinkMacSystemFont, "PingFang TC", "Segoe UI", sans-serif;
   /* Contour palette. The default theme is Ink: neutral graphite chrome around a deep, desaturated sea, so the map reads
      as water and the chrome as tools (OKLCH, after Stamen's dark maps; every text and mark at least 4.4:1). */
   --sea: #0E293A; --line-1: #F0F6F9; --line-07: rgba(240, 246, 249, .72); --line-03: rgba(240, 246, 249, .48);
@@ -160,16 +162,24 @@ body.pane-open .chrome { right: var(--pane-w); }
 .msg p { margin: 0 0 6px; }
 .msg p:last-child { margin-bottom: 0; }
 .msg ul, .msg ol { margin: 0 0 6px; padding-left: 20px; }
-.msg h1, .msg h2, .msg h3 { margin: 0 0 4px; font-size: 14px; font-weight: 600; }
+.msg h1, .msg h2, .msg h3 { margin: 0 0 4px; font-size: 1em; font-weight: 600; }
 pre, code, kbd { font-family: var(--font-mono); }
 .msg pre { margin: 0 0 6px; padding: 8px 10px; background: var(--water); border-radius: 6px; overflow-x: auto; font-size: 12px; }
 .msg .ask { text-decoration: underline dotted var(--line-03); text-underline-offset: 3px; cursor: pointer; border-radius: 3px; }
 .msg .ask:hover, .msg .ask:focus-visible { text-decoration-color: var(--lamp); color: var(--lamp); outline: none; }
 .msg blockquote { margin: 0 0 6px; padding: 2px 0 2px 10px; border-left: 2px solid var(--line-03); color: var(--muted); }
 .msg blockquote p { margin: 0; }
-.msg code { font-family: var(--font-mono); font-size: 12px; background: var(--water); padding: 1px 4px; border-radius: 3px; }
+.msg code { font-family: var(--font-mono); font-size: .85em; background: var(--water); padding: 1px 4px; border-radius: 3px; }
 .msg pre code { background: none; padding: 0; }
-.msg.judge, .msg.mentor { font-family: Georgia, serif; font-size: 14.5px; }
+/* Reading: the conversation in one face at a reading size, persona lines capped at a comfortable measure, and each
+   paragraph's first sentence bright while the rest steps back (`renderMarkdown(…, { lead: true })`). */
+.log .msg:not(.system) { font-family: var(--font-text); font-size: 15px; line-height: 1.7; }
+.msg:is(.judge, .mentor, .cartographer) { font-size: 16px; }
+.msg:is(.judge, .mentor, .cartographer) :is(p, li, blockquote) { max-width: 64ch; }
+.msg:is(.judge, .mentor, .cartographer) p:not(:last-child) { margin-bottom: 10px; }
+.msg p.led .rest { color: var(--muted); }
+:lang(zh) .log .msg:not(.system) { line-height: 1.9; letter-spacing: .02em; }
+:lang(zh) .msg:is(.judge, .mentor, .cartographer) :is(p, li, blockquote) { max-width: 34em; }
 .msg.you { align-self: flex-end; max-width: 88%; background: var(--panel-2); border-radius: 10px 10px 2px 10px; padding: 8px 12px; }
 .msg.system { font-size: 11px; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); text-align: center; }
 .lit-line { display: flex; align-items: center; gap: 8px; font-size: 11px; color: var(--sand); }
@@ -210,7 +220,7 @@ button:focus-visible, textarea:focus-visible, input:focus-visible { outline: 2px
 .foot { padding: 12px 20px 14px; border-top: 1px solid var(--line); display: grid; gap: 6px; }
 .foot form { display: flex; gap: 6px; align-items: flex-end; margin: 0; }
 .foot textarea { flex: 1; resize: none; background: var(--water); border: 1px solid var(--line); border-radius: 6px; color: var(--text);
-  padding: 8px 10px; font: inherit; font-size: 13px; line-height: 1.4; min-height: 36px; max-height: 118px; box-sizing: border-box; }
+  padding: 8px 10px; font: 15px/1.5 var(--font-text); min-height: 36px; max-height: 118px; box-sizing: border-box; }
 .foot textarea:disabled { color: var(--muted); }
 .foot textarea::placeholder { color: var(--muted); opacity: 1; }
 .btn.send.judge { background: var(--panel-2); color: var(--text); }
@@ -464,7 +474,6 @@ body.pane-open .board-toggle { right: calc(var(--pane-w) + 16px); }
 
 /* The cartographer: its pane reuses the island pane's head, log, and foot; its colour is the lamp's. */
 .pill.mode.cartographer { border-color: var(--lamp); color: var(--lamp); }
-.msg.cartographer { font-family: Georgia, serif; font-size: 14.5px; }
 .btn.send.cartographer { background: var(--lamp); color: var(--on-land); }
 .strip-item.action { cursor: pointer; }
 .strip-item.action:hover > span:nth-child(2) { color: var(--lamp); }

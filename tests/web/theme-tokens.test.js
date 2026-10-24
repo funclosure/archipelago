@@ -5,7 +5,7 @@ import { THEMES } from "../../src/web/theme-model.js";
 
 const css = readFileSync(resolve(import.meta.dir, "../../src/web/styles.css"), "utf8");
 /** Tokens of :root that are not colours, so no theme redefines them. */
-const NOT_COLOURS = new Set(["--outline-w", "--pane-w", "--font-mono"]);
+const NOT_COLOURS = new Set(["--outline-w", "--pane-w", "--font-mono", "--font-text"]);
 const PALETTE = ["--sea", "--line-1", "--lamp", "--reef", "--sand-fill", "--grass", "--snow", "--explore"];
 
 function block(selector) {

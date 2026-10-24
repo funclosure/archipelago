@@ -216,7 +216,7 @@ function renderLive() {
   if (chart.inFlight && !chart.live) {
     live.replaceChildren(thinkingEl(thinkingLine("cartographer", chart.progress)));
   } else if (chart.live) {
-    live.replaceChildren(renderMarkdown(chart.live));
+    live.replaceChildren(renderMarkdown(chart.live, { lead: true }));
   } else {
     live.replaceChildren();
   }
@@ -296,7 +296,7 @@ function sketchCard(sketch) {
 function messageEl(m) {
   if (m.kind === "system") return el("div", "msg system", systemText(m.body));
   const box = el("div", `msg ${m.role === "you" ? "you" : "cartographer"}`);
-  box.append(renderMarkdown(m.body));
+  box.append(renderMarkdown(m.body, m.role === "you" ? {} : { lead: true }));
   return box;
 }
 

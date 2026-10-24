@@ -1,5 +1,5 @@
 import { test, expect } from "bun:test";
-import { questionRuns, threadItems, proposalFromBody, landmarkFromSystem, exploredFromSystem, inlineSegments, mdBlocks, logItems, askFor, roundOf } from "../../src/web/thread.js";
+import { sentences, leadSplit, cjkPunctuation, questionRuns, threadItems, proposalFromBody, landmarkFromSystem, exploredFromSystem, inlineSegments, mdBlocks, logItems, askFor, roundOf } from "../../src/web/thread.js";
 
 const proposal = { target: "island:caching", claim: "never stale", consequence: "stale prices", evidence: "q", confidence: 0.7, rationale: "r", status: "pending" };
 
@@ -174,4 +174,35 @@ test("a 'landmark explored' line becomes an explored item, merged with its neigh
     { id: 4, role: "judge", kind: "system", body: "landmark lit: Eviction" },
   ], null);
   expect(items.map((i) => [i.kind, i.names ?? i.text])).toEqual([["explored", ["Eviction", "Invalidation"]], ["text", "That's both."], ["landmark", ["Eviction"]]]);
+});
+
+test("sentences join back to the line, keep decimals whole, and cut Chinese without spaces", () => {
+  const line = "Pi is 3.14 here. Why? 你好嗎？很好。「對。」然後";
+  expect(sentences(line)).toEqual(["Pi is 3.14 here. ", "Why? ", "你好嗎？", "很好。", "「對。」", "然後"]);
+  expect(sentences(line).join("")).toBe(line);
+  expect(sentences("")).toEqual([]);
+});
+
+test("questionRuns flags Chinese questions too, and drops nothing before a decimal point", () => {
+  expect(questionRuns("Pi is 3.14 here. Why?").map((r) => r.text).join("")).toBe("Pi is 3.14 here. Why?");
+  expect(questionRuns("先想一下。你會怎麼排索引？")).toEqual([
+    { text: "先想一下。", question: false },
+    { text: "你會怎麼排索引？", question: true },
+  ]);
+});
+
+test("leadSplit cuts after the first sentence, never inside bold or code", () => {
+  expect(leadSplit("First idea. Then more. And more.")).toEqual(["First idea. ", "Then more. And more."]);
+  expect(leadSplit("方向是對的。不過只說了一半。")).toEqual(["方向是對的。", "不過只說了一半。"]);
+  expect(leadSplit("One sentence only.")).toEqual(["One sentence only.", ""]);
+  expect(leadSplit("**Bold. still bold** then.")).toEqual(["**Bold. still bold** then.", ""]);
+});
+
+test("cjkPunctuation makes , : ; ( ) beside Chinese full-width, and leaves Latin and code alone", () => {
+  expect(cjkPunctuation("五個點:關聯式與 NoSQL,索引(B-tree 與 LSM tree)、以及;其他")).toBe("五個點：關聯式與 NoSQL，索引（B-tree 與 LSM tree）、以及；其他");
+  expect(cjkPunctuation("Indexes: B-trees, LSM trees (both)")).toBe("Indexes: B-trees, LSM trees (both)");
+  expect(cjkPunctuation("用 `a:b,c` 的寫法,然後")).toBe("用 `a:b,c` 的寫法，然後");
+  expect(cjkPunctuation("下午12:30開始")).toBe("下午12:30開始");
+  expect(cjkPunctuation("你會用哪個數字?為什麼?真的!")).toBe("你會用哪個數字？為什麼？真的！");
+  expect(cjkPunctuation("用 40ms? 還是 p99?")).toBe("用 40ms? 還是 p99?");
 });
