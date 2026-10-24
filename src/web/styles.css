@@ -18,7 +18,7 @@
   --code-fg: var(--text); --code-keyword: var(--lamp); --code-string: var(--sand-fill);
   --code-comment: var(--muted); --code-type: var(--snow); --code-number: var(--grass);
   --outline-w: 232px;
-  --pane-w: 480px;
+  --pane-w: clamp(340px, 50vw, 960px); /* half the window until the reader drags the grip (card.js keeps the width) */
 }
 /* Paper chart: cream ground, ink lines. Every literal colour token of :root, redefined (tests/web/theme-tokens.test.js). */
 :root[data-theme="chart"] {

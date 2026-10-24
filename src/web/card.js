@@ -26,7 +26,7 @@ const SCROLL_BY = {
 };
 const ROUNDS = 4;
 const PANE_MIN = 340;
-const PANE_MAX = 760;
+const PANE_MAX = 960;
 
 let noteDraft = "";       // note text survives re-renders
 let noteOpen = false;     // the "Note to cartographer" field is showing
