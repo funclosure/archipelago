@@ -7,7 +7,7 @@ import { openDatabase } from "../../src/core/db.ts";
 import { MIGRATIONS } from "../../src/core/migrations/index.ts";
 import { exportName, migrationsError, prepareImport } from "../../src/hosted/backup.ts";
 import { DATABASE_TYPE, handleHostedRequest, type HostedDeps } from "../../src/hosted/routes.ts";
-import { createSettings, HOSTED_DEFAULT_MODEL, type Settings, type SettingsStore } from "../../src/hosted/settings.ts";
+import { activeOf, createSettings, HOSTED_DEFAULT_MODEL, type Settings, type SettingsStore } from "../../src/hosted/settings.ts";
 
 const KEY = "sk-ant-api03-abcdefghijklmnop";
 
@@ -31,9 +31,10 @@ function deps(store: SettingsStore = memoryStore(), extra: Partial<HostedDeps> =
 
 test("a fresh browser has no key, Sonnet 5.5, and asks to be remembered", async () => {
   const view = await (await handleHostedRequest(get("/hosted/settings"), deps())).json();
-  expect(view).toMatchObject({ key: false, keyHint: null, model: HOSTED_DEFAULT_MODEL, remember: true, stub: false });
+  expect(view).toMatchObject({ provider: "anthropic", key: false, keyHint: null, keyHints: {}, model: HOSTED_DEFAULT_MODEL, remember: true, stub: false });
   expect(HOSTED_DEFAULT_MODEL).toBe("claude-sonnet-5-5");
-  expect(view.models.map((m: any) => m.id)).toEqual(["claude-sonnet-5-5", "claude-opus-5-5"]);
+  expect(view.providers.map((p: any) => p.id)).toEqual(["anthropic", "gemini", "openrouter"]);
+  expect(view.providers[0].models.map((m: any) => m.id)).toEqual(["claude-sonnet-5-5", "claude-opus-5-5"]);
 });
 
 test("a key is stored when remembered, shown only as its last four characters, and never comes back whole", async () => {
@@ -43,21 +44,21 @@ test("a key is stored when remembered, shown only as its last four characters, a
   const view = await res.json();
   expect(view).toMatchObject({ key: true, keyHint: "…mnop", model: "claude-opus-5-5", stub: false });
   expect(JSON.stringify(view)).not.toContain(KEY);
-  expect(store.saved?.apiKey).toBe(KEY);
-  expect((await d.settings.get()).apiKey).toBe(KEY);
+  expect(store.saved?.keys?.anthropic).toBe(KEY);
+  expect(activeOf(await d.settings.get()).apiKey).toBe(KEY);
 });
 
 test("remember off keeps the key in memory only, and erases what was stored", async () => {
-  const store = memoryStore({ apiKey: KEY, model: HOSTED_DEFAULT_MODEL });
+  const store = memoryStore({ keys: { anthropic: KEY }, models: { anthropic: HOSTED_DEFAULT_MODEL } });
   const d = deps(store);
-  expect((await d.settings.get()).apiKey).toBe(KEY); // read back from the store
+  expect(activeOf(await d.settings.get()).apiKey).toBe(KEY); // read back from the store
   await handleHostedRequest(post("/hosted/settings", { remember: false }), d);
   expect(store.saved).toBeNull();
-  expect((await d.settings.get()).apiKey).toBe(KEY);
+  expect(activeOf(await d.settings.get()).apiKey).toBe(KEY);
 });
 
 test("forgetting the key goes back to Try without a key; a new key leaves it", async () => {
-  const d = deps(memoryStore({ apiKey: KEY }));
+  const d = deps(memoryStore({ keys: { anthropic: KEY } }));
   const forgot = await (await handleHostedRequest(post("/hosted/settings", { apiKey: null, stub: true }), d)).json();
   expect(forgot).toMatchObject({ key: false, stub: true });
   const keyed = await (await handleHostedRequest(post("/hosted/settings", { apiKey: KEY }), d)).json();
@@ -71,6 +72,37 @@ test("a key that is not one, or a model that is not offered, is a 400 with the s
   const model = await handleHostedRequest(post("/hosted/settings", { model: "gpt-5" }), deps());
   expect(model.status).toBe(400);
   expect((await model.json()).error).toBe("Pick one of Sonnet 5.5 or Opus 5.5.");
+});
+
+test("a record saved before providers (one Anthropic key and its model) still answers on it", async () => {
+  const d = deps(memoryStore({ apiKey: KEY, model: "claude-opus-5-5" } as Partial<Settings>));
+  const view = await (await handleHostedRequest(get("/hosted/settings"), d)).json();
+  expect(view).toMatchObject({ provider: "anthropic", key: true, keyHint: "…mnop", model: "claude-opus-5-5" });
+});
+
+test("each provider keeps its own key and model; switching back finds them", async () => {
+  const d = deps();
+  const GEMINI = "AQ.Ab8RN6Kxyz_0123456789abcdefghijklmnopqrstuvwx";
+  await handleHostedRequest(post("/hosted/settings", { apiKey: KEY }), d);
+  const gemini = await (await handleHostedRequest(post("/hosted/settings", { provider: "gemini", apiKey: GEMINI, model: "gemini-3.8-flash" }), d)).json();
+  expect(gemini).toMatchObject({ provider: "gemini", key: true, keyHint: "…uvwx", model: "gemini-3.8-flash", keyHints: { anthropic: "…mnop", gemini: "…uvwx" } });
+  expect(JSON.stringify(gemini)).not.toContain(GEMINI);
+  const router = await (await handleHostedRequest(post("/hosted/settings", { provider: "openrouter" }), d)).json();
+  expect(router).toMatchObject({ provider: "openrouter", key: false, model: "google/gemini-3.8-flash" }); // its first model until one is picked
+  const back = await (await handleHostedRequest(post("/hosted/settings", { provider: "anthropic" }), d)).json();
+  expect(back).toMatchObject({ provider: "anthropic", key: true, model: HOSTED_DEFAULT_MODEL });
+});
+
+test("a provider that takes any model takes a model id it does not list; Claude takes only its two", async () => {
+  const d = deps();
+  const custom = await handleHostedRequest(post("/hosted/settings", { provider: "openrouter", model: "deepseek/deepseek-v4.1-flash" }), d);
+  expect((await custom.json()).model).toBe("deepseek/deepseek-v4.1-flash");
+  const spaced = await handleHostedRequest(post("/hosted/settings", { provider: "openrouter", model: "two words" }), d);
+  expect(spaced.status).toBe(400);
+  const nope = await handleHostedRequest(post("/hosted/settings", { provider: "nobody" }), d);
+  expect((await nope.json()).error).toBe("Pick one of Claude, Gemini, OpenRouter.");
+  const badKey = await handleHostedRequest(post("/hosted/settings", { provider: "openrouter", apiKey: KEY }), d);
+  expect((await badKey.json()).error).toContain("sk-or-");
 });
 
 test("without IndexedDB the settings live in memory", async () => {

@@ -1,5 +1,5 @@
 /// <reference lib="webworker" />
-// The hosted build's server: SQLite in the origin's private file system, the judge on the reader's API key (or the
+// The hosted build's server: SQLite in the origin's private file system, the judge on the reader's own key (or the
 // stub, for Try without a key), and the same API routes as `archipelago serve`, answering the page's transport
 // (`src/web/transport.js`) over postMessage. Its own routes (`routes.ts`) hold the key and move the database file.
 import sqlite3InitModule, { type Sqlite3Static } from "@sqlite.org/sqlite-wasm";
@@ -10,6 +10,7 @@ import type { Database } from "../core/sql.ts";
 import { wrapWasmDatabase } from "../core/sql-wasm.ts";
 import { JUDGE_TURN_TIMEOUT_MS, type ApiContext } from "../server/api-routes.ts";
 import { createApiRunner } from "../server/judge/api.ts";
+import { createChatRunner } from "../server/judge/openai.ts";
 import type { JudgeRunner } from "../server/judge/runner.ts";
 import { stubRunner } from "../server/judge/stub.ts";
 import { runTool } from "../server/judge/tools.ts";
@@ -17,7 +18,7 @@ import { migrationsError, prepareImport } from "./backup.ts";
 import { useDatabase } from "./db.ts";
 import { createHandler, type PageMessage } from "./handler.ts";
 import { handleHostedRequest } from "./routes.ts";
-import { createSettings, indexedDbStore } from "./settings.ts";
+import { activeOf, createSettings, indexedDbStore } from "./settings.ts";
 
 const FILE = "/archipelago.sqlite";
 /** Where an import is opened and checked before it replaces FILE. */
@@ -57,21 +58,26 @@ async function takeLock(): Promise<void> {
 
 const settings = createSettings(indexedDbStore());
 
-/** The reader's key answers on the API; without one, the stub. One client per key and model. */
-let api: { key: string; model: string; run: JudgeRunner } | null = null;
+/** The reader's key answers on their provider's API; without one, the stub. One client per provider, key, and model. */
+let api: { id: string; run: JudgeRunner } | null = null;
+const toolbox = { context: (persona, deps) => persona.buildContext(deps), run: runTool } satisfies Parameters<typeof createApiRunner>[0]["toolbox"];
 const runner: JudgeRunner = async (turn) => {
-  const { apiKey, model } = await settings.get();
+  const { provider, apiKey, model } = activeOf(await settings.get());
   if (!apiKey) return stubRunner(turn);
-  if (!api || api.key !== apiKey || api.model !== model) {
-    const toolbox = { context: (persona, deps) => persona.buildContext(deps), run: runTool } satisfies Parameters<typeof createApiRunner>[0]["toolbox"];
-    api = { key: apiKey, model, run: createApiRunner({ toolbox, apiKey, model, hosted: true }) };
+  const id = `${provider.id}\n${apiKey}\n${model}`;
+  if (api?.id !== id) {
+    const run =
+      "baseUrl" in provider
+        ? createChatRunner({ toolbox, baseUrl: provider.baseUrl, apiKey, model, hosted: true })
+        : createApiRunner({ toolbox, apiKey, model, hosted: true });
+    api = { id, run };
   }
   return api.run(turn);
 };
 
 /** The model the next turn runs on: the one picked under Your key, none without a key (the stub). */
 const model = async () => {
-  const { apiKey, model } = await settings.get();
+  const { apiKey, model } = activeOf(await settings.get());
   return apiKey ? model : null;
 };
 

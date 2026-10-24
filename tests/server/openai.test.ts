@@ -112,6 +112,28 @@ test("a tool call streamed in pieces runs through the toolbox, and its result go
   expect(JSON.parse(second.at(-1).content)).toMatchObject({ slug: "hit-ratio", unlocked: 1 });
 });
 
+test("reasoning details (OpenRouter's, Gemini's signatures inside) are merged by index and go back on the assistant message", async () => {
+  const detail = (d: Record<string, unknown>) => ({ choices: [{ delta: { reasoning_details: [d] } }] });
+  const { reply, bodies } = await run([
+    {
+      chunks: [
+        detail({ type: "reasoning.text", index: 0, text: "Think" }),
+        detail({ type: "reasoning.text", index: 0, text: "ing.", signature: null }),
+        detail({ type: "reasoning.encrypted", index: 1, data: "sig" }),
+        callPart(0, { id: "r1", function: { name: "island_context", arguments: "{}" } }),
+        finish("tool_calls"),
+      ],
+    },
+    { chunks: [text("Done."), finish("stop")] },
+  ]);
+  expect(await reply).toBe("Done.");
+  expect(bodies[1].messages.at(-2).reasoning_details).toEqual([
+    { type: "reasoning.text", index: 0, text: "Thinking.", signature: null },
+    { type: "reasoning.encrypted", index: 1, data: "sig" },
+  ]);
+  expect(bodies[0].messages.some((m: any) => "reasoning_details" in m)).toBe(false);
+});
+
 test("text between tool calls becomes separate paragraphs, and a call without an id gets one", async () => {
   const { reply, bodies } = await run([
     { chunks: [text("First."), callPart(0, { function: { name: "island_context", arguments: "" } }), finish("tool_calls")] },

@@ -1,16 +1,14 @@
 // What only the hosted build shows: the welcome screen (a key, Try without a key, or an import), Your key, export
-// and import of the database, and the hand-over when another tab holds the database. The worker keeps the key
-// (`src/hosted/settings.ts`); this page sends it once and reads back only its last four characters.
+// and import of the database, and the hand-over when another tab holds the database. The worker keeps the keys,
+// one per provider (`src/hosted/settings.ts`); this page sends a key once and reads back only its last four characters.
 import { request, release } from "./transport.js";
 import { registerRegion } from "./keys.js";
 import { t } from "./i18n.js";
 
 export const isHosted = () => globalThis.ARCHIPELAGO_HOSTED === true;
 
-const NOTICE = t("hosted.notice");
-
 /** `open`: null, "welcome" (no way out but a choice), "key" (Your key), "import" (the replace warning), "elsewhere". */
-const state = { open: null, view: null, key: "", model: null, remember: true, saving: false, error: null, file: null };
+const state = { open: null, view: null, provider: null, key: "", model: null, remember: true, saving: false, error: null, file: null };
 let root = null;
 let started = null; // resolves the welcome gate
 
@@ -83,7 +81,7 @@ export function openYourKey() {
 }
 
 function open(kind) {
-  Object.assign(state, { open: kind, key: "", model: state.view?.model ?? null, remember: state.view?.remember ?? true, saving: false, error: null });
+  Object.assign(state, { open: kind, key: "", provider: state.view?.provider ?? null, model: state.view?.model ?? null, remember: state.view?.remember ?? true, saving: false, error: null });
   render();
   root.querySelector("input")?.focus();
 }
@@ -93,12 +91,23 @@ function close() {
   render();
 }
 
+/** The provider the form shows: the one picked there, else the saved one. */
+const providerNow = () => state.view?.providers?.find((p) => p.id === state.provider) ?? state.view?.providers?.[0];
+
+/** Picking a provider shows its own key hint and the model last picked for it. */
+function pickProvider(id) {
+  const p = state.view.providers.find((x) => x.id === id);
+  Object.assign(state, { provider: id, key: "", model: state.view.models?.[id] ?? p.models[0]?.id ?? "", error: null });
+  render();
+  root.querySelector('input[type="password"]')?.focus();
+}
+
 async function saveKey({ stub = false } = {}) {
   if (state.saving) return;
-  const patch = { model: state.model, remember: state.remember };
+  const patch = { provider: state.provider, model: state.model, remember: state.remember };
   if (stub) patch.stub = true;
   else if (state.key.trim()) patch.apiKey = state.key.trim();
-  else if (!state.view?.key) {
+  else if (!state.view?.keyHints?.[state.provider]) {
     state.error = t("hosted.pasteKey");
     return render();
   }
@@ -120,7 +129,7 @@ async function saveKey({ stub = false } = {}) {
 
 async function forgetKey() {
   try {
-    state.view = await post("/hosted/settings", { apiKey: null, stub: true });
+    state.view = await post("/hosted/settings", { provider: state.provider, apiKey: null, stub: true });
     close();
   } catch (error) {
     state.error = error.message;
@@ -213,30 +222,74 @@ function row(...children) {
 
 function renderKey(card) {
   const welcome = state.open === "welcome";
+  const provider = providerNow();
+  const keyHint = state.view?.keyHints?.[provider?.id];
   card.append(el("div", "lbl", welcome ? "Archipelago" : t("hosted.yourKey")));
   if (welcome) card.append(el("p", "lede", t("hosted.lede")));
   const form = el("form", "fields");
+
+  const providers = el("div", "providers");
+  providers.setAttribute("role", "radiogroup");
+  providers.setAttribute("aria-label", t("hosted.providerLabel"));
+  for (const p of state.view?.providers ?? []) {
+    const label = el("label", "provider");
+    const radio = el("input");
+    radio.type = "radio";
+    radio.name = "provider";
+    radio.checked = p.id === provider?.id;
+    radio.disabled = state.saving;
+    radio.addEventListener("change", () => pickProvider(p.id));
+    label.append(radio, p.name);
+    if (state.view.keyHints?.[p.id]) label.append(el("span", "has-key", "•"));
+    providers.append(label);
+  }
+  form.append(providers);
+
   const field = el("input");
   field.type = "password";
   field.autocomplete = "off";
   field.spellcheck = false;
-  field.placeholder = state.view?.keyHint ? t("hosted.keySet", { hint: state.view.keyHint }) : "sk-ant-…";
+  field.placeholder = keyHint ? t("hosted.keySet", { hint: keyHint }) : provider?.placeholder ?? "";
   field.value = state.key;
   field.disabled = state.saving;
-  field.setAttribute("aria-label", t("hosted.keyLabel"));
+  field.setAttribute("aria-label", t("hosted.keyLabel", { provider: provider?.name ?? "" }));
   field.addEventListener("input", () => (state.key = field.value));
   form.append(field);
 
   const models = el("div", "models");
-  for (const m of state.view?.models ?? []) {
+  const radios = [];
+  let other = null;
+  const preset = (provider?.models ?? []).some((m) => m.id === state.model);
+  for (const m of provider?.models ?? []) {
     const label = el("label", "model");
     const radio = el("input");
     radio.type = "radio";
     radio.name = "model";
     radio.checked = state.model === m.id;
-    radio.addEventListener("change", () => (state.model = m.id));
-    label.append(radio, el("span", "name", m.name), el("span", "note", m.note));
+    radio.addEventListener("change", () => {
+      state.model = m.id;
+      if (other) other.value = "";
+    });
+    radios.push(radio);
+    label.append(radio, el("span", "name", m.name), el("span", "note", t(`hosted.${m.note}`)));
     models.append(label);
+  }
+  // A provider that serves any model takes its id here; typing one unpicks the listed ones.
+  if (provider?.custom) {
+    other = el("input", "model-id");
+    other.type = "text";
+    other.autocomplete = "off";
+    other.spellcheck = false;
+    other.placeholder = t("hosted.modelOther", { provider: provider.name });
+    other.setAttribute("aria-label", other.placeholder);
+    other.value = preset ? "" : state.model ?? "";
+    other.disabled = state.saving;
+    other.addEventListener("input", () => {
+      const id = other.value.trim();
+      state.model = id || provider.models[0].id;
+      for (const radio of radios) radio.checked = !id && radio === radios[0];
+    });
+    models.append(other);
   }
   form.append(models);
 
@@ -253,7 +306,7 @@ function renderKey(card) {
   actions.firstChild.disabled = state.saving;
   if (welcome) actions.append(button(t("hosted.tryWithout"), () => void saveKey({ stub: true }), "btn ghost"));
   else {
-    if (state.view?.key) actions.append(button(t("hosted.forgetKey"), () => void forgetKey(), "btn ghost"));
+    if (keyHint) actions.append(button(t("hosted.forgetKey"), () => void forgetKey(), "btn ghost"));
     actions.append(button(t("hosted.cancel"), close, "btn ghost"));
   }
   form.append(actions);
@@ -262,19 +315,22 @@ function renderKey(card) {
     void saveKey();
   });
   card.append(form);
-  if (welcome) {
+  if (welcome && provider) {
     const get = el("p", "help");
-    const console_ = el("a", null, "console.anthropic.com");
-    console_.href = "https://console.anthropic.com/settings/keys";
-    console_.target = "_blank";
-    console_.rel = "noopener noreferrer";
+    const link = el("a", null, new URL(provider.keysUrl).host);
+    link.href = provider.keysUrl;
+    link.target = "_blank";
+    link.rel = "noopener noreferrer";
     const [before, after = ""] = t("hosted.noKey").split("{link}");
-    get.append(before, console_, after);
+    get.append(before, link, after);
     card.append(get, row(button(t("hosted.importDatabase"), importDatabase, "btn link")));
   }
-  const notice = el("p", "help");
-  notice.append(...NOTICE.split(/(api\.anthropic\.com)/).map((part) => (part === "api.anthropic.com" ? el("code", null, part) : part)));
-  card.append(notice);
+  if (provider) {
+    const notice = el("p", "help");
+    const [before, after = ""] = t("hosted.notice", { host: "{host}" }).split("{host}");
+    notice.append(before, el("code", null, provider.host), after);
+    card.append(notice);
+  }
   if (!welcome) card.append(el("p", "help", t("hosted.stubHelp")));
 }
 

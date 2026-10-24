@@ -20,7 +20,7 @@ export async function handleHostedRequest(req: Request, deps: HostedDeps): Promi
     if (pathname === "/hosted/settings" && req.method === "GET") return json(viewOf(await deps.settings.get()));
     if (pathname === "/hosted/settings" && req.method === "POST") {
       const patch = (await req.json()) as SettingsPatch;
-      const error = patchError(patch);
+      const error = patchError(patch, await deps.settings.get());
       if (error) throw new ArchipelagoError(error);
       return json(viewOf(await deps.settings.update(patch)));
     }
