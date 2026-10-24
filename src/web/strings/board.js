@@ -24,7 +24,8 @@ export default {
     addKind: "+ {kind}",
     empty: "Nothing pinned yet. The Keeper pins what you keep pointing at; you can add a diagram, a note, or code.",
     toggle: "board · {n}",
-    hint: "A new card on this island's board, pinned by {author}. Tap to open it.",
+    hint: "A new card on this island's board, pinned by {author}. Click here or press {key} to open it.",
+    hintTouch: "A new card on this island's board, pinned by {author}. Tap to open it.",
     hintDismiss: "Got it",
   },
   "zh-TW": {
@@ -51,7 +52,8 @@ export default {
     addKind: "+ {kind}",
     empty: "白板上還沒有東西。守塔人會把你一再提到的內容釘上來；你也可以新增圖表、筆記或程式碼。",
     toggle: "白板 · {n}",
-    hint: "{author}在這座島的白板上釘了一張卡片。點這裡打開。",
+    hint: "{author}在這座島的白板上釘了一張卡片。點這裡或按 {key} 打開。",
+    hintTouch: "{author}在這座島的白板上釘了一張卡片。點這裡打開。",
     hintDismiss: "知道了",
   },
 };
