@@ -75,6 +75,7 @@ export function inlineSegments(text) {
 /**
  * Block markdown, line by line, forgiving of half-written input: paragraphs (single newlines kept as
  * line breaks), #–### headings, -, *, or + bullets, 1. or 1) items, ``` fences (unclosed at the end still counts).
+ * Prose lines get full-width punctuation beside Chinese (`cjkPunctuation`); fences stay as written.
  */
 export function mdBlocks(text) {
   const blocks = [];
@@ -117,7 +118,7 @@ export function mdBlocks(text) {
       flushPara();
       flushList();
       if (!quote) quote = { type: "quote", lines: [] };
-      quote.lines.push(inlineSegments(q[1].trim()));
+      quote.lines.push(inlineSegments(cjkPunctuation(q[1].trim())));
       continue;
     }
     flushQuote();
@@ -125,7 +126,7 @@ export function mdBlocks(text) {
     if (h) {
       flushPara();
       flushList();
-      blocks.push({ type: "h", level: h[1].length, segments: inlineSegments(h[2]) });
+      blocks.push({ type: "h", level: h[1].length, segments: inlineSegments(cjkPunctuation(h[2])) });
       continue;
     }
     const li = line.match(/^\s*(?:([-*+])|(\d+)[.)])\s+(.+)/);
@@ -136,7 +137,7 @@ export function mdBlocks(text) {
         flushList();
         list = { type: "list", ordered, items: [] };
       }
-      list.items.push(inlineSegments(li[3]));
+      list.items.push(inlineSegments(cjkPunctuation(li[3])));
       continue;
     }
     if (!line.trim()) {
@@ -145,7 +146,7 @@ export function mdBlocks(text) {
       continue;
     }
     flushList();
-    para.push(line.trim());
+    para.push(cjkPunctuation(line.trim()));
   }
   flushPara();
   flushList();
@@ -190,17 +191,54 @@ export function logItems(messages, island) {
 }
 
 /**
- * A paragraph line as sentence runs: text split after `.`, `!`, or `?` followed by whitespace or the end.
- * A run whose sentence ends with `?` is a question the reader can answer directly.
+ * A line cut into sentences that join back to it exactly: after `.`, `!`, or `?` followed by whitespace or the end
+ * (so 3.14 and e.g. stay whole), or after `。`, `！`, or `？` with any closing quote, which need no space.
  */
-export function questionRuns(line) {
-  const runs = [];
-  const re = /[^.!?]*[.!?]+(?:\s+|$)|[^.!?]+$/g;
-  for (const m of String(line).matchAll(re)) {
-    if (!m[0]) continue;
-    runs.push({ text: m[0], question: /\?\s*$/.test(m[0]) });
+export function sentences(line) {
+  const text = String(line);
+  const out = [];
+  const end = /[.!?]+(?=\s|$)\s*|[。！？]+[」』）"”]*\s*/g;
+  let last = 0;
+  for (const m of text.matchAll(end)) {
+    const stop = m.index + m[0].length;
+    if (stop > last) out.push(text.slice(last, stop));
+    last = stop;
   }
-  return runs;
+  if (last < text.length) out.push(text.slice(last));
+  return out;
+}
+
+/** A paragraph line as sentence runs; a run that ends with `?` or `？` is a question the reader can answer directly. */
+export function questionRuns(line) {
+  return sentences(line).map((text) => ({ text, question: /[?？][」』）"”]*\s*$/.test(text) }));
+}
+
+/**
+ * A paragraph's line split after its first sentence, `[lead, rest]`, so the page can let the rest step back;
+ * `[line, ""]` when it is one sentence or the cut would fall inside **bold** or `code`.
+ */
+export function leadSplit(line) {
+  const [lead, ...rest] = sentences(line);
+  if (!rest.length || (lead.split("**").length - 1) % 2 || (lead.split("`").length - 1) % 2) return [String(line), ""];
+  return [lead, rest.join("")];
+}
+
+const CJK = /[\u3400-\u9fff\uf900-\ufaff\u3000-\u303f\uff00-\uffef]/;
+const FULL = { ",": "，", ":": "：", ";": "；", "?": "？", "!": "！" };
+
+/** Half-width , : ; and ( ) beside Chinese characters, and ? ! after them, as full-width ，：；（）？！, outside `code`; Latin keeps its own. */
+export function cjkPunctuation(line) {
+  return String(line)
+    .split(/(`[^`\n]+`)/)
+    .map((part, i) => {
+      if (i % 2 || !CJK.test(part)) return part;
+      const near = (str, at, len) => CJK.test(str[at - 1] ?? "") || CJK.test(str[at + len] ?? "");
+      return part
+        .replace(/\(([^()\n]*)\)/g, (m, inner, at, str) => (near(str, at, m.length) ? `（${inner}）` : m))
+        .replace(/ *([,:;]) */g, (m, p, at, str) => (near(str, at, m.length) && !/:\/\//.test(str.slice(at, at + 3)) ? FULL[p] : m))
+        .replace(/ *([?!])(?![?!])/g, (m, p, at, str) => (CJK.test(str[at - 1] ?? "") ? FULL[p] : m));
+    })
+    .join("");
 }
 
 const PART_KEYS = { island: "partIslands", islands: "partIslands", strait: "partStraits", straits: "partStraits", update: "partUpdates", updates: "partUpdates", sea: "partSeas", seas: "partSeas" };

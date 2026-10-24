@@ -357,7 +357,7 @@ function renderLive() {
     // Nothing has arrived yet: the reply's own line says so, where the words will land.
     live.replaceChildren(thinkingEl(thinkingLine(PERSONA_NAMES[thread.mode], thread.progress)));
   } else if (thread.live) {
-    live.replaceChildren(renderMarkdown(thread.live, { onQuestion: quoteIntoAnswer }));
+    live.replaceChildren(renderMarkdown(thread.live, { onQuestion: quoteIntoAnswer, lead: true }));
     // Descend to the deepest last block (e.g. into a list's last <li>) so the caret
     // follows the last character rather than landing after the whole block; stop
     // above inline elements so it trails them instead of nesting inside.
@@ -547,7 +547,7 @@ function itemEl(item, reefPending) {
   if (item.kind === "reef_proposal") return reefEl(item);
   const m = el("div", `msg ${item.role}`);
   const persona = item.role === "judge" || item.role === "mentor";
-  m.append(renderMarkdown(item.text, persona ? { onQuestion: quoteIntoAnswer } : {}));
+  m.append(renderMarkdown(item.text, persona ? { onQuestion: quoteIntoAnswer, lead: true } : {}));
   const ask = persona ? askFor(thread.asks, item.id) : null;
   if (ask) m.append(choicesEl(ask, reefPending));
   return m;

@@ -1,6 +1,6 @@
 // mdBlocks → DOM. Built with createElement and textContent only; never innerHTML.
 import { THEMES, TOKEN_NAMES, storedTheme, mermaidVariables } from "./theme-model.js";
-import { mdBlocks, inlineSegments, questionRuns } from "./thread.js";
+import { mdBlocks, inlineSegments, questionRuns, leadSplit } from "./thread.js";
 import { codeElement } from "./code.js";
 import { plotElement } from "./plot.js";
 import { PLOT_LANGS } from "./plot-model.js";
@@ -137,24 +137,47 @@ function askSpan(run, onQuestion) {
   return span;
 }
 
-/** A paragraph line: plain inline segments, or sentence runs with questions wrapped when a handler is given. */
-function appendLine(p, block, i, onQuestion) {
-  if (!onQuestion) return appendInline(p, block.lines[i]);
-  for (const run of questionRuns(block.raw[i])) {
-    if (run.question) p.append(askSpan(run, onQuestion));
-    else appendInline(p, inlineSegments(run.text));
+/** Prose: plain inline segments, or sentence runs with questions wrapped when a handler is given. */
+function appendProse(parent, raw, onQuestion) {
+  if (!onQuestion) return appendInline(parent, inlineSegments(raw));
+  for (const run of questionRuns(raw)) {
+    if (run.question) parent.append(askSpan(run, onQuestion));
+    else appendInline(parent, inlineSegments(run.text));
   }
 }
 
-/** The rendered blocks of a markdown string, as a fragment ready to append. `onQuestion(text)` makes question sentences clickable. */
-export function renderMarkdown(text, { onQuestion = null } = {}) {
+/** A paragraph's first line with its first sentence in `.lead` and the rest in `.rest`, which the stylesheet quiets. */
+function appendLead(p, raw, onQuestion) {
+  const [lead, rest] = leadSplit(raw);
+  if (!rest) return appendProse(p, raw, onQuestion);
+  const first = document.createElement("span");
+  first.className = "lead";
+  appendProse(first, lead, onQuestion);
+  const after = document.createElement("span");
+  after.className = "rest";
+  appendProse(after, rest, onQuestion);
+  p.append(first, after);
+}
+
+/**
+ * The rendered blocks of a markdown string, as a fragment ready to append. `onQuestion(text)` makes question
+ * sentences clickable; `lead` marks each paragraph's first sentence so the line of thought can be skimmed.
+ */
+export function renderMarkdown(text, { onQuestion = null, lead = false } = {}) {
   const frag = document.createDocumentFragment();
   for (const b of mdBlocks(text)) {
     if (b.type === "p") {
       const p = document.createElement("p");
-      b.lines.forEach((_, i) => {
+      if (lead) p.className = "led";
+      b.raw.forEach((raw, i) => {
         if (i) p.append(document.createElement("br"));
-        appendLine(p, b, i, onQuestion);
+        if (lead && i === 0) appendLead(p, raw, onQuestion);
+        else if (lead) {
+          const after = document.createElement("span");
+          after.className = "rest";
+          appendProse(after, raw, onQuestion);
+          p.append(after);
+        } else appendProse(p, raw, onQuestion);
       });
       frag.append(p);
     } else if (b.type === "quote") {
