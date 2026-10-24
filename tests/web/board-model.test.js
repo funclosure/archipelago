@@ -1,5 +1,5 @@
 import { test, expect } from "bun:test";
-import { startAdd, startEdit, canSave, writeOf, moveCard, keepCursor, authorLabel } from "../../src/web/board-model.js";
+import { startAdd, startEdit, canSave, writeOf, moveCard, keepCursor, authorLabel, hintCard } from "../../src/web/board-model.js";
 
 test("startAdd and startEdit build editors without a title; lang lives only on code cards", () => {
   expect(startAdd("note")).toEqual({ id: null, kind: "note", body: "", lang: null });
@@ -45,4 +45,15 @@ test("authorLabel names who wrote a card as the board says it", () => {
   expect(authorLabel("judge")).toBe("the Keeper");
   expect(authorLabel("mentor")).toBe("the mentor");
   expect(authorLabel("you")).toBe("you");
+});
+
+test("hintCard names the newest card a persona pinned, never the reader's own, and nothing once seen", () => {
+  const you = { id: 1, author: "you" };
+  const judge = { id: 2, author: "judge" };
+  const mentor = { id: 3, author: "mentor" };
+  expect(hintCard([], false)).toBeNull();
+  expect(hintCard([you], false)).toBeNull();
+  expect(hintCard([judge, you], false)).toBe(judge);
+  expect(hintCard([judge, mentor, you], false)).toBe(mentor);
+  expect(hintCard([judge], true)).toBeNull();
 });

@@ -65,3 +65,13 @@ export function kindLabel(kind) {
 export function authorLabel(author) {
   return AUTHOR_LABELS[author] ?? author;
 }
+
+/**
+ * The card the first-board hint points at: the newest one a persona pinned, until the reader has opened a board
+ * (or waved the hint away) once in this browser. Null when there is nothing to say.
+ */
+export function hintCard(cards, seen) {
+  if (seen) return null;
+  for (let i = cards.length - 1; i >= 0; i--) if (cards[i].author !== "you") return cards[i];
+  return null;
+}

@@ -5,13 +5,15 @@ import { renderMarkdown, diagramElement } from "./markdown.js";
 import { codeElement, fillCode } from "./code.js";
 import { LANGS } from "./code-model.js";
 import { registerRegion, setRegion, region } from "./keys.js";
-import { startAdd, startEdit, canSave, writeOf, moveCard, keepCursor, authorLabel, kindLabel, KIND_KEYS, PLAIN } from "./board-model.js";
+import { startAdd, startEdit, canSave, writeOf, moveCard, keepCursor, authorLabel, kindLabel, hintCard, KIND_KEYS, PLAIN } from "./board-model.js";
 import { t } from "./i18n.js";
 
 const PREVIEW_MS = 500;
 const board = document.getElementById("board");
 const toggle = document.getElementById("board-toggle");
 const scrim = document.getElementById("board-scrim");
+/** Set once the reader opens a board or waves the first-card hint away: per browser, a convenience only. */
+const SEEN = "board:seen";
 
 const state = {
   slug: null,       // the island the cards belong to
@@ -31,6 +33,46 @@ let editorNode = null;   // the editor element, kept across renders so typing is
 let editorFor = null;    // the state.editor object editorNode was built for
 let editorStatus = null; // the status span inside editorNode
 let editorFocus = null;  // focuses the right field of the open editor
+
+function seen() {
+  try {
+    return localStorage.getItem(SEEN) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function markSeen() {
+  try {
+    localStorage.setItem(SEEN, "1");
+  } catch {}
+  hint?.remove();
+  hint = null;
+  toggle.classList.remove("beckon");
+}
+
+let hint = null; // the first-card hint above the toggle, while it shows
+
+/** The first time a persona pins a card, a callout over the toggle says so; it goes for good once the board opens. */
+function renderHint(island) {
+  const card = island && !state.open ? hintCard(state.cards, seen()) : null;
+  toggle.classList.toggle("beckon", Boolean(card));
+  if (!card) {
+    hint?.remove();
+    hint = null;
+    return;
+  }
+  if (!hint) {
+    hint = el("div", "board-hint");
+    hint.setAttribute("role", "status");
+    document.body.append(hint);
+  }
+  const text = button(t("board.hint", { author: authorLabel(card.author) }), () => setOpen(true), "say");
+  const dismiss = button("×", markSeen, "dismiss");
+  dismiss.setAttribute("aria-label", t("board.hintDismiss"));
+  dismiss.title = t("board.hintDismiss");
+  hint.replaceChildren(text, dismiss);
+}
 
 export function boardOpen() {
   return state.open && Boolean(state.slug);
@@ -98,6 +140,7 @@ function sync() {
 
 function setOpen(open) {
   if (open && !state.slug) return;
+  if (open) markSeen();
   state.open = open;
   if (!open) {
     state.editor = null;
@@ -506,6 +549,7 @@ function render() {
   const island = app.snapshot && state.slug ? app.snapshot.islands.find((i) => i.slug === state.slug) ?? null : null;
   toggle.hidden = !island || state.open;
   if (island) toggle.replaceChildren(el("span", null, t("board.toggle", { n: state.cards.length })), el("kbd", null, "b"));
+  renderHint(island);
   const show = Boolean(island) && state.open;
   if (!show) {
     setVisible(false);
