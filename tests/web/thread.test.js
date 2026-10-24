@@ -1,5 +1,5 @@
 import { test, expect } from "bun:test";
-import { sentences, leadSplit, cjkPunctuation, questionRuns, threadItems, proposalFromBody, landmarkFromSystem, exploredFromSystem, inlineSegments, mdBlocks, logItems, askFor, roundOf } from "../../src/web/thread.js";
+import { sentences, leadSplit, cjkPunctuation, questionRuns, threadItems, proposalFromBody, landmarkFromSystem, exploredFromSystem, inlineSegments, mdBlocks, logItems, texLite, askFor, roundOf } from "../../src/web/thread.js";
 
 const proposal = { target: "island:caching", claim: "never stale", consequence: "stale prices", evidence: "q", confidence: 0.7, rationale: "r", status: "pending" };
 
@@ -217,6 +217,19 @@ test("logItems puts a model line before a reply whose model differs from the rep
     { id: 6, role: "judge", kind: "text", body: "Back.", model: "claude-opus-5-5" },
   ];
   expect(logItems(messages, null).map((i) => (i.kind === "model" ? `model:${i.text}` : i.kind))).toEqual(["text", "text", "model:gemini-3.8-flash", "text", "landmark", "text", "model:claude-opus-5-5", "text"]);
+  // the landmark the new model lit before its reply sits under its line
+  const lit = [messages[0], messages[1], { id: 7, role: "judge", kind: "system", body: "landmark lit: Prefix sums", model: null }, messages[2]];
+  expect(logItems(lit, null).map((i) => i.kind)).toEqual(["text", "text", "model", "landmark", "text"]);
   // a thread's first model needs no line, nor does a stub reply (no model)
   expect(logItems([{ id: 1, role: "mentor", kind: "text", body: "Hi.", model: "gemini-3.8-flash" }, { id: 2, role: "mentor", kind: "text", body: "Stub.", model: null }], null).map((i) => i.kind)).toEqual(["text", "text"]);
+});
+
+test("texLite writes inline TeX as plain text and leaves prices and code alone", () => {
+  expect(texLite("Brute force checks all pairs in $O(n^2)$, a single $O(n)$ pass")).toBe("Brute force checks all pairs in O(n²), a single O(n) pass");
+  expect(texLite("$O(n \\log n)$ and $10^9$ and $\\sqrt{n}$ and $a_i \\le S$ and $P_{k+1}$")).toBe("O(n log n) and 10⁹ and √n and aᵢ ≤ S and Pₖ₊₁");
+  expect(texLite("$2^{\\text{depth}}$")).toBe("2^depth");
+  expect(texLite("costs $5 and $10, or $5-$10")).toBe("costs $5 and $10, or $5-$10");
+  expect(texLite("use `$O(n^2)$` literally")).toBe("use `$O(n^2)$` literally");
+  expect(texLite("for each $x$ in A")).toBe("for each x in A");
+  expect(mdBlocks("in $O(n)$ time")[0].raw).toEqual(["in O(n) time"]);
 });

@@ -56,7 +56,7 @@ When the reader writes about the map (a wrong summary, a missing island, a split
 
 ## 4. Every reply
 
-Short prose, then nothing more: the sketch goes through the tool, never into the reply. Never print the sketch as a table or a list of islands; the page renders it. After proposing, end with one line: approve it on the map, or say what to change. When you propose nothing, end with what the reader can ask for.
+Short prose, then nothing more: the sketch goes through the tool, never into the reply. Never print the sketch as a table or a list of islands; the page renders it. After proposing, end with one line: approve it on the map, or say what to change. When you propose nothing, end with what the reader can ask for. Write math as plain text (O(n²), n log n, 10⁹), never LaTeX or `$…$`: the page renders no math.
 
 ## 5. Revisions
 
