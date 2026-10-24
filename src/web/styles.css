@@ -83,7 +83,6 @@ body.pane-open .chrome { right: var(--pane-w); }
 .chrome-stack { display: flex; flex-direction: column; gap: 10px; align-items: flex-start; min-width: 0; max-width: 100%; }
 /* the title row: the domain (and scale) on the left, the mode switch beside it */
 .title-row { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; min-width: 0; }
-.mode:empty { display: none; }
 
 .breadcrumb { display: flex; align-items: center; gap: 8px; font-family: Georgia, serif; font-size: 18px; }
 .crumb { background: none; border: 0; color: var(--muted); font: inherit; cursor: pointer; padding: 0; }
@@ -102,20 +101,6 @@ body.pane-open .chrome { right: var(--pane-w); }
 .strip-item:hover .hint, .strip-item.open .hint { display: block; }
 .strip-label { color: var(--muted); text-transform: uppercase; letter-spacing: .08em; font-size: 10px; }
 /* the lens switch: Keeper (what you have demonstrated) or Mentor (where you have explored) */
-.mode-cell { cursor: default; }
-.mode-cell > .strip-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); } /* named for screen readers; the segments say the rest */
-.mode-switch { display: inline-flex; border: 1px solid var(--line); border-radius: 999px; overflow: hidden; }
-.mode-switch .seg { background: transparent; border: 0; color: var(--muted); font: 12px system-ui, sans-serif; padding: 4px 12px; cursor: pointer;
-  display: inline-flex; align-items: baseline; gap: 6px; }
-.mode-switch .seg + .seg { border-left: 1px solid var(--line); }
-.mode-switch .seg .name { font-weight: 600; letter-spacing: .02em; }
-.mode-switch .seg .role { font-size: 11px; opacity: .8; white-space: nowrap; }
-.mode-switch .seg .name { white-space: nowrap; }
-.mode-switch .seg:hover { color: var(--text); }
-.mode-switch .seg.on { background: var(--panel-2); color: var(--text); }
-.mode-switch .seg.judge.on .name { color: var(--lamp); }
-.mode-switch .seg.mentor.on .name { color: var(--explore); }
-.mode-switch .seg:focus-visible { outline: 2px solid var(--lamp); outline-offset: -2px; }
 
 /* ---- the pane: head, log, foot ---- */
 .pane { position: fixed; top: 0; right: 0; bottom: 0; width: var(--pane-w); background: var(--panel);
@@ -149,6 +134,31 @@ body[data-mode="mentor"] .msg .term.hot { background: var(--panel-2); }
 body[data-mode="mentor"] .chip.hot:not(.lit):not(.explored) { border-color: var(--explore); }
 .chip.hot:is(.lit, .explored) { box-shadow: 0 0 0 2px var(--lamp-ring); }
 .pill.explore { background: transparent; border: 1px solid var(--explore); color: var(--explore); }
+/* Who answers here, beside the island's name (`lensSwitchEl`): the lens of the pane and the map. */
+.titlebar { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.titlebar h2 { min-width: 0; }
+.lens-switch { display: inline-flex; flex: none; gap: 2px; padding: 2px; margin-top: 2px; border: 1px solid var(--line); border-radius: 999px; }
+.lens-switch .seg { background: transparent; border: 0; border-radius: 999px; padding: 4px 12px; font: 12.5px system-ui, sans-serif; color: var(--muted); cursor: pointer; white-space: nowrap; }
+.lens-switch .seg:hover { color: var(--text); }
+.lens-switch .seg.on { color: var(--on-land); font-weight: 600; }
+.lens-switch .seg.judge.on { background: var(--lamp); }
+.lens-switch .seg.mentor.on { background: var(--explore); }
+.lens-switch .seg:focus-visible { outline: 2px solid var(--lamp); outline-offset: 1px; }
+/* Before the first turn (`briefingEl`): the persona's mark, what happens, and the one button that starts it. */
+.briefing { margin: auto; max-width: 400px; display: flex; flex-direction: column; align-items: center; gap: 14px; padding: 16px 0; text-align: center; font-family: var(--font-text); --accent: var(--lamp); }
+.briefing.mentor { --accent: var(--explore); }
+.briefing .glyph { width: 56px; height: 56px; }
+.briefing .glyph .ring { fill: none; stroke: var(--accent); stroke-opacity: .25; }
+.briefing .glyph .beam { fill: none; stroke: var(--accent); stroke-opacity: .5; stroke-dasharray: 2 4; }
+.briefing .glyph .needle { fill: none; stroke: var(--accent); stroke-width: 1.5; }
+.briefing .glyph .fill { fill: var(--accent); }
+.briefing h3 { margin: 0; font-size: 18px; font-weight: 500; line-height: 1.45; text-wrap: balance; }
+.briefing .steps { list-style: none; margin: 4px 0 0; padding: 0; display: grid; gap: 10px; width: 100%; text-align: left; }
+.briefing .steps li { display: grid; grid-template-columns: 24px minmax(0, 1fr); gap: 10px; font-size: 14px; line-height: 1.6; color: var(--text-2); }
+.briefing .steps .n { width: 22px; height: 22px; margin-top: 1px; border-radius: 50%; border: 1px solid var(--accent); color: var(--accent); font-size: 11.5px; display: grid; place-items: center; font-variant-numeric: tabular-nums; }
+.briefing .btn.primary { padding: 10px 22px; font-size: 15px; }
+.briefing .btn.primary.mentor { background: var(--explore); border-color: var(--explore); color: var(--on-land); }
+.briefing .sub { margin: 0; font-size: 12px; color: var(--muted); }
 .pill.mode { background: transparent; border: 1px solid var(--line); color: var(--muted); }
 .pill.mode.mentor { border-color: var(--explore); color: var(--explore); }
 @keyframes lit-pulse { 0% { box-shadow: 0 0 0 0 var(--lamp-pulse); } 100% { box-shadow: 0 0 0 10px transparent; } }
@@ -220,7 +230,7 @@ pre, code, kbd { font-family: var(--font-mono); }
   animation: blink 1s steps(2) infinite; }
 @keyframes blink { to { visibility: hidden; } }
 @media (prefers-reduced-motion: reduce) { .caret, .chip.just-lit { animation: none; } }
-.empty, .actions { display: grid; gap: 10px; justify-items: start; }
+.actions { display: grid; gap: 10px; justify-items: start; }
 .btn { background: var(--lamp); color: var(--sea); border: 0; border-radius: 6px; padding: 7px 12px; font: inherit; font-size: 12px;
   font-weight: 500; cursor: pointer; }
 .btn.ghost { background: transparent; color: var(--text); border: 1px solid var(--line); }
