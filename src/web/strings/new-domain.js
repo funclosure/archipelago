@@ -4,7 +4,7 @@ export default {
     example1: "System design, for a staff engineer interview",
     example2: "React Native, coming from ten years of iOS",
     example3: "Linear algebra, to finally follow ML papers",
-    example4: "Data structures & algorithms, beyond rote",
+    example4: "Data structures & algorithms, to understand why",
     example5: "Philosophy, to think clearly about AI minds",
     example6: "Wine, as a curious beginner",
     deleteHelp: "Delete {name} and everything charted in it: its islands, threads, verdicts, boards, and seas. This can't be undone.",
