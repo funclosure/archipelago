@@ -139,7 +139,7 @@ const LANGUAGE_NAMES: Record<string, string> = { en: "English", "zh-TW": "Tradit
  */
 export function renderDescription(description: string | null, language: string | null = null): string[] {
   const lines = description ? [`Description (the reader's words on what they want to chart and why): ${indent(description)}`] : [];
-  if (language) lines.push(`The reader's page is in ${LANGUAGE_NAMES[language] ?? language}. Write in it whenever the reader's own words give no clear sign of a language, the opening included; when they write in another language, follow them.`);
+  if (language) lines.push(`The reader's page is in ${LANGUAGE_NAMES[language] ?? language}. Write in it whenever the reader's messages give no clear sign of a language, the opening included, even when the description is in another language; when their messages are in another language, follow them.`);
   return lines;
 }
 
