@@ -3,7 +3,7 @@ import { z } from "zod";
 import { ConflictError, NotFoundError } from "../errors.ts";
 import { reefStatuses, type Message, type MessageKind, type MessageMode, type MessageRole, type ReefProposal, type ReefStatus } from "../types.ts";
 
-const COLS = "id, domain_id as domainId, island_id as islandId, role, kind, body, mode, created_at as createdAt";
+const COLS = "id, domain_id as domainId, island_id as islandId, role, kind, body, mode, model, created_at as createdAt";
 
 export type MessageInsert = {
   domainId: number;
@@ -14,6 +14,8 @@ export type MessageInsert = {
   body: string;
   /** The thread: the judge's unless said otherwise. */
   mode?: MessageMode;
+  /** The model that wrote a persona's reply; null otherwise. */
+  model?: string | null;
 };
 
 const proposalSchema = z.object({
@@ -29,12 +31,12 @@ const proposalSchema = z.object({
 export function addMessage(db: Database, input: MessageInsert): Message {
   return db
     .query<Message, Record<string, string | number | null>>(
-      `insert into messages (domain_id, island_id, role, kind, body, mode)
-       values ($domainId, $islandId, $role, $kind, $body, $mode) returning ${COLS}`,
+      `insert into messages (domain_id, island_id, role, kind, body, mode, model)
+       values ($domainId, $islandId, $role, $kind, $body, $mode, $model) returning ${COLS}`,
     )
     .get({
       $domainId: input.domainId, $islandId: input.islandId, $role: input.role, $kind: input.kind, $body: input.body,
-      $mode: input.mode ?? "judge",
+      $mode: input.mode ?? "judge", $model: input.model ?? null,
     })!;
 }
 

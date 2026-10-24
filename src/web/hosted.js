@@ -35,7 +35,11 @@ async function call(path, init) {
   throw new Error(body.error || res.statusText);
 }
 
-const post = (path, body) => call(path, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) }).then((r) => r.json());
+// A settings write may change the model the personas answer on: the panes re-read it on this event.
+const post = (path, body) =>
+  call(path, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) })
+    .then((r) => r.json())
+    .finally(() => document.dispatchEvent(new Event("settings")));
 
 /** Ask the browser not to clear this site's storage under pressure. Chrome decides on its own; Firefox may ask. */
 function persist() {

@@ -271,6 +271,25 @@ test("a second turn on the same island while one runs is 409, and the lock clear
   }
 });
 
+test("the judge names its model, and each persona reply stores the model that wrote it", async () => {
+  expect((await get("/api/judge")).json).toEqual({ model: null }); // the stub has none
+  const reply: JudgeRunner = async ({ emit }) => {
+    emit({ type: "text", text: "Why?" });
+    return "Why?";
+  };
+  const other = startServer({ port: 0, dbPath: join(dir, "test.sqlite"), staticRoot: dir, runner: reply, model: "gemini-3.8-flash" });
+  const otherBase = `http://127.0.0.1:${other.port}`;
+  try {
+    expect(await (await fetch(otherBase + "/api/judge")).json()).toEqual({ model: "gemini-3.8-flash" });
+    const res = await fetch(otherBase + "/api/probe", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ domain: "sd", island: "databases", message: "hi" }) });
+    expect(await res.text()).toContain("event: done");
+    const messages = (await thread("databases")).messages;
+    expect(messages.map((m: any) => [m.role, m.model])).toEqual([["you", null], ["judge", "gemini-3.8-flash"]]);
+  } finally {
+    other.stop(true);
+  }
+});
+
 test("a turn that never answers times out, releases the island, and stores nothing", async () => {
   let aborted = false;
   const hung: JudgeRunner = ({ signal }) =>

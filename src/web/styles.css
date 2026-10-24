@@ -245,7 +245,10 @@ button:focus-visible, textarea:focus-visible, input:focus-visible { outline: 2px
 .foot textarea::placeholder { color: var(--muted); opacity: 1; }
 .btn.send.judge { background: var(--panel-2); color: var(--text); }
 .btn.send.mentor { background: var(--explore); color: var(--on-land); }
-.foot .meta { display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); }
+.foot .meta { display: flex; justify-content: space-between; gap: 12px; font-size: 11px; color: var(--muted); }
+.foot .meta .model { font-family: var(--font-mono); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.model-line { display: flex; align-items: center; gap: 8px; font-size: 11px; font-family: var(--font-mono); color: var(--muted); }
+.model-line::before, .model-line::after { content: ""; flex: 1; border-top: 1px dashed var(--line); }
 
 /* ---- the outline: Linear rows, Shuttle rail ---- */
 .outline { position: fixed; top: 0; left: 0; bottom: 0; width: var(--outline-w); background: var(--panel); border-right: 1px solid var(--line);

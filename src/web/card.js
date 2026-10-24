@@ -8,6 +8,7 @@ import { thinkingLine } from "./progress-model.js";
 import { thinkingEl } from "./thinking.js";
 import { renderMarkdown } from "./markdown.js";
 import { landmarkTerms } from "./term-model.js";
+import { modelEl, refreshJudgeModel } from "./model-label.js";
 import { loadHighlighter } from "./code.js";
 import { renderCta } from "./cta.js";
 import { select } from "./interactions.js";
@@ -72,7 +73,14 @@ function lightLandmark(e, on) {
   for (const node of pane.querySelectorAll(`[data-lm="${CSS.escape(target.dataset.lm)}"]`)) node.classList.toggle("hot", on);
 }
 
+/** Re-reads the model the personas answer on, and redraws the pane when it changed. */
+function remodel() {
+  void refreshJudgeModel().then((changed) => changed && render());
+}
+
 export function installCard() {
+  remodel();
+  document.addEventListener("settings", remodel);
   pane.addEventListener("mouseover", (e) => lightLandmark(e, true));
   pane.addEventListener("mouseout", (e) => lightLandmark(e, false));
   document.addEventListener("theme", () => {
@@ -291,6 +299,7 @@ async function runTurn(slug, message, askId) {
   thread.progress = null;
   thread.version = null; // the stored reply and any system lines come back with the refetch
   render();
+  remodel();
   // Focus the answer only if the reader is still where they sent from; Tab away mid-turn is a choice.
   if (region() !== regionAtSend) return;
   // The opening turn renders the box disabled until the refetched thread arrives: focus it then.
@@ -575,6 +584,7 @@ function itemEl(item, reefPending) {
   if (item.kind === "explored") return el("div", "explored-line", `◇ ${item.names.join(" · ")}`);
   if (item.kind === "verdict") return verdictEl(item.verdict);
   if (item.kind === "system") return el("div", "msg system", systemText(item.text));
+  if (item.kind === "model") return el("div", "model-line", t("card.modelFrom", { model: item.text }));
   if (item.kind === "reef_proposal") return reefEl(item);
   const m = el("div", `msg ${item.role}`);
   const persona = item.role === "judge" || item.role === "mentor";
@@ -753,6 +763,8 @@ function footEl(island) {
   foot.append(form);
   const meta = el("div", "meta");
   meta.append(el("span", null, t(pending ? "card.metaReef" : thread.inFlight ? "card.metaStop" : "card.metaSend")));
+  const model = modelEl();
+  if (model) meta.append(model);
   foot.append(meta);
   return foot;
 }

@@ -69,6 +69,12 @@ const runner: JudgeRunner = async (turn) => {
   return api.run(turn);
 };
 
+/** The model the next turn runs on: the one picked under Your key, none without a key (the stub). */
+const model = async () => {
+  const { apiKey, model } = await settings.get();
+  return apiKey ? model : null;
+};
+
 type Pool = Awaited<ReturnType<Sqlite3Static["installOpfsSAHPoolVfs"]>>;
 let sqlite3: Sqlite3Static;
 let pool: Pool;
@@ -86,7 +92,7 @@ async function start(): Promise<ApiContext> {
   sqlite3 = await sqlite3InitModule();
   pool = await sqlite3.installOpfsSAHPoolVfs({ name: "archipelago" });
   open();
-  return { runner, turnTimeoutMs: JUDGE_TURN_TIMEOUT_MS };
+  return { runner, turnTimeoutMs: JUDGE_TURN_TIMEOUT_MS, model };
 }
 
 /** The migrations a candidate file has applied, read from a scratch copy so FILE is untouched until it passes. */

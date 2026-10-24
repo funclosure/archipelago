@@ -26,7 +26,13 @@ import { resolveCommentTarget, resolveVerdictTarget } from "../core/targets.ts";
 import { boardWrite, systemLine } from "./judge/tools.ts";
 import type { JudgeEvent, JudgeRunner } from "./judge/runner.ts";
 
-export type ApiContext = { dbPath?: string; runner: JudgeRunner; turnTimeoutMs: number };
+export type ApiContext = {
+  dbPath?: string;
+  runner: JudgeRunner;
+  turnTimeoutMs: number;
+  /** The model the runner answers on right now (null for the stub), shown in the pane and stored on each reply. */
+  model?: () => string | null | Promise<string | null>;
+};
 
 const PING_MS = 20_000;
 /** After a timeout or a departed reader, how long the island stays locked waiting for the runner to stop. */
@@ -99,6 +105,10 @@ async function handleApi(req: Request, url: URL, ctx: ApiContext): Promise<Respo
   const q = (name: string) => url.searchParams.get(name);
 
   if (route === "GET /api/domains") return json({ domains: withDb(ctx, listDomains) });
+
+  if (route === "GET /api/judge") {
+    return json({ model: (await ctx.model?.()) ?? null });
+  }
 
   if (route === "GET /api/version") {
     const slug = slugSchema.parse(q("domain"));
@@ -269,7 +279,7 @@ async function handleApi(req: Request, url: URL, ctx: ApiContext): Promise<Respo
         return listAsks(db, i.id).at(-1)?.id ?? 0;
       })();
     });
-    return streamTurn(ctx, key, mode, { domain: input.domain, island }, (reply) =>
+    return streamTurn(ctx, key, mode, { domain: input.domain, island }, (reply, model) =>
       withDb(ctx, (db) => {
         const d = requireDomain(db, input.domain);
         const i = requireIsland(db, d.id, island);
@@ -280,7 +290,7 @@ async function handleApi(req: Request, url: URL, ctx: ApiContext): Promise<Respo
         const body = reply || (unattached ? unattached.question : "");
         if (!body) return;
         // The reply is the persona's, in its own thread.
-        const stored = addMessage(db, { domainId: d.id, islandId: i.id, role: mode, kind: "text", body, mode });
+        const stored = addMessage(db, { domainId: d.id, islandId: i.id, role: mode, kind: "text", body, mode, model });
         attachAsks(db, i.id, stored.id, askFloor);
       }),
     );
@@ -371,7 +381,7 @@ async function handleApi(req: Request, url: URL, ctx: ApiContext): Promise<Respo
  * timeout and cancels the runner, stores the reply through `store` unless the reader left, and keeps the
  * lock until an abandoned runner has stopped writing, within a bound.
  */
-function streamTurn(ctx: ApiContext, key: string, mode: MessageMode, at: { domain: string; island?: string }, store: (reply: string) => void): Response {
+function streamTurn(ctx: ApiContext, key: string, mode: MessageMode, at: { domain: string; island?: string }, store: (reply: string, model: string | null) => void): Response {
   inFlight.set(key, mode);
   const abort = new AbortController();
   return sseResponse(async (emit) => {
@@ -388,10 +398,11 @@ function streamTurn(ctx: ApiContext, key: string, mode: MessageMode, at: { domai
       }, ms);
     });
     try {
+      const model = (await ctx.model?.()) ?? null; // read as the turn starts: a reply is the model's that began it
       turn = ctx.runner({ dbPath: ctx.dbPath, domain: at.domain, island: at.island, mode, emit, signal: abort.signal });
       const reply = (await Promise.race([turn, expiry])).trim();
       if (abort.signal.aborted) return; // the reader left: a reply nobody asked to keep is not stored
-      store(reply);
+      store(reply, model);
       emit({ type: "done" });
     } catch (error) {
       emit({ type: "error", message: error instanceof Error ? error.message : String(error) });
@@ -416,7 +427,7 @@ function chartTurn(ctx: ApiContext, input: z.infer<typeof probeInputSchema>): Re
     if (input.message) addMessage(db, { domainId: d.id, islandId: scale ? scale.id : null, role: "you", kind: "text", body: input.message, mode: "cartographer" });
     return { floor: sketchFloor(db, d.id), scaleId: scale ? scale.id : null };
   });
-  return streamTurn(ctx, key, "cartographer", { domain: input.domain, island: input.island }, (reply) =>
+  return streamTurn(ctx, key, "cartographer", { domain: input.domain, island: input.island }, (reply, model) =>
     withDb(ctx, (db) => {
       const d = requireDomain(db, input.domain);
       // A sketch proposed this turn rides on the reply; a silent turn that proposed one still says so.
@@ -424,7 +435,7 @@ function chartTurn(ctx: ApiContext, input: z.infer<typeof probeInputSchema>): Re
       const fresh = proposed !== null && proposed.id > floor && proposed.messageId === null;
       const body = reply || (fresh ? "Here is a sketch. Approve it, or say what to change." : "");
       if (!body) return;
-      const stored = addMessage(db, { domainId: d.id, islandId: scaleId, role: "cartographer", kind: "text", body, mode: "cartographer" });
+      const stored = addMessage(db, { domainId: d.id, islandId: scaleId, role: "cartographer", kind: "text", body, mode: "cartographer", model });
       attachSketch(db, d.id, scaleId, stored.id, floor);
     }),
   );
