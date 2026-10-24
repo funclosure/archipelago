@@ -2,7 +2,7 @@ import { app, api, setScale, frameSelection, setMode } from "./app.js";
 import { streamPost } from "./stream.js";
 import { logItems, askFor, roundOf, systemText } from "./thread.js";
 import { landmarkLit, allExplored } from "./view-model.js";
-import { PERSONA_NAMES, headPill, stateLabel } from "./mode-model.js";
+import { MODES, MODE_LABELS, MODE_ROLES, MODE_HINTS, PERSONA_NAMES, headPill, stateLabel } from "./mode-model.js";
 import { t } from "./i18n.js";
 import { thinkingLine } from "./progress-model.js";
 import { thinkingEl } from "./thinking.js";
@@ -389,7 +389,13 @@ function renderLive() {
 /** Focuses the answer box if it can take input; returns whether it did. */
 function focusAnswer() {
   const ta = pane.querySelector("#answer");
-  if (!ta || ta.disabled) return false;
+  if (!ta) {
+    // Before the first turn there is no answer box: the start button takes the focus.
+    const start = pane.querySelector("#landfall");
+    start?.focus();
+    return Boolean(start);
+  }
+  if (ta.disabled) return false;
   thread.focusPending = false;
   ta.focus();
   ta.setSelectionRange(ta.value.length, ta.value.length);
@@ -406,6 +412,20 @@ function growAnswer(ta) {
 }
 
 // ---- head ----
+
+/** Who answers here, beside the island's name: the Keeper or the mentor. It is the map's lens too (`m` switches it). */
+function lensSwitchEl() {
+  const wrap = el("div", "lens-switch");
+  wrap.setAttribute("role", "group");
+  wrap.setAttribute("aria-label", t("card.lensLabel"));
+  for (const m of MODES) {
+    const b = button(MODE_LABELS[m], () => setMode(m), `seg ${m}${m === thread.mode ? " on" : ""}`);
+    b.setAttribute("aria-pressed", String(m === thread.mode));
+    b.title = `${MODE_ROLES[m]}\n${MODE_HINTS[m]}  [m]`;
+    wrap.append(b);
+  }
+  return wrap;
+}
 
 function chipsEl(island) {
   const row = el("div", "chips");
@@ -444,16 +464,14 @@ function noteForm(island) {
 
 function headEl(island) {
   const head = el("div", "head");
-  const row = el("div", "row");
-  row.append(el("h2", null, island.name));
+  const titlebar = el("div", "titlebar");
+  titlebar.append(el("h2", null, island.name), lensSwitchEl());
+  head.append(titlebar);
   const pill = headPill(island, thread.mode);
   const pills = el("span", "pills");
   pills.append(el("span", pill.cls, pill.text));
   if (island.harbour) pills.append(el("span", "pill harbour", t("card.harbour")));
-  // The head names who answers here.
-  pills.append(el("span", `pill mode ${thread.mode}`, t(thread.mode === "mentor" ? "card.withMentor" : "card.withKeeper")));
-  row.append(pills);
-  head.append(row);
+  head.append(pills);
   if (island.summary) head.append(el("p", "summary", island.summary));
   const hasLandmarks = island.landmarks && island.landmarks.total > 0;
   if (hasLandmarks) head.append(chipsEl(island));
@@ -582,20 +600,8 @@ function logEl(island) {
   }
   const items = logItems(thread.messages, island);
   if (items.length === 0 && !thread.inFlight) {
-    const empty = el("div", "empty");
-    if (thread.mode === "mentor") {
-      empty.append(el("p", "muted", t("card.mentorEmpty")));
-      const b = button(t("card.exploreWithMentor"), () => void runTurn(island.slug, null));
-      b.id = "landfall";
-      empty.append(b);
-    } else {
-      if (island.verdict) empty.append(verdictEl(island.verdict));
-      empty.append(el("p", "muted", t(island.verdict ? "card.keeperEmptyThread" : "card.keeperUnsurveyed")));
-      const b = button(t(island.verdict ? "card.exploreIt" : "card.makeLandfall"), () => void runTurn(island.slug, null));
-      b.id = "landfall";
-      empty.append(b);
-    }
-    log.append(empty);
+    if (thread.mode === "judge" && island.verdict) log.append(verdictEl(island.verdict));
+    log.append(briefingEl(island));
     if (thread.error) log.append(el("div", "error", thread.error));
     return log;
   }
@@ -613,6 +619,52 @@ function logEl(island) {
   if (thread.stopped) log.append(el("div", "stopped", t("card.stopped")));
   if (thread.error) log.append(el("div", "error", thread.error));
   return log;
+}
+
+/** The persona's mark: the Keeper's lamp, the mentor's compass needle. Built as SVG nodes, never markup. */
+function lensGlyph(mode) {
+  const ns = "http://www.w3.org/2000/svg";
+  const svg = document.createElementNS(ns, "svg");
+  svg.setAttribute("viewBox", "0 0 56 56");
+  svg.setAttribute("class", "glyph");
+  svg.setAttribute("aria-hidden", "true");
+  const add = (tag, attrs) => {
+    const node = document.createElementNS(ns, tag);
+    for (const [k, v] of Object.entries(attrs)) node.setAttribute(k, String(v));
+    svg.append(node);
+  };
+  add("circle", { cx: 28, cy: 28, r: 26, class: "ring" });
+  if (mode === "mentor") {
+    add("path", { d: "M28 9 L33 28 L28 47 L23 28 Z", class: "needle" });
+    add("path", { d: "M28 9 L33 28 L23 28 Z", class: "fill" });
+  } else {
+    add("circle", { cx: 28, cy: 28, r: 17, class: "beam" });
+    add("circle", { cx: 28, cy: 28, r: 6, class: "fill" });
+  }
+  return svg;
+}
+
+/**
+ * Before the first turn: who you are with, what happens and how it ends, and the one button that starts it. The
+ * answer box stays away until there is something to answer (`footEl`).
+ */
+function briefingEl(island) {
+  const mentor = thread.mode === "mentor";
+  const kind = mentor ? "Mentor" : "Keeper";
+  const box = el("div", `briefing ${thread.mode}`);
+  box.append(lensGlyph(thread.mode), el("h3", null, t(`card.brief${kind}Title`)));
+  const steps = el("ol", "steps");
+  [1, 2, 3].forEach((n) => {
+    const li = el("li");
+    li.append(el("span", "n", String(n)), el("span", null, t(`card.brief${kind}Step${n}`)));
+    steps.append(li);
+  });
+  box.append(steps);
+  const label = mentor ? t("card.startExploring") : t(island.verdict ? "card.exploreIt" : "card.makeLandfall");
+  const start = button(label, () => void runTurn(island.slug, null), `btn primary ${thread.mode}`);
+  start.id = "landfall";
+  box.append(start, el("p", "sub", t("card.briefSwitch")));
+  return box;
 }
 
 // ---- foot ----
@@ -777,7 +829,9 @@ function render() {
 
   pane.hidden = false;
   terms = landmarkTerms(island.landmarks.items);
-  pane.replaceChildren(headEl(island), logEl(island), footEl(island));
+  // Before the first turn the briefing holds the start button; the answer box comes with the first reply.
+  const briefing = thread.loaded && thread.messages.length === 0 && !thread.inFlight;
+  pane.replaceChildren(headEl(island), logEl(island), ...(briefing ? [] : [footEl(island)]));
   pane.prepend(gripEl());
   growAnswer(pane.querySelector("#answer"));
   renderLive();
