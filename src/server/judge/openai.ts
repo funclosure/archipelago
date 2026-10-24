@@ -21,7 +21,25 @@ export type ChatOptions = {
   fetch?: typeof fetch;
   /** In the browser (the hosted build): errors point at Your key, not the environment. */
   hosted?: boolean;
+  /** How hard the model thinks (`minimal`, `low`, `medium`, `high`); the model's own default when absent. */
+  effort?: string;
 };
+
+/**
+ * Gemini sends nothing, not even headers, until it has thought, and its server drops a stream that stays silent for
+ * 60 s. Asking for thought summaries makes it stream from the first seconds; they are read and never shown.
+ */
+export function isGemini(baseUrl: string): boolean {
+  return /(^|\.)generativelanguage\.googleapis\.com$/.test(hostOf(baseUrl));
+}
+
+function hostOf(baseUrl: string): string {
+  try {
+    return new URL(baseUrl).host;
+  } catch {
+    return baseUrl;
+  }
+}
 
 type ChatToolCall = { id: string; type: "function"; function: { name: string; arguments: string }; [extra: string]: unknown };
 type ChatMessage =
@@ -61,13 +79,19 @@ export function portableSchema(schema: unknown): unknown {
   return out;
 }
 
-/** The turn's first request body: the protocol and the context as one system message (protocol first, so a provider's prefix cache can hold it), the thread as the user's. */
-export function chatBodyFor(request: TurnRequest, messages: ChatMessage[]) {
+/** A request body: the protocol and the context as one system message (protocol first, so a provider's prefix cache can hold it), the thread as the user's. */
+export function chatBodyFor(request: TurnRequest, messages: ChatMessage[], options: { gemini?: boolean; effort?: string } = {}) {
+  const thinking = options.gemini
+    ? { extra_body: { google: { thinking_config: { include_thoughts: true, ...(options.effort ? { thinking_level: options.effort } : {}) } } } }
+    : options.effort
+      ? { reasoning_effort: options.effort }
+      : {};
   return {
     model: request.model,
     stream: true,
     messages,
     tools: request.tools.map((t) => ({ type: "function", function: { name: t.name, description: t.description, parameters: portableSchema(t.schema) } })),
+    ...thinking,
   };
 }
 
@@ -96,19 +120,14 @@ async function* events(body: ReadableStream<Uint8Array>): AsyncGenerator<unknown
   }
 }
 
-type Delta = { content?: string | null; tool_calls?: { index?: number; id?: string; function?: { name?: string; arguments?: string }; [extra: string]: unknown }[] };
+type Delta = { content?: string | null; extra_content?: { google?: { thought?: boolean } }; tool_calls?: { index?: number; id?: string; function?: { name?: string; arguments?: string }; [extra: string]: unknown }[] };
 type Chunk = { choices?: { delta?: Delta; finish_reason?: string | null }[]; error?: { message?: string } };
 
 export function chatAdapter(options: ChatOptions): ModelAdapter {
   const doFetch = options.fetch ?? fetch;
   const url = `${options.baseUrl.replace(/\/+$/, "")}/chat/completions`;
-  const host = (() => {
-    try {
-      return new URL(options.baseUrl).host;
-    } catch {
-      return options.baseUrl;
-    }
-  })();
+  const host = hostOf(options.baseUrl);
+  const gemini = isGemini(options.baseUrl);
   return {
     describeError: (error, model) => describeChatError(error, model, host, options.hosted),
     start: (request) => {
@@ -123,7 +142,7 @@ export function chatAdapter(options: ChatOptions): ModelAdapter {
           const response = await doFetch(url, {
             method: "POST",
             headers: { "Content-Type": "application/json", ...(options.apiKey ? { Authorization: `Bearer ${options.apiKey}` } : {}) },
-            body: JSON.stringify(chatBodyFor(request, messages)),
+            body: JSON.stringify(chatBodyFor(request, messages, { gemini, effort: options.effort })),
             signal,
           });
           if (!response.ok || !response.body) throw new ChatHttpError(response.status, await response.text().catch(() => ""));
@@ -137,10 +156,12 @@ export function chatAdapter(options: ChatOptions): ModelAdapter {
             const choice = chunk.choices?.[0];
             if (!choice) continue;
             const delta = choice.delta ?? {};
-            if (delta.content) {
+            // A thought summary only keeps the stream alive; the reply starts after it, behind a `</thought>` tag.
+            const content = delta.extra_content?.google?.thought ? "" : (delta.content ?? "").replace(/^<\/?thought>/, "");
+            if (content) {
               if (!text) sink.paragraph(); // a new reply after a tool call starts its own paragraph
-              text += delta.content;
-              sink.text(delta.content);
+              text += content;
+              sink.text(content);
             }
             for (const part of delta.tool_calls ?? []) {
               const at = part.index ?? calls.length;
@@ -206,6 +227,15 @@ export function describeChatError(error: unknown, model: string, host: string, h
   return error;
 }
 
+const CHAT_EFFORTS = ["minimal", "low", "medium", "high"];
+
+/** ARCHIPELAGO_EFFORT in the chat servers' terms: Claude's `xhigh` and `max` are their `high`; anything else unknown is dropped. */
+export function chatEffort(raw: string | undefined): string | undefined {
+  if (!raw) return undefined;
+  if (raw === "xhigh" || raw === "max") return "high";
+  return CHAT_EFFORTS.includes(raw) ? raw : undefined;
+}
+
 export type ChatRunnerOptions = ChatOptions & { toolbox: ToolBox; model: string };
 
 export function createChatRunner(options: ChatRunnerOptions): JudgeRunner {
@@ -214,9 +244,10 @@ export function createChatRunner(options: ChatRunnerOptions): JudgeRunner {
 
 /**
  * The chat runner's settings from the environment: ARCHIPELAGO_BASE_URL (a provider's name or a URL), the key from
- * ARCHIPELAGO_API_KEY or that provider's own variable, and ARCHIPELAGO_MODEL, which has no default here.
+ * ARCHIPELAGO_API_KEY or that provider's own variable, ARCHIPELAGO_MODEL, which has no default here, and ARCHIPELAGO_EFFORT
+ * when set (Gemini's thinking level, or `reasoning_effort` elsewhere).
  */
-export function chatSettingsFromEnv(env: Record<string, string | undefined> = process.env): { baseUrl: string; apiKey?: string; model: string } {
+export function chatSettingsFromEnv(env: Record<string, string | undefined> = process.env): { baseUrl: string; apiKey?: string; model: string; effort?: string } {
   const named = env.ARCHIPELAGO_BASE_URL as ProviderName | undefined;
   const provider = named && named in PROVIDERS ? PROVIDERS[named] : null;
   const baseUrl = provider?.baseUrl ?? env.ARCHIPELAGO_BASE_URL;
@@ -224,5 +255,6 @@ export function chatSettingsFromEnv(env: Record<string, string | undefined> = pr
   const model = env.ARCHIPELAGO_MODEL;
   if (!model) throw new ArchipelagoError("ARCHIPELAGO_MODEL is not set. The openai judge has no default model; name one the server serves.");
   const apiKey = env.ARCHIPELAGO_API_KEY ?? (provider?.keyEnv ? env[provider.keyEnv] : undefined);
-  return { baseUrl, model, ...(apiKey ? { apiKey } : {}) };
+  const effort = chatEffort(env.ARCHIPELAGO_EFFORT);
+  return { baseUrl, model, ...(apiKey ? { apiKey } : {}), ...(effort ? { effort } : {}) };
 }
