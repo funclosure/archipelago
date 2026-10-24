@@ -96,6 +96,8 @@ export type Message = {
   kind: MessageKind;
   body: string;
   mode: MessageMode;
+  /** The model that wrote a persona's reply; null for the reader, system lines, the stub, and older replies. */
+  model: string | null;
   createdAt: string;
 };
 

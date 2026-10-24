@@ -10,6 +10,7 @@ import { thinkingLine } from "./progress-model.js";
 import { thinkingEl } from "./thinking.js";
 import { systemText } from "./thread.js";
 import { t } from "./i18n.js";
+import { modelEl } from "./model-label.js";
 
 const STICK_PX = 40;
 const LOG_STEP = 80;
@@ -387,6 +388,8 @@ function footEl() {
   foot.append(form);
   const meta = el("div", "meta");
   meta.append(el("span", null, t(chart.inFlight ? "chart.metaStop" : chart.sketch ? "chart.metaSketch" : "chart.metaSend")));
+  const model = modelEl();
+  if (model) meta.append(model);
   foot.append(meta);
   return foot;
 }

@@ -206,3 +206,17 @@ test("cjkPunctuation makes , : ; ( ) beside Chinese full-width, and leaves Latin
   expect(cjkPunctuation("你會用哪個數字?為什麼?真的!")).toBe("你會用哪個數字？為什麼？真的！");
   expect(cjkPunctuation("用 40ms? 還是 p99?")).toBe("用 40ms? 還是 p99?");
 });
+
+test("logItems puts a model line before a reply whose model differs from the reply before it", () => {
+  const messages = [
+    { id: 1, role: "judge", kind: "text", body: "Old.", model: null },
+    { id: 2, role: "you", kind: "text", body: "a", model: null },
+    { id: 3, role: "judge", kind: "text", body: "New.", model: "gemini-3.8-flash" },
+    { id: 4, role: "judge", kind: "system", body: "landmark lit: Hit ratio", model: null },
+    { id: 5, role: "judge", kind: "text", body: "Same.", model: "gemini-3.8-flash" },
+    { id: 6, role: "judge", kind: "text", body: "Back.", model: "claude-opus-5-5" },
+  ];
+  expect(logItems(messages, null).map((i) => (i.kind === "model" ? `model:${i.text}` : i.kind))).toEqual(["text", "text", "model:gemini-3.8-flash", "text", "landmark", "text", "model:claude-opus-5-5", "text"]);
+  // a thread's first model needs no line, nor does a stub reply (no model)
+  expect(logItems([{ id: 1, role: "mentor", kind: "text", body: "Hi.", model: "gemini-3.8-flash" }, { id: 2, role: "mentor", kind: "text", body: "Stub.", model: null }], null).map((i) => i.kind)).toEqual(["text", "text"]);
+});

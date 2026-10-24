@@ -164,11 +164,14 @@ export function roundOf(messages) {
 }
 
 /**
- * What the log renders: threadItems, with consecutive landmark items, and consecutive explored items, merged into one line, and the
- * last "charted as" system line turned into a verdict card when the island has a verdict to show.
+ * What the log renders: threadItems, with consecutive landmark items, and consecutive explored items, merged into one line, the
+ * last "charted as" system line turned into a verdict card when the island has a verdict to show, and a model line before a
+ * persona reply written by another model than the reply before it.
  */
 export function logItems(messages, island) {
   const items = threadItems(messages);
+  const modelOf = new Map(messages.map((m) => [m.id, m.model ?? null]));
+  let lastModel; // undefined until the first persona reply: the thread's first model needs no line
   let lastCharted = -1;
   items.forEach((it, i) => {
     if (it.kind === "system" && it.text.startsWith(CHARTED_PREFIX)) lastCharted = i;
@@ -180,6 +183,11 @@ export function logItems(messages, island) {
       if (prev && prev.kind === it.kind) prev.names.push(it.text);
       else out.push({ id: it.id, role: it.role, kind: it.kind, names: [it.text], text: it.text, proposal: null });
       return;
+    }
+    if (it.kind === "text" && it.role !== "you") {
+      const model = modelOf.get(it.id) ?? null;
+      if (lastModel !== undefined && model && model !== lastModel) out.push({ id: `model-${it.id}`, role: it.role, kind: "model", text: model, proposal: null });
+      lastModel = model;
     }
     if (i === lastCharted && island && island.verdict) {
       out.push({ ...it, kind: "verdict", verdict: island.verdict });

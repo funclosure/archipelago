@@ -16,6 +16,7 @@ import m0012 from "./0012_seas.sql" with { type: "text" };
 import m0013 from "./0013_suggested_seas.sql" with { type: "text" };
 import m0014 from "./0014_language.sql" with { type: "text" };
 import m0015 from "./0015_landmark_terms.sql" with { type: "text" };
+import m0016 from "./0016_message_model.sql" with { type: "text" };
 
 export const MIGRATIONS: readonly { version: string; sql: string }[] = [
   { version: "0001_initial", sql: m0001 },
@@ -33,4 +34,5 @@ export const MIGRATIONS: readonly { version: string; sql: string }[] = [
   { version: "0013_suggested_seas", sql: m0013 },
   { version: "0014_language", sql: m0014 },
   { version: "0015_landmark_terms", sql: m0015 },
+  { version: "0016_message_model", sql: m0016 },
 ];
