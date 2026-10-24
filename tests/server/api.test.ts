@@ -263,7 +263,7 @@ test("the default judge: ARCHIPELAGO_JUDGE, then the stub flag, then the API wit
   expect(defaultJudge({ ARCHIPELAGO_STUB: "1", ANTHROPIC_API_KEY: "k" })).toBe("stub");
   expect(defaultJudge({ ANTHROPIC_API_KEY: "k" })).toBe("api");
   expect(defaultJudge({})).toBe("sdk");
-  expect(() => defaultJudge({ ARCHIPELAGO_JUDGE: "gpt" })).toThrow("must be one of api, sdk, stub");
+  expect(() => defaultJudge({ ARCHIPELAGO_JUDGE: "gpt" })).toThrow("must be one of api, openai, sdk, stub");
   expect(judgeModel("api", {})).toBe("claude-opus-5-5");
   expect(judgeModel("sdk", {})).toBe("claude-opus-5");
   expect(judgeModel("api", { ARCHIPELAGO_MODEL: "claude-sonnet-5-5" })).toBe("claude-sonnet-5-5");
