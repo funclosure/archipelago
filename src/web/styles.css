@@ -138,6 +138,16 @@ body.pane-open .chrome { right: var(--pane-w); }
 .chip.lit { background: var(--sand); border: 1px solid var(--sand); color: var(--water); }
 .chip.just-lit { animation: lit-pulse .8s ease-out 1; }
 .chip.explored { background: var(--explore); border: 1px solid var(--explore); color: var(--water); }
+/* Landmark words in the persona's replies (`renderMarkdown(…, { terms })`): a dotted underline in the lens's colour;
+   hovering a word or its chip lights both (`lightLandmark` in card.js). */
+.msg .term { text-decoration: underline dotted var(--lamp); text-decoration-thickness: 1.5px; text-underline-offset: 4px; border-radius: 2px; transition: background .15s; }
+body[data-mode="mentor"] .msg .term { text-decoration-color: var(--explore); }
+.msg .term.hot { background: var(--lamp-tint); }
+body[data-mode="mentor"] .msg .term.hot { background: var(--panel-2); }
+.chip { transition: border-color .15s, color .15s; }
+.chip.hot:not(.lit):not(.explored) { border-style: solid; border-color: var(--lamp); color: var(--text); }
+body[data-mode="mentor"] .chip.hot:not(.lit):not(.explored) { border-color: var(--explore); }
+.chip.hot:is(.lit, .explored) { box-shadow: 0 0 0 2px var(--lamp-ring); }
 .pill.explore { background: transparent; border: 1px solid var(--explore); color: var(--explore); }
 .pill.mode { background: transparent; border: 1px solid var(--line); color: var(--muted); }
 .pill.mode.mentor { border-color: var(--explore); color: var(--explore); }

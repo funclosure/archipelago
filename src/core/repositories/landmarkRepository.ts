@@ -3,24 +3,33 @@ import { ConflictError, NotFoundError } from "../errors.ts";
 import type { Landmark } from "../types.ts";
 
 const COLS =
-  "id, domain_id as domainId, island_id as islandId, slug, name, sort_order as sortOrder, unlocked_at as unlockedAt, evidence, message_id as messageId, explored_at as exploredAt, explored_evidence as exploredEvidence, explored_message_id as exploredMessageId, created_at as createdAt";
+  "id, domain_id as domainId, island_id as islandId, slug, name, sort_order as sortOrder, unlocked_at as unlockedAt, evidence, message_id as messageId, explored_at as exploredAt, explored_evidence as exploredEvidence, explored_message_id as exploredMessageId, terms, created_at as createdAt";
 const NOW = "strftime('%Y-%m-%dT%H:%M:%fZ','now')";
 
-export type LandmarkUpsert = { domainId: number; islandId: number; slug: string; name: string; sortOrder?: number | null };
-export type LandmarkItem = { slug: string; name: string };
+type Row = Omit<Landmark, "terms"> & { terms: string | null };
+const fromRow = (row: Row): Landmark => ({ ...row, terms: row.terms === null ? null : (JSON.parse(row.terms) as string[]) });
 
-/** Insert or rename. Never touches the unlock: a renamed landmark stays lit. */
+export type LandmarkUpsert = { domainId: number; islandId: number; slug: string; name: string; sortOrder?: number | null; terms?: string[] };
+export type LandmarkItem = { slug: string; name: string; terms?: string[] };
+
+/** Insert or rename. Never touches the unlock: a renamed landmark stays lit. Terms left out keep the ones it has. */
 export function upsertLandmark(db: Database, input: LandmarkUpsert): Landmark {
-  return db
-    .query<Landmark, Record<string, string | number | null>>(
-      `insert into landmarks (domain_id, island_id, slug, name, sort_order)
-       values ($domainId, $islandId, $slug, $name, coalesce($sortOrder, 0))
-       on conflict(island_id, slug) do update set
-         name = excluded.name,
-         sort_order = coalesce($sortOrder, landmarks.sort_order)
-       returning ${COLS}`,
-    )
-    .get({ $domainId: input.domainId, $islandId: input.islandId, $slug: input.slug, $name: input.name, $sortOrder: input.sortOrder ?? null })!;
+  return fromRow(
+    db
+      .query<Row, Record<string, string | number | null>>(
+        `insert into landmarks (domain_id, island_id, slug, name, sort_order, terms)
+         values ($domainId, $islandId, $slug, $name, coalesce($sortOrder, 0), $terms)
+         on conflict(island_id, slug) do update set
+           name = excluded.name,
+           sort_order = coalesce($sortOrder, landmarks.sort_order),
+           terms = coalesce(excluded.terms, landmarks.terms)
+         returning ${COLS}`,
+      )
+      .get({
+        $domainId: input.domainId, $islandId: input.islandId, $slug: input.slug, $name: input.name, $sortOrder: input.sortOrder ?? null,
+        $terms: input.terms?.length ? JSON.stringify(input.terms) : null,
+      })!,
+  );
 }
 
 /**
@@ -29,7 +38,7 @@ export function upsertLandmark(db: Database, input: LandmarkUpsert): Landmark {
  */
 export function setLandmarks(db: Database, domainId: number, islandId: number, items: LandmarkItem[]): Landmark[] {
   return db.transaction(() => {
-    items.forEach((item, i) => upsertLandmark(db, { domainId, islandId, slug: item.slug, name: item.name, sortOrder: i + 1 }));
+    items.forEach((item, i) => upsertLandmark(db, { domainId, islandId, slug: item.slug, name: item.name, sortOrder: i + 1, terms: item.terms }));
     const keep = items.map((i) => i.slug);
     const placeholders = keep.map(() => "?").join(", ");
     db.run(
@@ -48,15 +57,17 @@ export function unlockLandmark(db: Database, islandId: number, slug: string, evi
   const landmark = current.find((l) => l.slug === slug);
   if (!landmark) throw new NotFoundError(`no landmark "${slug}" on this island`, current.map((l) => l.slug));
   if (landmark.unlockedAt !== null) throw new ConflictError(`landmark "${slug}" is already lit`);
-  return db
-    .query<Landmark, [string, number | null, number]>(
-      `update landmarks set unlocked_at = ${NOW}, evidence = ?, message_id = ? where id = ? returning ${COLS}`,
-    )
-    .get(evidence, messageId, landmark.id)!;
+  return fromRow(
+    db
+      .query<Row, [string, number | null, number]>(
+        `update landmarks set unlocked_at = ${NOW}, evidence = ?, message_id = ? where id = ? returning ${COLS}`,
+      )
+      .get(evidence, messageId, landmark.id)!,
+  );
 }
 
 export function listLandmarks(db: Database, islandId: number): Landmark[] {
-  return db.query<Landmark, [number]>(`select ${COLS} from landmarks where island_id = ? order by sort_order, id`).all(islandId);
+  return db.query<Row, [number]>(`select ${COLS} from landmarks where island_id = ? order by sort_order, id`).all(islandId).map(fromRow);
 }
 
 /** Landmarks per island id, in sort order, for the given ids only. Islands with none are absent. */
@@ -65,8 +76,9 @@ export function listLandmarksByIsland(db: Database, islandIds: number[]): Map<nu
   if (islandIds.length === 0) return map;
   const placeholders = islandIds.map(() => "?").join(", ");
   const rows = db
-    .query<Landmark, number[]>(`select ${COLS} from landmarks where island_id in (${placeholders}) order by island_id, sort_order, id`)
-    .all(...islandIds);
+    .query<Row, number[]>(`select ${COLS} from landmarks where island_id in (${placeholders}) order by island_id, sort_order, id`)
+    .all(...islandIds)
+    .map(fromRow);
   for (const row of rows) {
     const list = map.get(row.islandId) ?? [];
     list.push(row);
@@ -86,10 +98,12 @@ export function exploreLandmark(
   const landmark = current.find((l) => l.slug === slug);
   if (!landmark) throw new NotFoundError(`no landmark "${slug}" on this island`, current.map((l) => l.slug));
   if (landmark.exploredAt !== null) return { landmark, changed: false };
-  const row = db
-    .query<Landmark, [string, number | null, number]>(
-      `update landmarks set explored_at = ${NOW}, explored_evidence = ?, explored_message_id = ? where id = ? returning ${COLS}`,
-    )
-    .get(evidence, messageId, landmark.id)!;
+  const row = fromRow(
+    db
+      .query<Row, [string, number | null, number]>(
+        `update landmarks set explored_at = ${NOW}, explored_evidence = ?, explored_message_id = ? where id = ? returning ${COLS}`,
+      )
+      .get(evidence, messageId, landmark.id)!,
+  );
   return { landmark: row, changed: true };
 }

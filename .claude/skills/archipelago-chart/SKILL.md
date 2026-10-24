@@ -43,7 +43,7 @@ When the user names a domain that does not exist (`domain list`):
 
 0. The map has its own cartographer too: the reader can make a domain and approve sketches on the page. Before sketching any scale, run `sketch list --domain <slug> [--island <island>] --pending` and `thread show --domain <slug> [--island <island>] --mode cartographer`. If a sketch is pending there, do not sketch that scale: tell the user to approve or discard it on the map. Read the thread so you do not undo what the reader asked for there.
 
-1. If the user said what they want to chart and why (their role, what they already know, an interview), keep their words as the domain's description. Name the domain for the subject alone, in one to five words; the description holds the angle. Shape the sketch to the description and to their note (`learner show`). Then propose 6–10 top-level islands, each with a slug, a name, a one-line summary, and 4–6 landmarks (the key concepts a person who knows this island can explain, as slug + short name), and the straits between islands that neighbour each other conceptually, and the harbour: the island the user already half-stands on (when nothing is known, the island with the most straits), and 2–4 seas: short evocative names (one to four words, never an island's name) each over the islands it groups, every island in one sea. Print the sketch as a table with a landmarks column and a sea column, and the harbour as a line under the table.
+1. If the user said what they want to chart and why (their role, what they already know, an interview), keep their words as the domain's description. Name the domain for the subject alone, in one to five words; the description holds the angle. Shape the sketch to the description and to their note (`learner show`). Then propose 6–10 top-level islands, each with a slug, a name, a one-line summary, and 4–6 landmarks (the key concepts a person who knows this island can explain, as slug + short name, plus `--terms`: 2–5 comma-separated words a reply would use for it, in the user's language plus the English term where the field writes it in English; the map marks them in the conversation), and the straits between islands that neighbour each other conceptually, and the harbour: the island the user already half-stands on (when nothing is known, the island with the most straits), and 2–4 seas: short evocative names (one to four words, never an island's name) each over the islands it groups, every island in one sea. Print the sketch as a table with a landmarks column and a sea column, and the harbour as a line under the table.
 2. Wait for the user to approve or edit it. Do not write before that.
 3. Write it:
 
@@ -52,7 +52,7 @@ A() { archipelago "$@"; }   # works in bash and zsh; define once per shell
 A domain add --slug system-design --name "System Design" --description "Backend engineer; preparing for a staff interview."   # --description only when they gave one
 A island add --domain system-design --slug caching --name Caching --summary "Keeping hot data close to where it is read." --order 1
 A island add --domain system-design --slug databases --name Databases --summary "…" --order 2
-A landmark add --domain system-design --island caching --slug hit-ratio --name "Hit ratio" --order 1
+A landmark add --domain system-design --island caching --slug hit-ratio --name "Hit ratio" --order 1 --terms "hit ratio,hit rate,cache hit"
 A landmark add --domain system-design --island caching --slug invalidation --name "Invalidation" --order 2
 A landmark add --domain system-design --island caching --slug eviction --name "Eviction" --order 3
 A landmark add --domain system-design --island caching --slug stampede --name "Stampede" --order 4
@@ -116,7 +116,7 @@ island   add --domain --slug --name [--summary] [--parent] [--order]
          update --domain --slug [--name] [--summary] [--order] [--x --y]
          list --domain [--parent] | show --domain --slug
 strait   add --domain --from --to [--name] [--summary] | list --domain [--parent]
-landmark add --domain --island --slug --name [--order] | list --domain --island   (rows carry unlockedAt and exploredAt)
+landmark add --domain --island --slug --name [--order] [--terms a,b] | list --domain --island   (rows carry unlockedAt, exploredAt, terms; add on an existing slug renames it, and --terms sets its words)
 thread   show --domain --island [--mode judge|mentor] | show --domain [--island] --mode cartographer
 sketch   list --domain [--island] [--pending]   (the in-app cartographer's proposals; the reader approves them on the map)
 learner  show | set --note   (the user's own note for the mentor; write it only when the user asks)

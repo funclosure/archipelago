@@ -10,13 +10,13 @@ const DESCRIPTIONS: Record<ToolName, string> = {
   island_context: "This island: verdict and history, islets, straits to neighbours, nearest open water, pending reef proposals, the board, and the thread so far. Read fresh.",
   record_verdict: "Write a sandbar, settled, or mountainous verdict on island:<slug> or strait:<a>~<b>. Evidence is a verbatim quote from the reader. Reefs are not accepted here; use propose_reef.",
   propose_reef: "Show the reader a reef: the specific false claim and the concrete consequence. The reef is written only if they confirm it.",
-  set_landmarks: "Name this island's 4–6 landmarks (key concepts) once, when the context says it has none. Slugs are lowercase-kebab; names are short.",
+  set_landmarks: "Name this island's 4–6 landmarks (key concepts) once, when the context says it has none. Slugs are lowercase-kebab; names are short. terms: 2–5 words a reply uses for each landmark, in the reader's language plus the English term where the field writes it in English; the page marks them in the conversation.",
   unlock_landmark: "Light one landmark the reader's latest answer covered: they explained or applied it, not merely named it. Evidence is a verbatim quote from that answer.",
   ask_reader: "Ask the reader to choose: a question and 2–4 short options, one of them what they would say if they already understood. The options appear under your reply; end the reply with the question and stop.",
   board_write: "Pin, update, or remove a card on this island's board (see the board section of your protocol). op add: kind (diagram | note | code), body (mermaid source, markdown, or code), lang for code, and an optional one-line title. op update: id plus the fields to change. op remove: id. You may only update or remove cards you wrote.",
   mark_explored: "Mark one landmark explored: the reader engaged it in their own words (asked about it, restated it, or tried it on an example). Evidence is a verbatim quote of at least two words and twelve characters (or six Chinese, Japanese, or Korean characters) from the reader's latest message; anything else is refused. Marking it again changes nothing.",
   chart_context: "This scale: the islands and straits here, at island scale the island's landmarks, board, and two threads, every slug taken in the domain, how many islands the next sketch may add, the pending sketch, and your thread. Read fresh.",
-  propose_sketch: "Propose a sketch at this scale: new islands (slug, name, one-line summary, 4–6 landmarks each), straits between islands at this scale, an optional harbour, name or summary updates to islands already here, seas (a name on the water over the islands it groups; new seas only, each island in at most one), and, when the context says the domain's name is provisional, the domain's name (top scale only) with its ASCII kebab-case slug. It replaces any pending sketch. Nothing reaches the map until the reader approves it there.",
+  propose_sketch: "Propose a sketch at this scale: new islands (slug, name, one-line summary, 4–6 landmarks each, every landmark with 2–5 terms: the words a reply uses for it), straits between islands at this scale, an optional harbour, name or summary updates to islands already here, seas (a name on the water over the islands it groups; new seas only, each island in at most one), and, when the context says the domain's name is provisional, the domain's name (top scale only) with its ASCII kebab-case slug. It replaces any pending sketch. Nothing reaches the map until the reader approves it there.",
 };
 
 const MENTOR_DESCRIPTIONS: Partial<Record<ToolName, string>> = {
@@ -52,7 +52,7 @@ export const TOOL_SHAPES: Record<ToolName, z.ZodRawShape> = {
     confidence: z.number().min(0).max(1),
     rationale: z.string(),
   },
-  set_landmarks: { items: z.array(z.object({ slug: z.string(), name: z.string() })).min(4).max(6) },
+  set_landmarks: { items: z.array(z.object({ slug: z.string(), name: z.string(), terms: z.array(z.string()).max(8).optional() })).min(4).max(6) },
   unlock_landmark: { slug: z.string(), evidence: z.string() },
   ask_reader: { question: z.string(), options: z.array(z.string()).min(2).max(4) },
   board_write: {
@@ -67,7 +67,7 @@ export const TOOL_SHAPES: Record<ToolName, z.ZodRawShape> = {
   chart_context: {},
   propose_sketch: {
     islands: z
-      .array(z.object({ slug: z.string(), name: z.string(), summary: z.string(), landmarks: z.array(z.object({ slug: z.string(), name: z.string() })).min(4).max(6) }))
+      .array(z.object({ slug: z.string(), name: z.string(), summary: z.string(), landmarks: z.array(z.object({ slug: z.string(), name: z.string(), terms: z.array(z.string()).max(8).optional() })).min(4).max(6) }))
       .optional(),
     straits: z.array(z.object({ from: z.string(), to: z.string(), name: z.string().optional() })).optional(),
     harbour: z.string().optional(),

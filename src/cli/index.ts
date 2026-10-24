@@ -222,14 +222,14 @@ common(strait.command("list").option("--domain <slug>").option("--parent <slug>"
 // ---- landmark ----
 const landmark = program.command("landmark").description("The key concepts on an island; the judge lights them");
 common(
-  landmark.command("add").option("--domain <slug>").option("--island <slug>").option("--slug <slug>").option("--name <name>").option("--order <n>"),
+  landmark.command("add").option("--domain <slug>").option("--island <slug>").option("--slug <slug>").option("--name <name>").option("--order <n>").option("--terms <list>", "comma-separated words a reply uses for it"),
 ).action(
   run((o) =>
     withDb((db) => {
       const input = landmarkInputSchema.parse(o);
       const d = requireDomain(db, input.domain);
       const i = requireIsland(db, d.id, input.island);
-      return upsertLandmark(db, { domainId: d.id, islandId: i.id, slug: input.slug, name: input.name, sortOrder: input.order ?? null });
+      return upsertLandmark(db, { domainId: d.id, islandId: i.id, slug: input.slug, name: input.name, sortOrder: input.order ?? null, terms: input.terms });
     }),
   ),
 );

@@ -185,17 +185,28 @@ export const reefAnswerInputSchema = z.object({
   note: z.string().trim().min(1).optional(),
 });
 
+/** How many words a landmark may carry for the page to mark, and how long each may be. */
+export const TERMS_MAX = 8;
+export const TERM_MAX = 40;
+/** The words a reply uses for a landmark: one line each, deduplicated (case aside), at most TERMS_MAX. */
+export const termsSchema = z
+  .array(z.string().trim().min(1).max(TERM_MAX).refine((t) => !/[\r\n\u2028\u2029]/.test(t), { message: "a term is one line" }))
+  .max(TERMS_MAX)
+  .transform((terms) => terms.filter((t, i) => terms.findIndex((u) => u.toLowerCase() === t.toLowerCase()) === i));
+
 export const landmarkInputSchema = z.object({
   domain: slugSchema,
   island: slugSchema,
   slug: slugSchema,
   name: z.string().trim().min(1),
   order: numberInput.pipe(z.number().int()).optional(),
+  /** Comma-separated on the command line. */
+  terms: z.union([termsSchema, z.string().transform((s) => s.split(",")).pipe(termsSchema)]).optional(),
 });
 
 export const landmarksInputSchema = z
   .object({
-    items: z.array(z.object({ slug: slugSchema, name: z.string().trim().min(1) })).min(4).max(6),
+    items: z.array(z.object({ slug: slugSchema, name: z.string().trim().min(1), terms: termsSchema.optional() })).min(4).max(6),
   })
   .refine((v) => new Set(v.items.map((i) => i.slug)).size === v.items.length, { message: "landmark slugs must be unique" });
 
@@ -251,7 +262,7 @@ const oneLine = z
   .min(1)
   .refine((t) => !/[\r\n\u2028\u2029]/.test(t), { message: "must be one line" });
 const landmarkItems = z
-  .array(z.object({ slug: slugSchema, name: oneLine }))
+  .array(z.object({ slug: slugSchema, name: oneLine, terms: termsSchema.optional() }))
   .min(4)
   .max(6)
   .refine((items) => new Set(items.map((i) => i.slug)).size === items.length, { message: "landmark slugs must be unique" });
