@@ -23,7 +23,7 @@ export type JudgeTurn = {
 /** Runs one judge turn on the stored thread. Emits text as it arrives and resolves with the whole reply. */
 export type JudgeRunner = (turn: JudgeTurn) => Promise<string>;
 
-export const JUDGE_KINDS = ["api", "sdk", "stub"] as const;
+export const JUDGE_KINDS = ["api", "openai", "sdk", "stub"] as const;
 export type JudgeKind = (typeof JUDGE_KINDS)[number];
 
 export const SDK_DEFAULT_MODEL = "claude-opus-5";
@@ -41,9 +41,10 @@ export function defaultJudge(env: Record<string, string | undefined> = process.e
   return env.ANTHROPIC_API_KEY ? "api" : "sdk";
 }
 
-/** The model a judge runs on: ARCHIPELAGO_MODEL, else that runner's default. The stub has none. */
+/** The model a judge runs on: ARCHIPELAGO_MODEL, else that runner's default. The stub has none, nor does openai until one is named. */
 export function judgeModel(kind: JudgeKind, env: Record<string, string | undefined> = process.env): string | null {
   if (kind === "stub") return null;
+  if (kind === "openai") return env.ARCHIPELAGO_MODEL ?? null;
   return env.ARCHIPELAGO_MODEL ?? (kind === "api" ? API_DEFAULT_MODEL : SDK_DEFAULT_MODEL);
 }
 
@@ -51,6 +52,16 @@ export function judgeModel(kind: JudgeKind, env: Record<string, string | undefin
 export function createRunner(kind: JudgeKind): JudgeRunner {
   if (kind === "stub") return stubRunner;
   if (kind === "sdk") return async (turn) => (await import("./sdk.ts")).sdkRunner(turn);
+  if (kind === "openai") {
+    let chat: JudgeRunner | undefined; // settings read on the first turn, so a server without them still starts
+    return async (turn) => {
+      if (!chat) {
+        const [{ createChatRunner, chatSettingsFromEnv }, { runTool }] = await Promise.all([import("./openai.ts"), import("./tools.ts")]);
+        chat = createChatRunner({ ...chatSettingsFromEnv(), toolbox: { context: (persona, deps) => persona.buildContext(deps), run: runTool } });
+      }
+      return chat(turn);
+    };
+  }
   let api: JudgeRunner | undefined; // one client for the server's life, made on the first turn
   return async (turn) => {
     if (!api) {

@@ -502,7 +502,7 @@ program
   .option("--port <n>", "port", "4480")
   .option("--domain <slug>", "domain to open")
   .option("--no-open", "do not open the browser")
-  .option("--judge <kind>", "api, sdk, or stub (default: api when ANTHROPIC_API_KEY is set, otherwise sdk)")
+  .option("--judge <kind>", "api, openai, sdk, or stub (default: api when ANTHROPIC_API_KEY is set, otherwise sdk; openai reads ARCHIPELAGO_BASE_URL and ARCHIPELAGO_MODEL)")
   .option("--stub", "the same as --judge stub: canned replies, no login needed")
   .action((o: { port: string; domain?: string; open: boolean; judge?: string; stub?: boolean }) => {
     try {
