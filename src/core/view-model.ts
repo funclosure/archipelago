@@ -13,7 +13,7 @@ import { listSeas } from "./repositories/seaRepository.ts";
 
 export type VerdictView = { state: VerdictState; confidence: number; evidence: string; rationale: string | null; at: string };
 export type RollupState = Record<VerdictState | "open", number>;
-export type LandmarkView = { slug: string; name: string; lit: boolean; evidence: string | null; exploredAt: string | null };
+export type LandmarkView = { slug: string; name: string; lit: boolean; evidence: string | null; exploredAt: string | null; terms: string[] };
 export type IslandView = {
   slug: string;
   name: string;
@@ -79,7 +79,7 @@ function emptyRollup(): RollupState {
 }
 
 function landmarkView(list: Landmark[]): { total: number; unlocked: number; explored: number; items: LandmarkView[] } {
-  const items = list.map((l) => ({ slug: l.slug, name: l.name, lit: l.unlockedAt !== null, evidence: l.evidence, exploredAt: l.exploredAt }));
+  const items = list.map((l) => ({ slug: l.slug, name: l.name, lit: l.unlockedAt !== null, evidence: l.evidence, exploredAt: l.exploredAt, terms: l.terms ?? [] }));
   return {
     total: items.length,
     unlocked: items.filter((i) => i.lit).length,

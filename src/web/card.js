@@ -7,6 +7,7 @@ import { t } from "./i18n.js";
 import { thinkingLine } from "./progress-model.js";
 import { thinkingEl } from "./thinking.js";
 import { renderMarkdown } from "./markdown.js";
+import { landmarkTerms } from "./term-model.js";
 import { loadHighlighter } from "./code.js";
 import { renderCta } from "./cta.js";
 import { select } from "./interactions.js";
@@ -62,7 +63,18 @@ const thread = {
   stay: false,        // the reader chose Stay here after a verdict: hide the "sail on" card
 };
 
+let terms = null; // the selected island's landmark words (`landmarkTerms`), marked in the persona's replies
+
+/** Hovering a landmark chip lights its words in the thread, and hovering a word lights its chip. */
+function lightLandmark(e, on) {
+  const target = e.target.closest?.("[data-lm]");
+  if (!target || !pane.contains(target)) return;
+  for (const node of pane.querySelectorAll(`[data-lm="${CSS.escape(target.dataset.lm)}"]`)) node.classList.toggle("hot", on);
+}
+
 export function installCard() {
+  pane.addEventListener("mouseover", (e) => lightLandmark(e, true));
+  pane.addEventListener("mouseout", (e) => lightLandmark(e, false));
   document.addEventListener("theme", () => {
     if (!thread.slug) return;
     thread.version = null; // refetch: the log is rebuilt and its diagrams render in the new colours
@@ -357,7 +369,7 @@ function renderLive() {
     // Nothing has arrived yet: the reply's own line says so, where the words will land.
     live.replaceChildren(thinkingEl(thinkingLine(PERSONA_NAMES[thread.mode], thread.progress)));
   } else if (thread.live) {
-    live.replaceChildren(renderMarkdown(thread.live, { onQuestion: quoteIntoAnswer, lead: true }));
+    live.replaceChildren(renderMarkdown(thread.live, { onQuestion: quoteIntoAnswer, lead: true, terms }));
     // Descend to the deepest last block (e.g. into a list's last <li>) so the caret
     // follows the last character rather than landing after the whole block; stop
     // above inline elements so it trails them instead of nesting inside.
@@ -401,6 +413,7 @@ function chipsEl(island) {
   for (const l of island.landmarks.items) {
     const lit = landmarkLit(l, thread.mode);
     const chip = el("span", `chip${lit ? ` ${on}` : ""}`, l.name);
+    chip.dataset.lm = l.slug;
     if (lit && thread.mode === "judge" && l.evidence) chip.title = t("card.evidence", { evidence: l.evidence });
     if (lit && thread.litSeen && !thread.litSeen.has(l.slug)) chip.classList.add("just-lit");
     row.append(chip);
@@ -547,7 +560,7 @@ function itemEl(item, reefPending) {
   if (item.kind === "reef_proposal") return reefEl(item);
   const m = el("div", `msg ${item.role}`);
   const persona = item.role === "judge" || item.role === "mentor";
-  m.append(renderMarkdown(item.text, persona ? { onQuestion: quoteIntoAnswer, lead: true } : {}));
+  m.append(renderMarkdown(item.text, persona ? { onQuestion: quoteIntoAnswer, lead: true, terms } : {}));
   const ask = persona ? askFor(thread.asks, item.id) : null;
   if (ask) m.append(choicesEl(ask, reefPending));
   return m;
@@ -763,6 +776,7 @@ function render() {
   const prevTop = prevLog ? prevLog.scrollTop : 0;
 
   pane.hidden = false;
+  terms = landmarkTerms(island.landmarks.items);
   pane.replaceChildren(headEl(island), logEl(island), footEl(island));
   pane.prepend(gripEl());
   growAnswer(pane.querySelector("#answer"));

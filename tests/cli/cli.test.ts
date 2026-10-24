@@ -226,6 +226,10 @@ test("landmark add and list", () => {
   expect(cli(["landmark", "add", "--domain", "sd", "--island", "nope", "--slug", "x", "--name", "X"]).json).toEqual({ error: 'no island "nope" in this domain', valid: ["caching"] });
   expect(cli(["landmark", "add", "--domain", "sd", "--island", "caching", "--slug", "Bad Slug", "--name", "X"]).code).toBe(1);
   expect(cli(["landmark", "add", "--domain", "sd", "--island", "caching", "--slug", "blank", "--name", "   "]).code).toBe(1);
+  // --terms: comma-separated, trimmed, deduplicated; add on an existing slug sets them and keeps it lit or dark as it was
+  const t = cli(["landmark", "add", "--domain", "sd", "--island", "caching", "--slug", "hit-ratio", "--name", "Hit ratio", "--terms", "hit ratio, 命中率,Hit Ratio"]);
+  expect(t.json).toMatchObject({ slug: "hit-ratio", sortOrder: 1, terms: ["hit ratio", "命中率"] });
+  expect(cli(["landmark", "add", "--domain", "sd", "--island", "caching", "--slug", "hit-ratio", "--name", "Hit rate"]).json.terms).toEqual(["hit ratio", "命中率"]);
 });
 
 test("harbour: set, show, snapshot, clear, unknown island", () => {

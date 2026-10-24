@@ -18,7 +18,7 @@ export function draftIslands(snapshot) {
     y: null,
     harbour: sketch.body.harbour === i.slug,
     messages: 0,
-    landmarks: { total: i.landmarks.length, unlocked: 0, explored: 0, items: i.landmarks.map((l) => ({ slug: l.slug, name: l.name, lit: false, exploredAt: null })) },
+    landmarks: { total: i.landmarks.length, unlocked: 0, explored: 0, items: i.landmarks.map((l) => ({ slug: l.slug, name: l.name, lit: false, exploredAt: null, terms: l.terms ?? [] })) },
   }));
 }
 

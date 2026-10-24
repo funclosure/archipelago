@@ -160,6 +160,8 @@ export type Landmark = {
   exploredAt: string | null;
   exploredEvidence: string | null;
   exploredMessageId: number | null;
+  /** The words a reply uses for it, so the page can mark them; null when none were given. */
+  terms: string[] | null;
   createdAt: string;
 };
 
@@ -172,7 +174,7 @@ export type SketchStatus = (typeof sketchStatuses)[number];
 
 /** What the cartographer proposes at one scale: new islands, straits, a harbour, and fixes to islands already there. */
 export type SketchBody = {
-  islands: { slug: string; name: string; summary: string; landmarks: { slug: string; name: string }[] }[];
+  islands: { slug: string; name: string; summary: string; landmarks: { slug: string; name: string; terms?: string[] }[] }[];
   straits: { from: string; to: string; name?: string }[];
   harbour?: string;
   /** The domain's name: only in a top-scale sketch of a provisionally named domain. */

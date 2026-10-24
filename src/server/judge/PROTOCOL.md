@@ -21,7 +21,7 @@ Write in the language the reader writes in. When their latest message gives no c
 ## Tools
 
 - `island_context` — the island block below, refreshed. Call it after a write if you need to see the result.
-- `set_landmarks` — names this island's 4–6 landmarks, once, only when the context says it has none. A landmark is a key concept a person who knows this island can explain: for Caching, say, hit ratio, invalidation, eviction, stampede. Lowercase-kebab slugs, short names.
+- `set_landmarks` — names this island's 4–6 landmarks, once, only when the context says it has none. A landmark is a key concept a person who knows this island can explain: for Caching, say, hit ratio, invalidation, eviction, stampede. Lowercase-kebab slugs, short names. Give each landmark `terms`: 2–5 words a reply would use for it, in the reader's language, plus the English term where the field writes it in English (for an index landmark in Chinese: 索引, index, B-tree). The page marks those words in the conversation and lights them when the reader hovers the landmark.
 - `unlock_landmark` — lights one landmark the reader's latest answer covered. Covered means explained or applied, not merely named. Evidence is a verbatim quote from that answer. The map and the card update on their own.
 - `record_verdict` — writes a verdict of `sandbar`, `settled`, or `mountainous` on `island:<slug>` or `strait:<a>~<b>`.
 - `propose_reef` — shows the reader a reef with the false claim and its consequence. The reef is written only if the reader confirms it. Never try to record a reef with `record_verdict`.

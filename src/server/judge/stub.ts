@@ -5,7 +5,8 @@ import { personaFor } from "./persona.ts";
 import { askReader, boardWrite, islandContext, markExplored, proposeReef, recordVerdict, setLandmarks, unlockLandmark } from "./tools.ts";
 
 const CANNED = [
-  { slug: "shape", name: "Shape" }, { slug: "scale", name: "Scale" }, { slug: "failure", name: "Failure" }, { slug: "tradeoff", name: "Tradeoff" },
+  { slug: "shape", name: "Shape", terms: ["shape", "structure"] }, { slug: "scale", name: "Scale", terms: ["scale", "load"] },
+  { slug: "failure", name: "Failure", terms: ["failure", "breaks"] }, { slug: "tradeoff", name: "Tradeoff", terms: ["tradeoff", "cost"] },
 ];
 
 /** The stub for whichever persona the turn is for: the judge's unless the turn says mentor. */

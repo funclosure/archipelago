@@ -1,6 +1,7 @@
 // mdBlocks → DOM. Built with createElement and textContent only; never innerHTML.
 import { THEMES, TOKEN_NAMES, storedTheme, mermaidVariables } from "./theme-model.js";
 import { mdBlocks, inlineSegments, questionRuns, leadSplit } from "./thread.js";
+import { termRuns } from "./term-model.js";
 import { codeElement } from "./code.js";
 import { plotElement } from "./plot.js";
 import { PLOT_LANGS } from "./plot-model.js";
@@ -105,26 +106,44 @@ export function diagramElement(source, { cache = true } = {}) {
   return box;
 }
 
-function appendInline(parent, segments) {
+/** Text with the island's landmark words marked (`.term`, `data-lm` the landmark's slug, its name as the title). */
+function appendTermed(parent, text, terms) {
+  if (!terms) return parent.append(text);
+  for (const run of termRuns(text, terms)) {
+    if (!run.slug) {
+      parent.append(run.text);
+      continue;
+    }
+    const span = document.createElement("span");
+    span.className = "term";
+    span.dataset.lm = run.slug;
+    span.title = run.name;
+    span.textContent = run.text;
+    parent.append(span);
+  }
+}
+
+function appendInline(parent, segments, terms = null) {
   for (const s of segments) {
     if (s.type === "text") {
-      parent.append(s.text);
+      appendTermed(parent, s.text, terms);
     } else {
       const e = document.createElement(s.type); // strong | em | code
-      e.textContent = s.text;
+      if (s.type === "code") e.textContent = s.text;
+      else appendTermed(e, s.text, terms);
       parent.append(e);
     }
   }
 }
 
 /** A question sentence the reader can click (or press Enter/Space on) to answer it directly. */
-function askSpan(run, onQuestion) {
+function askSpan(run, onQuestion, terms) {
   const span = document.createElement("span");
   span.className = "ask";
   span.setAttribute("role", "button");
   span.tabIndex = 0;
   span.title = t("markdown.answerThis");
-  appendInline(span, inlineSegments(run.text));
+  appendInline(span, inlineSegments(run.text), terms);
   const fire = () => onQuestion(run.text.trim());
   span.addEventListener("click", fire);
   span.addEventListener("keydown", (e) => {
@@ -138,32 +157,33 @@ function askSpan(run, onQuestion) {
 }
 
 /** Prose: plain inline segments, or sentence runs with questions wrapped when a handler is given. */
-function appendProse(parent, raw, onQuestion) {
-  if (!onQuestion) return appendInline(parent, inlineSegments(raw));
+function appendProse(parent, raw, onQuestion, terms) {
+  if (!onQuestion) return appendInline(parent, inlineSegments(raw), terms);
   for (const run of questionRuns(raw)) {
-    if (run.question) parent.append(askSpan(run, onQuestion));
-    else appendInline(parent, inlineSegments(run.text));
+    if (run.question) parent.append(askSpan(run, onQuestion, terms));
+    else appendInline(parent, inlineSegments(run.text), terms);
   }
 }
 
 /** A paragraph's first line with its first sentence in `.lead` and the rest in `.rest`, which the stylesheet quiets. */
-function appendLead(p, raw, onQuestion) {
+function appendLead(p, raw, onQuestion, terms) {
   const [lead, rest] = leadSplit(raw);
-  if (!rest) return appendProse(p, raw, onQuestion);
+  if (!rest) return appendProse(p, raw, onQuestion, terms);
   const first = document.createElement("span");
   first.className = "lead";
-  appendProse(first, lead, onQuestion);
+  appendProse(first, lead, onQuestion, terms);
   const after = document.createElement("span");
   after.className = "rest";
-  appendProse(after, rest, onQuestion);
+  appendProse(after, rest, onQuestion, terms);
   p.append(first, after);
 }
 
 /**
  * The rendered blocks of a markdown string, as a fragment ready to append. `onQuestion(text)` makes question
- * sentences clickable; `lead` marks each paragraph's first sentence so the line of thought can be skimmed.
+ * sentences clickable; `lead` marks each paragraph's first sentence so the line of thought can be skimmed; `terms`
+ * (from `landmarkTerms`) marks the island's landmark words in prose, never in code.
  */
-export function renderMarkdown(text, { onQuestion = null, lead = false } = {}) {
+export function renderMarkdown(text, { onQuestion = null, lead = false, terms = null } = {}) {
   const frag = document.createDocumentFragment();
   for (const b of mdBlocks(text)) {
     if (b.type === "p") {
@@ -171,32 +191,32 @@ export function renderMarkdown(text, { onQuestion = null, lead = false } = {}) {
       if (lead) p.className = "led";
       b.raw.forEach((raw, i) => {
         if (i) p.append(document.createElement("br"));
-        if (lead && i === 0) appendLead(p, raw, onQuestion);
+        if (lead && i === 0) appendLead(p, raw, onQuestion, terms);
         else if (lead) {
           const after = document.createElement("span");
           after.className = "rest";
-          appendProse(after, raw, onQuestion);
+          appendProse(after, raw, onQuestion, terms);
           p.append(after);
-        } else appendProse(p, raw, onQuestion);
+        } else appendProse(p, raw, onQuestion, terms);
       });
       frag.append(p);
     } else if (b.type === "quote") {
       const bq = document.createElement("blockquote");
       for (const segments of b.lines) {
         const p = document.createElement("p");
-        appendInline(p, segments);
+        appendInline(p, segments, terms);
         bq.append(p);
       }
       frag.append(bq);
     } else if (b.type === "h") {
       const h = document.createElement(`h${b.level}`);
-      appendInline(h, b.segments);
+      appendInline(h, b.segments, terms);
       frag.append(h);
     } else if (b.type === "list") {
       const list = document.createElement(b.ordered ? "ol" : "ul");
       for (const item of b.items) {
         const li = document.createElement("li");
-        appendInline(li, item);
+        appendInline(li, item, terms);
         list.append(li);
       }
       frag.append(list);

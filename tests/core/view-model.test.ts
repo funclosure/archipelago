@@ -105,8 +105,8 @@ test("snapshot counts each island's thread", () => {
   expect(snap.islands.map((i) => [i.slug, i.messages])).toEqual([["caching", 2], ["queues", 0], ["databases", 0]]);
 });
 
-test("snapshot carries each island's landmarks with lit state, evidence, and when each was explored", () => {
-  setLandmarks(db, domainId, caching, [{ slug: "hit-ratio", name: "Hit ratio" }, { slug: "invalidation", name: "Invalidation" }]);
+test("snapshot carries each island's landmarks with lit state, evidence, when each was explored, and their terms", () => {
+  setLandmarks(db, domainId, caching, [{ slug: "hit-ratio", name: "Hit ratio", terms: ["hit ratio", "命中率"] }, { slug: "invalidation", name: "Invalidation" }]);
   unlockLandmark(db, caching, "hit-ratio", "most reads never reach the database", null);
   const explored = exploreLandmark(db, caching, "invalidation", "like NSCache", null).landmark.exploredAt;
   const snap = buildSnapshot(db, "sd", null);
@@ -114,11 +114,15 @@ test("snapshot carries each island's landmarks with lit state, evidence, and whe
   expect(c.landmarks).toEqual({
     total: 2, unlocked: 1, explored: 1,
     items: [
-      { slug: "hit-ratio", name: "Hit ratio", lit: true, evidence: "most reads never reach the database", exploredAt: null },
-      { slug: "invalidation", name: "Invalidation", lit: false, evidence: null, exploredAt: explored },
+      { slug: "hit-ratio", name: "Hit ratio", lit: true, evidence: "most reads never reach the database", exploredAt: null, terms: ["hit ratio", "命中率"] },
+      { slug: "invalidation", name: "Invalidation", lit: false, evidence: null, exploredAt: explored, terms: [] },
     ],
   });
   expect(snap.islands.find((i) => i.slug === "queues")!.landmarks).toEqual({ total: 0, unlocked: 0, explored: 0, items: [] });
+  // A rename without terms keeps the ones it has; new terms replace them.
+  setLandmarks(db, domainId, caching, [{ slug: "hit-ratio", name: "Hit rate" }, { slug: "invalidation", name: "Invalidation", terms: ["invalidate", "失效"] }]);
+  const again = buildSnapshot(db, "sd", null).islands.find((i) => i.slug === "caching")!.landmarks.items;
+  expect(again.map((l) => [l.name, l.terms])).toEqual([["Hit rate", ["hit ratio", "命中率"]], ["Invalidation", ["invalidate", "失效"]]]);
 });
 
 test("the snapshot names the harbour at its own scale only", () => {
