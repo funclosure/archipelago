@@ -28,7 +28,7 @@ export const PROVIDERS = [
     host: "generativelanguage.googleapis.com",
     baseUrl: "https://generativelanguage.googleapis.com/v1beta/openai",
     keysUrl: "https://aistudio.google.com/apikey",
-    placeholder: "AIza…",
+    placeholder: "AQ…",
     custom: true,
     models: [
       { id: "gemini-3.8-flash", name: "Gemini 3.8 Flash", note: "noteFlash" },
