@@ -479,7 +479,7 @@ body.pane-open .board { right: var(--pane-w); }
   border-radius: 999px; padding: 6px 12px; font: 12px system-ui, sans-serif; cursor: pointer; box-shadow: 0 8px 24px var(--shadow-soft); transition: right .18s ease; }
 body.pane-open .board-toggle { right: calc(var(--pane-w) + 16px); }
 .board-toggle:hover { border-color: var(--lamp); color: var(--lamp); }
-.board-toggle kbd { font: 10px var(--font-mono); border: 1px solid var(--line-03); border-radius: 4px; padding: 0 4px; color: var(--muted); }
+.board-toggle kbd, .board-hint kbd { font: 10px var(--font-mono); border: 1px solid var(--line-03); border-radius: 4px; padding: 0 4px; color: var(--muted); }
 .board-toggle[hidden] { display: none; }
 /* the first-card hint: a callout over the toggle, pointing down at it, until the reader opens a board once */
 .board-toggle.beckon { border-color: var(--lamp); color: var(--lamp); animation: beckon 2.4s ease-in-out infinite; }

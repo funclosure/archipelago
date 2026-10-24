@@ -67,7 +67,14 @@ function renderHint(island) {
     hint.setAttribute("role", "status");
     document.body.append(hint);
   }
-  const text = button(t("board.hint", { author: authorLabel(card.author) }), () => setOpen(true), "say");
+  const author = authorLabel(card.author);
+  const text = button("", () => setOpen(true), "say");
+  if (matchMedia("(hover: none)").matches) text.textContent = t("board.hintTouch", { author });
+  else {
+    // The sentence is one key; the key's own name sits in it as the toggle's chip.
+    const [before, after] = t("board.hint", { author, key: "\u0000" }).split("\u0000");
+    text.replaceChildren(before, el("kbd", null, "b"), after);
+  }
   const dismiss = button("×", markSeen, "dismiss");
   dismiss.setAttribute("aria-label", t("board.hintDismiss"));
   dismiss.title = t("board.hintDismiss");
