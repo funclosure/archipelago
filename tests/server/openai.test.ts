@@ -7,7 +7,7 @@ import { upsertDomain } from "../../src/core/repositories/domainRepository.ts";
 import { upsertIsland } from "../../src/core/repositories/islandRepository.ts";
 import { addMessage } from "../../src/core/repositories/messageRepository.ts";
 import { setLandmarks } from "../../src/core/repositories/landmarkRepository.ts";
-import { chatSettingsFromEnv, createChatRunner, portableSchema } from "../../src/server/judge/openai.ts";
+import { chatBodyFor, chatEffort, chatSettingsFromEnv, createChatRunner, isGemini, portableSchema } from "../../src/server/judge/openai.ts";
 import { inputSchemaFor } from "../../src/server/judge/tool-specs.ts";
 import { createRunner, judgeModel, parseJudgeKind, type JudgeEvent } from "../../src/server/judge/runner.ts";
 import { runTool } from "../../src/server/judge/tools.ts";
@@ -180,4 +180,24 @@ test("the openai judge reads its settings from the environment", () => {
   expect(judgeModel("openai", { ARCHIPELAGO_MODEL: "gemini-flash" })).toBe("gemini-flash");
   expect(judgeModel("openai", {})).toBeNull();
   expect(typeof createRunner("openai")).toBe("function"); // settings are read on the first turn, not here
+});
+
+test("on Gemini, thought summaries keep the stream alive and never reach the reply", async () => {
+  const thought = (content: string) => ({ choices: [{ delta: { content, extra_content: { google: { thought: true } } } }] });
+  const { reply, events, bodies } = await run([{ chunks: [thought("<thought>**Weighing it**"), thought("still thinking"), text("</thought>Good. "), text("Why?"), finish("stop")] }]);
+  expect(await reply).toBe("Good. Why?");
+  expect(events).toEqual([{ type: "text", text: "Good. " }, { type: "text", text: "Why?" }]);
+  expect(bodies[0].extra_body).toEqual({ google: { thinking_config: { include_thoughts: true } } });
+  expect(bodies[0].reasoning_effort).toBeUndefined();
+});
+
+test("the effort becomes Gemini's thinking level, or reasoning_effort elsewhere", () => {
+  const request = { model: "m", protocol: "p", context: "c", prompt: "t", tools: [] };
+  expect(chatBodyFor(request, [], { gemini: true, effort: "low" }).extra_body).toEqual({ google: { thinking_config: { include_thoughts: true, thinking_level: "low" } } });
+  expect(chatBodyFor(request, [], { effort: "low" })).toMatchObject({ reasoning_effort: "low" });
+  expect("reasoning_effort" in chatBodyFor(request, [])).toBe(false);
+  expect(isGemini("https://generativelanguage.googleapis.com/v1beta/openai")).toBe(true);
+  expect(isGemini("https://openrouter.ai/api/v1")).toBe(false);
+  expect([chatEffort("max"), chatEffort("medium"), chatEffort("bogus"), chatEffort(undefined)]).toEqual(["high", "medium", undefined, undefined]);
+  expect(chatSettingsFromEnv({ ARCHIPELAGO_BASE_URL: "gemini", ARCHIPELAGO_MODEL: "g", ARCHIPELAGO_EFFORT: "low" }).effort).toBe("low");
 });

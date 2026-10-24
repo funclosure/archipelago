@@ -75,7 +75,7 @@ export function inlineSegments(text) {
 /**
  * Block markdown, line by line, forgiving of half-written input: paragraphs (single newlines kept as
  * line breaks), #–### headings, -, *, or + bullets, 1. or 1) items, ``` fences (unclosed at the end still counts).
- * Prose lines get full-width punctuation beside Chinese (`cjkPunctuation`); fences stay as written.
+ * Prose lines get inline TeX as plain text (`texLite`) and full-width punctuation beside Chinese (`cjkPunctuation`); fences stay as written.
  */
 export function mdBlocks(text) {
   const blocks = [];
@@ -118,7 +118,7 @@ export function mdBlocks(text) {
       flushPara();
       flushList();
       if (!quote) quote = { type: "quote", lines: [] };
-      quote.lines.push(inlineSegments(cjkPunctuation(q[1].trim())));
+      quote.lines.push(inlineSegments(prose(q[1].trim())));
       continue;
     }
     flushQuote();
@@ -126,7 +126,7 @@ export function mdBlocks(text) {
     if (h) {
       flushPara();
       flushList();
-      blocks.push({ type: "h", level: h[1].length, segments: inlineSegments(cjkPunctuation(h[2])) });
+      blocks.push({ type: "h", level: h[1].length, segments: inlineSegments(prose(h[2])) });
       continue;
     }
     const li = line.match(/^\s*(?:([-*+])|(\d+)[.)])\s+(.+)/);
@@ -137,7 +137,7 @@ export function mdBlocks(text) {
         flushList();
         list = { type: "list", ordered, items: [] };
       }
-      list.items.push(inlineSegments(cjkPunctuation(li[3])));
+      list.items.push(inlineSegments(prose(li[3])));
       continue;
     }
     if (!line.trim()) {
@@ -146,7 +146,7 @@ export function mdBlocks(text) {
       continue;
     }
     flushList();
-    para.push(cjkPunctuation(line.trim()));
+    para.push(prose(line.trim()));
   }
   flushPara();
   flushList();
@@ -166,7 +166,7 @@ export function roundOf(messages) {
 /**
  * What the log renders: threadItems, with consecutive landmark items, and consecutive explored items, merged into one line, the
  * last "charted as" system line turned into a verdict card when the island has a verdict to show, and a model line before a
- * persona reply written by another model than the reply before it.
+ * persona reply written by another model than the reply before it, above the lines its turn wrote first.
  */
 export function logItems(messages, island) {
   const items = threadItems(messages);
@@ -186,7 +186,12 @@ export function logItems(messages, island) {
     }
     if (it.kind === "text" && it.role !== "you") {
       const model = modelOf.get(it.id) ?? null;
-      if (lastModel !== undefined && model && model !== lastModel) out.push({ id: `model-${it.id}`, role: it.role, kind: "model", text: model, proposal: null });
+      if (lastModel !== undefined && model && model !== lastModel) {
+        // Above the lines this turn wrote before its reply (a lit landmark, a reef): the new model wrote those too.
+        let at = out.length;
+        while (at > 0 && out[at - 1].role !== "you" && out[at - 1].kind !== "text") at--;
+        out.splice(at, 0, { id: `model-${it.id}`, role: it.role, kind: "model", text: model, proposal: null });
+      }
       lastModel = model;
     }
     if (i === lastCharted && island && island.verdict) {
@@ -282,4 +287,43 @@ export function systemText(body) {
   m = body.match(/^sketch approved: (.*)$/s);
   if (m) return t("thread.sketchApproved", { parts: m[1].split(", ").map(sketchPart).join(t("thread.partsJoin")) });
   return body;
+}
+
+const SUP = { 0: "⁰", 1: "¹", 2: "²", 3: "³", 4: "⁴", 5: "⁵", 6: "⁶", 7: "⁷", 8: "⁸", 9: "⁹", n: "ⁿ", i: "ⁱ", k: "ᵏ", "+": "⁺", "-": "⁻", "(": "⁽", ")": "⁾" };
+const SUB = { 0: "₀", 1: "₁", 2: "₂", 3: "₃", 4: "₄", 5: "₅", 6: "₆", 7: "₇", 8: "₈", 9: "₉", i: "ᵢ", j: "ⱼ", k: "ₖ", n: "ₙ", "+": "₊", "-": "₋" };
+const TEX = {
+  cdot: "·", times: "×", le: "≤", leq: "≤", ge: "≥", geq: "≥", ne: "≠", neq: "≠", approx: "≈", to: "→", rightarrow: "→", infty: "∞",
+  sum: "Σ", Theta: "Θ", Omega: "Ω", alpha: "α", beta: "β", lambda: "λ", epsilon: "ε", log: "log", ln: "ln", ldots: "…", dots: "…",
+};
+const script = (body, table) => ([...body].every((c) => c in table) ? [...body].map((c) => table[c]).join("") : null);
+
+/** One `$…$` body as plain text: n^2 as n², \log n as log n, \sqrt{n} as √n; what it cannot say plainly keeps its ^ and _. */
+function texText(body) {
+  return body
+    .replace(/\\sqrt\{([^{}]*)\}/g, "√$1")
+    .replace(/\\(?:text|mathrm|mathit|operatorname)\{([^{}]*)\}/g, "$1")
+    .replace(/\\([A-Za-z]+)/g, (m, name) => TEX[name] ?? name)
+    .replace(/\^\{([^{}]*)\}|\^(\w)/g, (m, a, b) => script(a ?? b, SUP) ?? m)
+    .replace(/_\{([^{}]*)\}|_(\w)/g, (m, a, b) => script(a ?? b, SUB) ?? m)
+    .replace(/\\,|\\ /g, " ")
+    .replace(/[{}]/g, "");
+}
+
+/**
+ * Inline TeX (`$O(n^2)$`, which some models write though the page renders no math) as plain text, outside `code`.
+ * Only a short body with no space at its edges, at least one math mark, and no word or $ on the outside counts,
+ * so prices ($5 and $10) stay as written.
+ */
+export function texLite(line) {
+  return String(line)
+    .split(/(`[^`\n]+`)/)
+    .map((part, i) =>
+      i % 2 ? part : part.replace(/(?<![\w$\\])\$(?!\s)([^$\n]{1,80}?)(?<!\s)\$(?![\w$])/g, (m, body) => (/[\\^_{}()=<>+]|^[A-Za-z]$/.test(body) ? texText(body) : m)),
+    )
+    .join("");
+}
+
+/** A prose line as the page shows it. */
+function prose(line) {
+  return cjkPunctuation(texLite(line));
 }
