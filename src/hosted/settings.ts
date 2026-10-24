@@ -171,14 +171,18 @@ export function createSettings(store: SettingsStore) {
     /** Applies a checked patch. Remember off erases what was stored; on stores it again. */
     async update(patch: SettingsPatch): Promise<Settings> {
       await loaded;
-      const provider = (providerOf(patch.provider ?? current.provider) ?? PROVIDERS[0]).id;
+      const target = (providerOf(patch.provider ?? current.provider) ?? PROVIDERS[0]).id;
       const keys = { ...current.keys };
-      if (patch.apiKey === null) delete keys[provider];
-      else if (patch.apiKey !== undefined) keys[provider] = patch.apiKey.trim();
+      if (patch.apiKey === null) delete keys[target];
+      else if (patch.apiKey !== undefined) keys[target] = patch.apiKey.trim();
       const models = { ...current.models };
-      if (patch.model !== undefined) models[provider] = patch.model.trim();
+      if (patch.model !== undefined) models[target] = patch.model.trim();
+      // Forgetting a key never moves the answering to that provider: it stays where it was while that one has a key,
+      // else goes to any provider that still has one.
+      const forgot = patch.apiKey === null;
+      const provider = !forgot ? target : keys[current.provider] ? current.provider : (PROVIDERS.find((p) => keys[p.id])?.id ?? target);
       current = { provider, keys, models, remember: patch.remember ?? current.remember, stub: patch.stub ?? current.stub };
-      if (keys[provider]) current.stub = patch.stub ?? false; // a key replaces Try without a key
+      if (keys[provider]) current.stub = forgot ? false : (patch.stub ?? false); // a key replaces Try without a key
       await store.write(current.remember ? current : null).catch(() => {});
       return current;
     },

@@ -93,6 +93,24 @@ test("each provider keeps its own key and model; switching back finds them", asy
   expect(back).toMatchObject({ provider: "anthropic", key: true, model: HOSTED_DEFAULT_MODEL });
 });
 
+test("forgetting one provider's key keeps another provider's key answering", async () => {
+  const d = deps();
+  const GEMINI = "AQ.Ab8RN6Kxyz_0123456789abcdefghijklmnopqrstuvwx";
+  await handleHostedRequest(post("/hosted/settings", { apiKey: KEY }), d);
+  await handleHostedRequest(post("/hosted/settings", { provider: "gemini", apiKey: GEMINI }), d);
+  // From the Claude tab while Gemini answers: Gemini goes on answering.
+  const kept = await (await handleHostedRequest(post("/hosted/settings", { provider: "anthropic", apiKey: null, stub: true }), d)).json();
+  expect(kept).toMatchObject({ provider: "gemini", key: true, stub: false, keyHints: { gemini: "…uvwx" } });
+  expect(kept.keyHints.anthropic).toBeUndefined();
+  // Claude answering, its key forgotten, Gemini's still there: Gemini takes over.
+  await handleHostedRequest(post("/hosted/settings", { provider: "anthropic", apiKey: KEY }), d);
+  const moved = await (await handleHostedRequest(post("/hosted/settings", { provider: "anthropic", apiKey: null, stub: true }), d)).json();
+  expect(moved).toMatchObject({ provider: "gemini", key: true, stub: false });
+  // The last key forgotten: the stub.
+  const none = await (await handleHostedRequest(post("/hosted/settings", { provider: "gemini", apiKey: null, stub: true }), d)).json();
+  expect(none).toMatchObject({ key: false, stub: true, keyHints: {} });
+});
+
 test("a provider that takes any model takes a model id it does not list; Claude takes only its two", async () => {
   const d = deps();
   const custom = await handleHostedRequest(post("/hosted/settings", { provider: "openrouter", model: "deepseek/deepseek-v4.1-flash" }), d);
