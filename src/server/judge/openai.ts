@@ -41,10 +41,12 @@ function hostOf(baseUrl: string): string {
   }
 }
 
+/** OpenRouter's record of a model's reasoning (Gemini's thought signatures among it), sent back with the tool results. */
+type ReasoningDetail = { type?: string; index?: number; [field: string]: unknown };
 type ChatToolCall = { id: string; type: "function"; function: { name: string; arguments: string }; [extra: string]: unknown };
 type ChatMessage =
   | { role: "system" | "user"; content: string }
-  | { role: "assistant"; content: string | null; tool_calls?: ChatToolCall[] }
+  | { role: "assistant"; content: string | null; tool_calls?: ChatToolCall[]; reasoning_details?: ReasoningDetail[] }
   | { role: "tool"; tool_call_id: string; content: string };
 
 /** A response the API refused with an HTTP status: kept whole so the loop's error can name what to do. */
@@ -120,7 +122,7 @@ async function* events(body: ReadableStream<Uint8Array>): AsyncGenerator<unknown
   }
 }
 
-type Delta = { content?: string | null; extra_content?: { google?: { thought?: boolean } }; tool_calls?: { index?: number; id?: string; function?: { name?: string; arguments?: string }; [extra: string]: unknown }[] };
+type Delta = { content?: string | null; reasoning_details?: ReasoningDetail[]; extra_content?: { google?: { thought?: boolean } }; tool_calls?: { index?: number; id?: string; function?: { name?: string; arguments?: string }; [extra: string]: unknown }[] };
 type Chunk = { choices?: { delta?: Delta; finish_reason?: string | null }[]; error?: { message?: string } };
 
 export function chatAdapter(options: ChatOptions): ModelAdapter {
@@ -135,7 +137,7 @@ export function chatAdapter(options: ChatOptions): ModelAdapter {
         { role: "system", content: `${request.protocol}\n\n${request.context}` },
         { role: "user", content: request.prompt },
       ];
-      let pending: { text: string; calls: ChatToolCall[] } | null = null;
+      let pending: { text: string; calls: ChatToolCall[]; reasoning: ReasoningDetail[] } | null = null;
       let fresh = 0; // ids for tool calls a server sent without one
       return {
         async step(sink, signal): Promise<StepEnd> {
@@ -150,6 +152,7 @@ export function chatAdapter(options: ChatOptions): ModelAdapter {
           let text = "";
           let finish: string | null = null;
           const calls: ChatToolCall[] = [];
+          const reasoning: ReasoningDetail[] = [];
           for await (const raw of events(response.body)) {
             const chunk = raw as Chunk;
             if (chunk.error) throw new ArchipelagoError(`The model's server reported an error: ${chunk.error.message ?? "unknown"}`);
@@ -163,6 +166,7 @@ export function chatAdapter(options: ChatOptions): ModelAdapter {
               text += content;
               sink.text(content);
             }
+            for (const detail of delta.reasoning_details ?? []) mergeDetail(reasoning, detail);
             for (const part of delta.tool_calls ?? []) {
               const at = part.index ?? calls.length;
               const { index: _i, id, function: fn, ...extra } = part;
@@ -190,14 +194,17 @@ export function chatAdapter(options: ChatOptions): ModelAdapter {
               }
               parsed.push({ id: call.id, name: call.function.name, input });
             }
-            pending = { text, calls: made };
+            pending = { text, calls: made, reasoning };
             return { kind: "tools", calls: parsed };
           }
           if (finish === "stop" || finish === null) return { kind: "done" };
           return { kind: "other", reason: finish };
         },
         addResults(results) {
-          if (pending) messages.push({ role: "assistant", content: pending.text || null, tool_calls: pending.calls });
+          if (pending) {
+            const { text, calls, reasoning } = pending;
+            messages.push({ role: "assistant", content: text || null, tool_calls: calls, ...(reasoning.length ? { reasoning_details: reasoning } : {}) });
+          }
           pending = null;
           for (const { call, result } of results) {
             messages.push({ role: "tool", tool_call_id: call.id, content: result.content.map((c) => c.text).join("\n") });
@@ -206,6 +213,16 @@ export function chatAdapter(options: ChatOptions): ModelAdapter {
       };
     },
   };
+}
+
+/** Streamed reasoning details arrive in pieces: a piece with the index and type of one already held extends its strings. */
+function mergeDetail(into: ReasoningDetail[], piece: ReasoningDetail): void {
+  const held = piece.index === undefined ? undefined : into.find((d) => d.index === piece.index && d.type === piece.type);
+  if (!held) return void into.push({ ...piece });
+  for (const [field, value] of Object.entries(piece)) {
+    if (typeof value === "string" && typeof held[field] === "string" && field !== "type" && field !== "format" && field !== "id") held[field] += value;
+    else if (held[field] === undefined || held[field] === null) held[field] = value;
+  }
 }
 
 /** One actionable sentence for each way an OpenAI-style server can fail a turn. Aborts and our own errors pass through. */

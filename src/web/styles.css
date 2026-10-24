@@ -567,7 +567,15 @@ body.empty .outline, body.empty .chrome, body.empty #map-focus, body.empty #boar
 .hosted-card .error { margin: 0; font-size: 12px; color: var(--reef); }
 .hosted-card .fields { display: grid; gap: 10px; }
 .hosted-card input[type="password"] { background: var(--water); border: 1px solid var(--line); border-radius: 6px; color: var(--text); padding: 8px 10px; font: 14px var(--font-mono); min-width: 0; }
+.hosted-card .providers { display: flex; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+.hosted-card .provider { position: relative; flex: 1; display: flex; align-items: center; justify-content: center; gap: 4px; padding: 6px 8px; font-size: 13px; cursor: pointer; color: var(--text-2); }
+.hosted-card .provider + .provider { border-left: 1px solid var(--line); }
+.hosted-card .provider input { position: absolute; opacity: 0; pointer-events: none; }
+.hosted-card .provider:has(input:checked) { background: var(--panel-2); color: var(--text); }
+.hosted-card .provider:has(input:focus-visible) { outline: 1px solid var(--lamp); outline-offset: -1px; }
+.hosted-card .provider .has-key { color: var(--lamp); }
 .hosted-card .models { display: grid; gap: 4px; }
+.hosted-card input.model-id { background: var(--water); border: 1px solid var(--line); border-radius: 6px; color: var(--text); padding: 6px 10px; font: 13px var(--font-mono); min-width: 0; margin-top: 2px; }
 .hosted-card .model { display: grid; grid-template-columns: auto auto 1fr; gap: 8px; align-items: baseline; font-size: 13px; cursor: pointer; }
 .hosted-card .model .note { color: var(--muted); font-size: 12px; }
 .hosted-card .remember { font-size: 12px; color: var(--text-2); cursor: pointer; }

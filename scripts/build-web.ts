@@ -6,6 +6,7 @@ import { cpSync, copyFileSync, mkdirSync, readFileSync, rmSync, writeFileSync } 
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { BunPlugin } from "bun";
+import { PROVIDERS } from "../src/hosted/settings.ts";
 import { vendorBundle } from "../src/server/vendor.ts";
 
 const ROOT = fileURLToPath(new URL("..", import.meta.url));
@@ -38,7 +39,7 @@ export function hostedIndex(html: string): string {
 }
 
 /**
- * Cloudflare Pages' `_headers`: a CSP that lets the page reach only itself and api.anthropic.com, with the inline
+ * Cloudflare Pages' `_headers`: a CSP that lets the page reach only itself and the providers a key can be for, with the inline
  * scripts of `html` (the theme stamp, the hosted flag) allowed by hash, and wasm compilation for sqlite and shiki.
  * `'unsafe-eval'` is for function-plot, which compiles each parsed expression with `new Function`; nothing on the
  * page builds markup from strings (no innerHTML), so there is no injected text for an eval to reach.
@@ -49,7 +50,7 @@ export function headersFile(html: string): string {
   );
   const csp = [
     "default-src 'self'",
-    "connect-src 'self' https://api.anthropic.com",
+    `connect-src 'self' ${PROVIDERS.map((p) => `https://${p.host}`).join(" ")}`,
     `script-src 'self' 'wasm-unsafe-eval' 'unsafe-eval' ${hashes.join(" ")}`,
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: blob:",

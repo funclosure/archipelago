@@ -57,7 +57,7 @@ test("_headers allows the page's inline scripts by hash, and connections only to
   const html = readFileSync(join(out, "index.html"), "utf8");
   expect(headers).toBe(headersFile(html));
   const csp = /Content-Security-Policy: (.*)/.exec(headers)![1]!;
-  expect(csp).toContain("connect-src 'self' https://api.anthropic.com;");
+  expect(csp).toContain("connect-src 'self' https://api.anthropic.com https://generativelanguage.googleapis.com https://openrouter.ai;");
   const inline = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)];
   expect(inline.length).toBe(2); // the theme stamp and the hosted flag
   expect(csp.match(/'sha256-/g)!.length).toBe(inline.length);
