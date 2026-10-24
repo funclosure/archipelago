@@ -14,6 +14,7 @@
     "vendor:mermaid": "cp node_modules/mermaid/dist/mermaid.min.js src/server/vendor/mermaid.min.js",
     "test:wasm": "bun test --preload ./tests/support/wasm-driver.ts tests/core tests/server tests/web",
     "build:web": "bun run scripts/build-web.ts",
+    "conformance": "bun run scripts/conformance.ts",
     "deploy:web": "bun run build:web && bunx wrangler@4.148.0 pages deploy dist/web --project-name archipelago --branch main"
   },
   "dependencies": {
