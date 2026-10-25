@@ -435,11 +435,11 @@ body.pane-open .board { right: var(--pane-w); }
 .board[hidden] { display: none; }
 @media (prefers-reduced-motion: reduce) { .board, .board-scrim { transition: none; } }
 .board:focus { outline: none; }
-.board .head { display: flex; align-items: center; gap: 10px; padding: 12px 20px; border-bottom: 1px solid var(--line); }
-.board .head .name { font-family: Georgia, serif; font-size: 16px; }
-.board .head .count { color: var(--muted); font-size: 12px; }
+.board .head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; padding: 12px 20px; border-bottom: 1px solid var(--line); }
+.board .head .name { font-family: Georgia, serif; font-size: 16px; min-width: 0; }
+.board .head .count { color: var(--muted); font-size: 12px; white-space: nowrap; }
 .board .head .spacer { flex: 1; }
-.board .head button { height: 26px; padding: 0 10px; display: inline-flex; align-items: center; justify-content: center; line-height: 1; }
+.board .head button { height: 26px; padding: 0 10px; display: inline-flex; align-items: center; justify-content: center; line-height: 1; white-space: nowrap; flex: none; }
 .board .head .close { width: 26px; padding: 0; }
 .board .head .close svg { display: block; }
 .board button { background: transparent; border: 1px solid var(--line-03); color: var(--text); border-radius: 999px; padding: 4px 10px; font: 12px system-ui, sans-serif; cursor: pointer; }

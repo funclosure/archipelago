@@ -40,17 +40,22 @@ export function applyMermaidTheme(themeVariables) {
   return true;
 }
 
-/** SVG markup → an element, without innerHTML. Null when the markup fails to parse. */
+/**
+ * SVG markup → an element, without innerHTML. Null when there is no svg in it. Parsed as HTML, not XML: mermaid writes
+ * a label's line break as `<br>` inside its foreignObject, which no XML parser accepts, so a strict parse lost every
+ * diagram with a two-line label to its source.
+ */
 function svgNode(markup) {
-  const doc = new DOMParser().parseFromString(markup, "image/svg+xml");
-  if (doc.getElementsByTagName("parsererror").length > 0 || doc.documentElement.nodeName === "parsererror") return null;
-  for (const n of doc.querySelectorAll("script")) n.remove();
-  for (const el of doc.querySelectorAll("*")) {
+  const doc = new DOMParser().parseFromString(markup, "text/html");
+  const svg = doc.querySelector("svg");
+  if (!svg) return null;
+  for (const n of svg.querySelectorAll("script")) n.remove();
+  for (const el of [svg, ...svg.querySelectorAll("*")]) {
     for (const attr of [...el.attributes]) {
       if (attr.name.toLowerCase().startsWith("on")) el.removeAttribute(attr.name);
     }
   }
-  return document.importNode(doc.documentElement, true);
+  return document.importNode(svg, true);
 }
 
 function sourceBlock(text) {
