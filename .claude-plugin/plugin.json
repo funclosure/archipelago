@@ -1,6 +1,6 @@
 {
   "name": "archipelago",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Chart what you understand about a domain as islands in open water: Claude sketches the map, a judge in the browser probes you island by island.",
   "author": { "name": "funclosure" },
   "repository": "https://github.com/funclosure/archipelago",
