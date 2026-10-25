@@ -283,6 +283,8 @@ export function systemText(body) {
     const what = m[2] !== undefined ? t("thread.boardTitle", { title: m[2] }) : t("thread.boardKind", { kind: kindLabel(m[3]) });
     return t(`thread.board${m[1][0].toUpperCase()}${m[1].slice(1)}`, { what });
   }
+  m = body.match(/^loose end( closed)?: (.*)$/s);
+  if (m) return t(m[1] ? "thread.looseClosed" : "thread.looseOpened", { note: m[2] });
   if (body === "sketch discarded") return t("thread.sketchDiscarded");
   m = body.match(/^sketch approved: (.*)$/s);
   if (m) return t("thread.sketchApproved", { parts: m[1].split(", ").map(sketchPart).join(t("thread.partsJoin")) });

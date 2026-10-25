@@ -1,6 +1,6 @@
 import type { Database } from "../../core/sql.ts";
 import { openDatabase } from "../../core/db.ts";
-import { ArchipelagoError } from "../../core/errors.ts";
+import { ArchipelagoError, NotFoundError } from "../../core/errors.ts";
 import { requireDomain } from "../../core/repositories/domainRepository.ts";
 import { requireIsland } from "../../core/repositories/islandRepository.ts";
 import { addVerdict } from "../../core/repositories/verdictRepository.ts";
@@ -14,16 +14,19 @@ import {
 } from "../../core/repositories/landmarkRepository.ts";
 import { addAsk, listAsks } from "../../core/repositories/askRepository.ts";
 import { addCard, removeCard, requireCard, updateCard } from "../../core/repositories/boardRepository.ts";
+import { addLooseEnd, closeLooseEnd, listLooseEnds } from "../../core/repositories/looseEndRepository.ts";
 import { resolveVerdictTarget } from "../../core/targets.ts";
 import {
   askInputSchema,
   boardWriteInputSchema,
   judgeVerdictInputSchema,
   landmarksInputSchema,
+  LOOSE_OPEN_MAX,
+  looseEndInputSchema,
   reefProposalInputSchema,
   unlockInputSchema,
 } from "../../core/validators.ts";
-import type { Ask, BoardCard, Island, Message, MessageMode, MessageRole, ReefProposal, Verdict, VerdictState } from "../../core/types.ts";
+import type { Ask, BoardCard, Island, LooseEnd, Message, MessageMode, MessageRole, ReefProposal, Verdict, VerdictState } from "../../core/types.ts";
 import { buildJudgeContext, type JudgeContext } from "./context.ts";
 import type { Persona, ToolName } from "./persona.ts";
 import { toolError, toolResult, type ToolResult } from "./tool-specs.ts";
@@ -224,6 +227,53 @@ export function markExplored(deps: ToolDeps, input: unknown): { slug: string; na
   );
 }
 
+/** The system lines a loose end leaves in the thread of the persona that wrote it; src/web/thread.js reads them back. */
+export const LOOSE_OPENED_PREFIX = "loose end: ";
+export const LOOSE_CLOSED_PREFIX = "loose end closed: ";
+
+/**
+ * Notes or closes a loose end on this island, as the judge or the mentor. Either way the evidence is checked here, in
+ * code: a recognisable verbatim quote of the reader's latest message in this persona's own thread. Either persona may
+ * close any open one; each write leaves one line in the writer's thread.
+ */
+export function looseEnd(deps: ToolDeps, input: unknown, author: "judge" | "mentor"): { looseEnd: LooseEnd; open: number } {
+  const parsed = looseEndInputSchema.parse(input);
+  if (!isRecognisableQuote(parsed.evidence)) {
+    throw new ArchipelagoError(
+      `evidence must quote at least two words (${QUOTE_MIN_CHARS}+ characters), or ${QUOTE_MIN_CJK} Chinese, Japanese, or Korean characters, of the reader's latest message`,
+    );
+  }
+  return withDb(deps.dbPath, (db) =>
+    db.transaction(() => {
+      const domain = requireDomain(db, deps.domain);
+      const island = requireIsland(db, domain.id, deps.island);
+      const answer = listMessages(db, island.id, author).findLast((m) => m.role === "you" && m.kind === "text");
+      if (!answer) throw new ArchipelagoError("no reader message in this thread to quote");
+      if (!answer.body.includes(parsed.evidence)) throw new ArchipelagoError("evidence must be a verbatim quote from the reader's latest message in this thread");
+      const open = listLooseEnds(db, island.id);
+      let row: LooseEnd;
+      if (parsed.op === "open") {
+        if (open.length >= LOOSE_OPEN_MAX) throw new ArchipelagoError(`this island already has ${LOOSE_OPEN_MAX} open loose ends; close one first`);
+        let landmarkId: number | null = null;
+        if (parsed.landmark) {
+          const landmarks = listLandmarks(db, island.id);
+          const landmark = landmarks.find((l) => l.slug === parsed.landmark);
+          if (!landmark) throw new NotFoundError(`no landmark "${parsed.landmark}" on this island`, landmarks.map((l) => l.slug));
+          landmarkId = landmark.id;
+        }
+        row = addLooseEnd(db, {
+          domainId: domain.id, islandId: island.id, landmarkId, kind: parsed.kind, note: parsed.note, evidence: parsed.evidence, messageId: answer.id, author,
+        });
+        addMessage(db, { domainId: domain.id, islandId: island.id, role: author, kind: "system", body: `${LOOSE_OPENED_PREFIX}${row.note}`, mode: author });
+      } else {
+        row = closeLooseEnd(db, island.id, parsed.id, author, parsed.evidence);
+        addMessage(db, { domainId: domain.id, islandId: island.id, role: author, kind: "system", body: `${LOOSE_CLOSED_PREFIX}${row.note}`, mode: author });
+      }
+      return { looseEnd: row, open: listLooseEnds(db, island.id).length };
+    })(),
+  );
+}
+
 export type BoardWriteResult = { card: BoardCard } | { removed: number; title: string };
 
 /**
@@ -281,6 +331,7 @@ export function runTool(persona: Persona, deps: TurnDeps, name: string, input: u
       case "ask_reader": return toolResult(askReader(onIsland(deps), input));
       case "board_write": return toolResult(boardWrite(onIsland(deps), input, persona.id));
       case "mark_explored": return toolResult(markExplored(onIsland(deps), input));
+      case "loose_end": return toolResult(looseEnd(onIsland(deps), input, persona.id === "mentor" ? "mentor" : "judge"));
       case "chart_context": return toolResult(chartContext(deps));
       case "propose_sketch": return toolResult(proposeSketchTool(deps, input));
     }

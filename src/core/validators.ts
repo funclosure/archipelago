@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { ArchipelagoError } from "./errors.ts";
-import { boardKinds, codeLangs, commentKinds, commentTargetTypes, messageModes, verdictStates } from "./types.ts";
+import { boardKinds, codeLangs, commentKinds, commentTargetTypes, looseEndKinds, messageModes, verdictStates } from "./types.ts";
 
 export const slugSchema = z
   .string()
@@ -240,6 +240,27 @@ const boardScope = { domain: slugSchema, island: slugSchema };
 export const boardPostInputSchema = z
   .discriminatedUnion("op", [boardAdd.extend(boardScope), boardUpdate.extend(boardScope), boardRemove.extend(boardScope)])
   .refine(needsAField, NEEDS_A_FIELD);
+
+/** A loose end's note: one line, short enough to sit in a hint over a landmark chip. */
+export const LOOSE_NOTE_MAX = 240;
+/** Open loose ends an island may hold at once: past that a persona closes one before noting another. */
+export const LOOSE_OPEN_MAX = 6;
+
+/** The loose_end tool: `open` notes one with the reader's words, `close` clears one with the words that showed it. */
+export const looseEndInputSchema = z.discriminatedUnion("op", [
+  z.object({
+    op: z.literal("open"),
+    kind: z.enum(looseEndKinds),
+    landmark: slugSchema.nullable().optional(),
+    note: z.string().trim().min(1).max(LOOSE_NOTE_MAX, `a note is at most ${LOOSE_NOTE_MAX} characters`).refine((t) => !/[\r\n\u2028\u2029]/.test(t), { message: "must be one line" }),
+    evidence: z.string().trim().min(1),
+  }),
+  z.object({ op: z.literal("close"), id: z.number().int().positive(), evidence: z.string().trim().min(1) }),
+]);
+export type LooseEndInput = z.infer<typeof looseEndInputSchema>;
+
+/** POST /api/loose-ends: the reader dismisses one. */
+export const looseEndDismissSchema = z.object({ domain: slugSchema, island: slugSchema, id: z.number().int().positive() });
 
 /** Which thread: the judge's or the mentor's. */
 export const modeSchema = z.enum(messageModes);

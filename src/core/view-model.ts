@@ -1,5 +1,5 @@
 import type { Database } from "./sql.ts";
-import type { Comment, CommentTargetType, Island, Landmark, SketchBody, Verdict, VerdictState, CommentKind } from "./types.ts";
+import type { Comment, CommentTargetType, Island, Landmark, LooseEnd, LooseEndKind, SketchBody, Verdict, VerdictState, CommentKind } from "./types.ts";
 import { requireDomain } from "./repositories/domainRepository.ts";
 import { getIslandById, islandPath, listIslands, requireIsland } from "./repositories/islandRepository.ts";
 import { getStraitById, listStraits } from "./repositories/straitRepository.ts";
@@ -8,12 +8,15 @@ import { listComments } from "./repositories/commentRepository.ts";
 import { getViewState } from "./repositories/viewStateRepository.ts";
 import { countMessages } from "./repositories/messageRepository.ts";
 import { listLandmarksByIsland } from "./repositories/landmarkRepository.ts";
+import { listOpenLooseEndsByIsland } from "./repositories/looseEndRepository.ts";
 import { pendingSketch } from "./repositories/sketchRepository.ts";
 import { listSeas } from "./repositories/seaRepository.ts";
 
 export type VerdictView = { state: VerdictState; confidence: number; evidence: string; rationale: string | null; at: string };
 export type RollupState = Record<VerdictState | "open", number>;
 export type LandmarkView = { slug: string; name: string; lit: boolean; evidence: string | null; exploredAt: string | null; terms: string[] };
+/** An open loose end as the page shows it: `landmark` is the slug it hangs on, null for the island as a whole. */
+export type LooseEndView = { id: number; kind: LooseEndKind; landmark: string | null; note: string; evidence: string; author: "judge" | "mentor" };
 export type IslandView = {
   slug: string;
   name: string;
@@ -26,6 +29,7 @@ export type IslandView = {
   harbour: boolean;
   messages: number;
   landmarks: { total: number; unlocked: number; explored: number; items: LandmarkView[] };
+  looseEnds: LooseEndView[];
 };
 export type StraitView = { from: string; to: string; name: string | null; verdict: VerdictView | null };
 export type Snapshot = {
@@ -78,6 +82,13 @@ function emptyRollup(): RollupState {
   return { sandbar: 0, settled: 0, mountainous: 0, reef: 0, open: 0 };
 }
 
+function looseEndView(list: LooseEnd[], landmarks: Landmark[]): LooseEndView[] {
+  const slugs = new Map(landmarks.map((l) => [l.id, l.slug]));
+  return list.map((e) => ({
+    id: e.id, kind: e.kind, landmark: e.landmarkId === null ? null : (slugs.get(e.landmarkId) ?? null), note: e.note, evidence: e.evidence, author: e.author,
+  }));
+}
+
 function landmarkView(list: Landmark[]): { total: number; unlocked: number; explored: number; items: LandmarkView[] } {
   const items = list.map((l) => ({ slug: l.slug, name: l.name, lit: l.unlockedAt !== null, evidence: l.evidence, exploredAt: l.exploredAt, terms: l.terms ?? [] }));
   return {
@@ -98,6 +109,7 @@ export function buildSnapshot(db: Database, domainSlug: string, scaleSlug: strin
   const islandVerdicts = latestVerdicts(db, "island", islands.map((i) => i.id));
   const messageCounts = countMessages(db, islands.map((i) => i.id));
   const landmarksByIsland = listLandmarksByIsland(db, islands.map((i) => i.id));
+  const looseByIsland = listOpenLooseEndsByIsland(db, islands.map((i) => i.id));
   const islandViews: IslandView[] = islands.map((island) => {
     const children = listIslands(db, domain.id, island.id);
     const childVerdicts = latestVerdicts(db, "island", children.map((c) => c.id));
@@ -119,6 +131,7 @@ export function buildSnapshot(db: Database, domainSlug: string, scaleSlug: strin
       harbour: island.harbour === 1,
       messages: messageCounts.get(island.id) ?? 0,
       landmarks: landmarkView(landmarksByIsland.get(island.id) ?? []),
+      looseEnds: looseEndView(looseByIsland.get(island.id) ?? [], landmarksByIsland.get(island.id) ?? []),
     };
   });
 

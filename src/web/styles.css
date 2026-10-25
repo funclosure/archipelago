@@ -123,6 +123,19 @@ body.pane-open .chrome { right: var(--pane-w); }
 .chip.lit { background: var(--sand); border: 1px solid var(--sand); color: var(--water); }
 .chip.just-lit { animation: lit-pulse .8s ease-out 1; }
 .chip.explored { background: var(--explore); border: 1px solid var(--explore); color: var(--water); }
+.chip.loose { display: inline-flex; align-items: center; gap: 4px; padding-right: 3px; }
+.loose-mark { font: 600 10px/1 var(--font-mono); min-width: 16px; height: 16px; padding: 0 4px; border-radius: 999px; border: 1px solid var(--lamp);
+  background: var(--panel); color: var(--lamp); cursor: pointer; }
+.loose-mark:hover, .loose-mark.on { background: var(--lamp); color: var(--panel); }
+.chips > .loose-mark { align-self: center; }
+.loose-list { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; padding: 8px 10px; border-left: 2px solid var(--lamp); background: var(--panel-2); border-radius: 0 6px 6px 0; }
+.msg.system.loose-line { text-transform: none; letter-spacing: normal; }
+.loose-item { display: flex; align-items: flex-start; gap: 10px; }
+.loose-text { flex: 1; min-width: 0; font-size: 12px; line-height: 1.45; color: var(--text); }
+.loose-kind { color: var(--lamp); margin-right: 6px; font-size: 11px; }
+.loose-meta { color: var(--muted); font-size: 11px; margin-top: 2px; }
+.loose-dismiss { background: none; border: 1px solid var(--line-03); border-radius: 999px; color: var(--muted); font-size: 11px; padding: 1px 8px; cursor: pointer; white-space: nowrap; }
+.loose-dismiss:hover { color: var(--text); border-color: var(--muted); }
 /* Landmark words in the persona's replies (`renderMarkdown(…, { terms })`): a dotted underline in the lens's colour;
    hovering a word or its chip lights both (`lightLandmark` in card.js). */
 .msg .term { text-decoration: underline dotted var(--lamp); text-decoration-thickness: 1.5px; text-underline-offset: 4px; border-radius: 2px; transition: background .15s; }

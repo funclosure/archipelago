@@ -6,11 +6,12 @@ import { z } from "zod";
 import { openDatabase } from "../core/db.ts";
 import { ArchipelagoError, ConflictError, NotFoundError } from "../core/errors.ts";
 import {
-  boardPostInputSchema, commentInputSchema, domainCreateSchema, domainUpdateSchema, domainRemoveSchema, seaWriteSchema, focusInputSchema, learnerInputSchema, modeSchema, positionsInputSchema, probeInputSchema,
+  boardPostInputSchema, looseEndDismissSchema, commentInputSchema, domainCreateSchema, domainUpdateSchema, domainRemoveSchema, seaWriteSchema, focusInputSchema, learnerInputSchema, modeSchema, positionsInputSchema, probeInputSchema,
   reefAnswerInputSchema, sketchDecisionSchema, slugSchema,
 } from "../core/validators.ts";
 import { attachAsks, listAsks, pickAsk, requireAsk } from "../core/repositories/askRepository.ts";
 import { listCards } from "../core/repositories/boardRepository.ts";
+import { closeLooseEnd } from "../core/repositories/looseEndRepository.ts";
 import { addSeaFrom, removeSea, updateSea } from "../core/repositories/seaRepository.ts";
 import { getLearner, setLearnerNote, setLearnerLanguage } from "../core/repositories/learnerRepository.ts";
 import { createDomain, listDomains, requireDomain, updateDomain, removeDomain } from "../core/repositories/domainRepository.ts";
@@ -223,6 +224,18 @@ async function handleApi(req: Request, url: URL, ctx: ApiContext): Promise<Respo
     const result = boardWrite({ dbPath: ctx.dbPath, domain, island }, write, "you");
     const version = withDb(ctx, (db) => getViewState(db, requireDomain(db, domain).id).version);
     return json({ ...result, version });
+  }
+
+  if (route === "POST /api/loose-ends") {
+    // The reader dismisses a loose end: closed by them, with no words and no line in either thread.
+    const input = looseEndDismissSchema.parse(await req.json());
+    return json(
+      withDb(ctx, (db) => {
+        const d = requireDomain(db, input.domain);
+        const looseEnd = closeLooseEnd(db, requireIsland(db, d.id, input.island).id, input.id, "you", null);
+        return { looseEnd, version: getViewState(db, d.id).version };
+      }),
+    );
   }
 
   if (route === "POST /api/seas") {

@@ -3,6 +3,8 @@
 export default {
   en: {
     chartedOwn: "charted as {state}",
+    looseOpened: "noted to come back to: {note}",
+    looseClosed: "cleared up: {note}",
     chartedIsland: "island {target} charted as {state}",
     chartedStrait: "strait {target} charted as {state}",
     boardPinned: "board: pinned {what}",
@@ -22,6 +24,8 @@ export default {
   },
   "zh-TW": {
     chartedOwn: "已測繪為{state}",
+    looseOpened: "記下待釐清：{note}",
+    looseClosed: "已釐清：{note}",
     chartedIsland: "島嶼{target}已測繪為{state}",
     chartedStrait: "海峽{target}已測繪為{state}",
     boardPinned: "白板：釘上{what}",

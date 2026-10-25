@@ -20,6 +20,7 @@ import { markCommentsRead } from "../core/repositories/commentRepository.ts";
 import { listMessages, listScaleMessages } from "../core/repositories/messageRepository.ts";
 import { listSketches } from "../core/repositories/sketchRepository.ts";
 import { listCards } from "../core/repositories/boardRepository.ts";
+import { listLooseEnds } from "../core/repositories/looseEndRepository.ts";
 import { getLearner, setLearnerLanguage, setLearnerNote } from "../core/repositories/learnerRepository.ts";
 import { listLandmarks, upsertLandmark } from "../core/repositories/landmarkRepository.ts";
 import { getViewState, setFocus } from "../core/repositories/viewStateRepository.ts";
@@ -425,6 +426,18 @@ common(board.command("list").option("--domain <slug>").option("--island <slug>")
       const d = requireDomain(db, slugSchema.parse(o.domain));
       const i = requireIsland(db, d.id, slugSchema.parse(o.island));
       return { island: i.slug, cards: listCards(db, i.id) };
+    }),
+  ),
+);
+
+// ---- loose ends ----
+const loose = program.command("loose-end").description("What the reader found confusing, asked and left open, or means to come back to, noted by the Keeper or the mentor");
+common(loose.command("list").option("--domain <slug>").option("--island <slug>").option("--all", "closed ones too")).action(
+  run((o) =>
+    withDb((db) => {
+      const d = requireDomain(db, slugSchema.parse(o.domain));
+      const i = requireIsland(db, d.id, slugSchema.parse(o.island));
+      return { island: i.slug, looseEnds: listLooseEnds(db, i.id, Boolean(o.all)) };
     }),
   ),
 );

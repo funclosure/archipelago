@@ -1,7 +1,7 @@
 // `bun run conformance [--judge api|openai|stub] [--models a,b] [--json file] [--verbose]`: a fixed script of
 // persona turns, run on a throwaway database through the real route (`handleApiRequest`), against whichever model the
 // environment names (as `archipelago serve --judge …` reads it), then checked against the protocols' hard rules. It
-// spends real money on a real model: about a dozen turns per model. A FAIL is a rule the page depends on (a tool call
+// spends real money on a real model: a dozen turns per model. A FAIL is a rule the page depends on (a tool call
 // that went wrong, a slug in the reply, TeX, the wrong language, two questions); a WARN is judgement the protocol
 // asks for but a good model may skip on a given turn (proposing the reef). The exit code is 1 when anything failed.
 import { mkdtempSync, writeFileSync } from "node:fs";
@@ -37,6 +37,8 @@ export type Turn = {
   questions?: number;
   /** The island must have a verdict or a pending reef after this turn (the fourth answer decides). */
   decided?: boolean;
+  /** Words of which the reply should carry at least one (WARN otherwise): the probe went where an open loose end is. */
+  about?: string[];
 };
 
 // ---- pure checks (tests/server/conformance.test.ts) ----
@@ -123,6 +125,7 @@ export function checkTurn(turn: Turn, seen: Observed): Check[] {
     const simp = simplified(seen.reply);
     if (simp.length) out.push({ level: "fail", say: `Simplified characters: ${simp.join("")}` });
   }
+  if (turn.about && !turn.about.some((w) => prose(seen.reply).toLowerCase().includes(w.toLowerCase()))) out.push({ level: "warn", say: `did not touch ${turn.about.join(" / ")}` });
   if (turn.decided && !seen.decided) out.push({ level: "fail", say: "no verdict or reef by the fourth answer" });
   return out;
 }
@@ -158,6 +161,18 @@ export const SCRIPT: Turn[] = [
   {
     id: "mentor: reader explores", mode: "mentor", domain: DOMAIN, island: "caching", lang: "zh", require: ["mark_explored"], questions: 2,
     message: "所以淘汰策略就像 NSCache 在記憶體壓力下自動丟掉東西嗎？那 LRU 跟 LFU 在實務上差在哪裡？",
+  },
+  {
+    id: "mentor: reader is confused", mode: "mentor", domain: DOMAIN, island: "caching", lang: "zh", require: ["loose_end"], questions: 2,
+    message: "快取失效這塊我一直搞不太懂。我以為只要把 TTL 設得夠短，讀到的資料就不可能是舊的，這樣理解對嗎？",
+  },
+  {
+    id: "judge: probes the loose end", mode: "judge", domain: DOMAIN, island: "caching", lang: "zh", about: ["失效", "invalidation", "TTL", "舊", "stale"],
+    message: "我想再多練習一下快取，再給我一題吧。",
+  },
+  {
+    id: "judge: answer clears it", mode: "judge", domain: DOMAIN, island: "caching", lang: "zh", hope: ["loose_end"],
+    message: "TTL 只決定資料最多可以舊多久，不保證新鮮；資料庫寫入成功後要主動刪掉快取裡的那個 key，下一次讀取 miss 才會從資料庫拿到新值。",
   },
   { id: "cartographer: first sketch", mode: "cartographer", domain: FRESH, lang: "zh", require: ["propose_sketch"], questions: 2 },
 ];
