@@ -15,6 +15,8 @@
   input, select, textarea { font: inherit; color: var(--text, #ddd); background: var(--panel, #222); border: 1px solid var(--line, #555); border-radius: 6px; padding: 3px 8px; }
   code, pre, kbd { font-family: var(--font-mono, ui-monospace, monospace); }
   canvas, svg { max-width: 100%; }
+  /* A demo sized to the viewport (100vh, height: 100%) would grow with every height the frame reports; the frame is as tall as the content instead. */
+  html, body { height: auto !important; min-height: 0 !important; }
 </style>
 <script>
 (() => {
@@ -51,8 +53,19 @@
         document.body.append(run);
       }
     }
-    const report = () => post({ type: "demo-size", height: Math.ceil(document.documentElement.scrollHeight) });
-    new ResizeObserver(report).observe(document.body);
+    // Where the content ends, not how tall the document is: a document fills the frame, so its height only grows.
+    const measure = () => {
+      let bottom = 0;
+      for (const el of document.body.children) {
+        if (el.tagName === "SCRIPT" || el.tagName === "STYLE") continue;
+        bottom = Math.max(bottom, el.getBoundingClientRect().bottom + (parseFloat(getComputedStyle(el).marginBottom) || 0));
+      }
+      return bottom + scrollY + (parseFloat(getComputedStyle(document.body).paddingBottom) || 0);
+    };
+    const report = () => post({ type: "demo-size", height: Math.ceil(measure()) });
+    const sizes = new ResizeObserver(report);
+    for (const el of document.body.children) sizes.observe(el);
+    new MutationObserver(() => { for (const el of document.body.children) sizes.observe(el); report(); }).observe(document.body, { childList: true });
     report();
   });
   post({ type: "demo-ready" });
