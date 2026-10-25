@@ -2,11 +2,14 @@
 // opaque origin: no cookies, storage, page, worker, or keys) at /demo-frame.html, which carries its own CSP (no
 // network, src/server/demo-frame.ts). The fence's text crosses as a message, never as markup on this page. The
 // frame reports its height, console lines, and errors back; Reset reloads it, Code shows the source. A pane rebuild
-// makes a new frame, so a demo starts over after each turn.
+// makes a new frame, so a demo starts over after each turn. The caption folds it to its bar, which also stops it.
 import { t } from "./i18n.js";
 import { codeElement } from "./code.js";
 import { pinButton } from "./pin.js";
-import { DEMO_MAX, DEMO_TOKENS, DEMO_MIN_H, demoHeight, logLine } from "./demo-model.js";
+import { DEMO_MAX, DEMO_TOKENS, DEMO_MIN_H, demoHeight, logLine, themeColours } from "./demo-model.js";
+
+/** Bodies of the demos the reader folded, so a pane rebuild keeps them folded. */
+const folded = new Set();
 
 /** Every demo made, so one listener routes each frame's messages; a frame gone from the page is dropped. */
 const demos = new Set();
@@ -32,7 +35,8 @@ export function demoElement(source, { pin = null } = {}) {
   box.className = "demo";
   const bar = document.createElement("div");
   bar.className = "bar";
-  const cap = document.createElement("span");
+  const cap = document.createElement("button");
+  cap.type = "button";
   cap.className = "cap";
   cap.textContent = t("demo.caption");
   const reset = document.createElement("button");
@@ -53,6 +57,7 @@ export function demoElement(source, { pin = null } = {}) {
   pre.hidden = true;
 
   if (source.length > DEMO_MAX) {
+    cap.disabled = true;
     err.textContent = t("demo.tooLong", { max: DEMO_MAX });
     err.hidden = false;
     pre.hidden = false;
@@ -71,6 +76,7 @@ export function demoElement(source, { pin = null } = {}) {
   out.hidden = true;
 
   const start = () => {
+    if (folded.has(source)) return;
     err.hidden = true;
     err.textContent = "";
     out.hidden = true;
@@ -82,7 +88,7 @@ export function demoElement(source, { pin = null } = {}) {
     left: false,
     receive(data) {
       if (!data || typeof data.type !== "string") return;
-      if (data.type === "demo-ready") frame.contentWindow?.postMessage({ type: "demo-run", html: source, tokens: tokens() }, "*");
+      if (data.type === "demo-ready") frame.contentWindow?.postMessage({ type: "demo-run", html: themeColours(source), tokens: tokens() }, "*");
       else if (data.type === "demo-size") frame.style.height = `${demoHeight(data.height)}px`;
       else if (data.type === "demo-error") {
         err.textContent = t("demo.error", { message: String(data.message).slice(0, 300) });
@@ -101,6 +107,21 @@ export function demoElement(source, { pin = null } = {}) {
       }
     },
   };
+  const fold = (on) => {
+    if (on) folded.add(source);
+    else folded.delete(source);
+    box.classList.toggle("folded", on);
+    cap.setAttribute("aria-expanded", String(!on));
+    cap.title = t(on ? "demo.unfold" : "demo.fold");
+    reset.hidden = on;
+    showCode.hidden = on;
+    if (on) {
+      frame.src = "about:blank"; // a folded demo stops running
+      err.hidden = true;
+      out.hidden = true;
+    } else start();
+  };
+  cap.addEventListener("click", () => fold(!folded.has(source)));
   reset.addEventListener("click", start);
   showCode.addEventListener("click", () => {
     pre.hidden = !pre.hidden;
@@ -108,6 +129,6 @@ export function demoElement(source, { pin = null } = {}) {
   });
   box.append(bar, pre, err, frame, out);
   demos.add(demo);
-  start();
+  fold(folded.has(source));
   return box;
 }
