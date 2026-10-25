@@ -6,18 +6,18 @@ export const SLOTS = ["fg", "keyword", "string", "comment", "type", "number"];
 export const SENTINELS = SLOTS.map((_, i) => `#00000${i + 1}`);
 const slotOf = new Map(SENTINELS.map((hex, i) => [hex, SLOTS[i]]));
 
-/** The eleven bundled grammars (see src/server/vendor/shiki-entry.js). */
+/** The twelve bundled grammars (see src/server/vendor/shiki-entry.js). */
 // Mirrors codeLangs in src/core/types.ts; keep the two lists identical.
-export const LANGS = ["swift", "objective-c", "kotlin", "typescript", "tsx", "javascript", "json", "bash", "python", "sql", "yaml"];
+export const LANGS = ["swift", "objective-c", "kotlin", "typescript", "tsx", "javascript", "json", "bash", "python", "sql", "yaml", "html"];
 
 const ALIASES = {
   swiftui: "swift", objc: "objective-c", js: "javascript", ts: "typescript",
-  sh: "bash", shell: "bash", zsh: "bash", py: "python", yml: "yaml", jsonc: "json",
+  sh: "bash", shell: "bash", zsh: "bash", py: "python", yml: "yaml", jsonc: "json", htm: "html",
 };
 
 const LABELS = {
   swift: "Swift", "objective-c": "Objective-C", kotlin: "Kotlin", typescript: "TypeScript", tsx: "TSX",
-  javascript: "JavaScript", json: "JSON", bash: "Bash", python: "Python", sql: "SQL", yaml: "YAML",
+  javascript: "JavaScript", json: "JSON", bash: "Bash", python: "Python", sql: "SQL", yaml: "YAML", html: "HTML",
 };
 
 /** A shiki theme whose colours are sentinels: one per slot. */
@@ -27,11 +27,11 @@ export const contourTheme = {
   colors: {},
   settings: [
     { settings: { foreground: SENTINELS[0], background: "#000000" } },
-    { scope: ["keyword", "storage", "keyword.operator"], settings: { foreground: SENTINELS[1] } },
+    { scope: ["keyword", "storage", "keyword.operator", "entity.name.tag"], settings: { foreground: SENTINELS[1] } },
     { scope: ["string", "string.quoted", "string.template"], settings: { foreground: SENTINELS[2] } },
     { scope: ["comment", "punctuation.definition.comment"], settings: { foreground: SENTINELS[3], fontStyle: "italic" } },
     {
-      scope: ["entity.name.type", "entity.name.class", "support.type", "support.class", "entity.name.function", "support.function", "variable.parameter"],
+      scope: ["entity.name.type", "entity.name.class", "support.type", "support.class", "entity.name.function", "support.function", "variable.parameter", "entity.other.attribute-name"],
       settings: { foreground: SENTINELS[4] },
     },
     { scope: ["constant.numeric", "constant.language", "constant.character"], settings: { foreground: SENTINELS[5] } },

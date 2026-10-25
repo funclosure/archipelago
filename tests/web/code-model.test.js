@@ -4,7 +4,7 @@ import { SLOTS, SENTINELS, LANGS, contourTheme, resolveLang, labelOf, spansOf } 
 test("slots and sentinels line up", () => {
   expect(SLOTS).toEqual(["fg", "keyword", "string", "comment", "type", "number"]);
   expect(SENTINELS).toEqual(["#000001", "#000002", "#000003", "#000004", "#000005", "#000006"]);
-  expect(LANGS).toHaveLength(11);
+  expect(LANGS).toHaveLength(12);
   expect(contourTheme.name).toBe("contour");
   expect(contourTheme.settings[0].settings.foreground).toBe("#000001");
 });

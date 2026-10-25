@@ -4,6 +4,7 @@
 // frame reports its height, console lines, and errors back; Reset reloads it, Code shows the source. A pane rebuild
 // makes a new frame, so a demo starts over after each turn.
 import { t } from "./i18n.js";
+import { codeElement } from "./code.js";
 import { DEMO_MAX, DEMO_TOKENS, DEMO_MIN_H, demoHeight, logLine } from "./demo-model.js";
 
 /** Every demo made, so one listener routes each frame's messages; a frame gone from the page is dropped. */
@@ -47,10 +48,7 @@ export function demoElement(source) {
   const err = document.createElement("div");
   err.className = "error";
   err.hidden = true;
-  const pre = document.createElement("pre");
-  const code = document.createElement("code");
-  code.textContent = source;
-  pre.append(code);
+  const pre = codeElement("html", source, true); // highlighted like any other fence, with its copy button
   pre.hidden = true;
 
   if (source.length > DEMO_MAX) {

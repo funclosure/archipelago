@@ -30,7 +30,7 @@ export function loadHighlighter(onReady) {
   if (highlighter || loading) return;
   loading = import("/vendor/shiki.js")
     .then(async (m) => {
-      const grammars = [m.swift, m.objectiveC, m.kotlin, m.typescript, m.tsx, m.javascript, m.json, m.bash, m.python, m.sql, m.yaml];
+      const grammars = [m.swift, m.objectiveC, m.kotlin, m.typescript, m.tsx, m.javascript, m.json, m.bash, m.python, m.sql, m.yaml, m.html];
       highlighter = await m.createHighlighterCore({
         langs: grammars,
         themes: [contourTheme],

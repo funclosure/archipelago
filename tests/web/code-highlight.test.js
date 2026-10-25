@@ -15,6 +15,7 @@ import bash from "@shikijs/langs/bash";
 import python from "@shikijs/langs/python";
 import sql from "@shikijs/langs/sql";
 import yaml from "@shikijs/langs/yaml";
+import html from "@shikijs/langs/html";
 import { contourTheme, SENTINELS, LANGS, spansOf } from "../../src/web/code-model.js";
 
 /** One short sample per bundled language: a keyword or structural token, and a trailing comment. */
@@ -30,13 +31,14 @@ const SAMPLES = {
   python: "n = 1  # note",
   sql: "select 1 from t -- note",
   yaml: "a: 1 # note",
+  html: '<button id="go">Go</button> <!-- note -->',
 };
 
 let highlighter;
 
 beforeAll(async () => {
   highlighter = await createHighlighterCore({
-    langs: [swift, objectiveC, kotlin, typescript, tsx, javascript, json, bash, python, sql, yaml],
+    langs: [swift, objectiveC, kotlin, typescript, tsx, javascript, json, bash, python, sql, yaml, html],
     themes: [contourTheme],
     engine: createOnigurumaEngine(import("shiki/wasm")),
   });
@@ -58,6 +60,13 @@ for (const lang of LANGS) {
     }
   });
 }
+
+test("html: tags in the keyword colour, attributes in the type colour, values as strings", () => {
+  const line = spans("html");
+  expect(line.find((s) => s.text === "button").slot).toBe("keyword");
+  expect(line.find((s) => s.text === "id").slot).toBe("type");
+  expect(line.some((s) => s.slot === "string" && s.text.includes("go"))).toBe(true);
+});
 
 test("the typescript sample gets a keyword, a number, and an italic comment", () => {
   const line = spans("typescript");
