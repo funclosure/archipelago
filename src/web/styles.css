@@ -437,8 +437,8 @@ body.pane-open .board { right: var(--pane-w); }
 .board:focus { outline: none; }
 .board .head { position: relative; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; padding: 12px 56px 12px 20px; border-bottom: 1px solid var(--line); }
 .board .head .name { font-family: Georgia, serif; font-size: 16px; line-height: 26px; min-width: 0; }
-.board .head .count { color: var(--muted); font-size: 12px; line-height: 26px; white-space: nowrap; }
-.board .head .adds { display: flex; gap: 10px; margin-left: auto; }
+.board .head .count { color: var(--muted); font-size: 12px; line-height: 26px; white-space: nowrap; flex-grow: 1; }
+.board .head .adds { display: flex; gap: 10px; }
 .board .head button { height: 26px; padding: 0 10px; display: inline-flex; align-items: center; justify-content: center; line-height: 1; white-space: nowrap; flex: none; }
 .board .head .close { position: absolute; top: 12px; right: 20px; width: 26px; padding: 0; }
 .board .head .close svg { display: block; }
