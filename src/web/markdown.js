@@ -5,6 +5,8 @@ import { termRuns } from "./term-model.js";
 import { codeElement } from "./code.js";
 import { plotElement } from "./plot.js";
 import { PLOT_LANGS } from "./plot-model.js";
+import { demoElement } from "./demo.js";
+import { DEMO_LANG } from "./demo-model.js";
 import { t } from "./i18n.js";
 
 const nodeCache = new Map(); // diagram source → parsed SVG node, cloned on repeat appends
@@ -233,6 +235,10 @@ export function renderMarkdown(text, { onQuestion = null, lead = false, terms = 
       frag.append(plotElement(b.text));
     } else if (b.type === "code" && PLOT_LANGS.has(b.lang)) {
       frag.append(sourceBlock(t("markdown.drawingPlot")));
+    } else if (b.type === "code" && b.lang === DEMO_LANG && b.closed) {
+      frag.append(demoElement(b.text));
+    } else if (b.type === "code" && b.lang === DEMO_LANG) {
+      frag.append(sourceBlock(t("demo.building")));
     } else if (b.type === "code") {
       frag.append(codeElement(b.lang, b.text, b.closed));
     }

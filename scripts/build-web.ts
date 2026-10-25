@@ -8,6 +8,7 @@ import { fileURLToPath } from "node:url";
 import type { BunPlugin } from "bun";
 import { PROVIDERS } from "../src/hosted/settings.ts";
 import { vendorBundle } from "../src/server/vendor.ts";
+import { DEMO_FRAME_CSP, DEMO_FRAME_PATH } from "../src/server/demo-frame.ts";
 
 const ROOT = fileURLToPath(new URL("..", import.meta.url));
 const src = (path: string) => join(ROOT, "src", path);
@@ -69,6 +70,14 @@ export function headersFile(html: string): string {
     // The page has no build hashes in its file names: every load asks whether a file changed.
     "  Cache-Control: no-cache",
     "",
+    // The demo frame trades the page's CSP for its own: inline scripts, no network, embeddable by the page only.
+    // Pages answers `/demo-frame.html` with a redirect to `/demo-frame`, so both paths carry it.
+    ...[DEMO_FRAME_PATH, DEMO_FRAME_PATH.replace(/\.html$/, "")].flatMap((path) => [
+      path,
+      "  ! Content-Security-Policy",
+      `  Content-Security-Policy: ${DEMO_FRAME_CSP}`,
+      "",
+    ]),
   ].join("\n");
 }
 

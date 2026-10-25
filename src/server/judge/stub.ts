@@ -112,7 +112,7 @@ export async function judgeStubTurn({ dbPath, domain, island, emit }: JudgeTurn)
  * set_landmarks (the same four) · then "explore <slug>" → mark_explored, quoting the whole message ·
  * "elsewhere" → point_to the first other island in the domain ·
  * "confus" or 困惑 → loose_end (confused, on the first landmark the message names by slug or name, else the island) ·
- * "fail" → throws · "pin" → board_write as the mentor (a canned note) · else a canned follow-up.
+ * "demo" → a canned demo fence · "fail" → throws · "pin" → board_write as the mentor (a canned note) · else a canned follow-up.
  * A function declaration, not a const: persona.ts imports it while this module may still be evaluating.
  */
 export async function mentorStubTurn({ dbPath, domain, island, emit }: JudgeTurn): Promise<string> {
@@ -153,6 +153,9 @@ export async function mentorStubTurn({ dbPath, domain, island, emit }: JudgeTurn
     looseEnd(deps, { op: "open", kind: "confused", landmark, note: "The reader found this confusing.", evidence: last.body }, "mentor");
     return say(`Noted as something to come back to. Here is ${ctx.island.name} again, in plain terms.`);
   }
+  if (text.includes("demo")) {
+    return say(`Try it: put a few keys in and watch which one leaves when the cache is full.\n\n\`\`\`demo\n${STUB_DEMO}\n\`\`\`\n\nWhich key did it drop, and why that one?`);
+  }
   if (text.includes("fail")) throw new Error("stub failure");
   if (text.includes("pin")) {
     emit({ type: "progress", message: "board_write" });
@@ -161,6 +164,25 @@ export async function mentorStubTurn({ dbPath, domain, island, emit }: JudgeTurn
   }
   return say(`Here is more on ${ctx.island.name}, in plain terms. Try it on an example of your own.`);
 }
+
+/** The stub's demo: a three-slot LRU cache to put keys into. */
+const STUB_DEMO = `<div id="slots" style="display:flex;gap:8px;margin-bottom:8px"></div>
+<input id="key" placeholder="key" size="6"> <button id="put">Put</button>
+<script>
+const cache = new Map(), slots = document.getElementById("slots");
+function draw() {
+  slots.replaceChildren(...[...cache.keys()].map((k) => Object.assign(document.createElement("span"), { textContent: k, style: "padding:4px 10px;border:1px solid var(--lamp);border-radius:6px" })));
+}
+document.getElementById("put").onclick = () => {
+  const k = document.getElementById("key").value.trim();
+  if (!k) return;
+  cache.delete(k);
+  cache.set(k, true);
+  if (cache.size > 3) { const old = cache.keys().next().value; cache.delete(old); console.log("evicted " + old); }
+  draw();
+};
+draw();
+</script>`;
 
 /** Generic parts of any field: the stub's top scale. */
 const TOP = ["foundations", "tools", "patterns", "failure-modes", "trade-offs", "practice"];

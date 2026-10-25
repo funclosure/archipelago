@@ -1,0 +1,63 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- A persona's demo fence runs here, in a sandboxed iframe (scripts only, an opaque origin) under its own CSP
+     (src/server/demo-frame.ts): no network, no storage, no access to the page. demo.js posts the fence's HTML
+     and the theme's tokens; this frame posts back its height, console lines, and errors. -->
+<style>
+  :root { color-scheme: dark light; }
+  html, body { margin: 0; background: transparent; color: var(--text, #ddd); font: 14px/1.5 var(--font-text, system-ui, sans-serif); }
+  body { padding: 12px; }
+  button { font: inherit; color: var(--text, #ddd); background: var(--panel-2, #333); border: 1px solid var(--line, #555); border-radius: 999px; padding: 3px 12px; cursor: pointer; }
+  button:hover { border-color: var(--lamp, #fc6); }
+  input, select, textarea { font: inherit; color: var(--text, #ddd); background: var(--panel, #222); border: 1px solid var(--line, #555); border-radius: 6px; padding: 3px 8px; }
+  code, pre, kbd { font-family: var(--font-mono, ui-monospace, monospace); }
+  canvas, svg { max-width: 100%; }
+</style>
+<script>
+(() => {
+  const post = (message) => parent.postMessage(message, "*");
+  const show = (v) => {
+    if (typeof v === "string") return v;
+    try { return JSON.stringify(v); } catch { return String(v); }
+  };
+  addEventListener("error", (e) => post({ type: "demo-error", message: String(e.message || e.error || "error") }));
+  addEventListener("unhandledrejection", (e) => post({ type: "demo-error", message: String((e.reason && e.reason.message) || e.reason) }));
+  for (const level of ["log", "info", "warn", "error"]) {
+    const original = console[level].bind(console);
+    console[level] = (...args) => {
+      post({ type: "demo-log", level, text: args.map(show).join(" ") });
+      original(...args);
+    };
+  }
+  let ran = false;
+  addEventListener("message", (e) => {
+    if (e.source !== parent || !e.data || e.data.type !== "demo-run" || ran) return;
+    ran = true;
+    for (const [name, value] of Object.entries(e.data.tokens || {})) document.documentElement.style.setProperty(name, value);
+    // Parsed, never written as markup: the nodes are moved in, and each script is recreated so it runs, in order.
+    const doc = new DOMParser().parseFromString(String(e.data.html), "text/html");
+    for (const node of [...doc.head.childNodes, ...doc.body.childNodes]) {
+      const scripts = node.nodeType === 1 ? (node.tagName === "SCRIPT" ? [node] : [...node.querySelectorAll("script")]) : [];
+      const live = document.importNode(node, true);
+      const liveScripts = live.nodeType === 1 ? (live.tagName === "SCRIPT" ? [live] : [...live.querySelectorAll("script")]) : [];
+      liveScripts.forEach((s) => s.remove());
+      if (!(live.nodeType === 1 && live.tagName === "SCRIPT")) document.body.append(live);
+      for (const s of scripts) {
+        const run = document.createElement("script");
+        run.textContent = s.textContent;
+        document.body.append(run);
+      }
+    }
+    const report = () => post({ type: "demo-size", height: Math.ceil(document.documentElement.scrollHeight) });
+    new ResizeObserver(report).observe(document.body);
+    report();
+  });
+  post({ type: "demo-ready" });
+})();
+</script>
+</head>
+<body></body>
+</html>
