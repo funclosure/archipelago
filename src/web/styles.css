@@ -360,7 +360,14 @@ button:focus-visible, textarea:focus-visible, input:focus-visible { outline: 2px
 .plot .legend .item { display: inline-flex; align-items: center; gap: 6px; }
 .demo { margin: 6px 0 8px; padding: 8px; background: var(--water); border: 1px solid var(--line); border-radius: 8px; }
 .demo .bar { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
-.demo .cap { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; margin-right: auto; }
+.demo > .bar > .cap { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; margin-right: auto; padding: 0; background: none; border: 0; font-family: inherit; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+.demo > .bar > .cap::before { content: ""; width: 6px; height: 6px; border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; transform: rotate(45deg) translate(-2px, -2px); transition: transform .15s; }
+.demo > .bar > .cap:hover { color: var(--text); }
+.demo > .bar > .cap:disabled { cursor: default; color: var(--muted); }
+.demo > .bar > .cap:disabled::before { display: none; }
+.demo.folded > .bar > .cap::before { transform: rotate(-45deg); }
+.demo.folded > :not(.bar) { display: none; }
+.demo.folded .bar { margin-bottom: 0; }
 .demo .bar .btn { padding: 3px 10px; font-size: 11px; }
 .demo iframe { display: block; width: 100%; border: 0; border-radius: 6px; background: transparent; }
 .demo .error { margin-bottom: 6px; }
