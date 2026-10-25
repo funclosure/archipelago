@@ -19,6 +19,7 @@ import m0015 from "./0015_landmark_terms.sql" with { type: "text" };
 import m0016 from "./0016_message_model.sql" with { type: "text" };
 import m0017 from "./0017_loose_ends.sql" with { type: "text" };
 import m0018 from "./0018_pointers.sql" with { type: "text" };
+import m0019 from "./0019_board_demo_pins.sql" with { type: "text" };
 
 export const MIGRATIONS: readonly { version: string; sql: string }[] = [
   { version: "0001_initial", sql: m0001 },
@@ -39,4 +40,5 @@ export const MIGRATIONS: readonly { version: string; sql: string }[] = [
   { version: "0016_message_model", sql: m0016 },
   { version: "0017_loose_ends", sql: m0017 },
   { version: "0018_pointers", sql: m0018 },
+  { version: "0019_board_demo_pins", sql: m0019 },
 ];

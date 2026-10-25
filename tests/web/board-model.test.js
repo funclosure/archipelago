@@ -1,5 +1,5 @@
 import { test, expect } from "bun:test";
-import { startAdd, startEdit, canSave, writeOf, moveCard, keepCursor, authorLabel, hintCard } from "../../src/web/board-model.js";
+import { startAdd, startEdit, canSave, writeOf, moveCard, keepCursor, authorLabel, bylineOf, hintCard } from "../../src/web/board-model.js";
 
 test("startAdd and startEdit build editors without a title; lang lives only on code cards", () => {
   expect(startAdd("note")).toEqual({ id: null, kind: "note", body: "", lang: null });
@@ -56,4 +56,10 @@ test("hintCard names the newest card a persona pinned, never the reader's own, a
   expect(hintCard([judge, you], false)).toBe(judge);
   expect(hintCard([judge, mentor, you], false)).toBe(mentor);
   expect(hintCard([judge], true)).toBeNull();
+});
+
+test("bylineOf: the author, or you and whose reply a pinned card came from", () => {
+  expect(bylineOf({ author: "judge", forkedFrom: null })).toBe("the Keeper");
+  expect(bylineOf({ author: "you", forkedFrom: "mentor" })).toBe("you · from the mentor");
+  expect(bylineOf({ author: "you" })).toBe("you");
 });

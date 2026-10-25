@@ -7,6 +7,8 @@ import { plotElement } from "./plot.js";
 import { PLOT_LANGS } from "./plot-model.js";
 import { demoElement } from "./demo.js";
 import { DEMO_LANG } from "./demo-model.js";
+import { pinButton } from "./pin.js";
+import { resolveLang } from "./code-model.js";
 import { t } from "./i18n.js";
 
 const nodeCache = new Map(); // diagram source → parsed SVG node, cloned on repeat appends
@@ -69,12 +71,15 @@ function sourceBlock(text) {
 }
 
 /** A closed mermaid fence: rendered once per source and cached, with the source as the fallback. `cache: false` for a live preview. */
-export function diagramElement(source, { cache = true } = {}) {
+export function diagramElement(source, { cache = true, pin = null } = {}) {
   const box = document.createElement("div");
   box.className = "diagram";
   const cap = document.createElement("div");
   cap.className = "cap";
-  cap.textContent = t("markdown.diagram");
+  const label = document.createElement("span");
+  label.textContent = t("markdown.diagram");
+  cap.append(label);
+  if (pin) cap.append(pinButton(pin, { kind: "diagram", body: source }));
   box.append(cap);
   const holder = document.createElement("div");
   box.append(holder);
@@ -188,9 +193,10 @@ function appendLead(p, raw, onQuestion, terms) {
 /**
  * The rendered blocks of a markdown string, as a fragment ready to append. `onQuestion(text)` makes question
  * sentences clickable; `lead` marks each paragraph's first sentence so the line of thought can be skimmed; `terms`
- * (from `landmarkTerms`) marks the island's landmark words in prose, never in code.
+ * (from `landmarkTerms`) marks the island's landmark words in prose, never in code. `pin` (from card.js, for a persona's
+ * reply) puts "pin to board" on each closed diagram, code, and demo fence.
  */
-export function renderMarkdown(text, { onQuestion = null, lead = false, terms = null } = {}) {
+export function renderMarkdown(text, { onQuestion = null, lead = false, terms = null, pin = null } = {}) {
   const frag = document.createDocumentFragment();
   for (const b of mdBlocks(text)) {
     if (b.type === "p") {
@@ -228,7 +234,7 @@ export function renderMarkdown(text, { onQuestion = null, lead = false, terms = 
       }
       frag.append(list);
     } else if (b.type === "code" && b.lang === "mermaid" && b.closed) {
-      frag.append(diagramElement(b.text));
+      frag.append(diagramElement(b.text, { pin }));
     } else if (b.type === "code" && b.lang === "mermaid") {
       frag.append(sourceBlock(t("markdown.drawingDiagram")));
     } else if (b.type === "code" && PLOT_LANGS.has(b.lang) && b.closed) {
@@ -236,11 +242,11 @@ export function renderMarkdown(text, { onQuestion = null, lead = false, terms = 
     } else if (b.type === "code" && PLOT_LANGS.has(b.lang)) {
       frag.append(sourceBlock(t("markdown.drawingPlot")));
     } else if (b.type === "code" && b.lang === DEMO_LANG && b.closed) {
-      frag.append(demoElement(b.text));
+      frag.append(demoElement(b.text, { pin }));
     } else if (b.type === "code" && b.lang === DEMO_LANG) {
       frag.append(sourceBlock(t("demo.building")));
     } else if (b.type === "code") {
-      frag.append(codeElement(b.lang, b.text, b.closed));
+      frag.append(codeElement(b.lang, b.text, b.closed, { pin: b.closed ? pin : null, lang: resolveLang(b.lang) }));
     }
   }
   return frag;

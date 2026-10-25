@@ -4,6 +4,7 @@
 // block is plain text under the same caption. A failed load warns and leaves the page plain.
 import { LANGS, contourTheme, resolveLang, labelOf, spansOf } from "./code-model.js";
 import { t } from "./i18n.js";
+import { pinButton } from "./pin.js";
 
 const CACHE_MAX = 64;
 const COPIED_MS = 1500;
@@ -98,7 +99,7 @@ function copyButton(text) {
 }
 
 /** A code fence as a block: caption (label, Copy), then pre > code with a span per token. */
-export function codeElement(tag, text, closed) {
+export function codeElement(tag, text, closed, { pin = null, lang = null } = {}) {
   const box = document.createElement("div");
   box.className = "codeblock";
   const cap = document.createElement("div");
@@ -106,7 +107,11 @@ export function codeElement(tag, text, closed) {
   const label = document.createElement("span");
   label.textContent = labelOf(tag);
   cap.append(label);
-  if (typeof navigator !== "undefined" && navigator.clipboard) cap.append(copyButton(text));
+  const acts = document.createElement("span");
+  acts.className = "acts";
+  if (pin) acts.append(pinButton(pin, { kind: "code", body: text, lang }));
+  if (typeof navigator !== "undefined" && navigator.clipboard) acts.append(copyButton(text));
+  cap.append(acts);
   box.append(cap);
   const pre = document.createElement("pre");
   const code = document.createElement("code");

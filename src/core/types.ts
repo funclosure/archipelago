@@ -138,7 +138,7 @@ export type Pointer = {
   createdAt: string;
 };
 
-export const boardKinds = ["diagram", "note", "code"] as const;
+export const boardKinds = ["diagram", "note", "code", "demo"] as const;
 export type BoardKind = (typeof boardKinds)[number];
 
 /** The code tags the page can colour (mirrored by LANGS in src/web/code-model.js; keep the two lists identical). */
@@ -155,6 +155,8 @@ export type BoardCard = {
   body: string;
   lang: string | null;
   author: MessageRole;
+  /** The persona whose reply the reader pinned this card from; null for a card written on the board. */
+  forkedFrom: "judge" | "mentor" | null;
   createdAt: string;
   updatedAt: string;
 };

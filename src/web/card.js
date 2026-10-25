@@ -7,6 +7,7 @@ import { t } from "./i18n.js";
 import { thinkingLine } from "./progress-model.js";
 import { thinkingEl } from "./thinking.js";
 import { renderMarkdown } from "./markdown.js";
+import { pinFromReply, isPinned } from "./board.js";
 import { landmarkTerms } from "./term-model.js";
 import { modelEl, refreshJudgeModel } from "./model-label.js";
 import { loadHighlighter } from "./code.js";
@@ -664,6 +665,11 @@ async function sailTo(pointer) {
   await select(pointer.island.slug);
 }
 
+/** What a persona reply's fences pin with: the reader's card, marked as pinned from this persona's reply. */
+function pinFor(role) {
+  return { add: (card) => pinFromReply({ ...card, from: role }), has: isPinned };
+}
+
 function itemEl(item, reefPending) {
   if (item.kind === "landmark") return el("div", "lit-line", `◆ ${item.names.join(" · ")}`);
   if (item.kind === "explored") return el("div", "explored-line", `◇ ${item.names.join(" · ")}`);
@@ -674,7 +680,7 @@ function itemEl(item, reefPending) {
   if (item.kind === "reef_proposal") return reefEl(item);
   const m = el("div", `msg ${item.role}`);
   const persona = item.role === "judge" || item.role === "mentor";
-  m.append(renderMarkdown(item.text, persona ? { onQuestion: quoteIntoAnswer, lead: true, terms } : {}));
+  m.append(renderMarkdown(item.text, persona ? { onQuestion: quoteIntoAnswer, lead: true, terms, pin: pinFor(item.role) } : {}));
   const ask = persona ? askFor(thread.asks, item.id) : null;
   if (ask) m.append(choicesEl(ask, reefPending));
   if (persona) for (const p of thread.pointers.filter((x) => x.messageId === item.id)) m.append(sailEl(p));

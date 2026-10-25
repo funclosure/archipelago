@@ -5,6 +5,7 @@
 // makes a new frame, so a demo starts over after each turn.
 import { t } from "./i18n.js";
 import { codeElement } from "./code.js";
+import { pinButton } from "./pin.js";
 import { DEMO_MAX, DEMO_TOKENS, DEMO_MIN_H, demoHeight, logLine } from "./demo-model.js";
 
 /** Every demo made, so one listener routes each frame's messages; a frame gone from the page is dropped. */
@@ -26,7 +27,7 @@ function tokens() {
 }
 
 /** A closed demo fence. Too long a body shows as its source with the reason. */
-export function demoElement(source) {
+export function demoElement(source, { pin = null } = {}) {
   const box = document.createElement("div");
   box.className = "demo";
   const bar = document.createElement("div");
@@ -43,7 +44,7 @@ export function demoElement(source) {
   showCode.className = "btn ghost";
   showCode.textContent = t("demo.code");
   showCode.setAttribute("aria-expanded", "false");
-  bar.append(cap, reset, showCode);
+  bar.append(cap, ...(pin ? [pinButton(pin, { kind: "demo", body: source })] : []), reset, showCode);
 
   const err = document.createElement("div");
   err.className = "error";

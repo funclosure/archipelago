@@ -2,19 +2,19 @@ import type { Database } from "../sql.ts";
 import { NotFoundError } from "../errors.ts";
 import type { BoardCard, BoardKind, MessageRole } from "../types.ts";
 
-const COLS = "id, domain_id as domainId, island_id as islandId, kind, title, body, lang, author, created_at as createdAt, updated_at as updatedAt";
+const COLS = "id, domain_id as domainId, island_id as islandId, kind, title, body, lang, author, forked_from as forkedFrom, created_at as createdAt, updated_at as updatedAt";
 const NOW = "strftime('%Y-%m-%dT%H:%M:%fZ','now')";
 
-export type CardInsert = { domainId: number; islandId: number; kind: BoardKind; title: string; body: string; lang?: string | null; author: MessageRole };
+export type CardInsert = { domainId: number; islandId: number; kind: BoardKind; title: string; body: string; lang?: string | null; author: MessageRole; forkedFrom?: "judge" | "mentor" | null };
 export type CardPatch = { title?: string; body?: string; lang?: string | null };
 
 export function addCard(db: Database, input: CardInsert): BoardCard {
   return db
     .query<BoardCard, Record<string, string | number | null>>(
-      `insert into board_cards (domain_id, island_id, kind, title, body, lang, author)
-       values ($domainId, $islandId, $kind, $title, $body, $lang, $author) returning ${COLS}`,
+      `insert into board_cards (domain_id, island_id, kind, title, body, lang, author, forked_from)
+       values ($domainId, $islandId, $kind, $title, $body, $lang, $author, $forkedFrom) returning ${COLS}`,
     )
-    .get({ $domainId: input.domainId, $islandId: input.islandId, $kind: input.kind, $title: input.title, $body: input.body, $lang: input.lang ?? null, $author: input.author })!;
+    .get({ $domainId: input.domainId, $islandId: input.islandId, $kind: input.kind, $title: input.title, $body: input.body, $lang: input.lang ?? null, $author: input.author, $forkedFrom: input.forkedFrom ?? null })!;
 }
 
 export function getCard(db: Database, id: number): BoardCard | null {

@@ -13,7 +13,7 @@ const DESCRIPTIONS: Record<ToolName, string> = {
   set_landmarks: "Name this island's 4–6 landmarks (key concepts) once, when the context says it has none. Slugs are lowercase-kebab; names are short. terms: 2–5 words a reply uses for each landmark, in the reader's language plus the English term where the field writes it in English; the page marks them in the conversation.",
   unlock_landmark: "Light one landmark the reader's latest answer covered: they explained or applied it, not merely named it. Evidence is a verbatim quote from that answer.",
   ask_reader: "Ask the reader to choose: a question and 2–4 short options, one of them what they would say if they already understood. The options appear under your reply; end the reply with the question and stop.",
-  board_write: "Pin, update, or remove a card on this island's board (see the board section of your protocol). op add: kind (diagram | note | code), body (mermaid source, markdown, or code), lang for code, and an optional one-line title. op update: id plus the fields to change. op remove: id. You may only update or remove cards you wrote.",
+  board_write: "Pin, update, or remove a card on this island's board (see the board section of your protocol). op add: kind (diagram | note | code | demo), body (mermaid source, markdown, code, or a demo's HTML), lang for code, and an optional one-line title. op update: id plus the fields to change. op remove: id. You may only update or remove cards you wrote.",
   mark_explored: "Mark one landmark explored: the reader engaged it in their own words (asked about it, restated it, or tried it on an example). Evidence is a verbatim quote of at least two words and twelve characters (or six Chinese, Japanese, or Korean characters) from the reader's latest message; anything else is refused. Marking it again changes nothing.",
   loose_end:
     "Note or close a loose end on this island: something the reader found confusing (confused), asked and left open (asked), or means to come back to (later). Both personas read the open ones. op open: kind, landmark (its slug, or null when it is about the island as a whole), note (one line in the reader's language: what went wrong and, when you explained it, what you explained), evidence. op close: id, evidence, when the reader's latest message shows it cleared up. Evidence is a verbatim quote of at least two words and twelve characters (or six Chinese, Japanese, or Korean characters) from the reader's latest message in this thread; anything else is refused.",
@@ -62,7 +62,7 @@ export const TOOL_SHAPES: Record<ToolName, z.ZodRawShape> = {
   board_write: {
     op: z.enum(["add", "update", "remove"]),
     id: z.number().int().positive().optional(),
-    kind: z.enum(["diagram", "note", "code"]).optional(),
+    kind: z.enum(["diagram", "note", "code", "demo"]).optional(),
     title: z.string().optional(),
     body: z.string().optional(),
     lang: z.string().nullable().optional(),

@@ -225,7 +225,8 @@ const cardTitle = z
 const cardBody = z.string().refine((b) => b.trim().length > 0, { message: "a body cannot be empty" });
 const cardLang = z.enum(codeLangs).nullable().optional();
 
-const boardAdd = z.object({ op: z.literal("add"), kind: z.enum(boardKinds), title: cardTitle.optional(), body: cardBody, lang: cardLang });
+// `from`: the reader pinned this card from that persona's reply (only the reader's writes carry it).
+const boardAdd = z.object({ op: z.literal("add"), kind: z.enum(boardKinds), title: cardTitle.optional(), body: cardBody, lang: cardLang, from: z.enum(["judge", "mentor"]).optional() });
 const boardUpdate = z.object({ op: z.literal("update"), id: cardId, title: cardTitle.optional(), body: cardBody.optional(), lang: cardLang });
 const boardRemove = z.object({ op: z.literal("remove"), id: cardId });
 const needsAField = (v: { op: string; title?: string; body?: string; lang?: string | null }) =>

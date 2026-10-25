@@ -255,7 +255,8 @@ export function renderBoard(ctx: JudgeContext, self: MessageRole, emptyHint: str
   const lastReply = ctx.thread.findLast((m) => m.role === self && m.kind === "text") ?? null;
   const lines = [``, `Board (${ctx.board.length} ${ctx.board.length === 1 ? "card" : "cards"}):`];
   for (const c of ctx.board) {
-    const marks = [AUTHOR_MARK[self][c.author]];
+    // A card the reader pinned from a reply holds that persona's words, not the reader's.
+    const marks = [c.forkedFrom ? `pinned by the reader from a ${AUTHOR_MARK[self][c.forkedFrom]} reply` : AUTHOR_MARK[self][c.author]];
     if (!lastReply || c.createdAt > lastReply.createdAt) marks.push("new since your last reply");
     else if (c.updatedAt > lastReply.createdAt) marks.push("edited since your last reply");
     lines.push(`- #${c.id} ${c.kind}${c.lang ? ` (${c.lang})` : ""}${c.title ? ` "${indent(c.title)}"` : ""} [${marks.join(", ")}]:`, `  ${indent(c.body)}`);

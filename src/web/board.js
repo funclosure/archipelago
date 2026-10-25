@@ -5,7 +5,8 @@ import { renderMarkdown, diagramElement } from "./markdown.js";
 import { codeElement, fillCode } from "./code.js";
 import { LANGS } from "./code-model.js";
 import { registerRegion, setRegion, region } from "./keys.js";
-import { startAdd, startEdit, canSave, writeOf, moveCard, keepCursor, authorLabel, kindLabel, hintCard, KIND_KEYS, PLAIN } from "./board-model.js";
+import { startAdd, startEdit, canSave, writeOf, moveCard, keepCursor, authorLabel, bylineOf, kindLabel, hintCard, KIND_KEYS, PLAIN } from "./board-model.js";
+import { demoElement } from "./demo.js";
 import { t } from "./i18n.js";
 
 const PREVIEW_MS = 500;
@@ -201,6 +202,21 @@ async function saveEditor() {
   return true;
 }
 
+/** Pins a fence from a persona's reply as the reader's card, then refetches. For card.js's pin buttons. */
+export async function pinFromReply({ kind, body, lang = null, from }) {
+  const slug = state.slug;
+  if (!slug) throw new Error(t("board.noIsland"));
+  const write = { op: "add", kind, body, from };
+  if (kind === "code") write.lang = lang;
+  await post(write);
+  if (state.slug === slug) await load(slug);
+}
+
+/** Whether a card with exactly this body is already on the selected island's board. */
+export function isPinned(body) {
+  return state.cards.some((c) => c.body === body);
+}
+
 async function remove(id) {
   try {
     await post({ op: "remove", id });
@@ -229,6 +245,7 @@ function scrollCursorIntoView() {
 function bodyEl(kind, body, lang, { cache = true } = {}) {
   if (kind === "diagram") return diagramElement(body, { cache });
   if (kind === "code") return codeElement(lang ?? "text", body, true);
+  if (kind === "demo") return demoElement(body);
   const div = el("div", "note-body");
   div.append(renderMarkdown(body));
   return div;
@@ -240,7 +257,7 @@ function cardEl(card) {
   const cap = el("div", "cap");
   cap.append(el("span", "kind", kindLabel(card.kind) + (card.lang ? ` · ${card.lang}` : "")));
   if (card.title) cap.append(el("span", "title", card.title)); // the Keeper may name a card; the reader never has to
-  cap.append(el("span", `who ${card.author}`, authorLabel(card.author)));
+  cap.append(el("span", `who ${card.forkedFrom ?? card.author}`, bylineOf(card)));
   const acts = el("span", "acts");
   acts.append(button(t("board.edit"), () => edit(card)), button(t("board.remove"), () => void remove(card.id)));
   cap.append(acts);
@@ -256,6 +273,7 @@ const PLACEHOLDER = {
   diagram: t("board.placeholderDiagram"),
   note: t("board.placeholderNote"),
   code: t("board.placeholderCode"),
+  demo: t("board.placeholderDemo"),
 };
 const GROW_MIN = 160;   // px, the writing surface never shrinks below this
 const GROW_MAX = 0.6;   // of the viewport, then it scrolls
