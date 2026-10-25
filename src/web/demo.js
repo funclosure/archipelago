@@ -106,7 +106,7 @@ export function demoElement(source) {
     pre.hidden = !pre.hidden;
     showCode.setAttribute("aria-expanded", String(!pre.hidden));
   });
-  box.append(bar, err, frame, out, pre);
+  box.append(bar, pre, err, frame, out);
   demos.add(demo);
   start();
   return box;

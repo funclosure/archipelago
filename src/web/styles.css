@@ -366,7 +366,7 @@ button:focus-visible, textarea:focus-visible, input:focus-visible { outline: 2px
 .demo .error { margin-bottom: 6px; }
 .demo .out { margin-top: 6px; max-height: 120px; overflow-y: auto; font-family: var(--font-mono); font-size: 12px; color: var(--text-2); border-top: 1px solid var(--line); padding-top: 6px; }
 .demo .out .line.warn, .demo .out .line.error { color: var(--reef); }
-.demo pre { margin: 6px 0 0; }
+.demo pre { margin: 0 0 6px; max-height: 320px; overflow: auto; }
 .plot .legend .swatch { width: 14px; height: 2px; border-radius: 1px; flex: none; }
 
 /* ---- code blocks ---- */
