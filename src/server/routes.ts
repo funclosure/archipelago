@@ -1,6 +1,7 @@
 import { normalize, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { errorResponse, handleApiRequest, json, type ApiContext } from "./api-routes.ts";
+import { DEMO_FRAME_CSP, DEMO_FRAME_PATH } from "./demo-frame.ts";
 import { vendorBundle, type VendorName } from "./vendor.ts";
 
 export { JUDGE_TURN_TIMEOUT_MS } from "./api-routes.ts";
@@ -53,5 +54,7 @@ async function serveStatic(pathname: string, staticRoot: string): Promise<Respon
   if (!filePath.startsWith(rootPath + sep)) return notFound();
   const file = Bun.file(filePath);
   if (!(await file.exists())) return notFound();
+  // The demo frame runs a persona's code: its own CSP keeps it off the network here too (src/server/demo-frame.ts).
+  if (pathname === DEMO_FRAME_PATH) return new Response(file, { headers: { "Cache-Control": "no-cache", "Content-Security-Policy": DEMO_FRAME_CSP } });
   return new Response(file, { headers: { "Cache-Control": "no-cache" } });
 }

@@ -358,6 +358,15 @@ button:focus-visible, textarea:focus-visible, input:focus-visible { outline: 2px
 .plot .error { margin-bottom: 6px; }
 .plot .legend { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 14px; margin-top: 6px; font-size: 12px; color: var(--muted); }
 .plot .legend .item { display: inline-flex; align-items: center; gap: 6px; }
+.demo { margin: 6px 0 8px; padding: 8px; background: var(--water); border: 1px solid var(--line); border-radius: 8px; }
+.demo .bar { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.demo .cap { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; margin-right: auto; }
+.demo .bar .btn { padding: 3px 10px; font-size: 11px; }
+.demo iframe { display: block; width: 100%; border: 0; border-radius: 6px; background: transparent; }
+.demo .error { margin-bottom: 6px; }
+.demo .out { margin-top: 6px; max-height: 120px; overflow-y: auto; font-family: var(--font-mono); font-size: 12px; color: var(--text-2); border-top: 1px solid var(--line); padding-top: 6px; }
+.demo .out .line.warn, .demo .out .line.error { color: var(--reef); }
+.demo pre { margin: 6px 0 0; }
 .plot .legend .swatch { width: 14px; height: 2px; border-radius: 1px; flex: none; }
 
 /* ---- code blocks ---- */

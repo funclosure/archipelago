@@ -5,6 +5,7 @@ import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync } from "node
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { buildWeb, headersFile, hostedIndex } from "../../scripts/build-web.ts";
+import { DEMO_FRAME_CSP, DEMO_FRAME_PATH } from "../../src/server/demo-frame.ts";
 
 let out: string;
 
@@ -63,4 +64,13 @@ test("_headers allows the page's inline scripts by hash, and connections only to
   expect(csp.match(/'sha256-/g)!.length).toBe(inline.length);
   // a changed inline script changes its hash: the build can never ship a CSP that blocks its own page
   expect(headersFile(html.replace("ARCHIPELAGO_HOSTED = true", "ARCHIPELAGO_HOSTED = 1"))).not.toBe(headers);
+});
+
+test("the demo frame trades the page's CSP for its own", () => {
+  const headers = readFileSync(join(out, "_headers"), "utf8");
+  // Pages redirects the .html path to the bare one, so both carry the frame's CSP
+  for (const path of [DEMO_FRAME_PATH, "/demo-frame"]) {
+    expect(headers).toContain(`\n${path}\n  ! Content-Security-Policy\n  Content-Security-Policy: ${DEMO_FRAME_CSP}\n`);
+  }
+  expect(readFileSync(join(out, "demo-frame.html"), "utf8")).toContain("demo-run");
 });
