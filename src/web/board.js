@@ -536,8 +536,10 @@ function setVisible(show) {
 
 function headEl(island) {
   const head = el("div", "head");
-  head.append(el("span", "name", island.name), el("span", "count", t("board.cards", { n: state.cards.length })), el("span", "spacer"));
-  head.append(...["diagram", "note", "code"].map((kind) => button(t("board.addKind", { kind: kindLabel(kind) }), () => add(kind))), close());
+  // The adds are one group: when the title leaves no room, they wrap to a second row together, and the × stays top right.
+  const adds = el("span", "adds");
+  adds.append(...["diagram", "note", "code"].map((kind) => button(t("board.addKind", { kind: kindLabel(kind) }), () => add(kind))));
+  head.append(el("span", "name", island.name), el("span", "count", t("board.cards", { n: state.cards.length })), adds, close());
   return head;
 }
 
