@@ -68,3 +68,19 @@ test("the route attaches the turn's pointer to the reply, with the reader's ques
     server.stop(true);
   }
 });
+
+test("an opening's context ends with the page's language; once the reader writes, it does not", async () => {
+  const { setLearnerLanguage } = await import("../../src/core/repositories/learnerRepository.ts");
+  const { addMessage } = await import("../../src/core/repositories/messageRepository.ts");
+  const db = openDatabase(dbPath);
+  setLearnerLanguage(db, "zh-TW");
+  db.close();
+  const last = (text: string) => text.trimEnd().split("\n").at(-1);
+  expect(last(renderMentorContext(islandContext({ ...deps(), mode: "mentor" })))).toBe(
+    "No reader message yet: write this opening in Traditional Chinese (zh-TW, as written in Taiwan), the language of the reader's page.",
+  );
+  const db2 = openDatabase(dbPath);
+  addMessage(db2, { domainId: 1, islandId: caching, role: "you", kind: "text", body: "hello", mode: "judge" });
+  db2.close();
+  expect(renderJudgeContext(islandContext(deps()))).not.toContain("No reader message yet");
+});

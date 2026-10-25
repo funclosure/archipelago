@@ -178,7 +178,7 @@ export const SCRIPT: Turn[] = [
     message: "順便問一下，建資料庫的複合索引時，欄位順序要怎麼決定比較好？",
   },
   {
-    id: "judge: probes the loose end", mode: "judge", domain: DOMAIN, island: "caching", lang: "zh", about: ["失效", "invalidation", "TTL", "舊", "stale"],
+    id: "judge: probes the loose end", mode: "judge", domain: DOMAIN, island: "caching", lang: "zh", about: ["失效", "invalidation", "TTL", "舊", "stale", "過期", "修改", "更新", "異動", "一致"],
     message: "我想再多練習一下快取，再給我一題吧。",
   },
   {

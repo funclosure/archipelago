@@ -166,6 +166,16 @@ export function renderElsewhere(ctx: JudgeContext): string[] {
   return [``, `Islands elsewhere in this domain (point_to takes the slug):`, ...[...scales].map(([key, names]) => `- ${key}: ${names.join(", ")}`)];
 }
 
+/**
+ * The last line of an opening's context: the page's language once more, beside the instruction to open. The line
+ * near the top is easy to lose under the English around it, and an opening has no reader message to follow.
+ */
+export function renderOpeningLanguage(ctx: JudgeContext): string[] {
+  const language = ctx.domain.language;
+  if (!language || ctx.thread.some((m) => m.role === "you" && m.kind === "text")) return [];
+  return [``, `No reader message yet: write this opening in ${LANGUAGE_NAMES[language] ?? language}, the language of the reader's page.`];
+}
+
 /** How the context names each page language. */
 const LANGUAGE_NAMES: Record<string, string> = { en: "English", "zh-TW": "Traditional Chinese (zh-TW, as written in Taiwan)" };
 
