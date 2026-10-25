@@ -91,7 +91,8 @@ export function demoElement(source, { pin = null } = {}) {
         const line = logLine(data);
         if (!line) return;
         const row = document.createElement("div");
-        row.className = `line ${line.level}`;
+        row.className = "line";
+        row.dataset.level = line.level; // a class "log" would pick up the pane's .log rule
         row.textContent = line.text;
         out.append(row);
         while (out.childElementCount > 50) out.firstChild.remove();
