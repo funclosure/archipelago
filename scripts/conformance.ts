@@ -1,7 +1,7 @@
 // `bun run conformance [--judge api|openai|stub] [--models a,b] [--json file] [--verbose]`: a fixed script of
 // persona turns, run on a throwaway database through the real route (`handleApiRequest`), against whichever model the
 // environment names (as `archipelago serve --judge …` reads it), then checked against the protocols' hard rules. It
-// spends real money on a real model: a dozen turns per model. A FAIL is a rule the page depends on (a tool call
+// spends real money on a real model: thirteen turns per model. A FAIL is a rule the page depends on (a tool call
 // that went wrong, a slug in the reply, TeX, the wrong language, two questions); a WARN is judgement the protocol
 // asks for but a good model may skip on a given turn (proposing the reef). The exit code is 1 when anything failed.
 import { mkdtempSync, writeFileSync } from "node:fs";
@@ -37,6 +37,8 @@ export type Turn = {
   questions?: number;
   /** The island must have a verdict or a pending reef after this turn (the fourth answer decides). */
   decided?: boolean;
+  /** The island a point_to must name (FAIL otherwise, when one was called or required). */
+  point?: string;
   /** Words of which the reply should carry at least one (WARN otherwise): the probe went where an open loose end is. */
   about?: string[];
 };
@@ -94,6 +96,8 @@ export type Observed = {
   /** Tool calls the toolbox refused (a JSON error result): the model sent something the rules turn away. */
   refused: string[];
   decided: boolean;
+  /** Islands this turn's pointers name. */
+  pointed?: string[];
 };
 
 export function checkTurn(turn: Turn, seen: Observed): Check[] {
@@ -124,6 +128,9 @@ export function checkTurn(turn: Turn, seen: Observed): Check[] {
   if (turn.lang === "zh") {
     const simp = simplified(seen.reply);
     if (simp.length) out.push({ level: "fail", say: `Simplified characters: ${simp.join("")}` });
+  }
+  if (turn.point && (seen.tools.includes("point_to") || turn.require?.includes("point_to")) && !(seen.pointed ?? []).includes(turn.point)) {
+    out.push({ level: "fail", say: `pointed at ${(seen.pointed ?? []).join(", ") || "nothing"}, not ${turn.point}` });
   }
   if (turn.about && !turn.about.some((w) => prose(seen.reply).toLowerCase().includes(w.toLowerCase()))) out.push({ level: "warn", say: `did not touch ${turn.about.join(" / ")}` });
   if (turn.decided && !seen.decided) out.push({ level: "fail", say: "no verdict or reef by the fourth answer" });
@@ -167,7 +174,11 @@ export const SCRIPT: Turn[] = [
     message: "快取失效這塊我一直搞不太懂。我以為只要把 TTL 設得夠短，讀到的資料就不可能是舊的，這樣理解對嗎？",
   },
   {
-    id: "judge: probes the loose end", mode: "judge", domain: DOMAIN, island: "caching", lang: "zh", about: ["失效", "invalidation", "TTL", "舊", "stale"],
+    id: "mentor: a question for another island", mode: "mentor", domain: DOMAIN, island: "caching", lang: "zh", require: ["point_to"], point: "indexes", questions: 2,
+    message: "順便問一下，建資料庫的複合索引時，欄位順序要怎麼決定比較好？",
+  },
+  {
+    id: "judge: probes the loose end", mode: "judge", domain: DOMAIN, island: "caching", lang: "zh", about: ["失效", "invalidation", "TTL", "舊", "stale", "過期", "修改", "更新", "異動", "一致"],
     message: "我想再多練習一下快取，再給我一題吧。",
   },
   {
@@ -264,9 +275,11 @@ async function runTurn(dbPath: string, ctx: Parameters<typeof handleApiRequest>[
       if (l.evidence && l.mid > before) quotes.push({ what: `lit ${l.slug}`, verbatim: (said.get(l.mid) ?? "").includes(l.evidence) });
       if (l.xev && l.xmid > before) quotes.push({ what: `explored ${l.slug}`, verbatim: (said.get(l.xmid) ?? "").includes(l.xev) });
     }
+    const pointed = (db.query("select t.slug from pointers p join islands t on t.id = p.target_island_id where p.island_id = ? and p.message_id > ?").all(island.id, before) as Row[]).map((r) => r.slug as string);
+    const islandSlugs = (db.query("select i.slug from islands i join domains d on d.id = i.domain_id where d.slug = ?").all(turn.domain) as Row[]).map((r) => r.slug as string);
     const verdict = db.query("select 1 from verdicts where target_type = 'island' and target_id = ? limit 1").get(island.id);
     const reef = db.query("select 1 from messages where island_id = ? and kind = 'reef_proposal' limit 1").get(island.id);
-    return { seen: { reply, tools, error: failed, slugs: landmarks.map((l) => l.slug), quotes, refused, decided: Boolean(verdict || reef) }, ms };
+    return { seen: { reply, tools, error: failed, slugs: [...landmarks.map((l) => l.slug), ...islandSlugs], quotes, refused, decided: Boolean(verdict || reef), pointed }, ms };
   } finally {
     db.close();
   }

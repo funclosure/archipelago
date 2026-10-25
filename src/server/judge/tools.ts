@@ -15,6 +15,7 @@ import {
 import { addAsk, listAsks } from "../../core/repositories/askRepository.ts";
 import { addCard, removeCard, requireCard, updateCard } from "../../core/repositories/boardRepository.ts";
 import { addLooseEnd, closeLooseEnd, listLooseEnds } from "../../core/repositories/looseEndRepository.ts";
+import { addPointer } from "../../core/repositories/pointerRepository.ts";
 import { resolveVerdictTarget } from "../../core/targets.ts";
 import {
   askInputSchema,
@@ -23,6 +24,7 @@ import {
   landmarksInputSchema,
   LOOSE_OPEN_MAX,
   looseEndInputSchema,
+  pointToInputSchema,
   reefProposalInputSchema,
   unlockInputSchema,
 } from "../../core/validators.ts";
@@ -274,6 +276,23 @@ export function looseEnd(deps: ToolDeps, input: unknown, author: "judge" | "ment
   );
 }
 
+/**
+ * Points the reader at another island of the domain: a "sail to" link the route attaches to this turn's reply, carrying
+ * the reader's latest message in this thread as the question to take there. Writes nothing on either island.
+ */
+export function pointTo(deps: ToolDeps, input: unknown, mode: "judge" | "mentor"): { island: string; name: string; note: string } {
+  const parsed = pointToInputSchema.parse(input);
+  return withDb(deps.dbPath, (db) => {
+    const domain = requireDomain(db, deps.domain);
+    const island = requireIsland(db, domain.id, deps.island);
+    if (parsed.island === island.slug) throw new ArchipelagoError("that is this island; point_to names another one");
+    const target = requireIsland(db, domain.id, parsed.island);
+    const question = listMessages(db, island.id, mode).findLast((m) => m.role === "you" && m.kind === "text")?.body ?? null;
+    addPointer(db, { domainId: domain.id, islandId: island.id, targetIslandId: target.id, why: parsed.why, question });
+    return { island: target.slug, name: target.name, note: "the link appears under your reply; the rest of your reply stays about this island" };
+  });
+}
+
 export type BoardWriteResult = { card: BoardCard } | { removed: number; title: string };
 
 /**
@@ -331,6 +350,7 @@ export function runTool(persona: Persona, deps: TurnDeps, name: string, input: u
       case "ask_reader": return toolResult(askReader(onIsland(deps), input));
       case "board_write": return toolResult(boardWrite(onIsland(deps), input, persona.id));
       case "mark_explored": return toolResult(markExplored(onIsland(deps), input));
+      case "point_to": return toolResult(pointTo(onIsland(deps), input, persona.id === "mentor" ? "mentor" : "judge"));
       case "loose_end": return toolResult(looseEnd(onIsland(deps), input, persona.id === "mentor" ? "mentor" : "judge"));
       case "chart_context": return toolResult(chartContext(deps));
       case "propose_sketch": return toolResult(proposeSketchTool(deps, input));

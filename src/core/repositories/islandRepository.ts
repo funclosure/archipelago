@@ -188,3 +188,13 @@ function assertNotDescendant(db: Database, island: Island, candidateParentId: nu
     current = current.parentId === null ? null : getIslandById(db, current.parentId);
   }
 }
+
+/** Every island in the domain with the name of the island it sits in (null at the top), top scale first, in map order. */
+export function listDomainIslands(db: Database, domainId: number): { slug: string; name: string; parent: string | null }[] {
+  return db
+    .query<{ slug: string; name: string; parent: string | null }, [number]>(
+      `select i.slug, i.name, p.name as parent from islands i left join islands p on p.id = i.parent_id
+       where i.domain_id = ? order by i.parent_id is not null, p.sort_order, p.id, i.sort_order, i.id`,
+    )
+    .all(domainId);
+}

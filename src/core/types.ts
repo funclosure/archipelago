@@ -127,6 +127,17 @@ export type Ask = {
   createdAt: string;
 };
 
+/** A persona's "sail to" another island, riding on the reply that carries it. `island` is the target as the page needs it. */
+export type Pointer = {
+  id: number;
+  islandId: number;
+  messageId: number | null;
+  island: { slug: string; name: string; scale: string | null };
+  why: string;
+  question: string | null;
+  createdAt: string;
+};
+
 export const boardKinds = ["diagram", "note", "code"] as const;
 export type BoardKind = (typeof boardKinds)[number];
 

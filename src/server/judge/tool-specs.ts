@@ -17,6 +17,8 @@ const DESCRIPTIONS: Record<ToolName, string> = {
   mark_explored: "Mark one landmark explored: the reader engaged it in their own words (asked about it, restated it, or tried it on an example). Evidence is a verbatim quote of at least two words and twelve characters (or six Chinese, Japanese, or Korean characters) from the reader's latest message; anything else is refused. Marking it again changes nothing.",
   loose_end:
     "Note or close a loose end on this island: something the reader found confusing (confused), asked and left open (asked), or means to come back to (later). Both personas read the open ones. op open: kind, landmark (its slug, or null when it is about the island as a whole), note (one line in the reader's language: what went wrong and, when you explained it, what you explained), evidence. op close: id, evidence, when the reader's latest message shows it cleared up. Evidence is a verbatim quote of at least two words and twelve characters (or six Chinese, Japanese, or Korean characters) from the reader's latest message in this thread; anything else is refused.",
+  point_to:
+    "Point the reader at another island of this domain when their words belong there more than here: a link to sail there appears under your reply and carries their latest message as the question to take along. island: its slug, from the islands elsewhere in your context (never this island). why: one line in the reader's language on what that island holds for them.",
   chart_context: "This scale: the islands and straits here, at island scale the island's landmarks, board, and two threads, every slug taken in the domain, how many islands the next sketch may add, the pending sketch, and your thread. Read fresh.",
   propose_sketch: "Propose a sketch at this scale: new islands (slug, name, one-line summary, 4–6 landmarks each, every landmark with 2–5 terms: the words a reply uses for it), straits between islands at this scale, an optional harbour, name or summary updates to islands already here, seas (a name on the water over the islands it groups; new seas only, each island in at most one), and, when the context says the domain's name is provisional, the domain's name (top scale only) with its ASCII kebab-case slug. It replaces any pending sketch. Nothing reaches the map until the reader approves it there.",
 };
@@ -74,6 +76,7 @@ export const TOOL_SHAPES: Record<ToolName, z.ZodRawShape> = {
     note: z.string().optional(),
     evidence: z.string(),
   },
+  point_to: { island: z.string(), why: z.string() },
   chart_context: {},
   propose_sketch: {
     islands: z

@@ -92,7 +92,7 @@ test("the first request carries the cached protocol, the context, the persona's 
   expect(system[0]!.cache_control).toEqual({ type: "ephemeral" });
   expect(system[1]!.text).toContain("Caching");
   expect(system[1]!.cache_control).toBeUndefined();
-  expect((first!.tools as { name: string }[]).map((t) => t.name)).toEqual(["island_context", "record_verdict", "propose_reef", "set_landmarks", "unlock_landmark", "ask_reader", "board_write", "loose_end"]);
+  expect((first!.tools as { name: string }[]).map((t) => t.name)).toEqual(["island_context", "record_verdict", "propose_reef", "set_landmarks", "unlock_landmark", "ask_reader", "board_write", "loose_end", "point_to"]);
   expect((first!.tools as { eager_input_streaming?: boolean }[]).every((t) => t.eager_input_streaming === true)).toBe(true);
   expect((first!.tools as { input_schema: Record<string, unknown> }[])[4]!.input_schema).toMatchObject({ type: "object", required: ["slug", "evidence"] });
   expect((first!.tools as { input_schema: Record<string, unknown> }[])[4]!.input_schema.$schema).toBeUndefined();
@@ -104,10 +104,10 @@ test("the first request carries the cached protocol, the context, the persona's 
   expect(first!.messages).toHaveLength(1);
 });
 
-test("the mentor gets its own six tools and MENTOR.md", async () => {
+test("the mentor gets its own seven tools and MENTOR.md", async () => {
   const { reply, requests } = await run([{ message: message("end_turn", []) }], { mode: "mentor" });
   await reply;
-  expect((requests[0]!.tools as { name: string }[]).map((t) => t.name)).toEqual(["island_context", "set_landmarks", "mark_explored", "ask_reader", "board_write", "loose_end"]);
+  expect((requests[0]!.tools as { name: string }[]).map((t) => t.name)).toEqual(["island_context", "set_landmarks", "mark_explored", "ask_reader", "board_write", "loose_end", "point_to"]);
   expect((requests[0]!.system as { text: string }[])[0]!.text).toContain("There are no verdict tools here");
 });
 

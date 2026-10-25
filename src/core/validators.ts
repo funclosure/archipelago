@@ -259,6 +259,12 @@ export const looseEndInputSchema = z.discriminatedUnion("op", [
 ]);
 export type LooseEndInput = z.infer<typeof looseEndInputSchema>;
 
+/** The point_to tool: another island in the domain, and one line on what is there for the reader. */
+export const pointToInputSchema = z.object({
+  island: slugSchema,
+  why: z.string().trim().min(1).max(240, "why is at most 240 characters").refine((t) => !/[\r\n\u2028\u2029]/.test(t), { message: "must be one line" }),
+});
+
 /** POST /api/loose-ends: the reader dismisses one. */
 export const looseEndDismissSchema = z.object({ domain: slugSchema, island: slugSchema, id: z.number().int().positive() });
 

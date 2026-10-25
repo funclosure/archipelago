@@ -1,6 +1,6 @@
 import type { Database } from "../../core/sql.ts";
 import { requireDomain } from "../../core/repositories/domainRepository.ts";
-import { getIslandById, islandPath, listIslands, requireIsland } from "../../core/repositories/islandRepository.ts";
+import { getIslandById, islandPath, listDomainIslands, listIslands, requireIsland } from "../../core/repositories/islandRepository.ts";
 import { listStraits } from "../../core/repositories/straitRepository.ts";
 import { latestVerdict, latestVerdicts, verdictHistory } from "../../core/repositories/verdictRepository.ts";
 import { listMessages, parseProposal } from "../../core/repositories/messageRepository.ts";
@@ -40,6 +40,8 @@ export type JudgeContext = {
   /** Asks attached to this thread's messages, plus any not attached yet. */
   asks: Ask[];
   board: BoardCard[];
+  /** Every other island in the domain, for point_to: its slug, name, and the island it sits in (null at the top). */
+  elsewhere: { slug: string; name: string; parent: string | null }[];
   /** The island's open loose ends, noted in either thread: both personas read them. */
   looseEnds: LooseEnd[];
   /** The judge's round: reader answers since this island was last charted in its thread (all of them if it never was). 0 for the mentor. */
@@ -91,6 +93,7 @@ export function buildJudgeContext(db: Database, domainSlug: string, islandSlug: 
     asks: listAsks(db, island.id).filter((a) => a.messageId === null || inThread.has(a.messageId)),
     board: listCards(db, island.id),
     looseEnds: listLooseEnds(db, island.id),
+    elsewhere: listDomainIslands(db, domain.id).filter((i) => i.slug !== island.slug),
     round: mode === "judge" ? roundOf(thread, latestVerdict(db, "island", island.id)?.createdAt ?? null) : 0,
     learner: mode === "mentor" ? { note: getLearner(db).note, ground: learnerGround(db), reefs: confirmedReefClaims(db) } : null,
   };
@@ -150,6 +153,27 @@ export function renderLooseEnds(ctx: JudgeContext, use: string): string[] {
       return `- #${e.id} ${e.kind} · ${where} · noted by ${who(e.author)}: ${indent(e.note)} — the reader: "${indent(e.evidence)}"`;
     }),
   ];
+}
+
+/** `Islands elsewhere`: what point_to may name, one line per scale ("top" first, then each island's islets). */
+export function renderElsewhere(ctx: JudgeContext): string[] {
+  if (ctx.elsewhere.length === 0) return [];
+  const scales = new Map<string, string[]>();
+  for (const i of ctx.elsewhere) {
+    const key = i.parent === null ? "Top" : `Inside ${i.parent}`;
+    scales.set(key, [...(scales.get(key) ?? []), `${i.name} (${i.slug})`]);
+  }
+  return [``, `Islands elsewhere in this domain (point_to takes the slug):`, ...[...scales].map(([key, names]) => `- ${key}: ${names.join(", ")}`)];
+}
+
+/**
+ * The last line of an opening's context: the page's language once more, beside the instruction to open. The line
+ * near the top is easy to lose under the English around it, and an opening has no reader message to follow.
+ */
+export function renderOpeningLanguage(ctx: JudgeContext): string[] {
+  const language = ctx.domain.language;
+  if (!language || ctx.thread.some((m) => m.role === "you" && m.kind === "text")) return [];
+  return [``, `No reader message yet: write this opening in ${LANGUAGE_NAMES[language] ?? language}, the language of the reader's page.`];
 }
 
 /** How the context names each page language. */
