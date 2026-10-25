@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title data-t="about.title">Archipelago: chart what you understand</title>
+<meta name="description" content="Chart what you understand about a subject as islands on a map. A cartographer sketches it, a Mentor teaches, a Keeper asks you to explain. In your browser or in Claude Code.">
+<meta property="og:title" content="Archipelago">
+<meta property="og:description" content="Chart what you understand about a subject, as islands on a map.">
+<meta property="og:image" content="https://archipelago-c24.pages.dev/about-map.jpg">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<script>try { var t = localStorage.getItem("theme"); if (t) document.documentElement.dataset.theme = t; var l = localStorage.getItem("lang"); document.documentElement.lang = l === "en" || l === "zh-TW" ? l : (navigator.languages || []).some(function (b) { return /^zh\b/i.test(b); }) ? "zh-TW" : "en"; } catch (e) {}</script>
+<link rel="stylesheet" href="/fonts/noto-sans-tc.css">
+<link rel="stylesheet" href="/styles.css">
+<link rel="stylesheet" href="/about.css">
+</head>
+<body class="landing">
+<!-- The project's landing page: what Archipelago is, and the three ways to use it (browser, Claude Code, source).
+     The English below is the page without script; about.js puts in the reader's language from strings/about.js. -->
+<header class="top">
+  <a class="mark" href="/about">Archipelago</a>
+  <nav>
+    <a href="#how" data-t="about.navHow">How it works</a>
+    <a href="#ways" data-t="about.navWays">Ways to use it</a>
+    <button type="button" class="lang" id="lang" data-t="about.otherLanguage">中文</button>
+    <a class="btn" href="/" data-t="about.navOpen">Open the map</a>
+  </nav>
+</header>
+
+<main>
+  <section class="hero">
+    <h1 data-t="about.heroTitle">Chart what you understand about a subject, as islands on a map.</h1>
+    <p class="lede" data-t="about.heroLede">Say what you want to learn and why. A cartographer sketches the subject as islands, each with a few landmarks that matter. Sail to one and talk: the Mentor teaches, the Keeper asks you to explain it and marks how solid your answers are. Open water is what you have not charted yet.</p>
+    <div class="actions">
+      <a class="btn" href="/" data-t="about.heroBrowser">Try it in your browser</a>
+      <a class="btn ghost" href="#claude-code" data-t="about.heroClaudeCode">Use it in Claude Code</a>
+    </div>
+    <figure class="shot">
+      <img src="/about-map.jpg" width="1600" height="950" alt="A map of the domain System design: islands grouped into two seas, Keeping data and Serving traffic, beside an outline of the islands.">
+      <figcaption data-t="about.shotCaption">A domain partway through: settled and mountainous islands, two sandbars, a reef, and open water still to chart.</figcaption>
+    </figure>
+  </section>
+
+  <section id="how">
+    <h2 data-t="about.howTitle">How it works</h2>
+    <ol class="steps">
+      <li><h3 data-t="about.sketchTitle">Sketch</h3><p data-t="about.sketchBody">Describe a subject in your own words. The cartographer proposes islands, the straits between them, and seas that group them. Nothing lands on the map until you approve it.</p></li>
+      <li><h3 data-t="about.exploreTitle">Explore</h3><p data-t="about.exploreBody">On each island the Mentor explains with analogies from what you already know, draws diagrams, writes code, and builds small demos you can try. Pin what you want to keep to the island's board.</p></li>
+      <li><h3 data-t="about.chartTitle">Chart</h3><p data-t="about.chartBody">The Keeper asks you to explain an island in your own words. It lights a landmark when you show it, and marks the island when it has heard enough.</p></li>
+    </ol>
+    <h3 class="sub" data-t="about.legendTitle">What the map shows</h3>
+    <ul class="legend">
+      <li><span class="dot open"></span><span data-t="about.legendOpen">Open water: not charted yet. Never a score.</span></li>
+      <li><span class="dot sandbar"></span><span data-t="about.legendSandbar">Sandbar: some of it holds, not yet all.</span></li>
+      <li><span class="dot settled"></span><span data-t="about.legendSettled">Settled: you can explain it.</span></li>
+      <li><span class="dot mountainous"></span><span data-t="about.legendMountainous">Mountainous: you can explain it and build on it.</span></li>
+      <li><span class="dot reef"></span><span data-t="about.legendReef">Reef: a confident belief that turned out wrong, written only when you agree.</span></li>
+    </ul>
+  </section>
+
+  <section id="ways">
+    <h2 data-t="about.waysTitle">Ways to use it</h2>
+    <div class="ways">
+      <article>
+        <h3 data-t="about.browserTitle">In your browser</h3>
+        <p data-t="about.browserBody">Nothing to install. Bring a key from Claude, Gemini, or OpenRouter, or try it first without one. Your key stays in your browser and goes only to that provider; your charts stay in your browser too.</p>
+        <p><a class="btn" href="/" data-t="about.browserGo">Open Archipelago</a></p>
+      </article>
+      <article id="claude-code">
+        <h3 data-t="about.claudeCodeTitle">In Claude Code</h3>
+        <p data-t="about.claudeCodeBody">Claude Code becomes your cartographer in the terminal, and the map opens on your machine. The Keeper and the Mentor run on your Claude Code login, so there is no key to bring.</p>
+        <p data-t="about.claudeCodeNeeds">Needs <a data-slot="link" href="https://bun.sh">Bun</a>. Then, in Claude Code:</p>
+        <pre class="cmd"><code>/plugin marketplace add funclosure/archipelago
+/plugin install archipelago@archipelago</code></pre>
+        <p data-t="about.claudeCodeThen">Then ask Claude to chart something:</p>
+        <pre class="cmd ask"><code data-t="about.claudeCodeAsk">Chart system design with Archipelago.</code></pre>
+        <p class="small" data-t="about.claudeCodeShell">From your shell instead: <code data-slot="code">claude plugin marketplace add funclosure/archipelago &amp;&amp; claude plugin install archipelago@archipelago</code></p>
+      </article>
+      <article>
+        <h3 data-t="about.sourceTitle">From source</h3>
+        <p data-t="about.sourceBody">Clone the repository and link the command. MIT licensed.</p>
+        <pre class="cmd"><code>git clone https://github.com/funclosure/archipelago
+cd archipelago
+bun install &amp;&amp; bun link
+archipelago serve</code></pre>
+      </article>
+    </div>
+  </section>
+
+  <section id="data">
+    <h2 data-t="about.dataTitle">Your charts are yours</h2>
+    <p data-t="about.dataBody">In the browser they live in that browser; download a backup from the domain menu. In the terminal they are one SQLite file at <code data-slot="code">~/.archipelago/archipelago.sqlite</code>. A backup from either opens in the other.</p>
+  </section>
+</main>
+
+<footer>
+  <span>Archipelago</span>
+  <a href="https://github.com/funclosure/archipelago" data-t="about.footerSource">Source on GitHub</a>
+  <a href="https://github.com/funclosure/archipelago/blob/main/LICENSE" data-t="about.footerLicense">MIT License</a>
+</footer>
+<script type="module" src="/about.js"></script>
+</body>
+</html>

@@ -8,6 +8,7 @@ import codeModel from "./code-model.js";
 import markdown from "./markdown.js";
 import newDomain from "./new-domain.js";
 import plot from "./plot.js";
+import about from "./about.js";
 import demo from "./demo.js";
 import pin from "./pin.js";
 import plotModel from "./plot-model.js";
@@ -31,6 +32,7 @@ import board from "./board.js";
 import boardModel from "./board-model.js";
 import outlineModel from "./outline-model.js";
 export const TABLES = {
+  about,
   demo,
   pin,
   outlineModel,

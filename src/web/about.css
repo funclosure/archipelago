@@ -1,0 +1,72 @@
+/* The landing page (about.html). Colours are the theme's tokens from styles.css, never literals, so it follows the
+   reader's theme like the map. */
+html:has(body.landing), body.landing { height: auto; overflow: auto; }
+body.landing { font: 16px/1.6 var(--font-text); }
+:root:lang(zh-TW) body.landing:not(.ready) { visibility: hidden; } /* the English is in the markup; wait for the swap */
+
+.landing a { color: var(--lamp); }
+.landing .btn { display: inline-block; font-size: 15px; padding: 9px 16px; text-decoration: none; color: var(--on-land); }
+.landing .btn.ghost { color: var(--text); }
+.landing code { font-family: var(--font-mono); font-size: .88em; }
+
+.landing .top { position: sticky; top: 0; z-index: 1; display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  padding: 12px max(16px, calc((100vw - 1080px) / 2)); background: var(--water); border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+.landing .mark { font: 20px Georgia, serif; color: var(--text); text-decoration: none; }
+.landing .top nav { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
+.landing .top nav a:not(.btn) { color: var(--text-2); text-decoration: none; font-size: 14px; }
+.landing .top nav a:not(.btn):hover { color: var(--text); }
+.landing .top .btn { font-size: 13px; padding: 6px 12px; }
+.landing .lang { background: none; border: 1px solid var(--line); border-radius: 999px; color: var(--text-2); font: 13px var(--font-text); padding: 3px 10px; cursor: pointer; }
+.landing .lang:hover { color: var(--text); border-color: var(--text-2); }
+
+.landing main { max-width: 1080px; margin: 0 auto; padding: 0 16px; }
+.landing section { padding: 56px 0 8px; }
+.landing h1 { font: 44px/1.15 Georgia, serif; margin: 0 0 18px; max-width: 18em; letter-spacing: -.01em; text-wrap: balance; }
+.landing h2 { font: 30px/1.2 Georgia, serif; margin: 0 0 22px; }
+.landing h3 { font-size: 17px; margin: 0 0 6px; }
+.landing .lede { font-size: 18px; color: var(--text-2); max-width: 40em; margin: 0 0 26px; }
+.landing .actions { display: flex; gap: 12px; flex-wrap: wrap; }
+.landing .shot { margin: 40px 0 0; }
+.landing .shot img { display: block; width: 100%; height: auto; border-radius: 12px; border: 1px solid var(--line); box-shadow: 0 18px 48px var(--shadow); }
+.landing .shot figcaption { margin-top: 10px; font-size: 13px; color: var(--muted); }
+
+.landing .steps { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; counter-reset: step; }
+.landing .steps li { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 18px; counter-increment: step; }
+.landing .steps h3::before { content: counter(step) "  "; color: var(--lamp); font-family: var(--font-mono); white-space: pre; }
+.landing .steps p { margin: 0; color: var(--text-2); font-size: 15px; }
+.landing .sub { margin-top: 32px; }
+.landing .legend { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 8px; color: var(--text-2); font-size: 15px; }
+.landing .legend li { display: flex; align-items: baseline; gap: 10px; }
+.landing .dot { flex: none; width: 10px; height: 10px; border-radius: 50%; transform: translateY(1px); }
+.landing .dot.open { border: 1.5px dashed var(--open); width: 7px; height: 7px; }
+.landing .dot.sandbar { background: var(--sand-fill); }
+.landing .dot.settled { background: var(--grass); }
+.landing .dot.mountainous { background: var(--snow); }
+.landing .dot.reef { background: var(--reef); }
+
+.landing .ways { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
+.landing #claude-code { grid-column: 2; grid-row: 1 / span 2; }
+.landing .ways article { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 18px; min-width: 0; }
+.landing .ways article p { color: var(--text-2); font-size: 15px; margin: 0 0 12px; }
+.landing .ways article p.small { font-size: 13px; color: var(--muted); margin: 0; overflow-wrap: anywhere; }
+.landing #claude-code { border-color: var(--lamp); scroll-margin-top: 80px; }
+.landing .cmd { position: relative; margin: 0 0 12px; padding: 12px 64px 12px 12px; background: var(--water); border: 1px solid var(--line); border-radius: 8px;
+  font: 13px/1.6 var(--font-mono); color: var(--text); white-space: pre-wrap; overflow-wrap: anywhere; }
+.landing .cmd.ask { white-space: pre-wrap; font-family: var(--font-text); }
+.landing .cmd code { font-size: inherit; font-family: inherit; }
+.landing .cmd .copy { position: absolute; top: 8px; right: 8px; background: var(--panel-2); color: var(--text-2); border: 1px solid var(--line); border-radius: 6px;
+  font: 11px var(--font-text); padding: 2px 8px; cursor: pointer; }
+.landing .cmd .copy:hover { color: var(--text); }
+.landing #data p { color: var(--text-2); max-width: 44em; }
+
+.landing footer { max-width: 1080px; margin: 56px auto 0; padding: 20px 16px 40px; border-top: 1px solid var(--line); display: flex; gap: 20px; flex-wrap: wrap;
+  font-size: 13px; color: var(--muted); }
+.landing footer a { color: var(--text-2); }
+
+@media (max-width: 860px) {
+  .landing .steps, .landing .ways { grid-template-columns: 1fr; }
+  .landing #claude-code { grid-column: auto; grid-row: auto; }
+  .landing h1 { font-size: 32px; }
+  .landing .lede { font-size: 16px; }
+  .landing .top nav a:not(.btn) { display: none; }
+}

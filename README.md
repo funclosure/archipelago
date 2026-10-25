@@ -4,6 +4,8 @@ A conversational tool for charting what you understand about a domain, shown as 
 
 The cartographer sketches islands and straits, either Claude in the terminal (a skill driving a CLI) or the cartographer in the map's own pane; either way you approve the sketch before it is drawn, into a local SQLite file. The judge lives in the browser: click an island, press **Make landfall**, and a conversation runs inside the map server on the Claude Agent SDK, through your Claude Code login. Verdicts land on the map within two seconds.
 
+Start at https://archipelago-c24.pages.dev/about: what it is, and the three ways to use it (in the browser, in Claude Code, from source).
+
 Read `docs/BRIEF.md` for the idea and `docs/superpowers/specs/2026-09-03-archipelago-slice1-design.md` for how this slice is built.
 
 ## Quick start
@@ -13,10 +15,11 @@ Requires [Bun](https://bun.sh) and [Claude Code](https://claude.ai/code).
 Install it as a Claude Code plugin:
 
 ```
-/plugin install archipelago --marketplace funclosure/archipelago
+/plugin marketplace add funclosure/archipelago
+/plugin install archipelago@archipelago
 ```
 
-(or `/plugin marketplace add funclosure/archipelago`, then `/plugin install archipelago@archipelago`). The plugin brings the charting skill and puts the `archipelago` command on Claude's PATH; Claude Code installs its dependencies. Then, in any directory:
+(or from a shell: `claude plugin marketplace add funclosure/archipelago && claude plugin install archipelago@archipelago`). The plugin brings the charting skill and puts the `archipelago` command on Claude's PATH; Claude Code installs its dependencies. Then, in any directory:
 
 > /archipelago-chart — I want to chart System Design.
 
@@ -87,3 +90,7 @@ bun run deploy:web    # build, then deploy dist/web to Cloudflare Pages (needs `
 ```
 
 Data lives in `~/.archipelago/archipelago.sqlite` unless `ARCHIPELAGO_DB_PATH` says otherwise.
+
+## License
+
+MIT, see `LICENSE`. Paper Mono and Noto Sans TC are under the SIL Open Font License (`src/web/fonts/`).
