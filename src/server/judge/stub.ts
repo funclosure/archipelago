@@ -2,7 +2,7 @@ import { ArchipelagoError } from "../../core/errors.ts";
 import type { JudgeRunner, JudgeTurn } from "./runner.ts";
 import { chartContext, proposeSketchTool } from "./chart.ts";
 import { personaFor } from "./persona.ts";
-import { askReader, boardWrite, islandContext, looseEnd, markExplored, proposeReef, recordVerdict, setLandmarks, unlockLandmark } from "./tools.ts";
+import { askReader, boardWrite, islandContext, looseEnd, markExplored, pointTo, proposeReef, recordVerdict, setLandmarks, unlockLandmark } from "./tools.ts";
 
 const CANNED = [
   { slug: "shape", name: "Shape", terms: ["shape", "structure"] }, { slug: "scale", name: "Scale", terms: ["scale", "load"] },
@@ -110,6 +110,7 @@ export async function judgeStubTurn({ dbPath, domain, island, emit }: JudgeTurn)
 /**
  * No-login mentor for `serve --stub` and tests, through the same tools: first open on a landmark-less island →
  * set_landmarks (the same four) · then "explore <slug>" → mark_explored, quoting the whole message ·
+ * "elsewhere" → point_to the first other island in the domain ·
  * "confus" or 困惑 → loose_end (confused, on the first landmark the message names by slug or name, else the island) ·
  * "fail" → throws · "pin" → board_write as the mentor (a canned note) · else a canned follow-up.
  * A function declaration, not a const: persona.ts imports it while this module may still be evaluating.
@@ -140,6 +141,11 @@ export async function mentorStubTurn({ dbPath, domain, island, emit }: JudgeTurn
     emit({ type: "progress", message: "mark_explored" });
     const out = markExplored(deps, { slug: explore[1], evidence: last.body });
     return say(`That's ${out.name} explored: ${out.explored} of ${out.total}. Want to try it on an example of your own?`);
+  }
+  if (text.includes("elsewhere") && ctx.elsewhere.length > 0) {
+    emit({ type: "progress", message: "point_to" });
+    const there = pointTo(deps, { island: ctx.elsewhere[0]!.slug, why: `That lives on ${ctx.elsewhere[0]!.name}.` }, "mentor");
+    return say(`In short: it depends. ${there.name} is the place to go deeper; your question goes along.`);
   }
   if (text.includes("confus") || text.includes("困惑")) {
     emit({ type: "progress", message: "loose_end" });

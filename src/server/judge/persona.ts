@@ -3,7 +3,7 @@
 // turn. One runner serves all three.
 import type { Ask, Message, MessageMode } from "../../core/types.ts";
 import {
-  indent, renderBoard, renderIslandHead, renderLearner, renderLooseEnds, renderPendingAsk, renderPendingReefs, renderReplay, renderSurroundings, type JudgeContext,
+  indent, renderBoard, renderElsewhere, renderIslandHead, renderLearner, renderLooseEnds, renderPendingAsk, renderPendingReefs, renderReplay, renderSurroundings, type JudgeContext,
 } from "./context.ts";
 import type { JudgeRunner } from "./runner.ts";
 import { cartographerStubTurn, judgeStubTurn, mentorStubTurn } from "./stub.ts";
@@ -11,7 +11,7 @@ import { islandContext, type TurnDeps } from "./tools.ts";
 import { chartContext, renderChartContext, renderChartThreadPrompt, type ChartContext } from "./chart.ts";
 
 export const TOOL_NAMES = [
-  "island_context", "record_verdict", "propose_reef", "set_landmarks", "unlock_landmark", "ask_reader", "board_write", "mark_explored", "loose_end",
+  "island_context", "record_verdict", "propose_reef", "set_landmarks", "unlock_landmark", "ask_reader", "board_write", "mark_explored", "loose_end", "point_to",
   "chart_context", "propose_sketch",
 ] as const;
 export type ToolName = (typeof TOOL_NAMES)[number];
@@ -68,6 +68,7 @@ export function renderJudgeContext(ctx: JudgeContext): string {
     ...renderLooseEnds(ctx, "Aim a probe at one when it fits the round, testing whether it held without explaining it again (§11)."),
     ...renderPendingAsk(ctx),
     ...renderBoard(ctx, "judge", "pin with board_write when a diagram or a claim will be referred to again."),
+    ...renderElsewhere(ctx),
   ].join("\n");
 }
 
@@ -101,6 +102,7 @@ export function renderMentorContext(ctx: JudgeContext): string {
     ...renderLooseEnds(ctx, "Take one up when the reader comes near it (§10)."),
     ...renderPendingAsk(ctx),
     ...renderBoard(ctx, "mentor", "pin an analogy or a diagram with board_write when it will be pointed at again."),
+    ...renderElsewhere(ctx),
   ].join("\n");
 }
 
@@ -114,7 +116,7 @@ export const judge: Persona<JudgeContext> = {
   id: "judge",
   protocolFile: "PROTOCOL.md",
   buildContext: (deps) => islandContext(deps),
-  toolNames: ["island_context", "record_verdict", "propose_reef", "set_landmarks", "unlock_landmark", "ask_reader", "board_write", "loose_end"],
+  toolNames: ["island_context", "record_verdict", "propose_reef", "set_landmarks", "unlock_landmark", "ask_reader", "board_write", "loose_end", "point_to"],
   renderContext: renderJudgeContext,
   renderThreadPrompt: renderJudgeThreadPrompt,
   stubTurn: judgeStubTurn,
@@ -125,7 +127,7 @@ export const mentor: Persona<JudgeContext> = {
   protocolFile: "MENTOR.md",
   buildContext: (deps) => islandContext(deps),
   // No verdict tools: the mentor never writes a verdict, never lights a landmark, never proposes a reef.
-  toolNames: ["island_context", "set_landmarks", "mark_explored", "ask_reader", "board_write", "loose_end"],
+  toolNames: ["island_context", "set_landmarks", "mark_explored", "ask_reader", "board_write", "loose_end", "point_to"],
   renderContext: renderMentorContext,
   renderThreadPrompt: renderMentorThreadPrompt,
   stubTurn: mentorStubTurn,

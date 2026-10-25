@@ -12,6 +12,7 @@ export const STEPS = {
   unlock_landmark: t("progressModel.unlockLandmark"),
   mark_explored: t("progressModel.markExplored"),
   loose_end: t("progressModel.looseEnd"),
+  point_to: t("progressModel.pointTo"),
   record_verdict: t("progressModel.recordVerdict"),
   propose_reef: t("progressModel.proposeReef"),
   ask_reader: t("progressModel.askReader"),

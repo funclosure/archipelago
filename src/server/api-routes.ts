@@ -12,6 +12,7 @@ import {
 import { attachAsks, listAsks, pickAsk, requireAsk } from "../core/repositories/askRepository.ts";
 import { listCards } from "../core/repositories/boardRepository.ts";
 import { closeLooseEnd } from "../core/repositories/looseEndRepository.ts";
+import { attachPointers, listPointers, pointerFloor } from "../core/repositories/pointerRepository.ts";
 import { addSeaFrom, removeSea, updateSea } from "../core/repositories/seaRepository.ts";
 import { getLearner, setLearnerNote, setLearnerLanguage } from "../core/repositories/learnerRepository.ts";
 import { createDomain, listDomains, requireDomain, updateDomain, removeDomain } from "../core/repositories/domainRepository.ts";
@@ -201,7 +202,9 @@ async function handleApi(req: Request, url: URL, ctx: ApiContext): Promise<Respo
         const inThread = new Set(messages.map((m) => m.id));
         // An ask rides on one thread's reply; an unattached one belongs to no thread yet and is listed in both.
         const asks = listAsks(db, i.id).filter((a) => a.messageId === null || inThread.has(a.messageId));
-        return { island: i.slug, mode, messages, asks };
+        // A pointer shows under the reply it rode on; one never attached (a turn that stored no reply) shows nowhere.
+        const pointers = listPointers(db, i.id).filter((p) => p.messageId !== null && inThread.has(p.messageId));
+        return { island: i.slug, mode, messages, asks, pointers };
       }),
     );
   }
@@ -277,7 +280,7 @@ async function handleApi(req: Request, url: URL, ctx: ApiContext): Promise<Respo
     const running = inFlight.get(key);
     if (running) throw new ConflictError(`${SPEAKER_NAME[running]} is answering on this island; try again when it ends`);
     if (input.askId !== undefined && !input.message) throw new ArchipelagoError("a pick needs a message");
-    const askFloor = withDb(ctx, (db) => {
+    const { askFloor, pointFloor } = withDb(ctx, (db) => {
       const d = requireDomain(db, input.domain);
       const i = requireIsland(db, d.id, island);
       return db.transaction(() => {
@@ -289,7 +292,7 @@ async function handleApi(req: Request, url: URL, ctx: ApiContext): Promise<Respo
           pickAsk(db, d.id, input.askId, input.message!);
         }
         if (input.message) addMessage(db, { domainId: d.id, islandId: i.id, role: "you", kind: "text", body: input.message, mode });
-        return listAsks(db, i.id).at(-1)?.id ?? 0;
+        return { askFloor: listAsks(db, i.id).at(-1)?.id ?? 0, pointFloor: pointerFloor(db, i.id) };
       })();
     });
     return streamTurn(ctx, key, mode, { domain: input.domain, island }, (reply, model) =>
@@ -305,6 +308,7 @@ async function handleApi(req: Request, url: URL, ctx: ApiContext): Promise<Respo
         // The reply is the persona's, in its own thread.
         const stored = addMessage(db, { domainId: d.id, islandId: i.id, role: mode, kind: "text", body, mode, model });
         attachAsks(db, i.id, stored.id, askFloor);
+        attachPointers(db, i.id, stored.id, pointFloor);
       }),
     );
   }

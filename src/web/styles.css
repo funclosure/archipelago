@@ -129,6 +129,16 @@ body.pane-open .chrome { right: var(--pane-w); }
 .loose-mark:hover, .loose-mark.on { background: var(--lamp); color: var(--panel); }
 .chips > .loose-mark { align-self: center; }
 .loose-list { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; padding: 8px 10px; border-left: 2px solid var(--lamp); background: var(--panel-2); border-radius: 0 6px 6px 0; }
+.sail { margin-top: 10px; padding: 8px 10px; border: 1px solid var(--lamp); border-radius: 8px; max-width: 64ch; }
+.sail-go { background: none; border: 0; padding: 0; color: var(--lamp); font: 600 13px/1.4 var(--font-text); cursor: pointer; }
+.sail-go::before { content: "→ "; }
+.sail-go:hover { text-decoration: underline; }
+.sail-why { color: var(--text); font-size: 12px; line-height: 1.45; margin-top: 2px; }
+.sail-carry { color: var(--muted); font-size: 11px; margin-top: 2px; }
+.briefing .carried { margin: 4px 0 12px; padding: 8px 12px; border-left: 2px solid var(--lamp); background: var(--panel-2); border-radius: 0 6px 6px 0; text-align: left; max-width: 46ch; }
+.briefing .carried .lbl { color: var(--muted); font-size: 11px; }
+.briefing .carried p { margin: 2px 0 0; color: var(--text); font-size: 13px; line-height: 1.5; }
+.briefing .carry-drop { display: block; margin: 8px auto 0; }
 .msg.system.loose-line { text-transform: none; letter-spacing: normal; }
 .loose-item { display: flex; align-items: flex-start; gap: 10px; }
 .loose-text { flex: 1; min-width: 0; font-size: 12px; line-height: 1.45; color: var(--text); }

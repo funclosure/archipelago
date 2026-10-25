@@ -48,6 +48,7 @@ const thread = {
   version: null,      // snapshot version the messages were fetched at; null forces a refetch
   messages: [],
   asks: [],           // questions the judge has posed, with their options and any pick
+  pointers: [],       // "sail to" links the persona left under its replies
   loaded: false,
   draft: "",
   live: "",           // the judge's reply as it streams
@@ -64,6 +65,7 @@ const thread = {
   stay: false,        // the reader chose Stay here after a verdict: hide the "sail on" card
 };
 
+let carry = null; // { slug, question, from }: the reader's question a mentor's pointer is taking to another island
 let looseShown; // which loose ends are unfolded under the chips: a landmark's slug, "" for the island's own, undefined for none
 let looseFor = null; // the island looseShown belongs to: another island starts folded
 let terms = null; // the selected island's landmark words (`landmarkTerms`), marked in the persona's replies
@@ -199,7 +201,7 @@ function post(path, body) {
 function resetThread(slug, mode = app.mode) {
   turnGen += 1; // a stream still running from an earlier visit to this island is no longer ours
   Object.assign(thread, {
-    slug, mode, version: null, messages: [], asks: [], loaded: false, draft: "", live: "", progress: null, inFlight: false, error: null, loadError: null,
+    slug, mode, version: null, messages: [], asks: [], pointers: [], loaded: false, draft: "", live: "", progress: null, inFlight: false, error: null, loadError: null,
     disputeDraft: "", stopped: false, stoppedDraft: null, litSeen: null, focusPending: false, answering: false, stay: false,
   });
   noteOpen = false;
@@ -211,12 +213,20 @@ async function loadThread(slug) {
   const mode = thread.mode;
   const stale = () => thread.slug !== slug || thread.mode !== mode || gen !== loadGen;
   try {
-    const { messages, asks } = await api(
+    const { messages, asks, pointers } = await api(
       `/api/thread?domain=${encodeURIComponent(app.domain)}&island=${encodeURIComponent(slug)}&mode=${encodeURIComponent(mode)}`,
     );
     if (stale()) return;
     thread.messages = messages;
     thread.asks = asks ?? [];
+    thread.pointers = pointers ?? [];
+    // A question carried here by a mentor's "sail to": into the answer box once the thread has begun; before that the
+    // briefing offers to start with it.
+    if (carry && carry.slug === slug && mode === "mentor" && messages.length > 0) {
+      thread.draft = carry.question;
+      thread.focusPending = true;
+      carry = null;
+    }
     if (thread.stoppedDraft !== null) {
       // An early stop gave the words back; if the server stored them after all, they are in the thread, not the box.
       if (thread.draft === thread.stoppedDraft && messages.some((m) => m.role === "you" && m.body === thread.stoppedDraft)) thread.draft = "";
@@ -637,6 +647,23 @@ function choicesEl(ask, reefPending) {
   return box;
 }
 
+/** A persona's "sail to": the island, why it holds what the reader asked, and in the mentor's lens, that the question goes along. */
+function sailEl(pointer) {
+  const box = el("div", "sail");
+  const go = button(t("card.sailTo", { name: pointer.island.name }), () => void sailTo(pointer), "sail-go");
+  box.append(go, el("div", "sail-why", pointer.why));
+  if (thread.mode === "mentor" && pointer.question) box.append(el("div", "sail-carry", t("card.sailCarries")));
+  return box;
+}
+
+/** Sails to the pointer's island in the same lens, changing scale first when it lives elsewhere. */
+async function sailTo(pointer) {
+  const from = app.snapshot?.islands.find((i) => i.slug === thread.slug)?.name ?? "";
+  carry = thread.mode === "mentor" && pointer.question ? { slug: pointer.island.slug, question: pointer.question, from } : null;
+  if (pointer.island.scale !== app.scale) await setScale(pointer.island.scale);
+  await select(pointer.island.slug);
+}
+
 function itemEl(item, reefPending) {
   if (item.kind === "landmark") return el("div", "lit-line", `◆ ${item.names.join(" · ")}`);
   if (item.kind === "explored") return el("div", "explored-line", `◇ ${item.names.join(" · ")}`);
@@ -650,6 +677,7 @@ function itemEl(item, reefPending) {
   m.append(renderMarkdown(item.text, persona ? { onQuestion: quoteIntoAnswer, lead: true, terms } : {}));
   const ask = persona ? askFor(thread.asks, item.id) : null;
   if (ask) m.append(choicesEl(ask, reefPending));
+  if (persona) for (const p of thread.pointers.filter((x) => x.messageId === item.id)) m.append(sailEl(p));
   return m;
 }
 
@@ -729,10 +757,27 @@ function briefingEl(island) {
     steps.append(li);
   });
   box.append(steps);
-  const label = mentor ? t("card.startExploring") : t(island.verdict ? "card.exploreIt" : "card.makeLandfall");
-  const start = button(label, () => void runTurn(island.slug, null), `btn primary ${thread.mode}`);
+  const carried = mentor && carry && carry.slug === island.slug ? carry : null;
+  if (carried) {
+    // The question a pointer brought here starts the session in place of the opening.
+    const q = el("div", "carried");
+    q.append(el("div", "lbl", t("card.carriedFrom", { from: carried.from })), el("p", null, carried.question));
+    box.append(q);
+  }
+  const label = carried ? t("card.askThis") : mentor ? t("card.startExploring") : t(island.verdict ? "card.exploreIt" : "card.makeLandfall");
+  const start = button(label, () => {
+    carry = null;
+    void runTurn(island.slug, carried ? carried.question : null);
+  }, `btn primary ${thread.mode}`);
   start.id = "landfall";
-  box.append(start, el("p", "sub", t("card.briefSwitch")));
+  box.append(start);
+  if (carried) {
+    box.append(button(t("card.carryDrop"), () => {
+      carry = null;
+      render();
+    }, "link carry-drop"));
+  }
+  box.append(el("p", "sub", t("card.briefSwitch")));
   return box;
 }
 
