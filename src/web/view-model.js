@@ -152,11 +152,47 @@ export function buildLinks(snapshot, nodes, lens = "judge") {
   const straits = [...snapshot.straits, ...draftStraits(snapshot)]
     .filter((s) => bySlug.has(s.from) && bySlug.has(s.to))
     .map((s) => ({ source: bySlug.get(s.from), target: bySlug.get(s.to), strait: s, state: s.verdict ? s.verdict.state : "open", hidden: lens === "mentor" || Boolean(s.draft) }));
-  return [...straits, ...seaTethers(snapshot, bySlug)];
+  const sea = seaOf(snapshot);
+  for (const l of straits) if (apart(sea, l.source, l.target)) l.weight = ACROSS;
+  return [...straits, ...seaTethers(snapshot, bySlug), ...seaRifts(sea, nodes)];
 }
 
 /** How hard a sea tether pulls, against a strait's 1. */
 export const TETHER = 0.35;
+/** How hard a strait between two suggested seas pulls while they are laid out, so it never drags the seas into one. */
+export const ACROSS = 0.25;
+/** How hard islands of different suggested seas push apart (the water they keep is `RIFT_GAP` in layout.js). */
+export const RIFT = 1.5;
+
+/** Which suggested sea each island still being laid out belongs to: slug → index. */
+function seaOf(snapshot) {
+  const sea = new Map();
+  suggestedGroups(snapshot).forEach((g, i) => { for (const slug of g.islands) sea.set(slug, i); });
+  return sea;
+}
+
+/** Two unplaced islands in different suggested seas. */
+function apart(sea, a, b) {
+  return !a.placed && !b.placed && sea.has(a.slug) && sea.has(b.slug) && sea.get(a.slug) !== sea.get(b.slug);
+}
+
+/**
+ * Invisible pushes between islands of different suggested seas, so each sea lays out as its own cluster with open
+ * water between them for its name. A rift only pushes (never pulls) and only unplaced islands move.
+ */
+export function seaRifts(sea, nodes) {
+  const out = [];
+  for (let i = 0; i < nodes.length; i++) {
+    for (let j = i + 1; j < nodes.length; j++) {
+      if (apart(sea, nodes[i], nodes[j])) out.push({ source: nodes[i], target: nodes[j], rift: true, weight: RIFT, hidden: true });
+    }
+  }
+  return out;
+}
+
+function suggestedGroups(snapshot) {
+  return [...draftSeas(snapshot), ...(snapshot.seas ?? []).filter((s) => s.x === null && s.anchor).map((s) => ({ islands: s.anchor }))];
+}
 
 /**
  * Invisible links between the islands of a suggested sea (in the pending sketch, or approved and not placed yet),
@@ -164,7 +200,7 @@ export const TETHER = 0.35;
  * so they never rearrange the reader's map.
  */
 export function seaTethers(snapshot, bySlug) {
-  const groups = [...draftSeas(snapshot), ...(snapshot.seas ?? []).filter((s) => s.x === null && s.anchor).map((s) => ({ islands: s.anchor }))];
+  const groups = suggestedGroups(snapshot);
   const out = [];
   for (const g of groups) {
     const members = g.islands.map((slug) => bySlug.get(slug)).filter(Boolean);

@@ -9,6 +9,8 @@ const DAMPING = 0.8;
 // Room between coasts for the names: a wrapped name is about three radii wide, so new islands keep that much water.
 const MIN_GAP = 110;
 const REST_GAP = 190;
+// A rift (islands of different suggested seas) keeps this much water and only pushes.
+const RIFT_GAP = 420;
 
 export function createSimulation() {
   let nodes = [];
@@ -65,7 +67,8 @@ export function createSimulation() {
       const dx = b.x - a.x;
       const dy = b.y - a.y;
       const d = Math.sqrt(dx * dx + dy * dy) || 1;
-      const rest = a.radius + b.radius + REST_GAP;
+      const rest = a.radius + b.radius + (l.rift ? RIFT_GAP : REST_GAP);
+      if (l.rift && d >= rest) continue;
       const f = (d - rest) * SPRING * (l.weight ?? 1) * alpha;
       const fx = (dx / d) * f;
       const fy = (dy / d) * f;

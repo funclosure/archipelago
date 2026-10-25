@@ -121,7 +121,9 @@ import { updateSea } from "../../src/core/repositories/seaRepository.ts";
 // @ts-ignore
 import { seaSpot } from "../../src/web/sea-model.js";
 // @ts-ignore
-import { seaTethers, TETHER } from "../../src/web/view-model.js";
+import { buildLinks, seaTethers, ACROSS, RIFT, TETHER } from "../../src/web/view-model.js";
+// @ts-ignore
+import { createSimulation } from "../../src/web/layout.js";
 // @ts-ignore
 import { sketchRows, sketchSummary } from "../../src/web/chart-model.js";
 
@@ -203,4 +205,24 @@ test("a suggested sea's islands are tethered while they are laid out, and the ca
   const body = { islands: [], straits: [], updates: [], seas: [{ name: "Near", islands: ["hooks", "state"] }] };
   expect(sketchSummary(body)).toBe("1 sea");
   expect(sketchRows(body, [{ slug: "hooks", name: "Hooks" }, { slug: "state", name: "State" }]).seas).toEqual([{ name: "Near", islands: "Hooks · State" }]);
+});
+
+test("islands of different suggested seas push apart while laid out; a strait between them pulls weakly", () => {
+  const node = (slug: string, x: number, y: number) => ({ slug, x, y, vx: 0, vy: 0, mass: 1, radius: 62, placed: false, pinned: false });
+  const nodes = [node("a", 0, 0), node("b", 40, 30), node("c", 80, -20), node("d", 20, 60)];
+  const snap = { straits: [{ from: "b", to: "c" }], sketch: { body: { islands: [], straits: [], updates: [], seas: [{ name: "S", islands: ["a", "b"] }, { name: "T", islands: ["c", "d"] }] } }, seas: [] };
+  const links = buildLinks(snap, nodes);
+  expect(links.find((l: any) => l.strait)!.weight).toBe(ACROSS);
+  expect(links.filter((l: any) => l.rift).map((l: any) => l.source.slug + l.target.slug).sort()).toEqual(["ac", "ad", "bc", "bd"]);
+  expect(links.every((l: any) => !l.rift || (l.hidden && l.weight === RIFT))).toBe(true);
+  const sim = createSimulation();
+  sim.setGraph(nodes, links, 1);
+  for (let i = 0; i < 2000 && sim.tick(); i++);
+  const mid = (xs: typeof nodes) => ({ x: (xs[0]!.x + xs[1]!.x) / 2, y: (xs[0]!.y + xs[1]!.y) / 2 });
+  const [s, t] = [mid([nodes[0]!, nodes[1]!]), mid([nodes[2]!, nodes[3]!])];
+  const within = Math.max(Math.hypot(nodes[0]!.x - nodes[1]!.x, nodes[0]!.y - nodes[1]!.y), Math.hypot(nodes[2]!.x - nodes[3]!.x, nodes[2]!.y - nodes[3]!.y));
+  expect(Math.hypot(s.x - t.x, s.y - t.y)).toBeGreaterThan(within * 1.5);
+  // placed islands are the reader's: no rift touches them
+  nodes[0]!.placed = true;
+  expect(buildLinks(snap, nodes).filter((l: any) => l.rift)).toHaveLength(2);
 });
