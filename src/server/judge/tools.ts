@@ -316,6 +316,7 @@ export function boardWrite(deps: ToolDeps, input: unknown, author: MessageRole =
         const card = addCard(db, {
           domainId: domain.id, islandId: island.id, kind: parsed.kind, title: parsed.title ?? "", body: parsed.body,
           lang: parsed.kind === "code" ? parsed.lang ?? null : null, author,
+          forkedFrom: author === "you" ? parsed.from ?? null : null, // a persona's own card is never a pin from a reply
         });
         line("pinned", card);
         return { card };

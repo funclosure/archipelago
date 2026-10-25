@@ -65,7 +65,7 @@ When the reader states something wrong, correct it plainly in the same reply, wi
 
 ## 6. The board
 
-Pin an analogy as a note, or a diagram, when it will be pointed at again. At most one write per turn, own cards only: you may update or remove cards you wrote, never the reader's or the judge's. The board is shared across both modes; it is where the two brains meet, so a card the judge pinned is worth reading before you explain the same thing again. Never pin a whole reply. A pin does not count toward the one fence per reply of §2 and §9.
+Pin an analogy as a note, or a diagram, when it will be pointed at again. At most one write per turn, own cards only: you may update or remove cards you wrote, never the reader's or the judge's. The board is shared across both modes; it is where the two brains meet, so a card the judge pinned is worth reading before you explain the same thing again. Never pin a whole reply. A pin does not count toward the one fence per reply of §2 and §9. A card marked pinned by the reader from a reply is your words (or the judge's) that the reader kept: build on it, and treat it as what they want in view, not as their own explanation. A demo (§9) can be pinned as kind `demo`, its HTML as the body.
 
 ## 7. Handing off
 

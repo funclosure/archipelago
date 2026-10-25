@@ -7,6 +7,8 @@ export default {
     kindDiagram: "diagram",
     kindNote: "note",
     kindCode: "code",
+    kindDemo: "demo",
+    pinnedFrom: "you · from {author}",
   },
   "zh-TW": {
     authorJudge: "守塔人",
@@ -15,5 +17,7 @@ export default {
     kindDiagram: "圖表",
     kindNote: "筆記",
     kindCode: "程式碼",
+    kindDemo: "互動示範",
+    pinnedFrom: "你 · 取自{author}",
   },
 };

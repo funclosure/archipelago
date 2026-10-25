@@ -262,6 +262,18 @@ test("board_write as the reader writes no system line and may edit any card; the
   db.close();
 });
 
+test("the reader pins a persona's fence as their own card, marked as from that reply; a persona's own card never is", () => {
+  const pinned = boardWrite(deps(), { op: "add", kind: "demo", body: "<button>go</button>", from: "mentor" }, "you");
+  if (!("card" in pinned)) throw new Error("expected a card");
+  expect(pinned.card).toMatchObject({ kind: "demo", author: "you", forkedFrom: "mentor", lang: null });
+  const own = boardWrite(deps(), { op: "add", kind: "note", body: "mine", from: "mentor" });
+  if (!("card" in own)) throw new Error("expected a card");
+  expect(own.card.forkedFrom).toBeNull();
+  const text = renderContext(islandContext(deps()));
+  expect(text).toContain(`#${pinned.card.id} demo [pinned by the reader from a mentor reply, new since your last reply]`);
+  expect(() => boardWrite(deps(), { op: "add", kind: "note", body: "b", from: "you" }, "you")).toThrow();
+});
+
 test("board_write validates its input and scopes cards to this island", () => {
   expect(() => boardWrite(deps(), { op: "add", kind: "note", title: "t", body: "   " })).toThrow();
   expect(() => boardWrite(deps(), { op: "add", kind: "poem", title: "t", body: "b" })).toThrow();

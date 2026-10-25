@@ -1,7 +1,7 @@
 // Pure, DOM-free: the board's editor state, the POST body it becomes, and the keyboard cursor over cards.
 import { t } from "./i18n.js";
 
-export const CARD_KINDS = ["diagram", "note", "code"];
+export const CARD_KINDS = ["diagram", "note", "code", "demo"];
 /** The key that adds each kind while the board is open. */
 export const KIND_KEYS = { d: "diagram", n: "note", c: "code" };
 const DEFAULT_LANG = "swift";
@@ -56,7 +56,7 @@ export function keepCursor(ids, cursor) {
 export const AUTHOR_LABELS = { judge: t("boardModel.authorJudge"), mentor: t("boardModel.authorMentor"), you: t("boardModel.authorYou") };
 
 /** Each card kind as the page names it. */
-export const KIND_LABELS = { diagram: t("boardModel.kindDiagram"), note: t("boardModel.kindNote"), code: t("boardModel.kindCode") };
+export const KIND_LABELS = { diagram: t("boardModel.kindDiagram"), note: t("boardModel.kindNote"), code: t("boardModel.kindCode"), demo: t("boardModel.kindDemo") };
 
 export function kindLabel(kind) {
   return KIND_LABELS[kind] ?? kind;
@@ -64,6 +64,11 @@ export function kindLabel(kind) {
 
 export function authorLabel(author) {
   return AUTHOR_LABELS[author] ?? author;
+}
+
+/** The caption's who: the author, or for a card pinned from a reply, you and whose reply it came from. */
+export function bylineOf(card) {
+  return card.forkedFrom ? t("boardModel.pinnedFrom", { author: authorLabel(card.forkedFrom) }) : authorLabel(card.author);
 }
 
 /**
