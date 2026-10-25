@@ -325,6 +325,15 @@ function renderKey(card) {
     get.append(before, link, after);
     card.append(get, row(button(t("hosted.importDatabase"), importDatabase, "btn link")));
   }
+  if (welcome) {
+    // The landing page names every way to use Archipelago; Claude Code is the one this card cannot offer.
+    const other = el("p", "help");
+    const link = el("a", null, t("hosted.claudeCodeLink"));
+    link.href = "/about#claude-code";
+    const [before, after = ""] = t("hosted.claudeCode").split("{link}");
+    other.append(before, link, after);
+    card.append(other);
+  }
   if (provider) {
     const notice = el("p", "help");
     const [before, after = ""] = t("hosted.notice", { host: "{host}" }).split("{host}");

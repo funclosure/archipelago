@@ -52,7 +52,9 @@ async function serveStatic(pathname: string, staticRoot: string): Promise<Respon
   if (requested.includes("\0")) return notFound();
   const filePath = resolve(rootPath, normalize(requested));
   if (!filePath.startsWith(rootPath + sep)) return notFound();
-  const file = Bun.file(filePath);
+  let file = Bun.file(filePath);
+  // A page without its extension (/about), as Cloudflare Pages serves it.
+  if (!(await file.exists()) && !requested.includes(".")) file = Bun.file(`${filePath}.html`);
   if (!(await file.exists())) return notFound();
   // The demo frame runs a persona's code: its own CSP keeps it off the network here too (src/server/demo-frame.ts).
   if (pathname === DEMO_FRAME_PATH) return new Response(file, { headers: { "Cache-Control": "no-cache", "Content-Security-Policy": DEMO_FRAME_CSP } });
