@@ -1,5 +1,5 @@
 import { test, expect } from "bun:test";
-import { sentences, leadSplit, cjkPunctuation, questionRuns, threadItems, proposalFromBody, landmarkFromSystem, exploredFromSystem, inlineSegments, mdBlocks, logItems, texLite, askFor, roundOf } from "../../src/web/thread.js";
+import { sentences, leadSplit, cjkPunctuation, questionRuns, threadItems, proposalFromBody, landmarkFromSystem, exploredFromSystem, inlineSegments, mdBlocks, logItems, texLite, askFor, roundOf, systemText } from "../../src/web/thread.js";
 
 const proposal = { target: "island:caching", claim: "never stale", consequence: "stale prices", evidence: "q", confidence: 0.7, rationale: "r", status: "pending" };
 
@@ -232,4 +232,10 @@ test("texLite writes inline TeX as plain text and leaves prices and code alone",
   expect(texLite("use `$O(n^2)$` literally")).toBe("use `$O(n^2)$` literally");
   expect(texLite("for each $x$ in A")).toBe("for each x in A");
   expect(mdBlocks("in $O(n)$ time")[0].raw).toEqual(["in O(n) time"]);
+});
+
+test("loose-end lines read as plain words; any other line passes through", () => {
+  expect(systemText("loose end: thought useState returns two functions")).toBe("noted to come back to: thought useState returns two functions");
+  expect(systemText("loose end closed: thought useState returns two functions")).toBe("cleared up: thought useState returns two functions");
+  expect(systemText("loose ends are fun")).toBe("loose ends are fun");
 });

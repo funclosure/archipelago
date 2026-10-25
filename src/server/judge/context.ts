@@ -7,11 +7,12 @@ import { listMessages, parseProposal } from "../../core/repositories/messageRepo
 import { listLandmarks } from "../../core/repositories/landmarkRepository.ts";
 import { listAsks } from "../../core/repositories/askRepository.ts";
 import { listCards } from "../../core/repositories/boardRepository.ts";
+import { listLooseEnds } from "../../core/repositories/looseEndRepository.ts";
 import { confirmedReefClaims, getLearner, learnerGround, type GroundItem, type ReefClaim } from "../../core/repositories/learnerRepository.ts";
 import { NOTE_MAX } from "../../core/validators.ts";
 import { CHARTED_PREFIX } from "./tools.ts";
 import { buildSnapshot } from "../../core/view-model.ts";
-import type { Ask, BoardCard, Landmark, Message, MessageMode, MessageRole, ReefProposal, Verdict, VerdictState } from "../../core/types.ts";
+import type { Ask, BoardCard, Landmark, LooseEnd, Message, MessageMode, MessageRole, ReefProposal, Verdict, VerdictState } from "../../core/types.ts";
 
 /** What the mentor knows about the reader beyond this island. */
 export type LearnerView = { note: string; ground: GroundItem[]; reefs: ReefClaim[] };
@@ -39,6 +40,8 @@ export type JudgeContext = {
   /** Asks attached to this thread's messages, plus any not attached yet. */
   asks: Ask[];
   board: BoardCard[];
+  /** The island's open loose ends, noted in either thread: both personas read them. */
+  looseEnds: LooseEnd[];
   /** The judge's round: reader answers since this island was last charted in its thread (all of them if it never was). 0 for the mentor. */
   round: number;
   /** The mentor's learner block; null on the judge's turn, which never reads it. */
@@ -87,6 +90,7 @@ export function buildJudgeContext(db: Database, domainSlug: string, islandSlug: 
     landmarks: listLandmarks(db, island.id),
     asks: listAsks(db, island.id).filter((a) => a.messageId === null || inThread.has(a.messageId)),
     board: listCards(db, island.id),
+    looseEnds: listLooseEnds(db, island.id),
     round: mode === "judge" ? roundOf(thread, latestVerdict(db, "island", island.id)?.createdAt ?? null) : 0,
     learner: mode === "mentor" ? { note: getLearner(db).note, ground: learnerGround(db), reefs: confirmedReefClaims(db) } : null,
   };
@@ -128,6 +132,24 @@ export function renderIslandHead(ctx: JudgeContext): string[] {
     lines.push(`Earlier verdicts: ${ctx.history.slice(1).map((v) => `${v.state} on ${v.createdAt.slice(0, 10)}`).join(", ")}`);
   }
   return lines;
+}
+
+/**
+ * `Loose ends`: the open ones, from either thread, each with the reader's words. Both personas read them; `use` is
+ * the persona's own sentence on what to do with them. Nothing when none is open.
+ */
+export function renderLooseEnds(ctx: JudgeContext, use: string): string[] {
+  if (ctx.looseEnds.length === 0) return [];
+  const names = new Map(ctx.landmarks.map((l) => [l.id, l.name]));
+  const who = (author: string) => (author === ctx.mode ? "you" : `the ${author === "judge" ? "Keeper" : "mentor"}`);
+  return [
+    ``,
+    `Loose ends (${ctx.looseEnds.length} open; the reader's words, never evidence for a lit landmark or a verdict). ${use}`,
+    ...ctx.looseEnds.map((e) => {
+      const where = e.landmarkId !== null && names.has(e.landmarkId) ? names.get(e.landmarkId) : "the island";
+      return `- #${e.id} ${e.kind} · ${where} · noted by ${who(e.author)}: ${indent(e.note)} — the reader: "${indent(e.evidence)}"`;
+    }),
+  ];
 }
 
 /** How the context names each page language. */

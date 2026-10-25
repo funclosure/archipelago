@@ -2,7 +2,7 @@ import { ArchipelagoError } from "../../core/errors.ts";
 import type { JudgeRunner, JudgeTurn } from "./runner.ts";
 import { chartContext, proposeSketchTool } from "./chart.ts";
 import { personaFor } from "./persona.ts";
-import { askReader, boardWrite, islandContext, markExplored, proposeReef, recordVerdict, setLandmarks, unlockLandmark } from "./tools.ts";
+import { askReader, boardWrite, islandContext, looseEnd, markExplored, proposeReef, recordVerdict, setLandmarks, unlockLandmark } from "./tools.ts";
 
 const CANNED = [
   { slug: "shape", name: "Shape", terms: ["shape", "structure"] }, { slug: "scale", name: "Scale", terms: ["scale", "load"] },
@@ -17,7 +17,8 @@ export const stubRunner: JudgeRunner = (turn) => personaFor(turn.mode ?? "judge"
  * last message, and writes through the same tool functions the SDK runner uses:
  *   first open on a landmark-less island → set_landmarks (four canned) · then, in the order they are tested:
  *   "unlock <slug>" → unlock_landmark · "the first option" (once asked) → unlock_landmark "shape" · "fail" → throws ·
- *   "reef" → propose_reef · "settled" → record_verdict settled · "pin" → board_write (a canned diagram) ·
+ *   "reef" → propose_reef · "settled" → record_verdict settled · "cleared" → loose_end closes the oldest open one ·
+ *   "pin" → board_write (a canned diagram) ·
  *   "code" → a canned swift fence · the second answer that matched none of those, unasked → ask_reader
  *   (canned) · else a canned follow-up.
  * A function declaration, not a const: persona.ts imports it while this module may still be evaluating.
@@ -75,6 +76,11 @@ export async function judgeStubTurn({ dbPath, domain, island, emit }: JudgeTurn)
     });
     return say(`Charted as settled. Where next: ${ctx.nearestOpenWater[0] ?? "nowhere, everything is charted"}.`);
   }
+  if (text.includes("cleared") && ctx.looseEnds.length > 0) {
+    emit({ type: "progress", message: "loose_end" });
+    const closed = looseEnd(deps, { op: "close", id: ctx.looseEnds[0]!.id, evidence: last.body }, "judge").looseEnd;
+    return say(`That clears up the loose end: ${closed.note}. Say more about ${ctx.island.name}.`);
+  }
   if (text.includes("pin")) {
     emit({ type: "progress", message: "board_write" });
     boardWrite(deps, { op: "add", kind: "diagram", title: "Request path", body: "flowchart TB\n  app[App] --> cache[Cache]\n  cache --> db[(Database)]" });
@@ -104,6 +110,7 @@ export async function judgeStubTurn({ dbPath, domain, island, emit }: JudgeTurn)
 /**
  * No-login mentor for `serve --stub` and tests, through the same tools: first open on a landmark-less island →
  * set_landmarks (the same four) · then "explore <slug>" → mark_explored, quoting the whole message ·
+ * "confus" or 困惑 → loose_end (confused, on the first landmark the message names by slug or name, else the island) ·
  * "fail" → throws · "pin" → board_write as the mentor (a canned note) · else a canned follow-up.
  * A function declaration, not a const: persona.ts imports it while this module may still be evaluating.
  */
@@ -133,6 +140,12 @@ export async function mentorStubTurn({ dbPath, domain, island, emit }: JudgeTurn
     emit({ type: "progress", message: "mark_explored" });
     const out = markExplored(deps, { slug: explore[1], evidence: last.body });
     return say(`That's ${out.name} explored: ${out.explored} of ${out.total}. Want to try it on an example of your own?`);
+  }
+  if (text.includes("confus") || text.includes("困惑")) {
+    emit({ type: "progress", message: "loose_end" });
+    const landmark = ctx.landmarks.find((l) => text.includes(l.slug) || last.body.includes(l.name))?.slug ?? null;
+    looseEnd(deps, { op: "open", kind: "confused", landmark, note: "The reader found this confusing.", evidence: last.body }, "mentor");
+    return say(`Noted as something to come back to. Here is ${ctx.island.name} again, in plain terms.`);
   }
   if (text.includes("fail")) throw new Error("stub failure");
   if (text.includes("pin")) {

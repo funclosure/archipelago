@@ -64,6 +64,8 @@ const thread = {
   stay: false,        // the reader chose Stay here after a verdict: hide the "sail on" card
 };
 
+let looseShown; // which loose ends are unfolded under the chips: a landmark's slug, "" for the island's own, undefined for none
+let looseFor = null; // the island looseShown belongs to: another island starts folded
 let terms = null; // the selected island's landmark words (`landmarkTerms`), marked in the persona's replies
 
 /** Hovering a landmark chip lights its words in the thread, and hovering a word lights its chip. */
@@ -436,18 +438,74 @@ function lensSwitchEl() {
   return wrap;
 }
 
+const LOOSE_KINDS = { confused: "card.looseConfused", asked: "card.looseAsked", later: "card.looseLater" };
+
+/** The "?" on a chip with loose ends (or the island's own, after the chips): a click unfolds them under the row. */
+function looseMarkEl(key, label, count) {
+  const mark = button(count > 1 ? `?${count}` : "?", () => {
+    looseShown = looseShown === key ? undefined : key;
+    render();
+  }, `loose-mark${looseShown === key ? " on" : ""}`);
+  mark.setAttribute("aria-label", label);
+  mark.setAttribute("aria-expanded", String(looseShown === key));
+  mark.title = label;
+  return mark;
+}
+
+/** The unfolded loose ends: what each is, the reader's words, who noted it, and Dismiss. */
+function looseListEl(island, ends) {
+  const list = el("div", "loose-list");
+  for (const e of ends) {
+    const item = el("div", "loose-item");
+    const text = el("div", "loose-text");
+    text.append(el("span", "loose-kind", t(LOOSE_KINDS[e.kind])), el("span", "loose-note", e.note));
+    const meta = el("div", "loose-meta", `${t("card.looseQuote", { evidence: e.evidence })} · ${t("card.looseBy", { who: PERSONA_NAMES[e.author] })}`);
+    text.append(meta);
+    const dismiss = button(t("card.looseDismiss"), async () => {
+      dismiss.disabled = true;
+      try {
+        await api("/api/loose-ends", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ domain: app.domain, island: island.slug, id: e.id }),
+        });
+      } catch {
+        dismiss.disabled = false;
+      }
+    }, "loose-dismiss");
+    dismiss.title = t("card.looseDismissTitle");
+    item.append(text, dismiss);
+    list.append(item);
+  }
+  return list;
+}
+
 function chipsEl(island) {
+  if (looseFor !== island.slug) [looseFor, looseShown] = [island.slug, undefined];
+  const wrap = el("div", "chips-wrap");
   const row = el("div", "chips");
   const on = thread.mode === "mentor" ? "explored" : "lit";
+  const ends = island.looseEnds ?? [];
+  const known = new Set(island.landmarks.items.map((l) => l.slug));
   for (const l of island.landmarks.items) {
     const lit = landmarkLit(l, thread.mode);
     const chip = el("span", `chip${lit ? ` ${on}` : ""}`, l.name);
     chip.dataset.lm = l.slug;
     if (lit && thread.mode === "judge" && l.evidence) chip.title = t("card.evidence", { evidence: l.evidence });
     if (lit && thread.litSeen && !thread.litSeen.has(l.slug)) chip.classList.add("just-lit");
+    const here = ends.filter((e) => e.landmark === l.slug);
+    if (here.length) {
+      chip.classList.add("loose");
+      chip.append(looseMarkEl(l.slug, t("card.looseMark", { name: l.name }), here.length));
+    }
     row.append(chip);
   }
-  return row;
+  const own = ends.filter((e) => e.landmark === null || !known.has(e.landmark));
+  if (own.length) row.append(looseMarkEl("", t("card.looseIsland"), own.length));
+  wrap.append(row);
+  const shown = looseShown === undefined ? [] : looseShown === "" ? own : ends.filter((e) => e.landmark === looseShown);
+  if (shown.length) wrap.append(looseListEl(island, shown));
+  return wrap;
 }
 
 function noteForm(island) {
@@ -483,7 +541,7 @@ function headEl(island) {
   head.append(pills);
   if (island.summary) head.append(el("p", "summary", island.summary));
   const hasLandmarks = island.landmarks && island.landmarks.total > 0;
-  if (hasLandmarks) head.append(chipsEl(island));
+  if (hasLandmarks || island.looseEnds?.length) head.append(chipsEl(island));
 
   const sub = el("div", "sub");
   const parts = [];
@@ -583,7 +641,8 @@ function itemEl(item, reefPending) {
   if (item.kind === "landmark") return el("div", "lit-line", `◆ ${item.names.join(" · ")}`);
   if (item.kind === "explored") return el("div", "explored-line", `◇ ${item.names.join(" · ")}`);
   if (item.kind === "verdict") return verdictEl(item.verdict);
-  if (item.kind === "system") return el("div", "msg system", systemText(item.text));
+  // A loose end's line carries the persona's own sentence, so it keeps its case.
+  if (item.kind === "system") return el("div", `msg system${item.text.startsWith("loose end") ? " loose-line" : ""}`, systemText(item.text));
   if (item.kind === "model") return el("div", "model-line", t("card.modelFrom", { model: item.text }));
   if (item.kind === "reef_proposal") return reefEl(item);
   const m = el("div", `msg ${item.role}`);

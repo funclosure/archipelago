@@ -148,6 +148,26 @@ export type BoardCard = {
   updatedAt: string;
 };
 
+export const looseEndKinds = ["confused", "asked", "later"] as const;
+export type LooseEndKind = (typeof looseEndKinds)[number];
+
+/** Something the reader found confusing, asked and left open, or means to come back to, on one island. Open while `closedAt` is null. */
+export type LooseEnd = {
+  id: number;
+  domainId: number;
+  islandId: number;
+  landmarkId: number | null;
+  kind: LooseEndKind;
+  note: string;
+  evidence: string;
+  messageId: number | null;
+  author: "judge" | "mentor";
+  closedAt: string | null;
+  closedBy: "judge" | "mentor" | "you" | null;
+  closedEvidence: string | null;
+  createdAt: string;
+};
+
 export type Landmark = {
   id: number;
   domainId: number;
