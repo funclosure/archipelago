@@ -1,4 +1,4 @@
-// shiki's core, its oniguruma engine, and the eleven grammars the judge may use. Built once per
+// shiki's core, its oniguruma engine, and the twelve grammars the judge may use (html for a demo's code). Built once per
 // process by `vendorBundle("shiki")` and served at /vendor/shiki.js; the engine's wasm is served
 // beside it at /vendor/onig.wasm. Add a language here and in `LANGS` in src/web/code-model.js together.
 export { createHighlighterCore } from "shiki/core";
@@ -14,3 +14,4 @@ export { default as bash } from "@shikijs/langs/bash";
 export { default as python } from "@shikijs/langs/python";
 export { default as sql } from "@shikijs/langs/sql";
 export { default as yaml } from "@shikijs/langs/yaml";
+export { default as html } from "@shikijs/langs/html";
