@@ -664,14 +664,14 @@ test("a persona's reply is read aloud through the server's voice, never a cross-
   const reader = insert("you", "mentor", "hi");
   db.close();
   const heard: { role: string; text: string; language: string }[] = [];
-  const voice = { model: "eleven_v4_turbo", roles: () => ["mentor" as const], speak: async (role: any, text: string, language: any) => {
+  const voice = { model: "eleven_v4_turbo", roles: () => ["mentor" as const], name: () => "Matilda", speak: async (role: any, text: string, language: any) => {
     heard.push({ role, text, language });
     return new Response("mp3", { headers: { "Content-Type": "audio/mpeg" } });
   } };
   const other = startServer({ port: 0, dbPath, staticRoot: dir, stub: true, voice });
   const at = (id: number, headers: Record<string, string> = {}) => fetch(`http://127.0.0.1:${other.port}/api/speak?id=${id}`, { headers });
   try {
-    expect(await (await fetch(`http://127.0.0.1:${other.port}/api/judge`)).json()).toEqual({ model: null, voices: ["mentor"] });
+    expect(await (await fetch(`http://127.0.0.1:${other.port}/api/judge`)).json()).toEqual({ model: null, voices: [{ role: "mentor", name: "Matilda" }] });
     const res = await at(mentor, { "sec-fetch-site": "same-origin" });
     expect(res.status).toBe(200);
     expect(res.headers.get("content-type")).toBe("audio/mpeg");

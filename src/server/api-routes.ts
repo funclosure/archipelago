@@ -47,6 +47,8 @@ export type Voice = {
   model: string;
   /** The roles that have a voice: `mentor`, and `judge` once the Keeper is given one. */
   roles(): MessageRole[];
+  /** The name of the voice that reads a role (Matilda), or null for one not named. */
+  name(role: MessageRole): string | null;
   speak(role: MessageRole, text: string, language: "en" | "zh"): Promise<Response>;
 };
 
@@ -135,7 +137,7 @@ async function handleApi(req: Request, url: URL, ctx: ApiContext): Promise<Respo
   if (route === "GET /api/domains") return json({ domains: withDb(ctx, listDomains) });
 
   if (route === "GET /api/judge") {
-    return json({ model: (await ctx.model?.()) ?? null, voices: ctx.voice?.roles() ?? [] });
+    return json({ model: (await ctx.model?.()) ?? null, voices: (ctx.voice?.roles() ?? []).map((role) => ({ role, name: ctx.voice!.name(role) })) });
   }
 
   if (route === "GET /api/speak") {

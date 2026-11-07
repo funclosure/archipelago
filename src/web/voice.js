@@ -1,22 +1,26 @@
 // Reading a persona's reply aloud (src/server/voice.ts holds the key and the voices). One reply plays at a time, in
-// an <audio> that streams /api/speak, so it starts within a second and outlives the pane's rebuilds; each speak
-// button follows it by its message id. Read aloud (per browser) plays each new reply when its turn ends.
+// an <audio> that streams /api/speak, so it starts within a second and outlives the pane's rebuilds; each reply's
+// Listen pill follows it by message id: idle, starting, or reading. Read aloud (per browser) plays each new reply
+// when its turn ends.
 import { t } from "./i18n.js";
 
 const AUTO = "voice:auto";
-let voices = [];
+let voices = []; // [{ role, name }]
 let audio = null;
 let playing = null; // the message id being read, or null
+let started = false; // its first sound has played
 
-/** The roles the server can voice, from `GET /api/judge`. */
-export function setVoices(roles) {
-  voices = Array.isArray(roles) ? roles : [];
+/** The voices the server has, from `GET /api/judge`: `[{ role, name }]`. */
+export function setVoices(list) {
+  voices = Array.isArray(list) ? list.filter((v) => v && typeof v.role === "string") : [];
 }
 
 /** Whether a reply of this role (`mentor`, `judge`) can be read aloud here. */
 export function canSpeak(role) {
-  return voices.includes(role);
+  return voices.some((v) => v.role === role);
 }
+
+const nameOf = (role) => voices.find((v) => v.role === role)?.name ?? null;
 
 export function autoRead() {
   try {
@@ -38,9 +42,14 @@ function setAutoRead(on) {
 function sync() {
   for (const b of document.querySelectorAll(".speak[data-id]")) {
     const on = String(playing) === b.dataset.id;
-    b.classList.toggle("on", on);
+    const state = !on ? "idle" : started ? "reading" : "starting";
+    if (b.dataset.state === state) continue;
+    b.dataset.state = state;
     b.setAttribute("aria-pressed", String(on));
-    b.title = t(on ? "voice.stop" : "voice.play");
+    const name = b.dataset.name;
+    const key = { idle: "listen", starting: "starting", reading: "stop" }[state];
+    b.querySelector(".lbl").textContent = name ? t(`voice.${key}As`, { name }) : t(`voice.${key}`);
+    b.title = t(on ? "voice.stopTitle" : "voice.playTitle");
   }
 }
 
@@ -52,6 +61,7 @@ export function stopSpeaking() {
   }
   audio = null;
   playing = null;
+  started = false;
   sync();
 }
 
@@ -64,19 +74,32 @@ export function speak(id) {
   const done = () => {
     if (audio === a) stopSpeaking();
   };
+  a.addEventListener("playing", () => {
+    if (audio !== a) return;
+    started = true;
+    sync();
+  });
   a.addEventListener("ended", done);
   a.addEventListener("error", done);
   a.play().catch(done); // a browser that refuses to play without a click: the button is there
   sync();
 }
 
-/** The ▶ on a reply: plays it, or stops it while it plays. */
-export function speakButton(id) {
+/** The Listen pill above a reply: plays it, or stops it while it plays; it names the voice and shows the reading. */
+export function speakButton(id, role) {
   const b = document.createElement("button");
   b.type = "button";
   b.className = "speak";
   b.dataset.id = String(id);
-  b.setAttribute("aria-label", t("voice.play"));
+  const name = nameOf(role);
+  if (name) b.dataset.name = name;
+  const icon = document.createElement("span");
+  icon.className = "ic";
+  icon.setAttribute("aria-hidden", "true");
+  for (let i = 0; i < 3; i++) icon.append(document.createElement("i")); // the bars that move while it reads
+  const lbl = document.createElement("span");
+  lbl.className = "lbl";
+  b.append(icon, lbl);
   b.addEventListener("click", () => (String(playing) === String(id) ? stopSpeaking() : speak(id)));
   queueMicrotask(sync);
   return b;

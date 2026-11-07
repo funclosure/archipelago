@@ -693,7 +693,7 @@ function itemEl(item, reefPending) {
   if (item.kind === "reef_proposal") return reefEl(item);
   const m = el("div", `msg ${item.role}`);
   const persona = item.role === "judge" || item.role === "mentor";
-  if (persona && Number.isInteger(item.id) && canSpeak(item.role)) m.append(speakButton(item.id));
+  if (persona && Number.isInteger(item.id) && canSpeak(item.role)) m.append(speakButton(item.id, item.role));
   m.append(renderMarkdown(item.text, persona ? { onQuestion: quoteIntoAnswer, lead: true, terms, pin: pinFor(item.role) } : {}));
   const ask = persona ? askFor(thread.asks, item.id) : null;
   if (ask) m.append(choicesEl(ask, reefPending));

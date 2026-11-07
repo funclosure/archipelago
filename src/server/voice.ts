@@ -17,6 +17,12 @@ export const KEEPER_VOICE = "JBFqnCBsd6RMkjVDRZzb";
 
 const ELEVENLABS = "https://api.elevenlabs.io/v1/text-to-speech";
 
+/** Names for the voices tried by ear, so the page can say who is reading; another voice reads unnamed. */
+const VOICE_NAMES: Record<string, string> = {
+  XrExE9yKIg1WjnnlVkGX: "Matilda", JBFqnCBsd6RMkjVDRZzb: "George", pFZP5JQG7iQjIQuC4Bku: "Lily", EXAVITQu4vr4xnSDxMaL: "Sarah",
+  cjVigY5qzO86Huf0OWal: "Eric", onwK4e9ZLuTAKqWW03F9: "Daniel", Xb7hH8MSUJpSbSDYk0k2: "Alice",
+};
+
 export type VoiceOptions = {
   env?: Record<string, string | undefined>;
   /** Where the key file and the cache live; `~/.archipelago` by default. */
@@ -44,6 +50,7 @@ export function createVoice(options: VoiceOptions = {}): Voice | null {
   return {
     model,
     roles: () => Object.keys(voices) as MessageRole[],
+    name: (role) => VOICE_NAMES[voices[role] ?? ""] ?? null,
     async speak(role, text, language) {
       const voice = voices[role];
       if (!voice) throw new Error(`no voice for ${role}`);
