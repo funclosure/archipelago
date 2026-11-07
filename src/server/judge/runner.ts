@@ -26,7 +26,7 @@ export type JudgeRunner = (turn: JudgeTurn) => Promise<string>;
 export const JUDGE_KINDS = ["api", "openai", "sdk", "stub"] as const;
 export type JudgeKind = (typeof JUDGE_KINDS)[number];
 
-export const SDK_DEFAULT_MODEL = "claude-opus-5";
+export const SDK_DEFAULT_MODEL = "claude-opus-5-5";
 export const API_DEFAULT_MODEL = "claude-opus-5-5";
 
 export function parseJudgeKind(raw: string, from: string): JudgeKind {
