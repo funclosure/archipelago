@@ -166,6 +166,39 @@ export function speakButton(id, role, meta = {}) {
   return b;
 }
 
+const SVG = "http://www.w3.org/2000/svg";
+
+/** A skip icon drawn here: a circular arrow with its head at the top and the seconds inside (`back` mirrors it). */
+function skipIcon(seconds, back) {
+  const svg = document.createElementNS(SVG, "svg");
+  svg.setAttribute("viewBox", "0 0 24 24");
+  svg.setAttribute("width", "22");
+  svg.setAttribute("height", "22");
+  svg.setAttribute("aria-hidden", "true");
+  const arrow = document.createElementNS(SVG, "g");
+  arrow.setAttribute("fill", "none");
+  arrow.setAttribute("stroke", "currentColor");
+  arrow.setAttribute("stroke-width", "1.7");
+  arrow.setAttribute("stroke-linecap", "round");
+  arrow.setAttribute("stroke-linejoin", "round");
+  if (back) arrow.setAttribute("transform", "translate(24 0) scale(-1 1)");
+  for (const d of ["M12 4.5A8.5 8.5 0 1 1 4.6 8.8", "M10.2 2.4L12.6 4.5L10.2 6.6"]) {
+    const path = document.createElementNS(SVG, "path");
+    path.setAttribute("d", d);
+    arrow.append(path);
+  }
+  const text = document.createElementNS(SVG, "text");
+  text.setAttribute("x", "12");
+  text.setAttribute("y", "16.2");
+  text.setAttribute("text-anchor", "middle");
+  text.setAttribute("font-size", "7.6");
+  text.setAttribute("font-weight", "700");
+  text.setAttribute("fill", "currentColor");
+  text.textContent = String(seconds);
+  svg.append(arrow, text);
+  return svg;
+}
+
 function button(cls, onClick) {
   const b = document.createElement("button");
   b.type = "button";
@@ -195,6 +228,10 @@ function drawBar() {
       button("np-back", () => audio && seekTo(audio.currentTime - SKIP)),
       button("np-pause", togglePause),
       button("np-fwd", () => audio && seekTo(audio.currentTime + SKIP)),
+    );
+    controls.querySelector(".np-back").append(skipIcon(SKIP, true));
+    controls.querySelector(".np-fwd").append(skipIcon(SKIP, false));
+    controls.append(
       button("np-rate", cycleRate),
       button("np-stop", stopSpeaking),
     );
@@ -232,13 +269,13 @@ function drawBar() {
   bar.querySelector(".np-go").title = t("voice.goTitle");
   const label = (cls, text, title) => {
     const b = bar.querySelector(cls);
-    b.textContent = text;
+    if (text !== null) b.textContent = text;
     b.title = title;
     b.setAttribute("aria-label", title);
   };
-  label(".np-back", "↺15", t("voice.backTitle", { n: SKIP }));
+  label(".np-back", null, t("voice.backTitle", { n: SKIP }));
   label(".np-pause", paused ? "▶" : "❚❚", t(paused ? "voice.resumeTitle" : "voice.pauseTitle"));
-  label(".np-fwd", "15↻", t("voice.forwardTitle", { n: SKIP }));
+  label(".np-fwd", null, t("voice.forwardTitle", { n: SKIP }));
   label(".np-rate", `${rate()}×`, t("voice.rateTitle"));
   label(".np-stop", "×", t("voice.stopTitle"));
   drawProgress();

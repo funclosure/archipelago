@@ -304,6 +304,8 @@ button:focus-visible, textarea:focus-visible, input:focus-visible { outline: 2px
 .now-playing .np-controls { flex: none; display: flex; align-items: center; }
 .now-playing .np-controls button { min-width: 30px; height: 30px; padding: 0 5px; border-radius: 8px; font: 12px var(--font-text); font-variant-numeric: tabular-nums; }
 .now-playing .np-rate { font-weight: 600 !important; }
+.now-playing .np-back, .now-playing .np-fwd { display: inline-flex; align-items: center; justify-content: center; }
+.now-playing svg text { font-family: var(--font-text); }
 .now-playing .np-stop { font-size: 18px !important; line-height: 1; }
 .now-playing .np-controls button:hover { background: var(--panel-2); color: var(--text); }
 .now-playing .np-progress { display: flex; align-items: center; gap: 10px; padding: 0 8px; }
