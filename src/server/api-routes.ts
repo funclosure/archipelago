@@ -49,7 +49,8 @@ export type Voice = {
   roles(): MessageRole[];
   /** The name of the voice that reads a role (Matilda), or null for one not named. */
   name(role: MessageRole): string | null;
-  speak(role: MessageRole, text: string, language: "en" | "zh"): Promise<Response>;
+  /** `range` is the request's Range header: a kept reading answers it (206), so the page can skip within it. */
+  speak(role: MessageRole, text: string, language: "en" | "zh", range?: string | null): Promise<Response>;
 };
 
 const PING_MS = 20_000;
@@ -154,7 +155,7 @@ async function handleApi(req: Request, url: URL, ctx: ApiContext): Promise<Respo
     const text = speakableText(message.body);
     if (!text) throw new NotFoundError(`reply ${id} has nothing to read aloud`);
     const language = speechLanguage(text);
-    return voice.speak(message.role, forVoice(text, language), language);
+    return voice.speak(message.role, forVoice(text, language), language, req.headers.get("range"));
   }
 
   if (route === "GET /api/version") {

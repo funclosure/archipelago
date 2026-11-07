@@ -291,18 +291,26 @@ button:focus-visible, textarea:focus-visible, input:focus-visible { outline: 2px
 @media (prefers-reduced-motion: reduce) { .speak .ic i, .now-playing .ic i { animation: none !important; transform: scaleY(.8); } }
 /* Now reading: one bar at the map's bottom left, whatever is open: who, on which island (a click goes back to the
    reply), pause, stop. */
-.now-playing { position: fixed; left: calc(var(--outline-w) + 16px); bottom: 16px; z-index: 3; display: flex; align-items: center; gap: 4px; max-width: min(360px, calc(100vw - 32px));
-  padding: 4px 4px 4px 4px; background: var(--panel); border: 1px solid var(--accent, var(--lamp)); border-radius: 999px; box-shadow: 0 8px 24px var(--shadow-soft); --accent: var(--lamp); }
+.now-playing { position: fixed; left: calc(var(--outline-w) + 16px); bottom: 16px; z-index: 3; display: grid; gap: 2px; width: min(440px, calc(100vw - 32px));
+  padding: 4px 6px 6px; background: var(--panel); border: 1px solid var(--accent, var(--lamp)); border-radius: 16px; box-shadow: 0 8px 24px var(--shadow-soft); --accent: var(--lamp); }
 .now-playing[hidden] { display: none; }
 .now-playing button { background: none; border: 0; color: var(--text-2); cursor: pointer; font: inherit; }
-.now-playing .np-go { display: flex; align-items: center; gap: 10px; min-width: 0; padding: 4px 8px 4px 10px; border-radius: 999px; text-align: left; color: var(--accent); }
+.now-playing .np-row { display: flex; align-items: center; gap: 4px; min-width: 0; }
+.now-playing .np-go { flex: 1; display: flex; align-items: center; gap: 10px; min-width: 0; padding: 4px 8px; border-radius: 10px; text-align: left; color: var(--accent); }
 .now-playing .np-go:hover { background: var(--panel-2); }
 .now-playing .np-text { display: grid; min-width: 0; }
 .now-playing .np-who { font: 600 12px/1.3 var(--font-text); color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .now-playing .np-where { font: 12px/1.3 var(--font-text); color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.now-playing .np-pause, .now-playing .np-stop { flex: none; width: 30px; height: 30px; border-radius: 50%; font-size: 12px; }
-.now-playing .np-stop { font-size: 18px; line-height: 1; }
-.now-playing .np-pause:hover, .now-playing .np-stop:hover { background: var(--panel-2); color: var(--text); }
+.now-playing .np-controls { flex: none; display: flex; align-items: center; }
+.now-playing .np-controls button { min-width: 30px; height: 30px; padding: 0 5px; border-radius: 8px; font: 12px var(--font-text); font-variant-numeric: tabular-nums; }
+.now-playing .np-rate { font-weight: 600 !important; }
+.now-playing .np-stop { font-size: 18px !important; line-height: 1; }
+.now-playing .np-controls button:hover { background: var(--panel-2); color: var(--text); }
+.now-playing .np-progress { display: flex; align-items: center; gap: 10px; padding: 0 8px; }
+.now-playing .np-track { flex: 1; height: 14px; display: flex; align-items: center; cursor: pointer; }
+.now-playing .np-track { background: linear-gradient(var(--line), var(--line)) center / 100% 3px no-repeat; border-radius: 2px; }
+.now-playing .np-fill { height: 3px; width: 0; background: var(--accent); border-radius: 2px; }
+.now-playing .np-time { flex: none; font: 11px var(--font-mono); color: var(--muted); font-variant-numeric: tabular-nums; }
 @media (max-width: 720px) { .now-playing { left: 50%; transform: translateX(-50%); top: 8px; bottom: auto; } }
 .model-line { display: flex; align-items: center; gap: 8px; font-size: 11px; font-family: var(--font-mono); color: var(--muted); }
 .model-line::before, .model-line::after { content: ""; flex: 1; border-top: 1px dashed var(--line); }

@@ -51,13 +51,13 @@ export function createVoice(options: VoiceOptions = {}): Voice | null {
     model,
     roles: () => Object.keys(voices) as MessageRole[],
     name: (role) => VOICE_NAMES[voices[role] ?? ""] ?? null,
-    async speak(role, text, language) {
+    async speak(role, text, language, range) {
       const voice = voices[role];
       if (!voice) throw new Error(`no voice for ${role}`);
       const name = createHash("sha256").update(`${model}\n${voice}\n${language}\n${text}`).digest("hex");
       const file = join(cacheDir, `${name}.mp3`);
       const headers = { "Content-Type": "audio/mpeg", "Cache-Control": "private, max-age=31536000, immutable" };
-      if (existsSync(file)) return new Response(readFileSync(file), { headers });
+      if (existsSync(file)) return keptReading(new Uint8Array(readFileSync(file)), headers, range);
       const res = await send(`${ELEVENLABS}/${voice}/stream?output_format=mp3_44100_128`, {
         method: "POST",
         headers: { "xi-api-key": key, "Content-Type": "application/json", Accept: "audio/mpeg" },
@@ -76,4 +76,19 @@ export function createVoice(options: VoiceOptions = {}): Voice | null {
       return new Response(play, { headers });
     },
   };
+}
+
+/** A kept reading, whole or the one byte range asked for: ranges let the page skip back and forth within it. */
+function keptReading(bytes: Uint8Array<ArrayBuffer>, headers: Record<string, string>, range?: string | null): Response {
+  const all = { ...headers, "Accept-Ranges": "bytes" };
+  const m = range ? /^bytes=(\d*)-(\d*)$/.exec(range.trim()) : null;
+  if (!m || (m[1] === "" && m[2] === "")) return new Response(bytes, { headers: { ...all, "Content-Length": String(bytes.length) } });
+  const size = bytes.length;
+  const start = m[1] === "" ? Math.max(0, size - Number(m[2])) : Number(m[1]);
+  const end = m[1] === "" || m[2] === "" ? size - 1 : Math.min(Number(m[2]), size - 1);
+  if (start >= size || start > end) return new Response(null, { status: 416, headers: { ...all, "Content-Range": `bytes */${size}` } });
+  return new Response(bytes.subarray(start, end + 1), {
+    status: 206,
+    headers: { ...all, "Content-Range": `bytes ${start}-${end}/${size}`, "Content-Length": String(end - start + 1) },
+  });
 }
