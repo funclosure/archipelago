@@ -517,10 +517,11 @@ program
   .option("--no-open", "do not open the browser")
   .option("--judge <kind>", "api, openai, sdk, or stub (default: api when ANTHROPIC_API_KEY is set, otherwise sdk; openai reads ARCHIPELAGO_BASE_URL and ARCHIPELAGO_MODEL)")
   .option("--stub", "the same as --judge stub: canned replies, no login needed")
-  .action((o: { port: string; domain?: string; open: boolean; judge?: string; stub?: boolean }) => {
+  .option("--allow-host <name...>", "also answer to this name, e.g. the tailnet name `tailscale serve` passes on (still listens on 127.0.0.1 only)")
+  .action((o: { port: string; domain?: string; open: boolean; judge?: string; stub?: boolean; allowHost?: string[] }) => {
     try {
       const judge = o.judge ? parseJudgeKind(o.judge, "--judge") : o.stub ? "stub" : defaultJudge();
-      const server = startServer({ port: Number(o.port), judge });
+      const server = startServer({ port: Number(o.port), judge, allowHosts: o.allowHost });
       const url = `http://127.0.0.1:${server.port}/${o.domain ? `?domain=${encodeURIComponent(o.domain)}` : ""}`;
       console.log(`Archipelago map: ${url}  (${judgeLine(judge, Boolean(o.judge || o.stub))})`);
       if (o.open) openInBrowser(url);

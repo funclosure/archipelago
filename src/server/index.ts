@@ -18,6 +18,8 @@ export type ServerOptions = {
   runner?: JudgeRunner;
   /** The model to name for `runner`; otherwise the judge's own (`judgeModel`). */
   model?: string | null;
+  /** Names the server answers to besides 127.0.0.1 and localhost (`serve --allow-host`). */
+  allowHosts?: string[];
   /** How long one judge turn may run. Defaults to `ARCHIPELAGO_TURN_TIMEOUT_MS`, else 180 s. */
   turnTimeoutMs?: number;
 };
@@ -40,6 +42,7 @@ export function startServer(options: ServerOptions = {}) {
     runner: options.runner ?? createRunner(judge),
     turnTimeoutMs: options.turnTimeoutMs ?? envTurnTimeoutMs(),
     model: () => model,
+    allowedHosts: options.allowHosts ?? [],
   };
   openDatabase(ctx.dbPath).close();
   return Bun.serve({
