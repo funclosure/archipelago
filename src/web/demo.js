@@ -88,7 +88,10 @@ export function demoElement(source, { pin = null } = {}) {
     left: false,
     receive(data) {
       if (!data || typeof data.type !== "string") return;
-      if (data.type === "demo-ready") frame.contentWindow?.postMessage({ type: "demo-run", html: themeColours(source), tokens: tokens() }, "*");
+      if (data.type === "demo-ready") {
+        const theme = tokens();
+        frame.contentWindow?.postMessage({ type: "demo-run", html: themeColours(source, theme), tokens: theme }, "*");
+      }
       else if (data.type === "demo-size") frame.style.height = `${demoHeight(data.height)}px`;
       else if (data.type === "demo-error") {
         err.textContent = t("demo.error", { message: String(data.message).slice(0, 300) });

@@ -76,25 +76,68 @@ function tokenFor(property, literal, lightPage) {
 
 const isText = (property) => property.toLowerCase() === "color";
 
-/** The demo with its grey literals (backgrounds, text, borders) swapped for the theme's tokens, so a demo written
- *  for a black page sits on any theme. Accents and canvas colours stay as written; the Code view shows the source. */
-export function themeColours(source) {
+/** Canvas and SVG paint (`ctx.strokeStyle = '#000'`, `fill="#333"`, `stroke: #ccc`): a canvas cannot read `var(--…)`,
+ *  so these take the theme's values, not its tokens. */
+const PAINT = /(?<![\w-])(strokeStyle|fillStyle|shadowColor|fill|stroke)(\s*[:=]\s*)((?:[^;}\n<>,(]|\([^)]*\))*)/g;
+
+/** A demo's own custom property (`--bg: #111`), read by its role from the name; a name that says none stays. */
+const CUSTOM = /(?<![\w-])(--[\w-]+)(\s*:\s*)((?:[^;}\n<>,(]|\([^)]*\))*)/g;
+
+function customRole(name) {
+  if (/bg|back|surface|panel|card|box|fill/i.test(name)) return "background";
+  if (/line|grid|border|rule|axis|divider/i.test(name)) return "border";
+  if (/text|fg|fore|ink|label|font|colou?r/i.test(name)) return "color";
+  return null;
+}
+
+/** Paint is mostly marks and labels, so it reads like text; paint the colour of the page it was written for is
+ *  that page's background, and fills nothing. */
+function paintFor(literal, lightPage) {
+  const grey = greyLightness(literal);
+  if (!grey || grey.alpha < 1) return null;
+  const l = grey.l;
+  if (lightPage ? l > 0.96 : l < 0.09) return "transparent";
+  if (l > 0.85 || l < 0.35) return "var(--text)";
+  if (l > 0.6) return "var(--text-2)";
+  return "var(--muted)";
+}
+
+/** `var(--x)` as the theme's value of `--x`, from `values`; null when it has none. */
+function resolved(token, values) {
+  const name = /^var\((--[\w-]+)\)$/.exec(token)?.[1];
+  return name ? (values[name] ?? null) : token;
+}
+
+/** The demo with its grey literals (backgrounds, text, borders, canvas and SVG paint, its own custom properties)
+ *  swapped for the theme, so a demo written for a black page sits on any theme. CSS takes the tokens; paint and
+ *  custom properties take their values from `values` (the theme's, as the frame gets them), since a canvas cannot
+ *  read a token and `--text: var(--text)` is a cycle. Accents stay as written; the Code view shows the source. */
+export function themeColours(source, values = {}) {
   let dark = 0;
   let light = 0;
-  for (const [, property, , value] of source.matchAll(DECLARATION)) {
-    if (!isText(property)) continue;
+  const count = (value) => {
     for (const [literal] of value.matchAll(LITERAL)) {
       const grey = greyLightness(literal);
       if (grey && grey.alpha === 1 && grey.l < 0.35) dark++;
       else if (grey && grey.alpha === 1 && grey.l > 0.6) light++;
     }
-  }
+  };
+  for (const [, property, , value] of source.matchAll(DECLARATION)) if (isText(property)) count(value);
+  for (const [, , , value] of source.matchAll(PAINT)) count(value);
+  for (const [, name, , value] of source.matchAll(CUSTOM)) if (customRole(name) === "color") count(value);
   const lightPage = dark > light;
-  return source.replace(DECLARATION, (whole, property, sep, value) =>
-    property + sep + value.replace(LITERAL, (literal) => tokenFor(property, literal, lightPage) ?? literal));
+  return source
+    .replace(CUSTOM, (whole, name, sep, value) => {
+      const role = customRole(name);
+      if (!role) return whole;
+      return name + sep + value.replace(LITERAL, (literal) => resolved(tokenFor(role, literal, lightPage) ?? literal, values) ?? literal);
+    })
+    .replace(DECLARATION, (whole, property, sep, value) =>
+      property + sep + value.replace(LITERAL, (literal) => tokenFor(property, literal, lightPage) ?? literal))
+    .replace(PAINT, (whole, property, sep, value) =>
+      property + sep + value.replace(LITERAL, (literal) => resolved(paintFor(literal, lightPage) ?? literal, values) ?? literal));
 }
 
-/** A console line from the frame, cut to one readable line, or null when it is not one. */
 export function logLine(data) {
   if (!data || typeof data.text !== "string") return null;
   const level = ["log", "info", "warn", "error"].includes(data.level) ? data.level : "log";

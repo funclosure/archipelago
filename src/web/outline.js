@@ -445,6 +445,8 @@ export function installOutline() {
   document.documentElement.style.setProperty("--outline-w", `${state.rail ? RAIL_W : FULL_W}px`);
   root.addEventListener("mouseenter", () => showPeek());
   root.addEventListener("mouseleave", (e) => { if (!(peek && e.relatedTarget && peek.contains(e.relatedTarget))) hidePeek(); });
-  app.listeners.add(() => render());
+  // An open menu is left alone: rebuilding it between a press and its release on a theme loses the click (a reply
+  // streaming in writes a snapshot every few seconds). Closing the menu renders.
+  app.listeners.add(() => { if (!state.menuOpen) render(); });
   render();
 }
