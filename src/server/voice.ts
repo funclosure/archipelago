@@ -10,8 +10,8 @@ import type { Voice } from "./api-routes.ts";
 
 /** ElevenLabs' real-time model: under a second to the first sound, Mandarin included (picked by ear, 2026-11-07). */
 export const VOICE_MODEL = "eleven_v4_turbo";
-/** Lily, the Mentor's voice. */
-export const MENTOR_VOICE = "pFZP5JQG7iQjIQuC4Bku";
+/** Matilda, the Mentor's voice: warm, a patient tutor (picked by ear over Lily, 2026-11-07). */
+export const MENTOR_VOICE = "XrExE9yKIg1WjnnlVkGX";
 
 const ELEVENLABS = "https://api.elevenlabs.io/v1/text-to-speech";
 
