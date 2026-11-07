@@ -1,6 +1,8 @@
 import { fileURLToPath } from "node:url";
 import { openDatabase } from "../core/db.ts";
 import { createRunner, defaultJudge, judgeModel, type JudgeKind, type JudgeRunner } from "./judge/runner.ts";
+import { createVoice } from "./voice.ts";
+import type { Voice } from "./api-routes.ts";
 import { handleRequest, JUDGE_TURN_TIMEOUT_MS, type ServerContext } from "./routes.ts";
 
 export const DEFAULT_STATIC_ROOT = fileURLToPath(new URL("../web/", import.meta.url));
@@ -20,6 +22,8 @@ export type ServerOptions = {
   model?: string | null;
   /** Names the server answers to besides 127.0.0.1 and localhost (`serve --allow-host`). */
   allowHosts?: string[];
+  /** The personas' voices; by default `createVoice()` (an ElevenLabs key), none for the stub or an injected runner. */
+  voice?: Voice | null;
   /** How long one judge turn may run. Defaults to `ARCHIPELAGO_TURN_TIMEOUT_MS`, else 180 s. */
   turnTimeoutMs?: number;
 };
@@ -43,12 +47,14 @@ export function startServer(options: ServerOptions = {}) {
     turnTimeoutMs: options.turnTimeoutMs ?? envTurnTimeoutMs(),
     model: () => model,
     allowedHosts: options.allowHosts ?? [],
+    voice: options.voice !== undefined ? options.voice : options.runner || judge === "stub" ? null : createVoice(),
   };
   openDatabase(ctx.dbPath).close();
-  return Bun.serve({
+  const server = Bun.serve({
     hostname: options.host ?? "127.0.0.1",
     port: options.port ?? 4480,
     idleTimeout: 120,
     fetch: (req) => handleRequest(req, ctx),
   });
+  return Object.assign(server, { voice: ctx.voice ?? null });
 }

@@ -10,6 +10,7 @@ import newDomain from "./new-domain.js";
 import plot from "./plot.js";
 import about from "./about.js";
 import demo from "./demo.js";
+import voice from "./voice.js";
 import pin from "./pin.js";
 import plotModel from "./plot-model.js";
 import chart from "./chart.js";
@@ -34,6 +35,7 @@ import outlineModel from "./outline-model.js";
 export const TABLES = {
   about,
   demo,
+  voice,
   pin,
   outlineModel,
   card,

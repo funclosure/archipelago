@@ -524,6 +524,7 @@ program
       const server = startServer({ port: Number(o.port), judge, allowHosts: o.allowHost });
       const url = `http://127.0.0.1:${server.port}/${o.domain ? `?domain=${encodeURIComponent(o.domain)}` : ""}`;
       console.log(`Archipelago map: ${url}  (${judgeLine(judge, Boolean(o.judge || o.stub))})`);
+      if (server.voice) console.log(`Voices: ${server.voice.roles().map((r) => (r === "judge" ? "Keeper" : "Mentor")).join(", ")} on ${server.voice.model}`);
       if (o.open) openInBrowser(url);
     } catch (error) {
       fail(error, false);

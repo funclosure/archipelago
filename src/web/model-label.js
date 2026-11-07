@@ -2,6 +2,7 @@
 // Null for the stub. Read at start, after every turn, and when the hosted settings change (a `settings` event).
 import { api } from "./app.js";
 import { t } from "./i18n.js";
+import { setVoices } from "./voice.js";
 
 let current = null;
 
@@ -12,7 +13,8 @@ export function judgeModel() {
 /** Re-reads the model; resolves true when it changed, so the caller knows to redraw. A failed read keeps the last one. */
 export async function refreshJudgeModel() {
   try {
-    const { model } = await api("/api/judge");
+    const { model, voices } = await api("/api/judge");
+    setVoices(voices);
     const changed = (model ?? null) !== current;
     current = model ?? null;
     return changed;

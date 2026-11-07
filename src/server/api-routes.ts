@@ -1,7 +1,8 @@
 // The JSON API and the persona turns: everything under /api/. No file system, no Bun-only call, so the hosted
 // build runs it unchanged inside a Web Worker (`src/hosted/worker.ts`); routes.ts adds the static files and vendor bundles.
 import type { Database } from "../core/sql.ts";
-import type { MessageMode } from "../core/types.ts";
+import type { MessageMode, MessageRole } from "../core/types.ts";
+import { forVoice, speakableText, speechLanguage } from "../core/speakable.ts";
 import { z } from "zod";
 import { openDatabase } from "../core/db.ts";
 import { ArchipelagoError, ConflictError, NotFoundError } from "../core/errors.ts";
@@ -37,6 +38,16 @@ export type ApiContext = {
   /** Names besides 127.0.0.1 and localhost the server answers to, such as the tailnet name `tailscale serve` passes
    *  on (`serve --allow-host`); a page there may write too, over https. */
   allowedHosts?: readonly string[];
+  /** The personas' voices (`src/server/voice.ts`); absent in the hosted build and without a key. */
+  voice?: Voice | null;
+};
+
+/** Reads a persona's reply aloud: an audio/mpeg response that streams as it is made. */
+export type Voice = {
+  model: string;
+  /** The roles that have a voice: `mentor`, and `judge` once the Keeper is given one. */
+  roles(): MessageRole[];
+  speak(role: MessageRole, text: string, language: "en" | "zh"): Promise<Response>;
 };
 
 const PING_MS = 20_000;
@@ -124,7 +135,24 @@ async function handleApi(req: Request, url: URL, ctx: ApiContext): Promise<Respo
   if (route === "GET /api/domains") return json({ domains: withDb(ctx, listDomains) });
 
   if (route === "GET /api/judge") {
-    return json({ model: (await ctx.model?.()) ?? null });
+    return json({ model: (await ctx.model?.()) ?? null, voices: ctx.voice?.roles() ?? [] });
+  }
+
+  if (route === "GET /api/speak") {
+    // An <audio> element asks with a GET, so it cannot carry a header: a page on another site that points one here
+    // would spend the reader's voice credits, and the browser says when it is one (Sec-Fetch-Site).
+    const site = req.headers.get("sec-fetch-site");
+    if (site !== null && site !== "same-origin" && site !== "none") return json({ error: "cross-site reads are not allowed" }, 403);
+    const voice = ctx.voice;
+    if (!voice) return json({ error: "no voice: put an ElevenLabs key in ~/.archipelago/elevenlabs.key" }, 404);
+    const id = Number(q("id"));
+    if (!Number.isInteger(id)) throw new ArchipelagoError("id must be a message id");
+    const message = withDb(ctx, (db) => getMessage(db, id));
+    if (!message || message.kind !== "text" || !voice.roles().includes(message.role)) throw new NotFoundError(`no reply ${id} to read aloud`);
+    const text = speakableText(message.body);
+    if (!text) throw new NotFoundError(`reply ${id} has nothing to read aloud`);
+    const language = speechLanguage(text);
+    return voice.speak(message.role, forVoice(text, language), language);
   }
 
   if (route === "GET /api/version") {

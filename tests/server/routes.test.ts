@@ -272,7 +272,7 @@ test("a second turn on the same island while one runs is 409, and the lock clear
 });
 
 test("the judge names its model, and each persona reply stores the model that wrote it", async () => {
-  expect((await get("/api/judge")).json).toEqual({ model: null }); // the stub has none
+  expect((await get("/api/judge")).json).toEqual({ model: null, voices: [] }); // the stub has none, and no voice
   const reply: JudgeRunner = async ({ emit }) => {
     emit({ type: "text", text: "Why?" });
     return "Why?";
@@ -280,7 +280,7 @@ test("the judge names its model, and each persona reply stores the model that wr
   const other = startServer({ port: 0, dbPath: join(dir, "test.sqlite"), staticRoot: dir, runner: reply, model: "gemini-3.8-flash" });
   const otherBase = `http://127.0.0.1:${other.port}`;
   try {
-    expect(await (await fetch(otherBase + "/api/judge")).json()).toEqual({ model: "gemini-3.8-flash" });
+    expect(await (await fetch(otherBase + "/api/judge")).json()).toEqual({ model: "gemini-3.8-flash", voices: [] });
     const res = await fetch(otherBase + "/api/probe", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ domain: "sd", island: "databases", message: "hi" }) });
     expect(await res.text()).toContain("event: done");
     const messages = (await thread("databases")).messages;
@@ -650,4 +650,39 @@ test("a mentor turn that asks: the reply is stored as the mentor's and the ask a
   const jt = await thread("databases");
   expect(jt.messages).toEqual([]);
   expect(jt.asks).toEqual([]);
+});
+
+test("a persona's reply is read aloud through the server's voice, never a cross-site page's", async () => {
+  const dbPath = join(dir, "test.sqlite");
+  const db = openDatabase(dbPath);
+  const island = db.query<{ id: number; domainId: number }, []>("select id, domain_id as domainId from islands where slug = 'caching'").get()!;
+  const insert = (role: string, mode: string, body: string) =>
+    db.query<{ id: number }, [number, number, string, string, string]>("insert into messages (domain_id, island_id, role, kind, body, mode) values (?, ?, ?, 'text', ?, ?) returning id").get(island.domainId, island.id, role, body, mode)!.id;
+  const mentor = insert("mentor", "mentor", "A cache **remembers**.\n\n```js\nconst x = 1;\n```\n\nWhat does it forget first?");
+  const fenceOnly = insert("mentor", "mentor", "```demo\n<div></div>\n```");
+  const keeper = insert("judge", "judge", "Why?");
+  const reader = insert("you", "mentor", "hi");
+  db.close();
+  const heard: { role: string; text: string; language: string }[] = [];
+  const voice = { model: "eleven_v4_turbo", roles: () => ["mentor" as const], speak: async (role: any, text: string, language: any) => {
+    heard.push({ role, text, language });
+    return new Response("mp3", { headers: { "Content-Type": "audio/mpeg" } });
+  } };
+  const other = startServer({ port: 0, dbPath, staticRoot: dir, stub: true, voice });
+  const at = (id: number, headers: Record<string, string> = {}) => fetch(`http://127.0.0.1:${other.port}/api/speak?id=${id}`, { headers });
+  try {
+    expect(await (await fetch(`http://127.0.0.1:${other.port}/api/judge`)).json()).toEqual({ model: null, voices: ["mentor"] });
+    const res = await at(mentor, { "sec-fetch-site": "same-origin" });
+    expect(res.status).toBe(200);
+    expect(res.headers.get("content-type")).toBe("audio/mpeg");
+    expect(heard).toEqual([{ role: "mentor", text: "A cache remembers.\n\nWhat does it forget first?", language: "en" }]);
+    expect((await at(mentor, { "sec-fetch-site": "cross-site" })).status).toBe(403);
+    expect((await at(keeper)).status).toBe(404); // the Keeper has no voice yet
+    expect((await at(reader)).status).toBe(404); // the reader's own words are never read
+    expect((await at(fenceOnly)).status).toBe(404);
+    expect(heard).toHaveLength(1);
+  } finally {
+    other.stop(true);
+  }
+  expect((await fetch(base + `/api/speak?id=${mentor}`)).status).toBe(404); // no key, no voice
 });
