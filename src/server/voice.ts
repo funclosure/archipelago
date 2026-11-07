@@ -12,6 +12,8 @@ import type { Voice } from "./api-routes.ts";
 export const VOICE_MODEL = "eleven_v4_turbo";
 /** Matilda, the Mentor's voice: warm, a patient tutor (picked by ear over Lily, 2026-11-07). */
 export const MENTOR_VOICE = "XrExE9yKIg1WjnnlVkGX";
+/** George, the Keeper's voice: a calm British storyteller, set apart from the Mentor's (picked by ear, 2026-11-07). */
+export const KEEPER_VOICE = "JBFqnCBsd6RMkjVDRZzb";
 
 const ELEVENLABS = "https://api.elevenlabs.io/v1/text-to-speech";
 
@@ -22,7 +24,8 @@ export type VoiceOptions = {
   fetch?: typeof fetch;
 };
 
-/** The voices this server has, or null without a key. The Keeper speaks only once ARCHIPELAGO_VOICE_KEEPER names a voice. */
+/** The voices this server has, or null without a key. ARCHIPELAGO_VOICE_MENTOR and ARCHIPELAGO_VOICE_KEEPER name
+ *  another voice; `off` silences that persona. */
 export function createVoice(options: VoiceOptions = {}): Voice | null {
   const env = options.env ?? process.env;
   const home = options.home ?? join(homedir(), ".archipelago");
@@ -30,8 +33,11 @@ export function createVoice(options: VoiceOptions = {}): Voice | null {
   const key = env.ELEVENLABS_API_KEY?.trim() || (existsSync(keyFile) ? readFileSync(keyFile, "utf8").trim() : "");
   if (!key) return null;
   const model = env.ARCHIPELAGO_VOICE_MODEL?.trim() || VOICE_MODEL;
-  const voices: Partial<Record<MessageRole, string>> = { mentor: env.ARCHIPELAGO_VOICE_MENTOR?.trim() || MENTOR_VOICE };
-  if (env.ARCHIPELAGO_VOICE_KEEPER?.trim()) voices.judge = env.ARCHIPELAGO_VOICE_KEEPER.trim();
+  const voices: Partial<Record<MessageRole, string>> = {};
+  for (const [role, setting, fallback] of [["mentor", env.ARCHIPELAGO_VOICE_MENTOR, MENTOR_VOICE], ["judge", env.ARCHIPELAGO_VOICE_KEEPER, KEEPER_VOICE]] as const) {
+    const voice = setting?.trim() || fallback;
+    if (voice !== "off") voices[role] = voice;
+  }
   const cacheDir = join(home, "voice");
   const send = options.fetch ?? fetch;
 

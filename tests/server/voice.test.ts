@@ -2,7 +2,7 @@ import { test, expect } from "bun:test";
 import { existsSync, mkdtempSync, readdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { MENTOR_VOICE, VOICE_MODEL, createVoice } from "../../src/server/voice.ts";
+import { KEEPER_VOICE, MENTOR_VOICE, VOICE_MODEL, createVoice } from "../../src/server/voice.ts";
 
 const home = () => mkdtempSync(join(tmpdir(), "archipelago-voice-"));
 
@@ -10,14 +10,15 @@ test("no key, no voice; the key comes from the environment or ~/.archipelago/ele
   expect(createVoice({ env: {}, home: home() })).toBeNull();
   const h = home();
   writeFileSync(join(h, "elevenlabs.key"), "sk_file\n");
-  expect(createVoice({ env: {}, home: h })?.roles()).toEqual(["mentor"]);
+  expect(createVoice({ env: {}, home: h })?.roles()).toEqual(["mentor", "judge"]);
   expect(createVoice({ env: { ELEVENLABS_API_KEY: "sk_env" }, home: home() })?.model).toBe(VOICE_MODEL);
 });
 
-test("the Keeper speaks only once it is given a voice; the model and the Mentor's voice can be changed", () => {
-  const v = createVoice({ env: { ELEVENLABS_API_KEY: "k", ARCHIPELAGO_VOICE_KEEPER: "keeper-voice", ARCHIPELAGO_VOICE_MODEL: "eleven_v3" }, home: home() })!;
-  expect(v.roles()).toEqual(["mentor", "judge"]);
+test("each persona's voice and the model can be changed, and a persona silenced with off", () => {
+  const v = createVoice({ env: { ELEVENLABS_API_KEY: "k", ARCHIPELAGO_VOICE_KEEPER: "off", ARCHIPELAGO_VOICE_MODEL: "eleven_v3" }, home: home() })!;
+  expect(v.roles()).toEqual(["mentor"]);
   expect(v.model).toBe("eleven_v3");
+  expect(createVoice({ env: { ELEVENLABS_API_KEY: "k", ARCHIPELAGO_VOICE_MENTOR: "off" }, home: home() })!.roles()).toEqual(["judge"]);
 });
 
 test("a reading streams from ElevenLabs once, with the key in a header, and replays from the cache", async () => {
@@ -38,7 +39,10 @@ test("a reading streams from ElevenLabs once, with the key in a header, and repl
   for (let i = 0; i < 20 && !(existsSync(join(h, "voice")) && readdirSync(join(h, "voice")).some((f) => f.endsWith(".mp3"))); i++) await Bun.sleep(5);
   expect(await (await v.speak("mentor", "轉彎的時候", "zh")).text()).toBe("ID3mp3-bytes");
   expect(calls).toHaveLength(1); // the replay cost nothing
-  await expect(v.speak("judge", "Why?", "en")).rejects.toThrow("no voice for judge");
+  await v.speak("judge", "Why?", "en");
+  expect(calls[1].url).toContain(`/${KEEPER_VOICE}/stream`); // the Keeper in its own voice
+  const quiet = createVoice({ env: { ELEVENLABS_API_KEY: "k", ARCHIPELAGO_VOICE_KEEPER: "off" }, home: h, fetch: fake })!;
+  await expect(quiet.speak("judge", "Why?", "en")).rejects.toThrow("no voice for judge");
 });
 
 test("a refusal from ElevenLabs is a 502 naming its status, and nothing is kept", async () => {
