@@ -270,6 +270,17 @@ button:focus-visible, textarea:focus-visible, input:focus-visible { outline: 2px
 .btn.send.mentor { background: var(--explore); color: var(--on-land); }
 .foot .meta { display: flex; justify-content: space-between; gap: 12px; font-size: 11px; color: var(--muted); }
 .foot .meta .model { font-family: var(--font-mono); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.foot .meta .meta-r { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.read-aloud { background: none; border: 0; padding: 0; font: inherit; color: var(--muted); cursor: pointer; white-space: nowrap; }
+.read-aloud:hover, .read-aloud[aria-pressed="true"] { color: var(--text-2); }
+/* Read this reply aloud: a quiet speaker at the reply's top right; it lights while it reads. */
+.msg:has(> .speak) { position: relative; padding-right: 26px; }
+.speak { position: absolute; top: 0; right: 0; width: 22px; height: 22px; padding: 0; border: 0; border-radius: 50%; background: none; color: var(--muted); cursor: pointer; opacity: .55; }
+.speak::before { content: "▶"; font-size: 10px; }
+.speak.on::before { content: "■"; }
+.msg:hover > .speak, .speak:focus-visible, .speak.on { opacity: 1; }
+.speak:hover, .speak.on { color: var(--lamp); background: var(--panel-2); }
+@media (hover: none) { .speak { opacity: 1; } }
 .model-line { display: flex; align-items: center; gap: 8px; font-size: 11px; font-family: var(--font-mono); color: var(--muted); }
 .model-line::before, .model-line::after { content: ""; flex: 1; border-top: 1px dashed var(--line); }
 

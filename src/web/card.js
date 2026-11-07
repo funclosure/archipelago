@@ -10,6 +10,7 @@ import { renderMarkdown } from "./markdown.js";
 import { pinFromReply, isPinned } from "./board.js";
 import { landmarkTerms } from "./term-model.js";
 import { modelEl, refreshJudgeModel } from "./model-label.js";
+import { autoRead, autoReadEl, canSpeak, speak, speakButton, stopSpeaking } from "./voice.js";
 import { loadHighlighter } from "./code.js";
 import { renderCta } from "./cta.js";
 import { select } from "./interactions.js";
@@ -64,7 +65,11 @@ const thread = {
   focusPending: false, // a turn ended before the answer box was usable; the next render focuses it
   answering: false,   // a reef answer is in flight: Confirm and Dispute are one-shot
   stay: false,        // the reader chose Stay here after a verdict: hide the "sail on" card
+  speakNext: false,   // a turn ended well: Read aloud plays its reply once the refetch brings it
 };
+
+/** The role a thread's replies are written as: the Keeper's thread is the judge's. */
+const personaRole = (mode) => (mode === "mentor" ? "mentor" : "judge");
 
 let carry = null; // { slug, question, from }: the reader's question a mentor's pointer is taking to another island
 let looseShown; // which loose ends are unfolded under the chips: a landmark's slug, "" for the island's own, undefined for none
@@ -201,9 +206,10 @@ function post(path, body) {
 /** Points the thread at another island, or another mode's thread, dropping everything from the previous one. */
 function resetThread(slug, mode = app.mode) {
   turnGen += 1; // a stream still running from an earlier visit to this island is no longer ours
+  if (slug !== thread.slug || mode !== thread.mode) stopSpeaking(); // a reading belongs to the thread on screen
   Object.assign(thread, {
     slug, mode, version: null, messages: [], asks: [], pointers: [], loaded: false, draft: "", live: "", progress: null, inFlight: false, error: null, loadError: null,
-    disputeDraft: "", stopped: false, stoppedDraft: null, litSeen: null, focusPending: false, answering: false, stay: false,
+    disputeDraft: "", stopped: false, stoppedDraft: null, litSeen: null, focusPending: false, answering: false, stay: false, speakNext: false,
   });
   noteOpen = false;
 }
@@ -221,6 +227,12 @@ async function loadThread(slug) {
     thread.messages = messages;
     thread.asks = asks ?? [];
     thread.pointers = pointers ?? [];
+    if (thread.speakNext) {
+      thread.speakNext = false;
+      const role = personaRole(mode);
+      const reply = [...messages].reverse().find((m) => m.kind === "text" && m.role !== "you");
+      if (reply && reply.role === role && autoRead() && canSpeak(role)) speak(reply.id);
+    }
     // A question carried here by a mentor's "sail to": into the answer box once the thread has begun; before that the
     // briefing offers to start with it.
     if (carry && carry.slug === slug && mode === "mentor" && messages.length > 0) {
@@ -307,6 +319,7 @@ async function runTurn(slug, message, askId) {
   if (turnAbort === abort) turnAbort = null;
   if (!mine()) return;
   cancelLive();
+  thread.speakNext = !thread.error && !thread.stopped;
   thread.inFlight = false;
   thread.live = "";
   thread.progress = null;
@@ -680,6 +693,7 @@ function itemEl(item, reefPending) {
   if (item.kind === "reef_proposal") return reefEl(item);
   const m = el("div", `msg ${item.role}`);
   const persona = item.role === "judge" || item.role === "mentor";
+  if (persona && Number.isInteger(item.id) && canSpeak(item.role)) m.append(speakButton(item.id));
   m.append(renderMarkdown(item.text, persona ? { onQuestion: quoteIntoAnswer, lead: true, terms, pin: pinFor(item.role) } : {}));
   const ask = persona ? askFor(thread.asks, item.id) : null;
   if (ask) m.append(choicesEl(ask, reefPending));
@@ -874,7 +888,12 @@ function footEl(island) {
   const meta = el("div", "meta");
   meta.append(el("span", null, t(pending ? "card.metaReef" : thread.inFlight ? "card.metaStop" : "card.metaSend")));
   const model = modelEl();
-  if (model) meta.append(model);
+  if (canSpeak(personaRole(thread.mode)) || model) {
+    const right = el("span", "meta-r");
+    if (canSpeak(personaRole(thread.mode))) right.append(autoReadEl());
+    if (model) right.append(model);
+    meta.append(right);
+  }
   foot.append(meta);
   return foot;
 }
