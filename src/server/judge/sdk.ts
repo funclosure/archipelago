@@ -20,8 +20,9 @@ async function loadSdk() {
 
 type Sdk = Awaited<ReturnType<typeof loadSdk>>;
 
-/** One actionable sentence for each way a judge turn can end early. */
-export function describeSdkError(code: string): string {
+/** One actionable sentence for each way a judge turn can end early; for a code with no sentence of its own, what
+ *  the SDK said, so "unknown" never stands alone (Opus 5.5 on too old a Claude Code came back as just that). */
+export function describeSdkError(code: string, detail = ""): string {
   switch (code) {
     case "authentication_failed":
     case "oauth_org_not_allowed":
@@ -35,7 +36,7 @@ export function describeSdkError(code: string): string {
     case "model_not_found":
       return `The judge model is not available. Set ARCHIPELAGO_MODEL to a model you can use (default ${DEFAULT_MODEL}).`;
     default:
-      return `The judge stopped: ${code}.`;
+      return detail.trim() ? `The judge stopped: ${detail.trim()}` : `The judge stopped: ${code}.`;
   }
 }
 
@@ -106,7 +107,10 @@ export const sdkRunner: JudgeRunner = async ({ dbPath, domain, island, mode = "j
         continue;
       }
       if (message.type === "assistant") {
-        if (message.error) throw new ArchipelagoError(describeSdkError(message.error));
+        if (message.error) {
+          const said = message.message.content.flatMap((b) => (b.type === "text" ? [b.text] : [])).join(" ");
+          throw new ArchipelagoError(describeSdkError(message.error, said));
+        }
         for (const block of message.message.content) {
           if (block.type === "tool_use") emit({ type: "progress", message: block.name.replace(`mcp__${SERVER}__`, "") });
         }
