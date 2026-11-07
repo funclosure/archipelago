@@ -275,7 +275,8 @@ button:focus-visible, textarea:focus-visible, input:focus-visible { outline: 2px
 .read-aloud:hover, .read-aloud[aria-pressed="true"] { color: var(--text-2); }
 /* Listen: a pill above each voiced reply naming the voice; it fills with the persona's accent while it reads, and its
    bars move by transform in a box of fixed height, so nothing around it shifts (still under reduced motion). */
-.speak { display: flex; width: fit-content; align-items: center; gap: 7px; margin: 0 0 8px; padding: 4px 12px 4px 10px; border: 1px solid var(--line);
+/* It sticks to the top of the log while its reply is in view, so a long reply scrolled to its end still shows it whole. */
+.speak { position: sticky; top: -6px; z-index: 1; box-shadow: 0 2px 8px var(--shadow-soft); display: flex; width: fit-content; align-items: center; gap: 7px; margin: 0 0 8px; padding: 4px 12px 4px 10px; border: 1px solid var(--line);
   border-radius: 999px; background: var(--panel-2); color: var(--text-2); font: 500 12px/1.3 var(--font-text); cursor: pointer; --accent: var(--lamp); }
 .msg.mentor .speak, .now-playing[data-role="mentor"] { --accent: var(--explore); }
 .speak:hover, .speak:focus-visible { color: var(--text); border-color: var(--accent); outline: none; }
