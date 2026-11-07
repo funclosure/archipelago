@@ -526,6 +526,21 @@ test("a read through a rebinding hostname is refused", async () => {
   expect(okRes.status).toBe(200);
 });
 
+test("an allowed name (tailscale serve) reads and writes over https; other names and origins stay refused", async () => {
+  const { handleRequest } = await import("../../src/server/routes.ts");
+  const ctx = { dbPath: join(dir, "test.sqlite"), staticRoot: dir, runner: async () => "", turnTimeoutMs: 1000, allowedHosts: ["mini.tail.ts.net"] };
+  const host = "mini.tail.ts.net:4443";
+  const read = await handleRequest(new Request("http://" + host + "/api/domains", { headers: { host } }), ctx);
+  expect(read.status).toBe(200);
+  const write = (origin: string) =>
+    handleRequest(new Request("http://" + host + "/api/learner", { method: "POST", headers: { host, origin, "content-type": "application/json" }, body: JSON.stringify({ language: "en" }) }), ctx);
+  expect((await write("https://mini.tail.ts.net:4443")).status).toBe(200);
+  expect((await write("http://mini.tail.ts.net:4443")).status).toBe(403); // only over https
+  expect((await write("https://evil.example")).status).toBe(403);
+  const other = await handleRequest(new Request(base + "/api/domains", { headers: { host: "evil.example" } }), ctx);
+  expect(other.status).toBe(403);
+});
+
 test("/api/learner reads and writes the one learner note; the write reaches every domain's map", async () => {
   expect((await get("/api/learner")).json).toMatchObject({ note: "" });
   const v0 = (await get("/api/version?domain=sd")).json.version;

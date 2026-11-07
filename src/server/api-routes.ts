@@ -34,6 +34,9 @@ export type ApiContext = {
   turnTimeoutMs: number;
   /** The model the runner answers on right now (null for the stub), shown in the pane and stored on each reply. */
   model?: () => string | null | Promise<string | null>;
+  /** Names besides 127.0.0.1 and localhost the server answers to, such as the tailnet name `tailscale serve` passes
+   *  on (`serve --allow-host`); a page there may write too, over https. */
+  allowedHosts?: readonly string[];
 };
 
 const PING_MS = 20_000;
@@ -50,10 +53,11 @@ const turnKey = (domain: string, island: string) => `${domain}/${island}`;
 export async function handleApiRequest(req: Request, ctx: ApiContext): Promise<Response> {
   const url = new URL(req.url);
   try {
-    const host = hostGuard(req);
+    const allowed = ctx.allowedHosts ?? [];
+    const host = hostGuard(req, allowed);
     if (host) return host;
     if (req.method === "POST") {
-      const guard = crossSitePostGuard(req, url);
+      const guard = crossSitePostGuard(req, url, allowed);
       if (guard) return guard;
     }
     return await handleApi(req, url, ctx);
@@ -63,7 +67,7 @@ export async function handleApiRequest(req: Request, ctx: ApiContext): Promise<R
 }
 
 /** DNS rebinding: a page on another name that resolves here must not read the threads. */
-function hostGuard(req: Request): Response | null {
+function hostGuard(req: Request, allowedHosts: readonly string[]): Response | null {
   const host = req.headers.get("host");
   if (host === null) return null;
   let hostname: string;
@@ -72,14 +76,16 @@ function hostGuard(req: Request): Response | null {
   } catch {
     return json({ error: "unknown host" }, 403);
   }
-  return hostname === "127.0.0.1" || hostname === "localhost" ? null : json({ error: "unknown host" }, 403);
+  const known = hostname === "127.0.0.1" || hostname === "localhost" || allowedHosts.includes(hostname);
+  return known ? null : json({ error: "unknown host" }, 403);
 }
 
 /**
  * Blocks cross-site writes: a POST must carry an application/json body, and if it names an Origin,
- * that must be this server (127.0.0.1/localhost on the request's own port).
+ * that must be this server (127.0.0.1/localhost on the request's own port, or an allowed name over https on any
+ * port, since `tailscale serve` listens on its own).
  */
-function crossSitePostGuard(req: Request, url: URL): Response | null {
+function crossSitePostGuard(req: Request, url: URL, allowedHosts: readonly string[]): Response | null {
   const contentType = req.headers.get("content-type") ?? "";
   if (!contentType.startsWith("application/json")) {
     return json({ error: "expected application/json" }, 415);
@@ -88,9 +94,18 @@ function crossSitePostGuard(req: Request, url: URL): Response | null {
   const origin = req.headers.get("origin");
   if (origin !== null) {
     const allowed = new Set([`http://127.0.0.1:${url.port}`, `http://localhost:${url.port}`]);
-    if (!allowed.has(origin)) return denied();
+    if (!allowed.has(origin) && !allowedOrigin(origin, allowedHosts)) return denied();
   }
   return null;
+}
+
+function allowedOrigin(origin: string, allowedHosts: readonly string[]): boolean {
+  try {
+    const o = new URL(origin);
+    return o.protocol === "https:" && allowedHosts.includes(o.hostname);
+  } catch {
+    return false;
+  }
 }
 
 function withDb<T>(ctx: ApiContext, fn: (db: Database) => T): T {
