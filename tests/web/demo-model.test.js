@@ -45,7 +45,7 @@ test("text the same way round as the page it was written for sits on an accent, 
   expect(themeColours(light)).toBe('<div style="background:transparent; color:var(--text)"><p style="color:var(--text)">n</p><button style="background:#2563eb; color:#fff">go</button></div>');
 });
 
-test("accents, overlays, canvas colours, and ids stay as written", () => {
+test("accents, overlays, ids, and paint with no theme values stay as written", () => {
   for (const kept of [
     "button { background: #e0b04a; color: #111 }".replace("#111", "#3b82f6"),
     "div { background: rgba(255, 255, 255, 0.05) }",
@@ -55,4 +55,22 @@ test("accents, overlays, canvas colours, and ids stay as written", () => {
     "<p>a white cat</p>",
   ]) expect(themeColours(kept)).toBe(kept);
   expect(themeColours("{ color: '#eee', background: '#000' }")).toBe("{ color: 'var(--text)', background: 'transparent' }");
+});
+
+const THEME = { "--text": "#e6e1d6", "--text-2": "#b8b2a6", "--muted": "#8a8478", "--line": "#3a4a5a", "--panel": "#14202b", "--panel-2": "#1b2a37" };
+
+test("canvas and SVG paint takes the theme's values, since a canvas cannot read a token", () => {
+  // the ski demo's shape: black marks and labels drawn for a white page, an accent, and a white clear
+  const light = "ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, w, h);\nctx.strokeStyle = '#000';\nctx.fillStyle = '#333'; ctx.fillText(label, 8, 16);\nctx.strokeStyle = '#999';\nctx.fillStyle = '#e0b04a';";
+  expect(themeColours(light, THEME)).toBe("ctx.fillStyle = 'transparent'; ctx.fillRect(0, 0, w, h);\nctx.strokeStyle = '#e6e1d6';\nctx.fillStyle = '#e6e1d6'; ctx.fillText(label, 8, 16);\nctx.strokeStyle = '#8a8478';\nctx.fillStyle = '#e0b04a';");
+  const dark = "ctx.fillStyle = '#000'; ctx.strokeStyle = '#eee'; ctx.shadowColor = '#ccc';";
+  expect(themeColours(dark, THEME)).toBe("ctx.fillStyle = 'transparent'; ctx.strokeStyle = '#e6e1d6'; ctx.shadowColor = '#b8b2a6';");
+  expect(themeColours('<path d="M0 0" stroke="#111" fill="none"/><circle fill="#222"/>', THEME)).toBe('<path d="M0 0" stroke="#e6e1d6" fill="none"/><circle fill="#e6e1d6"/>');
+});
+
+test("a demo's own custom properties are read by their names", () => {
+  const src = ":root { --bg: #111; --text: #eee; --grid: #333; --accent: #888 } body { background: var(--bg); color: var(--text) }";
+  expect(themeColours(src, THEME)).toBe(":root { --bg: transparent; --text: #e6e1d6; --grid: #3a4a5a; --accent: #888 } body { background: var(--bg); color: var(--text) }");
+  // without the theme's values nothing is put in: `--text: var(--text)` would be a cycle
+  expect(themeColours(":root { --text: #eee }")).toBe(":root { --text: #eee }");
 });
