@@ -10,7 +10,10 @@ test("no key, no voice; the key comes from the environment or ~/.archipelago/ele
   expect(createVoice({ env: {}, home: home() })).toBeNull();
   const h = home();
   writeFileSync(join(h, "elevenlabs.key"), "sk_file\n");
-  expect(createVoice({ env: {}, home: h })?.roles()).toEqual(["mentor", "judge"]);
+  const v = createVoice({ env: {}, home: h })!;
+  expect(v.roles()).toEqual(["mentor", "judge"]);
+  expect([v.name("mentor"), v.name("judge")]).toEqual(["Matilda", "George"]);
+  expect(createVoice({ env: { ELEVENLABS_API_KEY: "k", ARCHIPELAGO_VOICE_MENTOR: "someone-else" }, home: home() })!.name("mentor")).toBeNull();
   expect(createVoice({ env: { ELEVENLABS_API_KEY: "sk_env" }, home: home() })?.model).toBe(VOICE_MODEL);
 });
 
