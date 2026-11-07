@@ -23,6 +23,7 @@ import { request } from "./transport.js";
 import { installNewDomain, openNewDomain } from "./new-domain.js";
 import { anotherTab, installHosted, welcomeGate } from "./hosted.js";
 import { modeKey, storedMode, nextMode } from "./mode-model.js";
+import { installLaunch } from "./launch.js";
 
 const canvas = document.getElementById("map");
 const ctx = canvas.getContext("2d");
@@ -609,6 +610,7 @@ async function boot() {
   installOutline();
   installAbout();
   installKeys();
+  installLaunch();
   const watch = new ResizeObserver(() => reframe());
   for (const id of ["cta", "strip"]) watch.observe(document.getElementById(id));
   try {
