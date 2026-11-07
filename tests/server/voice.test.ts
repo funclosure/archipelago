@@ -56,3 +56,18 @@ test("a refusal from ElevenLabs is a 502 naming its status, and nothing is kept"
   expect(await res.json()).toEqual({ error: "the voice service answered 401" });
   expect(existsSync(join(h, "voice"))).toBe(false);
 });
+
+test("a kept reading answers a byte range, so the page can skip within it", async () => {
+  const h = home();
+  const fake = (async () => new Response(new Blob(["0123456789"]).stream())) as unknown as typeof fetch;
+  const v = createVoice({ env: { ELEVENLABS_API_KEY: "k" }, home: h, fetch: fake })!;
+  await (await v.speak("mentor", "Hi", "en")).text();
+  for (let i = 0; i < 20 && !(existsSync(join(h, "voice")) && readdirSync(join(h, "voice")).some((f) => f.endsWith(".mp3"))); i++) await Bun.sleep(5);
+  const whole = await v.speak("mentor", "Hi", "en");
+  expect([whole.status, whole.headers.get("accept-ranges"), whole.headers.get("content-length")]).toEqual([200, "bytes", "10"]);
+  const part = await v.speak("mentor", "Hi", "en", "bytes=2-5");
+  expect([part.status, part.headers.get("content-range"), await part.text()]).toEqual([206, "bytes 2-5/10", "2345"]);
+  const tail = await v.speak("mentor", "Hi", "en", "bytes=7-");
+  expect(await tail.text()).toBe("789");
+  expect((await v.speak("mentor", "Hi", "en", "bytes=20-")).status).toBe(416);
+});
