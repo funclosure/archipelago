@@ -35,6 +35,21 @@ export function startEdit(card) {
   return { id: card.id, kind: card.kind, body: card.body, lang: card.kind === "code" ? card.lang ?? PLAIN : null };
 }
 
+/** What an editor started from, to tell later whether anything changed. */
+export function originOf(editor) {
+  return { body: editor.body, lang: editor.lang };
+}
+
+/** Whether the editor holds changes its card does not. */
+export function isDirty(editor, origin) {
+  return editor.body !== origin.body || editor.lang !== origin.lang;
+}
+
+/** Where an editor's unsaved words are kept when it closes without a decision: one per card, one per new kind, per island. */
+export function draftKey(slug, editor) {
+  return `${slug}:${editor.id === null ? `new-${editor.kind}` : editor.id}`;
+}
+
 /** A card needs a body; titles are the Keeper's to give, never the reader's. */
 export function canSave(editor) {
   return editor.body.trim().length > 0;

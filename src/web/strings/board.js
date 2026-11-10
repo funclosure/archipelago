@@ -2,6 +2,11 @@
 export default {
   en: {
     saving: "saving…",
+    discardAsk: "Discard your changes?",
+    discard: "Discard",
+    keepEditing: "Keep editing",
+    restored: "Your unsaved changes from last time are back.",
+    discardRestored: "Discard them",
     full: "Full screen",
     exitFull: "Exit full screen",
     removed: "Removed the {kind}.",
@@ -36,6 +41,11 @@ export default {
   },
   "zh-TW": {
     saving: "儲存中…",
+    discardAsk: "要捨棄你的修改嗎？",
+    discard: "捨棄",
+    keepEditing: "繼續編輯",
+    restored: "上次沒儲存的修改已經還原。",
+    discardRestored: "捨棄這些修改",
     full: "全螢幕",
     exitFull: "離開全螢幕",
     removed: "已移除{kind}。",

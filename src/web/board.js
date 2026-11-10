@@ -5,7 +5,7 @@ import { renderMarkdown, diagramElement } from "./markdown.js";
 import { codeElement, fillCode } from "./code.js";
 import { LANGS } from "./code-model.js";
 import { registerRegion, setRegion, region } from "./keys.js";
-import { startAdd, startEdit, canSave, writeOf, moveCard, keepCursor, authorLabel, bylineOf, kindLabel, hintCard, withoutRemoving, KIND_KEYS, PLAIN } from "./board-model.js";
+import { startAdd, startEdit, canSave, writeOf, moveCard, keepCursor, authorLabel, bylineOf, kindLabel, hintCard, withoutRemoving, originOf, isDirty, draftKey, KIND_KEYS, PLAIN } from "./board-model.js";
 import { isFull, setFull } from "./full.js";
 import { demoElement } from "./demo.js";
 import { syncPins } from "./pin.js";
@@ -40,6 +40,30 @@ let editorNode = null;   // the editor element, kept across renders so typing is
 let editorFor = null;    // the state.editor object editorNode was built for
 let editorStatus = null; // the status span inside editorNode
 let editorFocus = null;  // focuses the right field of the open editor
+let editorOrigin = null; // what the open editor started from (originOf): the saved card, or an empty new one
+let editorRestored = false; // the open editor began from a draft kept when it last closed without a decision
+let editorConfirm = null;   // { show(), hide(), showing() }: the "discard changes?" line of the open editor
+/** Unsaved words of editors that closed without a decision (the board closed, another island, another card): by draftKey. */
+const drafts = new Map();
+
+const dirty = () => Boolean(state.editor && editorOrigin && isDirty(state.editor, editorOrigin));
+
+/** Keeps the open editor's unsaved words before something other than save or cancel closes it. */
+function stash(slug = state.slug) {
+  if (slug && dirty()) drafts.set(draftKey(slug, state.editor), originOf(state.editor));
+}
+
+/** Opens `editor`, with the draft kept for it if there is one. */
+function begin(editor) {
+  stash(); // an editor already open gives way without losing its words
+  editorOrigin = originOf(editor);
+  const key = draftKey(state.slug, editor);
+  const draft = drafts.get(key);
+  drafts.delete(key);
+  editorRestored = Boolean(draft);
+  if (draft) Object.assign(editor, draft);
+  state.editor = editor;
+}
 
 function seen() {
   try {
@@ -148,6 +172,7 @@ function sync() {
   const slug = app.selected;
   if (slug !== state.slug) {
     void flushRemove(); // the undo belonged to the board being left
+    stash(state.slug);
     state.slug = slug;
     state.cards = [];
     state.loaded = false;
@@ -172,6 +197,7 @@ function setOpen(open) {
   state.open = open;
   if (was !== open) document.dispatchEvent(new CustomEvent("board", { detail: { open } }));
   if (!open) {
+    stash();
     state.editor = null;
     clearTimeout(previewTimer);
     void flushRemove();
@@ -182,20 +208,31 @@ function setOpen(open) {
 }
 
 function add(kind) {
-  state.editor = startAdd(kind);
+  begin(startAdd(kind));
   render();
   editorFocus?.();
 }
 
 function edit(card) {
-  state.editor = startEdit(card);
+  begin(startEdit(card));
   state.cursor = card.id;
   render();
   editorFocus?.();
 }
 
-function cancelEditor() {
+/** Cancel: with unsaved changes it asks once (Escape there goes back to editing, so mashing Escape loses nothing). */
+function cancelEditor({ sure = false } = {}) {
   if (!state.editor) return false;
+  if (editorConfirm?.showing()) {
+    if (!sure) {
+      editorConfirm.hide();
+      editorFocus?.();
+      return true;
+    }
+  } else if (!sure && dirty() && editorConfirm) {
+    editorConfirm.show();
+    return true;
+  }
   state.editor = null;
   clearTimeout(previewTimer);
   render();
@@ -472,6 +509,37 @@ function editorEl(ed) {
   hint.append(el("kbd", null, "⌘↵"), t("board.hintSave"), el("kbd", null, "esc"), t("board.hintCancel"));
   const status = el("span", "status");
   foot.append(hint, status);
+  // Cancel with unsaved changes asks here first. Discard takes the focus: Enter discards, Escape goes back to editing.
+  const confirm = el("div", "confirm");
+  confirm.hidden = true;
+  confirm.setAttribute("role", "alertdialog");
+  const discard = button(t("board.discard"), () => cancelEditor({ sure: true }), "danger");
+  confirm.append(el("span", null, t("board.discardAsk")), discard, button(t("board.keepEditing"), () => cancelEditor()));
+  editorConfirm = {
+    show() {
+      confirm.hidden = false;
+      foot.hidden = true;
+      discard.focus();
+    },
+    hide() {
+      confirm.hidden = true;
+      foot.hidden = false;
+    },
+    showing: () => !confirm.hidden,
+  };
+  // An editor that opens on words kept from last time says so, and offers the saved card back.
+  const restored = el("div", "restored");
+  restored.hidden = !editorRestored;
+  if (editorRestored) {
+    restored.append(el("span", null, t("board.restored")), button(t("board.discardRestored"), () => {
+      const fresh = { ...ed, ...editorOrigin };
+      editorOrigin = originOf(fresh);
+      editorRestored = false;
+      state.editor = fresh;
+      render();
+      editorFocus?.();
+    }));
+  }
   const updateSave = () => {
     save.disabled = !canSave(ed) || state.saving;
   };
@@ -564,7 +632,7 @@ function editorEl(ed) {
     requestAnimationFrame(() => grow(ta));
     checkDiagram();
   }
-  box.append(head, body, foot);
+  box.append(head, restored, body, foot, confirm);
   updateSave();
   editorStatus = status;
   return box;
@@ -679,6 +747,7 @@ function render() {
     editorNode = null;
     editorFor = null;
     editorStatus = null;
+    editorConfirm = null;
     return;
   }
   const active = document.activeElement;
@@ -693,6 +762,7 @@ function render() {
     editorNode = null;
     editorFor = null;
     editorStatus = null;
+    editorConfirm = null;
   }
   column.scrollTop = scrollTop;
   if (keep && keep.isConnected) keep.focus({ preventScroll: true });
