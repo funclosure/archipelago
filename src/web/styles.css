@@ -575,7 +575,7 @@ body.pane-open .board { right: var(--pane-w); }
 .board .editor .efoot .status.bad { color: var(--reef); }
 .board .editor .efoot .status:empty { display: none; }
 /* the live code block: a transparent textarea over the highlighted mirror, same metrics */
-.board .live { position: relative; }
+.board .live { position: relative; background: var(--panel); }
 .board .live pre, .board .live textarea { margin: 0; padding: 12px 14px; font: 12px/1.5 var(--font-mono); white-space: pre; tab-size: 2; box-sizing: border-box; }
 .board .live textarea { position: relative; display: block; width: 100%; min-height: 160px; border: 0; background: transparent; color: transparent; caret-color: var(--text); resize: none; overflow: auto; outline: none; }
 .board .live pre { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
