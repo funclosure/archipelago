@@ -8,6 +8,7 @@ import { t } from "./i18n.js";
 import { codeElement } from "./code.js";
 import { pinButton } from "./pin.js";
 import { exitFull, setFull as setBoxFull } from "./full.js";
+import { THEMES, storedTheme } from "./theme-model.js";
 import { DEMO_MAX, DEMO_TOKENS, DEMO_MIN_H, demoHeight, fullZoom, logLine, themeColours } from "./demo-model.js";
 
 /** Bodies of the demos the reader folded, so a pane rebuild keeps them folded. */
@@ -40,6 +41,10 @@ export function takeDemoSteps() {
   return steps.splice(0, steps.length);
 }
 
+function isDark() {
+  const id = storedTheme(document.documentElement.dataset.theme);
+  return THEMES.find((theme) => theme.id === id).dark;
+}
 function tokens() {
   const style = getComputedStyle(document.documentElement);
   return Object.fromEntries(DEMO_TOKENS.map((name) => [name, style.getPropertyValue(name).trim()]).filter(([, v]) => v));
@@ -121,7 +126,10 @@ export function demoElement(source, { pin = null, preview = false } = {}) {
     err.textContent = "";
     out.hidden = true;
     out.replaceChildren();
-    frame.src = `/demo-frame.html`;
+    // The frame and its element take the theme's scheme together; if they differ, the browser paints the frame opaque.
+    const scheme = isDark() ? "dark" : "light";
+    frame.style.colorScheme = scheme;
+    frame.src = `/demo-frame.html?${scheme}`;
   };
   /** Says the box changed height, so a log that follows its end can stay there. */
   const grew = () => box.dispatchEvent(new CustomEvent("demo-resize", { bubbles: true }));
