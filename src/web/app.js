@@ -24,6 +24,7 @@ import { installNewDomain, openNewDomain } from "./new-domain.js";
 import { anotherTab, installHosted, welcomeGate } from "./hosted.js";
 import { modeKey, storedMode, nextMode } from "./mode-model.js";
 import { installLaunch } from "./launch.js";
+import { installPlaces } from "./places.js";
 
 const canvas = document.getElementById("map");
 const ctx = canvas.getContext("2d");
@@ -251,7 +252,9 @@ function topInset() {
 /** How much of the bottom edge the bottom card (approve, confirm, sail to) covers while it shows. */
 function bottomInset() {
   const card = document.querySelector("#cta:not([hidden]) .cta-card");
-  return card ? Math.max(0, app.size.h - card.getBoundingClientRect().top) + 8 : 0;
+  if (card) return Math.max(0, app.size.h - card.getBoundingClientRect().top) + 8;
+  const places = document.getElementById("places"); // a phone's bar; display: none anywhere else
+  return places ? places.offsetHeight : 0;
 }
 
 export function insets() {
@@ -611,6 +614,7 @@ async function boot() {
   installAbout();
   installKeys();
   installLaunch();
+  installPlaces(); // after the pane and the board: it reads what they show
   const watch = new ResizeObserver(() => reframe());
   for (const id of ["cta", "strip"]) watch.observe(document.getElementById(id));
   try {

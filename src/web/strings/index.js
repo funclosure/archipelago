@@ -32,7 +32,9 @@ import progressModel from "./progress-model.js";
 import board from "./board.js";
 import boardModel from "./board-model.js";
 import outlineModel from "./outline-model.js";
+import places from "./places.js";
 export const TABLES = {
+  places,
   about,
   demo,
   voice,

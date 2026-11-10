@@ -24,16 +24,16 @@ function storageKey() {
   return `outline:${app.domain}`;
 }
 
-/** A phone's first visit starts with the outline as a rail: expanded, it would cover half the map. */
+/** A phone has no rail: the outline is the Islands place, the whole screen or not there (places.js). */
 const NARROW = "(max-width: 720px)";
 
 function load() {
-  state.rail = matchMedia(NARROW).matches;
+  state.rail = false;
   try {
     const raw = localStorage.getItem(storageKey());
     if (!raw) return;
     const saved = JSON.parse(raw);
-    state.rail = Boolean(saved.rail);
+    state.rail = Boolean(saved.rail) && !matchMedia(NARROW).matches; // a phone shows the whole list or none of it
     state.expanded = new Set(Array.isArray(saved.expanded) ? saved.expanded : []);
   } catch {
     /* no storage, or a bad value: start fresh */

@@ -636,9 +636,6 @@ function headEl(island) {
   }, "link");
   noteToggle.id = "note-toggle";
   links.append(noteToggle);
-  // On a phone the pane covers the map and its board button, and there is no Escape key: these two reach them.
-  links.append(button(t("card.board"), () => document.getElementById("board-toggle").click(), "link phone-only"));
-  links.append(button(t("card.map"), () => void select(null), "link phone-only pane-close"));
   sub.append(links);
   head.append(sub);
 
