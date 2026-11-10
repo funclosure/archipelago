@@ -7,6 +7,7 @@
 import { t } from "./i18n.js";
 import { codeElement } from "./code.js";
 import { pinButton } from "./pin.js";
+import { exitFull, setFull as setBoxFull } from "./full.js";
 import { DEMO_MAX, DEMO_TOKENS, DEMO_MIN_H, demoHeight, fullZoom, logLine, themeColours } from "./demo-model.js";
 
 /** Bodies of the demos the reader folded, so a pane rebuild keeps them folded. */
@@ -39,22 +40,14 @@ export function takeDemoSteps() {
   return steps.splice(0, steps.length);
 }
 
-let leaveFull = null; // closes the demo that fills the window, while one does
-
-/** Brings a demo that fills the window back to its place. True when there was one (Escape stops there). */
-export function exitFullDemo() {
-  if (!leaveFull) return false;
-  leaveFull();
-  return true;
-}
-
 function tokens() {
   const style = getComputedStyle(document.documentElement);
   return Object.fromEntries(DEMO_TOKENS.map((name) => [name, style.getPropertyValue(name).trim()]).filter(([, v]) => v));
 }
 
-/** A closed demo fence. Too long a body shows as its source with the reason. */
-export function demoElement(source, { pin = null } = {}) {
+/** A closed demo fence. Too long a body shows as its source with the reason. `preview` is the board editor's:
+ *  only Reset on its bar, since the code is beside it. */
+export function demoElement(source, { pin = null, preview = false } = {}) {
   const box = document.createElement("div");
   box.className = "demo";
   const bar = document.createElement("div");
@@ -76,33 +69,12 @@ export function demoElement(source, { pin = null } = {}) {
   full.type = "button";
   full.className = "btn ghost";
   bar.append(cap, ...(pin ? [pinButton(pin, { kind: "demo", body: source })] : []), reset, showCode, full);
-  // Full screen puts the box in the top layer where it stands (a popover), so the frame is never moved and the
-  // demo keeps its state going in and coming out.
-  const setFull = (on) => {
-    if (on === box.classList.contains("full")) return;
-    if (on) {
-      exitFullDemo();
-      try {
-        box.setAttribute("popover", "manual");
-        box.showPopover();
-      } catch {
-        box.removeAttribute("popover"); // a browser without popovers: the demo stays where it is
-        return;
-      }
-      leaveFull = () => setFull(false);
-    } else {
-      try {
-        box.hidePopover();
-      } catch {
-        /* already hidden: it left the page while it was full */
-      }
-      box.removeAttribute("popover");
-      leaveFull = null;
-    }
-    box.classList.toggle("full", on);
-    drawFull();
-    zoom();
-  };
+  // Full screen fills the window with the box where it stands (full.js), so the demo keeps its state.
+  const setFull = (on) =>
+    setBoxFull(box, on, () => {
+      drawFull();
+      zoom();
+    });
   /** Tells the frame how much larger to draw: full screen is far wider than the column a demo is written for. */
   const zoom = () => {
     const on = box.classList.contains("full");
@@ -144,7 +116,7 @@ export function demoElement(source, { pin = null } = {}) {
   out.hidden = true;
 
   const start = () => {
-    if (folded.has(source)) return;
+    if (!preview && folded.has(source)) return;
     err.hidden = true;
     err.textContent = "";
     out.hidden = true;
@@ -163,7 +135,7 @@ export function demoElement(source, { pin = null } = {}) {
         frame.contentWindow?.postMessage({ type: "demo-run", html: themeColours(source, theme), tokens: theme }, "*");
         zoom(); // a demo reset while it fills the window stays large
       }
-      else if (data.type === "demo-escape") setFull(false);
+      else if (data.type === "demo-escape") exitFull(); // this demo, or the editor it is the preview of
       else if (data.type === "demo-size") {
         frame.style.height = `${demoHeight(data.height)}px`;
         grew();
@@ -171,11 +143,11 @@ export function demoElement(source, { pin = null } = {}) {
       else if (data.type === "demo-error") {
         err.textContent = t("demo.error", { message: String(data.message).slice(0, 300) });
         err.hidden = false;
-        noteStep(`error: ${String(data.message).slice(0, 140)}`);
+        if (!preview) noteStep(`error: ${String(data.message).slice(0, 140)}`);
       } else if (data.type === "demo-log") {
         const line = logLine(data);
         if (!line) return;
-        noteStep(line.text);
+        if (!preview) noteStep(line.text); // an editor's preview is the reader building, not using, the demo
         const row = document.createElement("div");
         row.className = "line";
         row.dataset.level = line.level; // a class "log" would pick up the pane's .log rule
@@ -204,6 +176,7 @@ export function demoElement(source, { pin = null } = {}) {
       out.hidden = true;
     } else start();
   };
+  if (preview) for (const b of [cap, showCode, full]) b.style.display = "none";
   cap.addEventListener("click", () => fold(!folded.has(source)));
   reset.addEventListener("click", start);
   showCode.addEventListener("click", () => {
@@ -212,6 +185,6 @@ export function demoElement(source, { pin = null } = {}) {
   });
   box.append(bar, pre, err, frame, out);
   demos.add(demo);
-  fold(folded.has(source));
+  fold(!preview && folded.has(source));
   return box;
 }

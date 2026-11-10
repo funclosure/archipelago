@@ -94,7 +94,7 @@ test("cheatSheet shows the board keys in the map's slot while the board is open"
   expect(cheatSheet("map")[1].title).toBe("Map");
   const board = cheatSheet("map", { board: true })[1];
   expect(board.title).toBe("Board");
-  expect(board.keys.map(([k]) => k)).toEqual(["↓ j", "↑ k", "↵", "d n c", "x", "⌘↵", "b"]);
+  expect(board.keys.map(([k]) => k)).toEqual(["↓ j", "↑ k", "↵", "d n c p", "x", "⌘↵", "b"]);
   expect(cheatSheet("pane", { board: true })[1].title).toBe("Pane");
   expect(cheatSheet("map")[0].keys).toContainEqual(["b", "board"]);
 });

@@ -89,7 +89,7 @@ const REGION_KEYS = {
   outline: { title: k("outline"), keys: [["↓ j", k("move")], ["↑ k", k("move")], ["↵", k("select")], ["→ ←", k("expandCollapse")], ["Home End", k("firstLast")], ["n", k("newDomain")]] },
   map: { title: k("map"), keys: [["↵", k("select")], ["← → ↑ ↓", k("pan")], ["+ −", k("zoom")], ["0", k("home")], ["Esc", k("deselect")], [k("doubleClickWater"), k("nameSea")], ["Del", k("removeSea")], [k("shiftClick"), k("gather")], [k("shiftDragWater"), k("gatherBox")], [k("dragGathered"), k("moveTogether")]] },
   pane: { title: k("pane"), keys: [["↵ /", k("answer")], ["l", k("landfall")], ["n", k("note")], ["1–4", k("pickOption")], ["c", k("confirmReef")], ["d", k("dispute")], ["↑ ↓", k("scroll")], ["⌘↵", k("send")]] },
-  board: { title: k("board"), keys: [["↓ j", k("move")], ["↑ k", k("move")], ["↵", k("edit")], ["d n c", k("addCard")], ["x", k("remove")], ["⌘↵", k("save")], ["b", k("mapKey")]] },
+  board: { title: k("board"), keys: [["↓ j", k("move")], ["↑ k", k("move")], ["↵", k("edit")], ["d n c p", k("addCard")], ["x", k("remove")], ["⌘↵", k("save")], ["b", k("mapKey")]] },
 };
 const EVERYWHERE_SECTION = { title: k("everywhere"), keys: EVERYWHERE };
 
