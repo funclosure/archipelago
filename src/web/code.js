@@ -38,6 +38,7 @@ export function loadHighlighter(onReady) {
         engine: m.createOnigurumaEngine(fetch("/vendor/onig.wasm")),
       });
       warm();
+      colourWaiting();
       return true;
     })
     .catch((error) => {
@@ -49,6 +50,17 @@ export function loadHighlighter(onReady) {
   loading.then((ready) => {
     if (ready) onReady();
   });
+}
+
+// Blocks drawn plain before the highlighter arrived. The log and the board keep an element whose content has not
+// changed (keep.js), so nothing would draw these again: they are coloured where they stand, once.
+let waiting = [];
+const WAITING_MAX = 500; // a highlighter that never arrives must not grow this for ever
+function colourWaiting() {
+  const blocks = waiting;
+  waiting = [];
+  // Only a block still showing the text it was given: an editor's mirror may have moved on.
+  for (const { code, tag, text, closed } of blocks) if (code.textContent === text) fillCode(code, tag, text, closed);
 }
 
 /** The first tokenize of a language compiles its grammar (~150 ms); do it off the critical path. */
@@ -128,6 +140,7 @@ export function fillCode(code, tag, text, closed) {
   code.replaceChildren();
   if (!lines) {
     code.textContent = text;
+    if (!highlighter && lang && waiting.length < WAITING_MAX) waiting.push({ code, tag, text, closed });
     return;
   }
   lines.forEach((line, i) => {
