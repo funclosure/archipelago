@@ -6,8 +6,9 @@ import { MODES, MODE_LABELS, MODE_ROLES, MODE_HINTS, PERSONA_NAMES, headPill, st
 import { t } from "./i18n.js";
 import { thinkingLine } from "./progress-model.js";
 import { thinkingEl } from "./thinking.js";
-import { renderMarkdown } from "./markdown.js";
+import { renderMarkdown, markdownBlocks } from "./markdown.js";
 import { pinFromReply, isPinned } from "./board.js";
+import { keyedChildren, patchChildren } from "./keep.js";
 import { landmarkTerms } from "./term-model.js";
 import { modelEl, refreshJudgeModel } from "./model-label.js";
 import { autoRead, autoReadEl, canSpeak, speak, speakButton } from "./voice.js";
@@ -39,6 +40,19 @@ let loadGen = 0;          // monotonic across islands, so a slow load can never 
 /** Bumped whenever the thread is reset or a turn starts: a stream only writes into the turn that started it. */
 let turnGen = 0;
 let turnAbort = null;    // the running turn's AbortController: Stop and Escape abort it
+// Whether the log follows its end. Only a scroll changes it, so content that grows on its own (a demo's frame
+// finding its height, a reply arriving) never reads as the reader having scrolled away.
+let following = true;
+let ownTop = -1;         // where toEnd last put the log, so its own scroll event is not read as the reader's
+
+/** Puts the log at its end. */
+function toEnd(log) {
+  log.scrollTop = log.scrollHeight;
+  ownTop = log.scrollTop;
+}
+
+let logGen = 0;          // bumped when every log item must be drawn again (a theme change)
+let termsSig = "";       // the selected island's landmark terms, as a string, for itemSig
 let composing = false;   // the answer box is mid-composition (an IME): a rebuild now would destroy the word
 let renderHeld = false;  // a render came in while composing; it runs once the word is committed
 let liveFrame = 0;        // pending animation frame for the streaming reply
@@ -113,9 +127,15 @@ export function installCard() {
   document.addEventListener("settings", remodel);
   pane.addEventListener("mouseover", (e) => lightLandmark(e, true));
   pane.addEventListener("mouseout", (e) => lightLandmark(e, false));
+  // A demo that grows (its frame finds its height, a console line lands) keeps a followed log at its end.
+  pane.addEventListener("demo-resize", () => {
+    const log = pane.querySelector(":scope > .log");
+    if (log && following) toEnd(log);
+  });
   document.addEventListener("theme", () => {
     if (!thread.slug) return;
     thread.version = null; // refetch: the log is rebuilt and its diagrams render in the new colours
+    logGen++;
     render();
   });
   try {
@@ -300,7 +320,8 @@ async function runTurn(slug, message, askId) {
   render();
   if (message) {
     const log = pane.querySelector(".log");
-    if (log) log.scrollTop = log.scrollHeight; // sending is a request to watch the reply arrive
+    following = true; // sending is a request to watch the reply arrive
+    if (log) toEnd(log);
   }
   try {
     await streamPost("/api/probe", { domain: app.domain, island: slug, mode, ...(message ? { message } : {}), ...(askId ? { askId } : {}) }, (e) => {
@@ -418,12 +439,15 @@ function renderLive() {
   const progress = pane.querySelector("#progress");
   const log = pane.querySelector(".log");
   if (!live || !progress || !log) return; // no list on screen yet; the full render at the end of the turn shows everything
-  const stuck = atBottom(log);
+  const stuck = following;
   if (thread.inFlight && !thread.live) {
     // Nothing has arrived yet: the reply's own line says so, where the words will land.
     live.replaceChildren(thinkingEl(thinkingLine(PERSONA_NAMES[thread.mode], thread.progress)));
   } else if (thread.live) {
-    live.replaceChildren(renderMarkdown(thread.live, { onQuestion: quoteIntoAnswer, lead: true, terms }));
+    // Block by block: one that has not changed keeps its element, so only the block being written is drawn again.
+    const blocks = markdownBlocks(thread.live, { onQuestion: quoteIntoAnswer, lead: true, terms });
+    keyedChildren(live, blocks.map((b, i) => ({ key: i, sig: b.sig, build: b.build })));
+    for (const old of live.querySelectorAll(".caret")) old.remove();
     // Descend to the deepest last block (e.g. into a list's last <li>) so the caret
     // follows the last character rather than landing after the whole block; stop
     // above inline elements so it trails them instead of nesting inside.
@@ -437,7 +461,7 @@ function renderLive() {
   // Before any words, the waiting line itself names the step; once words stream, the step goes under them.
   progress.textContent = thread.progress && thread.live ? `${thinkingLine(PERSONA_NAMES[thread.mode], thread.progress)}…` : "";
   progress.hidden = !progress.textContent;
-  if (stuck) log.scrollTop = log.scrollHeight;
+  if (stuck) toEnd(log);
 }
 
 /** Focuses the answer box if it can take input; returns whether it did. */
@@ -459,10 +483,10 @@ function focusAnswer() {
 function growAnswer(ta) {
   if (!ta) return;
   const log = pane.querySelector(".log");
-  const stuck = log && atBottom(log);
+  const stuck = log && following;
   ta.style.height = "auto";
   ta.style.height = `${ta.scrollHeight}px`;
-  if (stuck) log.scrollTop = log.scrollHeight; // a taller answer box shrinks the log; keep it at the bottom
+  if (stuck) toEnd(log); // a taller answer box shrinks the log; keep it at the bottom
 }
 
 // ---- head ----
@@ -720,40 +744,77 @@ function itemEl(item, reefPending) {
   return m;
 }
 
-function logEl(island) {
-  const log = el("div", "log");
+/** Everything one log item's element is drawn from, as a string: the element is kept while this stays the same. */
+function itemSig(item, reefPending) {
+  const persona = item.role === "judge" || item.role === "mentor";
+  if (item.kind !== "text" || !persona) return JSON.stringify([logGen, item]);
+  const ask = askFor(thread.asks, item.id);
+  return JSON.stringify([logGen, item, termsSig, canSpeak(item.role), ask, ask ? [thread.inFlight, reefPending] : 0, thread.pointers.filter((x) => x.messageId === item.id)]);
+}
+
+/** The log's children, in order. A keyed entry (a thread item) keeps its element until its content changes. */
+function logEntries(island) {
+  const out = [];
+  const add = (build) => out.push({ build });
   if (!thread.loaded) {
-    if (!thread.loadError) {
-      log.append(el("p", "muted", t("card.loading")));
-      return log;
+    if (!thread.loadError) add(() => el("p", "muted", t("card.loading")));
+    else {
+      add(() => el("p", "error", thread.loadError));
+      add(retryButton);
     }
-    log.append(el("p", "error", thread.loadError), retryButton());
-    return log;
+    return out;
   }
   if (thread.loadError) {
     // the messages below are the last good ones; only the refetch failed
-    log.append(el("p", "muted", t("card.refreshFailed", { error: thread.loadError })), retryButton());
+    add(() => el("p", "muted", t("card.refreshFailed", { error: thread.loadError })));
+    add(retryButton);
   }
   const items = logItems(thread.messages, island);
   if (items.length === 0 && !thread.inFlight) {
-    if (thread.mode === "judge" && island.verdict) log.append(verdictEl(island.verdict));
-    log.append(briefingEl(island));
-    if (thread.error) log.append(el("div", "error", thread.error));
-    return log;
+    if (thread.mode === "judge" && island.verdict) add(() => verdictEl(island.verdict));
+    add(() => briefingEl(island));
+    if (thread.error) add(() => el("div", "error", thread.error));
+    return out;
   }
   // a verdict written from the terminal has no system line; show it at the top of the judge's log
-  if (thread.mode === "judge" && island.verdict && !items.some((i) => i.kind === "verdict")) log.append(verdictEl(island.verdict));
+  if (thread.mode === "judge" && island.verdict && !items.some((i) => i.kind === "verdict")) add(() => verdictEl(island.verdict));
   const reefPending = Boolean(items.find((i) => i.kind === "reef_proposal" && i.proposal.status === "pending"));
-  for (const item of items) log.append(itemEl(item, reefPending));
-  const live = el("div", `msg ${thread.mode}`);
-  live.id = "live";
-  live.hidden = true;
-  const progress = el("div", "progress");
-  progress.id = "progress";
-  progress.hidden = true;
-  log.append(live, progress);
-  if (thread.stopped) log.append(el("div", "stopped", t("card.stopped")));
-  if (thread.error) log.append(el("div", "error", thread.error));
+  for (const item of items) out.push({ key: `${item.kind}:${item.id}`, sig: itemSig(item, reefPending), build: () => itemEl(item, reefPending) });
+  add(() => {
+    const live = el("div", `msg ${thread.mode}`);
+    live.id = "live";
+    live.hidden = true;
+    return live;
+  });
+  add(() => {
+    const progress = el("div", "progress");
+    progress.id = "progress";
+    progress.hidden = true;
+    return progress;
+  });
+  if (thread.stopped) add(() => el("div", "stopped", t("card.stopped")));
+  if (thread.error) add(() => el("div", "error", thread.error));
+  return out;
+}
+
+/**
+ * The log. Drawn into the log already on the page when it is this island's in this lens, so a reply whose content
+ * has not changed keeps its element: a demo keeps running, a diagram is not drawn again.
+ */
+function logEl(island, prev = null) {
+  const of = `${island.slug}/${thread.mode}`;
+  const log = prev && prev.dataset.thread === of ? prev : el("div", "log");
+  if (log !== prev) {
+    following = true; // a thread opens at its latest words
+    log.addEventListener("scroll", () => {
+      // A scroll the page made itself (toEnd) says nothing about the reader: by the time its event arrives the
+      // content may have grown again, and reading that as "scrolled away" would stop the log following.
+      if (Math.abs(log.scrollTop - ownTop) < 2) return;
+      following = atBottom(log);
+    });
+  }
+  log.dataset.thread = of;
+  keyedChildren(log, logEntries(island));
   return log;
 }
 
@@ -983,20 +1044,21 @@ function render() {
 
   const hadFocus = document.activeElement && document.activeElement.id === "answer";
   const hadNoteFocus = document.activeElement && document.activeElement.id === "note";
-  const prevLog = pane.querySelector(".log");
-  const stuck = !prevLog || atBottom(prevLog);
+  const prevLog = pane.querySelector(":scope > .log");
   const prevTop = prevLog ? prevLog.scrollTop : 0;
 
   pane.hidden = false;
   terms = landmarkTerms(island.landmarks.items);
   // Before the first turn the briefing holds the start button; the answer box comes with the first reply.
   const briefing = thread.loaded && thread.messages.length === 0 && !thread.inFlight;
-  pane.replaceChildren(headEl(island), logEl(island), ...(briefing ? [] : [footEl(island)]));
-  pane.prepend(gripEl());
+  termsSig = JSON.stringify(island.landmarks.items.map((l) => [l.slug, l.name, l.terms ?? null]));
+  // The log stays in the pane when it is this thread's (patchChildren never detaches it); the rest is made again.
+  patchChildren(pane, [gripEl(), headEl(island), logEl(island, prevLog), ...(briefing ? [] : [footEl(island)])]);
   growAnswer(pane.querySelector("#answer"));
   renderLive();
   const log = pane.querySelector(".log");
-  log.scrollTop = stuck ? log.scrollHeight : prevTop;
+  if (log !== prevLog || following) toEnd(log);
+  else log.scrollTop = prevTop;
   if (hadNoteFocus) {
     const note = pane.querySelector("#note");
     if (note) {

@@ -1,6 +1,6 @@
 // The demo fence's pure parts: its tag, its limits, the tokens it is handed, how the frame's reports are read.
 import { test, expect } from "bun:test";
-import { DEMO_LANG, DEMO_MAX, DEMO_MIN_H, DEMO_MAX_H, DEMO_TOKENS, demoHeight, logLine, themeColours } from "../../src/web/demo-model.js";
+import { DEMO_LANG, DEMO_MAX, DEMO_MIN_H, DEMO_MAX_H, DEMO_TOKENS, DEMO_COLUMN, demoHeight, fullZoom, logLine, themeColours } from "../../src/web/demo-model.js";
 import { mdBlocks } from "../../src/web/thread.js";
 
 test("a demo is a fence tagged demo, with a body cap", () => {
@@ -73,4 +73,12 @@ test("a demo's own custom properties are read by their names", () => {
   expect(themeColours(src, THEME)).toBe(":root { --bg: transparent; --text: #e6e1d6; --grid: #3a4a5a; --accent: #888 } body { background: var(--bg); color: var(--text) }");
   // without the theme's values nothing is put in: `--text: var(--text)` would be a cycle
   expect(themeColours(":root { --text: #eee }")).toBe(":root { --text: #eee }");
+});
+
+test("a demo filling the window is drawn larger, by how much wider than its column, up to a limit", () => {
+  expect(fullZoom(DEMO_COLUMN)).toBe(1);
+  expect(fullZoom(390)).toBe(1); // a phone: already as wide as it gets
+  expect(fullZoom(DEMO_COLUMN * 1.5)).toBe(1.5);
+  expect(fullZoom(4000)).toBe(1.75);
+  expect(fullZoom(undefined)).toBe(1);
 });

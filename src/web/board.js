@@ -7,6 +7,8 @@ import { LANGS } from "./code-model.js";
 import { registerRegion, setRegion, region } from "./keys.js";
 import { startAdd, startEdit, canSave, writeOf, moveCard, keepCursor, authorLabel, bylineOf, kindLabel, hintCard, KIND_KEYS, PLAIN } from "./board-model.js";
 import { demoElement } from "./demo.js";
+import { syncPins } from "./pin.js";
+import { keyedChildren, patchChildren } from "./keep.js";
 import { t } from "./i18n.js";
 
 const PREVIEW_MS = 500;
@@ -28,6 +30,7 @@ const state = {
   loadError: null,
 };
 let loadGen = 0;
+let drawGen = 0;       // bumped when every card must be drawn again (a theme change)
 let previewTimer = 0;
 let previewSeq = 0;
 let editorNode = null;   // the editor element, kept across renders so typing is never interrupted
@@ -119,6 +122,7 @@ async function load(slug) {
     state.loadError = null;
     state.version = version;
     state.cursor = keepCursor(cards.map((c) => c.id), state.cursor);
+    syncPins();
   } catch (error) {
     if (gen !== loadGen) return;
     state.loadError = error.message;
@@ -561,15 +565,17 @@ function headEl(island) {
   return head;
 }
 
-function columnEl() {
-  const col = el("div", "column");
-  if (state.loadError) col.append(el("div", "err-line", state.loadError));
-  if (state.editor && state.editor.id === null) col.append(currentEditor());
-  if (state.loaded && state.cards.length === 0 && !state.editor) {
-    col.append(el("div", "empty", t("board.empty")));
+/** The column's children. A card keeps its element until the card changes, so a demo on it keeps running. */
+function columnEntries() {
+  const out = [];
+  if (state.loadError) out.push({ build: () => el("div", "err-line", state.loadError) });
+  if (state.editor && state.editor.id === null) out.push({ build: currentEditor });
+  if (state.loaded && state.cards.length === 0 && !state.editor) out.push({ build: () => el("div", "empty", t("board.empty")) });
+  for (const card of state.cards) {
+    if (state.editor && state.editor.id === card.id) out.push({ build: currentEditor });
+    else out.push({ key: card.id, sig: JSON.stringify([drawGen, card]), build: () => cardEl(card) });
   }
-  for (const card of state.cards) col.append(state.editor && state.editor.id === card.id ? currentEditor() : cardEl(card));
-  return col;
+  return out;
 }
 
 function render() {
@@ -587,21 +593,27 @@ function render() {
   }
   const active = document.activeElement;
   const keep = editorNode && editorNode.contains(active) ? active : null;
-  const scrollTop = board.querySelector(".column")?.scrollTop ?? 0;
+  const column = board.querySelector(":scope > .column") ?? el("div", "column");
+  const scrollTop = column.scrollTop;
   setVisible(true);
-  board.replaceChildren(headEl(island), columnEl());
+  patchChildren(board, [headEl(island), column]); // the column stays on the page, and so do its unchanged cards
+  keyedChildren(column, columnEntries());
+  paintCursor();
   if (!state.editor) {
     editorNode = null;
     editorFor = null;
     editorStatus = null;
   }
-  board.querySelector(".column").scrollTop = scrollTop;
+  column.scrollTop = scrollTop;
   if (keep && keep.isConnected) keep.focus({ preventScroll: true });
 }
 
 export function installBoard() {
   app.listeners.add(sync);
-  document.addEventListener("theme", render); // cards are rebuilt; the diagram cache was cleared
+  document.addEventListener("theme", () => {
+    drawGen++; // cards are rebuilt; the diagram cache was cleared
+    render();
+  });
   toggle.addEventListener("click", () => setOpen(true));
   scrim.addEventListener("click", () => setOpen(false)); // clicking the peeked map goes back to it
   registerRegion("board", {

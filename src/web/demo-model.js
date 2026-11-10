@@ -20,6 +20,17 @@ export function demoHeight(reported) {
   return Math.max(DEMO_MIN_H, Math.min(DEMO_MAX_H, Math.ceil(h)));
 }
 
+/** The column a demo is written for, in px: full screen draws it larger by how much wider the window is. */
+export const DEMO_COLUMN = 640;
+const ZOOM_MAX = 1.75;
+
+/** How much larger a demo is drawn when it fills a frame `width` px wide: 1 in a column, at most `ZOOM_MAX`. */
+export function fullZoom(width) {
+  const w = Number(width);
+  if (!Number.isFinite(w) || w <= DEMO_COLUMN) return 1;
+  return Math.min(ZOOM_MAX, Math.round((w / DEMO_COLUMN) * 20) / 20);
+}
+
 /** A colour property and its value in CSS (`background: #111`) or script (`style.color = on ? '#eee' : '#888'`); the
  *  value runs to the end of the declaration, keeping commas inside parentheses (`rgb(…)`). */
 const DECLARATION = /(?<![\w-])(background-color|background|backgroundColor|border-(?:top-|right-|bottom-|left-)?color|border(?:-top|-right|-bottom|-left)?|border(?:Top|Right|Bottom|Left)?Color|border(?:Top|Right|Bottom|Left)?|outline-color|outline|outlineColor|color)(\s*[:=]\s*)((?:[^;}\n<>,(]|\([^)]*\))*)/g;

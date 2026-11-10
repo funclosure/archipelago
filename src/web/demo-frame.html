@@ -34,9 +34,14 @@
       original(...args);
     };
   }
+  // Escape pressed inside the demo never reaches the page; say so, and the page leaves full screen.
+  addEventListener("keydown", (e) => { if (e.key === "Escape") post({ type: "demo-escape" }); });
   let ran = false;
   addEventListener("message", (e) => {
-    if (e.source !== parent || !e.data || e.data.type !== "demo-run" || ran) return;
+    if (e.source !== parent || !e.data) return;
+    // Full screen: the demo was written for a narrow column, so it is drawn larger rather than left small in a corner.
+    if (e.data.type === "demo-zoom") document.documentElement.style.zoom = String(Math.max(1, Math.min(2, Number(e.data.zoom) || 1)));
+    if (e.data.type !== "demo-run" || ran) return;
     ran = true;
     for (const [name, value] of Object.entries(e.data.tokens || {})) document.documentElement.style.setProperty(name, value);
     // Parsed, never written as markup: the nodes are moved in, and each script is recreated so it runs, in order.

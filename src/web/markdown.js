@@ -190,64 +190,90 @@ function appendLead(p, raw, onQuestion, terms) {
   p.append(first, after);
 }
 
+/** One parsed block (from `mdBlocks`) as its element, or null for a block that draws nothing. */
+function blockEl(b, { onQuestion = null, lead = false, terms = null, pin = null } = {}) {
+  if (b.type === "p") {
+    const p = document.createElement("p");
+    if (lead) p.className = "led";
+    b.raw.forEach((raw, i) => {
+      if (i) p.append(document.createElement("br"));
+      if (lead && i === 0) appendLead(p, raw, onQuestion, terms);
+      else if (lead) {
+        const after = document.createElement("span");
+        after.className = "rest";
+        appendProse(after, raw, onQuestion, terms);
+        p.append(after);
+      } else appendProse(p, raw, onQuestion, terms);
+    });
+    return p;
+  }
+  if (b.type === "quote") {
+    const bq = document.createElement("blockquote");
+    for (const segments of b.lines) {
+      const p = document.createElement("p");
+      appendInline(p, segments, terms);
+      bq.append(p);
+    }
+    return bq;
+  }
+  if (b.type === "h") {
+    const h = document.createElement(`h${b.level}`);
+    appendInline(h, b.segments, terms);
+    return h;
+  }
+  if (b.type === "list") {
+    const list = document.createElement(b.ordered ? "ol" : "ul");
+    for (const item of b.items) {
+      const li = document.createElement("li");
+      appendInline(li, item, terms);
+      list.append(li);
+    }
+    return list;
+  }
+  if (b.type === "code" && b.lang === "mermaid" && b.closed) {
+    return diagramElement(b.text, { pin });
+  }
+  if (b.type === "code" && b.lang === "mermaid") {
+    return sourceBlock(t("markdown.drawingDiagram"));
+  }
+  if (b.type === "code" && PLOT_LANGS.has(b.lang) && b.closed) {
+    return plotElement(b.text);
+  }
+  if (b.type === "code" && PLOT_LANGS.has(b.lang)) {
+    return sourceBlock(t("markdown.drawingPlot"));
+  }
+  if (b.type === "code" && b.lang === DEMO_LANG && b.closed) {
+    return demoElement(b.text, { pin });
+  }
+  if (b.type === "code" && b.lang === DEMO_LANG) {
+    return sourceBlock(t("demo.building"));
+  }
+  if (b.type === "code") {
+    return codeElement(b.lang, b.text, b.closed, { pin: b.closed ? pin : null, lang: resolveLang(b.lang) });
+  }
+  return null;
+}
+
+/**
+ * The text's blocks as `{ sig, build }`, for a caller that redraws as the text grows (a streaming reply): `sig` is
+ * the parsed block as a string, so with keep.js a block that has not changed keeps its element and only the one
+ * being written is built again.
+ */
+export function markdownBlocks(text, options = {}) {
+  return mdBlocks(text).map((b) => ({ sig: JSON.stringify(b), build: () => blockEl(b, options) ?? document.createComment("") }));
+}
+
 /**
  * The rendered blocks of a markdown string, as a fragment ready to append. `onQuestion(text)` makes question
  * sentences clickable; `lead` marks each paragraph's first sentence so the line of thought can be skimmed; `terms`
  * (from `landmarkTerms`) marks the island's landmark words in prose, never in code. `pin` (from card.js, for a persona's
  * reply) puts "pin to board" on each closed diagram, code, and demo fence.
  */
-export function renderMarkdown(text, { onQuestion = null, lead = false, terms = null, pin = null } = {}) {
+export function renderMarkdown(text, options = {}) {
   const frag = document.createDocumentFragment();
   for (const b of mdBlocks(text)) {
-    if (b.type === "p") {
-      const p = document.createElement("p");
-      if (lead) p.className = "led";
-      b.raw.forEach((raw, i) => {
-        if (i) p.append(document.createElement("br"));
-        if (lead && i === 0) appendLead(p, raw, onQuestion, terms);
-        else if (lead) {
-          const after = document.createElement("span");
-          after.className = "rest";
-          appendProse(after, raw, onQuestion, terms);
-          p.append(after);
-        } else appendProse(p, raw, onQuestion, terms);
-      });
-      frag.append(p);
-    } else if (b.type === "quote") {
-      const bq = document.createElement("blockquote");
-      for (const segments of b.lines) {
-        const p = document.createElement("p");
-        appendInline(p, segments, terms);
-        bq.append(p);
-      }
-      frag.append(bq);
-    } else if (b.type === "h") {
-      const h = document.createElement(`h${b.level}`);
-      appendInline(h, b.segments, terms);
-      frag.append(h);
-    } else if (b.type === "list") {
-      const list = document.createElement(b.ordered ? "ol" : "ul");
-      for (const item of b.items) {
-        const li = document.createElement("li");
-        appendInline(li, item, terms);
-        list.append(li);
-      }
-      frag.append(list);
-    } else if (b.type === "code" && b.lang === "mermaid" && b.closed) {
-      frag.append(diagramElement(b.text, { pin }));
-    } else if (b.type === "code" && b.lang === "mermaid") {
-      frag.append(sourceBlock(t("markdown.drawingDiagram")));
-    } else if (b.type === "code" && PLOT_LANGS.has(b.lang) && b.closed) {
-      frag.append(plotElement(b.text));
-    } else if (b.type === "code" && PLOT_LANGS.has(b.lang)) {
-      frag.append(sourceBlock(t("markdown.drawingPlot")));
-    } else if (b.type === "code" && b.lang === DEMO_LANG && b.closed) {
-      frag.append(demoElement(b.text, { pin }));
-    } else if (b.type === "code" && b.lang === DEMO_LANG) {
-      frag.append(sourceBlock(t("demo.building")));
-    } else if (b.type === "code") {
-      frag.append(codeElement(b.lang, b.text, b.closed, { pin: b.closed ? pin : null, lang: resolveLang(b.lang) }));
-    }
+    const node = blockEl(b, options);
+    if (node) frag.append(node);
   }
   return frag;
 }
