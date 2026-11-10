@@ -112,11 +112,12 @@ export async function judgeStubTurn({ dbPath, domain, island, emit }: JudgeTurn)
  * set_landmarks (the same four) · then "explore <slug>" → mark_explored, quoting the whole message ·
  * "elsewhere" → point_to the first other island in the domain ·
  * "confus" or 困惑 → loose_end (confused, on the first landmark the message names by slug or name, else the island) ·
+ * "change" with a demo pinned from a mentor reply → board_write update of that card · "saw" with demo steps → names the last step ·
  * "demo" → a canned demo fence · "fail" → throws · "pin" → board_write as the mentor (a canned note) · else a canned follow-up.
  * A function declaration, not a const: persona.ts imports it while this module may still be evaluating.
  */
-export async function mentorStubTurn({ dbPath, domain, island, emit }: JudgeTurn): Promise<string> {
-  const deps = { dbPath, domain, island: islandOf(island), mode: "mentor" as const };
+export async function mentorStubTurn({ dbPath, domain, island, demoSteps, emit }: JudgeTurn): Promise<string> {
+  const deps = { dbPath, domain, island: islandOf(island), mode: "mentor" as const, demoSteps };
   let ctx = islandContext(deps);
   const say = (text: string) => {
     emit({ type: "text", text });
@@ -153,6 +154,14 @@ export async function mentorStubTurn({ dbPath, domain, island, emit }: JudgeTurn
     looseEnd(deps, { op: "open", kind: "confused", landmark, note: "The reader found this confusing.", evidence: last.body }, "mentor");
     return say(`Noted as something to come back to. Here is ${ctx.island.name} again, in plain terms.`);
   }
+  // "change" with a demo the reader pinned from a mentor reply on the board: the card changes where it is.
+  const kept = ctx.board.find((c) => c.kind === "demo" && c.author === "you" && c.forkedFrom === "mentor");
+  if (text.includes("change") && kept) {
+    emit({ type: "progress", message: "board_write" });
+    boardWrite(deps, { op: "update", id: kept.id, body: STUB_DEMO.replace("cache.size > 3", "cache.size > 4") }, "mentor");
+    return say("The demo on your board now holds four keys. Put five in: which one leaves?");
+  }
+  if (text.includes("saw") && (ctx.demoSteps ?? []).length > 0) return say(`The demo printed "${ctx.demoSteps!.at(-1)}" last. What made it pick that key?`);
   if (text.includes("demo")) {
     return say(`Try it: put a few keys in and watch which one leaves when the cache is full.\n\n\`\`\`demo\n${STUB_DEMO}\n\`\`\`\n\nWhich key did it drop, and why that one?`);
   }

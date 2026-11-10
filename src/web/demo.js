@@ -25,6 +25,20 @@ function onMessage(e) {
 }
 if (typeof window !== "undefined") window.addEventListener("message", onMessage);
 
+/** What the demos printed as the reader used them, newest last, until a message takes them along. */
+const steps = [];
+const STEPS_KEPT = 40;
+
+function noteStep(text) {
+  steps.push(String(text));
+  if (steps.length > STEPS_KEPT) steps.splice(0, steps.length - STEPS_KEPT);
+}
+
+/** The demos' lines since the last call, and forgets them: card.js sends them with the reader's next message. */
+export function takeDemoSteps() {
+  return steps.splice(0, steps.length);
+}
+
 let leaveFull = null; // closes the demo that fills the window, while one does
 
 /** Brings a demo that fills the window back to its place. True when there was one (Escape stops there). */
@@ -157,9 +171,11 @@ export function demoElement(source, { pin = null } = {}) {
       else if (data.type === "demo-error") {
         err.textContent = t("demo.error", { message: String(data.message).slice(0, 300) });
         err.hidden = false;
+        noteStep(`error: ${String(data.message).slice(0, 140)}`);
       } else if (data.type === "demo-log") {
         const line = logLine(data);
         if (!line) return;
+        noteStep(line.text);
         const row = document.createElement("div");
         row.className = "line";
         row.dataset.level = line.level; // a class "log" would pick up the pane's .log rule

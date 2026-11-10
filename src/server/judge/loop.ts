@@ -74,9 +74,9 @@ export function turnRequestFor(persona: Persona, context: PersonaContext, model:
 export type ModelRunnerOptions = { toolbox: ToolBox; adapter: ModelAdapter; model: string };
 
 export function createModelRunner({ toolbox, adapter, model }: ModelRunnerOptions): JudgeRunner {
-  return async ({ dbPath, domain, island, mode = "judge", emit, signal }) => {
+  return async ({ dbPath, domain, island, mode = "judge", demoSteps, emit, signal }) => {
     const persona = personaFor(mode);
-    const deps: TurnDeps = { dbPath, domain, island, mode };
+    const deps: TurnDeps = { dbPath, domain, island, mode, demoSteps };
     const conversation = adapter.start(turnRequestFor(persona, toolbox.context(persona, deps), model));
     const cancelled = () => new ArchipelagoError(`the ${persona.id}'s turn was cancelled`);
 

@@ -274,6 +274,17 @@ test("the reader pins a persona's fence as their own card, marked as from that r
   expect(() => boardWrite(deps(), { op: "add", kind: "note", body: "b", from: "you" }, "you")).toThrow();
 });
 
+test("a persona may update a card the reader pinned from its own reply, never remove it, never another's", () => {
+  const kept = boardWrite(deps(), { op: "add", kind: "demo", body: "<button>go</button>", from: "mentor" }, "you");
+  if (!("card" in kept)) throw new Error("expected a card");
+  const changed = boardWrite({ ...deps(), mode: "mentor" }, { op: "update", id: kept.card.id, body: "<button>go again</button>" }, "mentor");
+  if (!("card" in changed)) throw new Error("expected a card");
+  // Still the reader's card, still marked as pinned from the mentor.
+  expect(changed.card).toMatchObject({ body: "<button>go again</button>", author: "you", forkedFrom: "mentor" });
+  expect(() => boardWrite(deps(), { op: "remove", id: kept.card.id }, "mentor")).toThrow(/only the reader removes it/);
+  expect(() => boardWrite(deps(), { op: "update", id: kept.card.id, body: "x" }, "judge")).toThrow(/the reader wrote card/);
+});
+
 test("board_write validates its input and scopes cards to this island", () => {
   expect(() => boardWrite(deps(), { op: "add", kind: "note", title: "t", body: "   " })).toThrow();
   expect(() => boardWrite(deps(), { op: "add", kind: "poem", title: "t", body: "b" })).toThrow();
