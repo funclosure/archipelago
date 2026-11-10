@@ -1,5 +1,5 @@
 import { test, expect } from "bun:test";
-import { DEMO_STARTER, KIND_KEYS, withoutRemoving, startAdd, startEdit, canSave, writeOf, moveCard, keepCursor, authorLabel, bylineOf, hintCard } from "../../src/web/board-model.js";
+import { originOf, isDirty, draftKey, DEMO_STARTER, KIND_KEYS, withoutRemoving, startAdd, startEdit, canSave, writeOf, moveCard, keepCursor, authorLabel, bylineOf, hintCard } from "../../src/web/board-model.js";
 
 test("startAdd and startEdit build editors without a title; lang lives only on code cards", () => {
   expect(startAdd("note")).toEqual({ id: null, kind: "note", body: "", lang: null });
@@ -75,4 +75,19 @@ test("a card waiting out its undo is off the board until it is deleted or brough
   const cards = [{ id: 1 }, { id: 2 }, { id: 3 }];
   expect(withoutRemoving(cards, 2)).toEqual([{ id: 1 }, { id: 3 }]);
   expect(withoutRemoving(cards, null)).toBe(cards);
+});
+
+test("an editor is dirty once its body or language differs from what it started as", () => {
+  const editor = startEdit({ id: 4, kind: "code", body: "let a = 1", lang: "swift" });
+  const origin = originOf(editor);
+  expect(isDirty(editor, origin)).toBe(false);
+  expect(isDirty({ ...editor, body: "let a = 2" }, origin)).toBe(true);
+  expect(isDirty({ ...editor, lang: "kotlin" }, origin)).toBe(true);
+  expect(isDirty(startAdd("demo"), originOf(startAdd("demo")))).toBe(false); // the starter alone is nothing to lose
+});
+
+test("drafts are kept per island, per card, and per kind of new card", () => {
+  expect(draftKey("caching", startEdit({ id: 4, kind: "demo", body: "x" }))).toBe("caching:4");
+  expect(draftKey("caching", startAdd("demo"))).toBe("caching:new-demo");
+  expect(draftKey("queues", startAdd("note"))).toBe("queues:new-note");
 });

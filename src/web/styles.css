@@ -563,6 +563,11 @@ body.pane-open .board { right: var(--pane-w); }
 .board .editor .preview .diagram { margin: 0; }
 .board .editor .err { color: var(--reef); font-size: 12px; white-space: pre-wrap; padding: 6px 14px 10px; border-top: 1px solid var(--reef-tint); }
 .board .editor .efoot { display: flex; gap: 6px; align-items: center; padding: 8px 12px; border-top: 1px solid var(--line); }
+.board .editor .efoot[hidden], .board .editor .confirm[hidden], .board .editor .restored[hidden] { display: none; }
+.board .editor .confirm { display: flex; gap: 8px; align-items: center; padding: 8px 12px; border-top: 1px solid var(--reef-tint); font-size: 12px; color: var(--text); }
+.board .editor .confirm > span { margin-right: auto; }
+.board .editor .restored { display: flex; gap: 10px; align-items: center; justify-content: space-between; padding: 6px 12px; border-bottom: 1px solid var(--line); font-size: 12px; color: var(--text-2); }
+.board .editor .restored button { padding: 2px 8px; font-size: 11px; }
 .board .editor .efoot .hint { margin-left: auto; color: var(--muted); font-size: 11px; }
 .board .editor .efoot .hint kbd { font: 10px var(--font-mono); border: 1px solid var(--line-03); border-radius: 4px; padding: 0 4px; margin: 0 2px; }
 .board .editor .efoot .status { color: var(--muted); font-size: 12px; margin-left: 8px; }
