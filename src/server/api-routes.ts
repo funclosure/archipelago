@@ -341,7 +341,9 @@ async function handleApi(req: Request, url: URL, ctx: ApiContext): Promise<Respo
         return { askFloor: listAsks(db, i.id).at(-1)?.id ?? 0, pointFloor: pointerFloor(db, i.id) };
       })();
     });
-    return streamTurn(ctx, key, mode, { domain: input.domain, island }, (reply, model) =>
+    // The demo's lines go to the mentor only: the Keeper tests what the reader says, never what a demo printed.
+    const demoSteps = mode === "mentor" && input.message ? input.demoSteps : undefined;
+    return streamTurn(ctx, key, mode, { domain: input.domain, island, demoSteps }, (reply, model) =>
       withDb(ctx, (db) => {
         const d = requireDomain(db, input.domain);
         const i = requireIsland(db, d.id, island);
@@ -444,7 +446,7 @@ async function handleApi(req: Request, url: URL, ctx: ApiContext): Promise<Respo
  * timeout and cancels the runner, stores the reply through `store` unless the reader left, and keeps the
  * lock until an abandoned runner has stopped writing, within a bound.
  */
-function streamTurn(ctx: ApiContext, key: string, mode: MessageMode, at: { domain: string; island?: string }, store: (reply: string, model: string | null) => void): Response {
+function streamTurn(ctx: ApiContext, key: string, mode: MessageMode, at: { domain: string; island?: string; demoSteps?: string[] }, store: (reply: string, model: string | null) => void): Response {
   inFlight.set(key, mode);
   const abort = new AbortController();
   return sseResponse(async (emit) => {
@@ -462,7 +464,7 @@ function streamTurn(ctx: ApiContext, key: string, mode: MessageMode, at: { domai
     });
     try {
       const model = (await ctx.model?.()) ?? null; // read as the turn starts: a reply is the model's that began it
-      turn = ctx.runner({ dbPath: ctx.dbPath, domain: at.domain, island: at.island, mode, emit, signal: abort.signal });
+      turn = ctx.runner({ dbPath: ctx.dbPath, domain: at.domain, island: at.island, mode, demoSteps: at.demoSteps, emit, signal: abort.signal });
       const reply = (await Promise.race([turn, expiry])).trim();
       if (abort.signal.aborted) return; // the reader left: a reply nobody asked to keep is not stored
       store(reply, model);

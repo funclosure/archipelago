@@ -35,7 +35,14 @@ import { toolError, toolResult, type ToolResult } from "./tool-specs.ts";
 import { chartContext, proposeSketchTool } from "./chart.ts";
 
 /** Where a tool call writes: the database path, the island whose threads this turn belongs to, and whose turn it is. */
-export type ToolDeps = { dbPath?: string; domain: string; island: string; mode?: MessageMode };
+export type ToolDeps = {
+  dbPath?: string;
+  domain: string;
+  island: string;
+  mode?: MessageMode;
+  /** What the demos printed as the reader used them since their last message (see `probeInputSchema`). */
+  demoSteps?: string[];
+};
 /** A turn's deps as the runners hold them: the island is absent only for the cartographer at the top scale. */
 export type TurnDeps = Omit<ToolDeps, "island"> & { island?: string };
 
@@ -66,7 +73,7 @@ export function systemLine(target: string, state: VerdictState, threadIsland: st
 
 export function islandContext(deps: TurnDeps): JudgeContext {
   const { domain, island, mode } = onIsland(deps);
-  return withDb(deps.dbPath, (db) => buildJudgeContext(db, domain, island, mode ?? "judge"));
+  return { ...withDb(deps.dbPath, (db) => buildJudgeContext(db, domain, island, mode ?? "judge")), demoSteps: deps.demoSteps ?? [] };
 }
 
 /** A thread charts its own island, and a strait only when this island is one of its two ends. */
@@ -322,7 +329,11 @@ export function boardWrite(deps: ToolDeps, input: unknown, author: MessageRole =
         return { card };
       }
       const existing = requireCard(db, island.id, parsed.id);
-      if (author !== "you" && existing.author !== author) {
+      // A card the reader pinned from this persona's reply holds this persona's work: it may update it (the reader
+      // asked for a change, and it changes where they kept it), never remove it, since the keeping was the reader's.
+      const pinnedFromMine = existing.author === "you" && existing.forkedFrom === author;
+      if (author !== "you" && existing.author !== author && !(pinnedFromMine && parsed.op === "update")) {
+        if (pinnedFromMine) throw new ArchipelagoError(`the reader pinned card ${existing.id}; you may update it, and only the reader removes it`);
         const owner = existing.author === "you" ? "the reader" : `the ${existing.author}`;
         throw new ArchipelagoError(`${owner} wrote card ${existing.id}; add your own card instead`);
       }

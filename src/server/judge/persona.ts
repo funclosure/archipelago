@@ -3,7 +3,7 @@
 // turn. One runner serves all three.
 import type { Ask, Message, MessageMode } from "../../core/types.ts";
 import {
-  indent, renderBoard, renderElsewhere, renderIslandHead, renderLearner, renderLooseEnds, renderOpeningLanguage, renderPendingAsk, renderPendingReefs, renderReplay, renderSurroundings, type JudgeContext,
+  indent, renderBoard, renderDemoSteps, renderElsewhere, renderIslandHead, renderLearner, renderLooseEnds, renderOpeningLanguage, renderPendingAsk, renderPendingReefs, renderReplay, renderSurroundings, type JudgeContext,
 } from "./context.ts";
 import type { JudgeRunner } from "./runner.ts";
 import { cartographerStubTurn, judgeStubTurn, mentorStubTurn } from "./stub.ts";
@@ -103,6 +103,7 @@ export function renderMentorContext(ctx: JudgeContext): string {
     ...renderLooseEnds(ctx, "Take one up when the reader comes near it (§10)."),
     ...renderPendingAsk(ctx),
     ...renderBoard(ctx, "mentor", "pin an analogy or a diagram with board_write when it will be pointed at again."),
+    ...renderDemoSteps(ctx),
     ...renderElsewhere(ctx),
     ...renderOpeningLanguage(ctx),
   ].join("\n");

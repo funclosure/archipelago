@@ -44,6 +44,8 @@ export type JudgeContext = {
   elsewhere: { slug: string; name: string; parent: string | null }[];
   /** The island's open loose ends, noted in either thread: both personas read them. */
   looseEnds: LooseEnd[];
+  /** What the demos printed as the reader used them since their last message; set by the turn, never stored. */
+  demoSteps?: string[];
   /** The judge's round: reader answers since this island was last charted in its thread (all of them if it never was). 0 for the mentor. */
   round: number;
   /** The mentor's learner block; null on the judge's turn, which never reads it. */
@@ -262,6 +264,13 @@ export function renderBoard(ctx: JudgeContext, self: MessageRole, emptyHint: str
     lines.push(`- #${c.id} ${c.kind}${c.lang ? ` (${c.lang})` : ""}${c.title ? ` "${indent(c.title)}"` : ""} [${marks.join(", ")}]:`, `  ${indent(c.body)}`);
   }
   return lines;
+}
+
+/** What the reader just did in a demo, as the demo printed it. The demo's lines, never the reader's words. */
+export function renderDemoSteps(ctx: JudgeContext): string[] {
+  const steps = ctx.demoSteps ?? [];
+  if (steps.length === 0) return [];
+  return [``, `The reader's steps in a demo since their last message (what the demo printed, oldest first; not their words, never evidence):`, ...steps.map((s) => `- ${indent(s)}`)];
 }
 
 const SPEAKER: Record<MessageRole, string> = { you: "Reader", judge: "Judge", mentor: "Mentor", cartographer: "Cartographer" };

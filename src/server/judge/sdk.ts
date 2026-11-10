@@ -52,10 +52,10 @@ function toolsFor(sdk: Sdk, deps: TurnDeps, persona: Persona): SdkMcpToolDefinit
 }
 
 /** One stateless turn on the Agent SDK, through ANTHROPIC_API_KEY when it is set and the user's Claude Code login otherwise, as the turn's persona. */
-export const sdkRunner: JudgeRunner = async ({ dbPath, domain, island, mode = "judge", emit, signal }) => {
+export const sdkRunner: JudgeRunner = async ({ dbPath, domain, island, mode = "judge", demoSteps, emit, signal }) => {
   const sdk = await loadSdk();
   const persona = personaFor(mode);
-  const deps: TurnDeps = { dbPath, domain, island, mode };
+  const deps: TurnDeps = { dbPath, domain, island, mode, demoSteps };
   const context = persona.buildContext(deps);
   const systemPrompt = `${readProtocol(persona)}\n\n${persona.renderContext(context)}`;
   const prompt = persona.renderThreadPrompt(context.thread, context.asks);

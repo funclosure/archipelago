@@ -151,6 +151,10 @@ export const reefProposalInputSchema = z.object({
   rationale: z.string().min(1),
 });
 
+/** The most demo steps one turn carries, and the most characters of each. */
+export const DEMO_STEPS_MAX = 20;
+export const DEMO_STEP_MAX = 160;
+
 export const probeInputSchema = z
   .object({
     domain: slugSchema,
@@ -160,6 +164,12 @@ export const probeInputSchema = z
     mode: z.enum(messageModes).default("judge"),
     message: z.string().trim().min(1).optional(),
     askId: numberInput.pipe(z.number().int().positive()).optional(),
+    /** What the demos printed as the reader used them since their last message: kept to the newest few, cut short. */
+    demoSteps: z
+      .array(z.string())
+      .max(200)
+      .optional()
+      .transform((steps) => steps?.map((s) => s.trim().slice(0, DEMO_STEP_MAX)).filter(Boolean).slice(-DEMO_STEPS_MAX)),
   })
   .refine((v) => v.mode === "cartographer" || v.island !== undefined, { message: "island is required", path: ["island"] });
 

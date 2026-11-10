@@ -206,6 +206,13 @@ async function saveEditor() {
   return true;
 }
 
+/** Opens the board; `latest` puts the cursor on the card changed most recently and brings it into view. */
+export function openBoard({ latest = false } = {}) {
+  if (latest && state.cards.length) state.cursor = state.cards.reduce((a, b) => (b.updatedAt > a.updatedAt ? b : a)).id;
+  setOpen(true);
+  if (latest) requestAnimationFrame(scrollCursorIntoView);
+}
+
 /** Pins a fence from a persona's reply as the reader's card, then refetches. For card.js's pin buttons. */
 export async function pinFromReply({ kind, body, lang = null, from }) {
   const slug = state.slug;

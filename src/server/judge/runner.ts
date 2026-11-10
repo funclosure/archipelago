@@ -15,6 +15,8 @@ export type JudgeTurn = {
   island?: string;
   /** Whose turn: the judge's (default), the mentor's, or the cartographer's. Picks the persona and the thread. */
   mode?: MessageMode;
+  /** What the demos printed as the reader used them since their last message; the mentor's context lists them. */
+  demoSteps?: string[];
   emit: (event: JudgeEvent) => void;
   /** Aborted when the turn times out or the reader disconnects; the SDK runner cancels on it, the stub ignores it. */
   signal?: AbortSignal;

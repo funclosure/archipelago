@@ -7,8 +7,9 @@ import { t } from "./i18n.js";
 import { thinkingLine } from "./progress-model.js";
 import { thinkingEl } from "./thinking.js";
 import { renderMarkdown, markdownBlocks } from "./markdown.js";
-import { pinFromReply, isPinned } from "./board.js";
+import { pinFromReply, isPinned, openBoard } from "./board.js";
 import { keyedChildren, patchChildren } from "./keep.js";
+import { takeDemoSteps } from "./demo.js";
 import { landmarkTerms } from "./term-model.js";
 import { modelEl, refreshJudgeModel } from "./model-label.js";
 import { autoRead, autoReadEl, canSpeak, speak, speakButton } from "./voice.js";
@@ -245,6 +246,7 @@ function post(path, body) {
 
 /** Points the thread at another island, or another mode's thread, dropping everything from the previous one. */
 function resetThread(slug, mode = app.mode) {
+  takeDemoSteps(); // what a demo printed belongs to the thread it was used beside
   turnGen += 1; // a stream still running from an earlier visit to this island is no longer ours
   Object.assign(thread, {
     slug, mode, version: null, messages: [], asks: [], pointers: [], loaded: false, draft: "", live: "", progress: null, inFlight: false, error: null, loadError: null,
@@ -324,7 +326,9 @@ async function runTurn(slug, message, askId) {
     if (log) toEnd(log);
   }
   try {
-    await streamPost("/api/probe", { domain: app.domain, island: slug, mode, ...(message ? { message } : {}), ...(askId ? { askId } : {}) }, (e) => {
+    // What the reader did in a demo goes along with their words, so the mentor answers what actually happened.
+    const demoSteps = message && mode === "mentor" ? takeDemoSteps() : [];
+    await streamPost("/api/probe", { domain: app.domain, island: slug, mode, ...(message ? { message } : {}), ...(askId ? { askId } : {}), ...(demoSteps.length ? { demoSteps } : {}) }, (e) => {
       if (!mine()) return;
       if (e.type === "text") {
         thread.live += e.data.text;
@@ -731,6 +735,12 @@ function itemEl(item, reefPending) {
   if (item.kind === "explored") return el("div", "explored-line", `◇ ${item.names.join(" · ")}`);
   if (item.kind === "verdict") return verdictEl(item.verdict);
   // A loose end's line carries the persona's own sentence, so it keeps its case.
+  if (item.kind === "system" && /^board: (pinned|updated) /.test(item.text)) {
+    // A persona's board write happens out of sight when the board is closed: its line opens the board at that card.
+    const line = button(systemText(item.text), () => openBoard({ latest: true }), "msg system board-line");
+    line.title = t("card.openBoard");
+    return line;
+  }
   if (item.kind === "system") return el("div", `msg system${item.text.startsWith("loose end") ? " loose-line" : ""}`, systemText(item.text));
   if (item.kind === "model") return el("div", "model-line", t("card.modelFrom", { model: item.text }));
   if (item.kind === "reef_proposal") return reefEl(item);
