@@ -12,6 +12,9 @@ export function patchChildren(parent, nodes) {
   let cursor = parent.firstChild;
   for (const node of nodes) {
     if (node === cursor) cursor = cursor.nextSibling;
+    // A child changing places is moved, not removed and put back, where the browser can (moveBefore keeps a
+    // frame's document alive): a card carried up the board keeps its demo running.
+    else if (node.parentNode === parent && typeof parent.moveBefore === "function") parent.moveBefore(node, cursor);
     else parent.insertBefore(node, cursor);
   }
 }

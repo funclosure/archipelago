@@ -537,6 +537,7 @@ body.pane-open .board { right: var(--pane-w); }
 .board .card > .cap .who.mentor { color: var(--explore); }
 .board .card > .cap .acts { margin-left: auto; display: flex; gap: 6px; }
 .board .card > .cap .acts button { padding: 2px 8px; font-size: 11px; }
+.board .card > .cap .acts button.move { padding: 2px 6px; min-width: 24px; }
 .board .card .diagram, .board .card .codeblock, .board .card .plot { margin: 0; }
 .board .note-body { display: block; }
 .board .note-body > :first-child { margin-top: 0; }

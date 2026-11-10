@@ -248,8 +248,10 @@ export const boardWriteInputSchema = z.discriminatedUnion("op", [boardAdd, board
 export type BoardWriteInput = z.infer<typeof boardWriteInputSchema>;
 
 const boardScope = { domain: slugSchema, island: slugSchema };
+// The reader's alone: a card moved to just before another, or to the end (`before` null). No persona reorders a board.
+const boardMove = z.object({ op: z.literal("move"), id: cardId, before: cardId.nullable() });
 export const boardPostInputSchema = z
-  .discriminatedUnion("op", [boardAdd.extend(boardScope), boardUpdate.extend(boardScope), boardRemove.extend(boardScope)])
+  .discriminatedUnion("op", [boardAdd.extend(boardScope), boardUpdate.extend(boardScope), boardRemove.extend(boardScope), boardMove.extend(boardScope)])
   .refine(needsAField, NEEDS_A_FIELD);
 
 /** A loose end's note: one line, short enough to sit in a hint over a landmark chip. */

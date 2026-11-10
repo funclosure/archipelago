@@ -2,6 +2,8 @@
 export default {
   en: {
     saving: "saving…",
+    moveUp: "Move up (⇧K)",
+    moveDown: "Move down (⇧J)",
     discardAsk: "Discard your changes?",
     discard: "Discard",
     keepEditing: "Keep editing",
@@ -41,6 +43,8 @@ export default {
   },
   "zh-TW": {
     saving: "儲存中…",
+    moveUp: "上移（⇧K）",
+    moveDown: "下移（⇧J）",
     discardAsk: "要捨棄你的修改嗎？",
     discard: "捨棄",
     keepEditing: "繼續編輯",

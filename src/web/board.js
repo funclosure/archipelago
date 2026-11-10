@@ -5,7 +5,7 @@ import { renderMarkdown, diagramElement } from "./markdown.js";
 import { codeElement, fillCode } from "./code.js";
 import { LANGS } from "./code-model.js";
 import { registerRegion, setRegion, region } from "./keys.js";
-import { startAdd, startEdit, canSave, writeOf, moveCard, keepCursor, authorLabel, bylineOf, kindLabel, hintCard, withoutRemoving, originOf, isDirty, draftKey, KIND_KEYS, PLAIN } from "./board-model.js";
+import { startAdd, startEdit, canSave, writeOf, moveCard, keepCursor, authorLabel, bylineOf, kindLabel, hintCard, withoutRemoving, stepCard, originOf, isDirty, draftKey, KIND_KEYS, PLAIN } from "./board-model.js";
 import { isFull, setFull } from "./full.js";
 import { demoElement } from "./demo.js";
 import { syncPins } from "./pin.js";
@@ -309,6 +309,24 @@ async function remove(id) {
   render();
 }
 
+/** Moves a card one place up or down: at once on the page, then on the server. */
+async function step(id, dir) {
+  const moved = stepCard(shownCards(), id, dir);
+  if (!moved) return false;
+  const hidden = state.cards.filter((c) => !moved.cards.includes(c)); // the card waiting out its undo keeps its row
+  state.cards = [...moved.cards, ...hidden];
+  state.cursor = id;
+  render();
+  scrollCursorIntoView();
+  try {
+    await post(moved.write);
+  } catch (error) {
+    state.loadError = error.message;
+  }
+  await load(state.slug);
+  return true;
+}
+
 function undoRemove() {
   if (!state.removing) return;
   clearTimeout(state.removing.timer);
@@ -328,6 +346,17 @@ function setStatus(text, bad = false) {
 
 function paintCursor() {
   for (const c of board.querySelectorAll(".card")) c.classList.toggle("cur", Number(c.dataset.id) === state.cursor);
+}
+
+/** The first card cannot go up, the last cannot go down: set on the cards as they stand, kept elements included. */
+function paintMoves() {
+  const cards = [...board.querySelectorAll(".column > .card")];
+  cards.forEach((c, i) => {
+    const up = c.querySelector(":scope > .cap .move.up");
+    const down = c.querySelector(":scope > .cap .move.down");
+    if (up) up.disabled = i === 0;
+    if (down) down.disabled = i === cards.length - 1;
+  });
 }
 
 function scrollCursorIntoView() {
@@ -351,7 +380,14 @@ function cardEl(card) {
   if (card.title) cap.append(el("span", "title", card.title)); // the Keeper may name a card; the reader never has to
   cap.append(el("span", `who ${card.forkedFrom ?? card.author}`, bylineOf(card)));
   const acts = el("span", "acts");
-  acts.append(button(t("board.edit"), () => edit(card)), button(t("board.remove"), () => void remove(card.id)));
+  // Which arrow is live depends on where the card stands, which changes without the card changing: paintMoves sets it.
+  const up = button("↑", () => void step(card.id, -1), "move up");
+  up.title = t("board.moveUp");
+  up.setAttribute("aria-label", t("board.moveUp"));
+  const down = button("↓", () => void step(card.id, 1), "move down");
+  down.title = t("board.moveDown");
+  down.setAttribute("aria-label", t("board.moveDown"));
+  acts.append(up, down, button(t("board.edit"), () => edit(card)), button(t("board.remove"), () => void remove(card.id)));
   cap.append(acts);
   box.append(cap, bodyEl(card.kind, card.body, card.lang));
   box.addEventListener("mousedown", () => {
@@ -758,6 +794,7 @@ function render() {
   patchChildren(board, [headEl(island), column]); // the column stays on the page, and so do its unchanged cards
   keyedChildren(column, columnEntries());
   paintCursor();
+  paintMoves();
   if (!state.editor) {
     editorNode = null;
     editorFor = null;
@@ -797,6 +834,11 @@ export function installBoard() {
         return true;
       }
       switch (e.key) {
+        case "J":
+        case "K":
+          if (state.cursor === null) return false;
+          void step(state.cursor, e.key === "J" ? 1 : -1);
+          return true;
         case "Enter": {
           const card = state.cards.find((c) => c.id === state.cursor);
           if (!card) return false;

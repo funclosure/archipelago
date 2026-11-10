@@ -29,7 +29,26 @@ export function requireCard(db: Database, islandId: number, id: number): BoardCa
 }
 
 export function listCards(db: Database, islandId: number): BoardCard[] {
-  return db.query<BoardCard, [number]>(`select ${COLS} from board_cards where island_id = ? order by id`).all(islandId);
+  return db.query<BoardCard, [number]>(`select ${COLS} from board_cards where island_id = ? order by coalesce(position, id), id`).all(islandId);
+}
+
+/**
+ * Moves a card to just before another on its island's board, or to the end (`beforeId` null). The whole board is
+ * numbered from 1 so later cards (no position, sorted by id) still land after it. `updated_at` is left alone: a
+ * move is not an edit, and the personas' "edited since your last reply" must not fire for one.
+ */
+export function moveCard(db: Database, islandId: number, id: number, beforeId: number | null): BoardCard[] {
+  const cards = listCards(db, islandId);
+  const moving = cards.find((c) => c.id === id);
+  if (!moving) throw new NotFoundError(`no card ${id} on this island`);
+  if (beforeId !== null && !cards.some((c) => c.id === beforeId)) throw new NotFoundError(`no card ${beforeId} on this island`);
+  if (beforeId === id) return cards;
+  const rest = cards.filter((c) => c.id !== id);
+  const at = beforeId === null ? rest.length : rest.findIndex((c) => c.id === beforeId);
+  rest.splice(at, 0, moving);
+  const set = db.query<null, [number, number, number]>("update board_cards set position = ? where id = ? and position is not ?");
+  db.transaction(() => rest.forEach((c, i) => set.run(i + 1, c.id, i + 1)))();
+  return rest;
 }
 
 /** Applies the given fields and stamps updated_at. Fields left out keep their value; the author never changes. */

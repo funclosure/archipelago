@@ -25,6 +25,19 @@ export function startAdd(kind) {
   return { id: null, kind, body: kind === "demo" ? DEMO_STARTER : "", lang: kind === "code" ? DEFAULT_LANG : null };
 }
 
+/**
+ * The cards after one moves a step up (`dir` -1) or down (+1), and the write that says so: `before` is the id of
+ * the card it now sits before, or null at the end. Null when it is already at that end.
+ */
+export function stepCard(cards, id, dir) {
+  const from = cards.findIndex((c) => c.id === id);
+  const to = from + dir;
+  if (from < 0 || to < 0 || to >= cards.length) return null;
+  const next = [...cards];
+  next.splice(to, 0, next.splice(from, 1)[0]);
+  return { cards: next, write: { op: "move", id, before: next[to + 1]?.id ?? null } };
+}
+
 /** A card waiting out its undo: the cards as the board shows them meanwhile. */
 export function withoutRemoving(cards, removingId) {
   return removingId === null ? cards : cards.filter((c) => c.id !== removingId);

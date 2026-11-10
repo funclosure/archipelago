@@ -1,5 +1,5 @@
 import { test, expect } from "bun:test";
-import { originOf, isDirty, draftKey, DEMO_STARTER, KIND_KEYS, withoutRemoving, startAdd, startEdit, canSave, writeOf, moveCard, keepCursor, authorLabel, bylineOf, hintCard } from "../../src/web/board-model.js";
+import { stepCard, originOf, isDirty, draftKey, DEMO_STARTER, KIND_KEYS, withoutRemoving, startAdd, startEdit, canSave, writeOf, moveCard, keepCursor, authorLabel, bylineOf, hintCard } from "../../src/web/board-model.js";
 
 test("startAdd and startEdit build editors without a title; lang lives only on code cards", () => {
   expect(startAdd("note")).toEqual({ id: null, kind: "note", body: "", lang: null });
@@ -90,4 +90,14 @@ test("drafts are kept per island, per card, and per kind of new card", () => {
   expect(draftKey("caching", startEdit({ id: 4, kind: "demo", body: "x" }))).toBe("caching:4");
   expect(draftKey("caching", startAdd("demo"))).toBe("caching:new-demo");
   expect(draftKey("queues", startAdd("note"))).toBe("queues:new-note");
+});
+
+test("a card steps up or down one place, and the write names the card it now sits before", () => {
+  const cards = [{ id: 1 }, { id: 2 }, { id: 3 }];
+  expect(stepCard(cards, 1, 1)).toEqual({ cards: [{ id: 2 }, { id: 1 }, { id: 3 }], write: { op: "move", id: 1, before: 3 } });
+  expect(stepCard(cards, 3, -1)).toEqual({ cards: [{ id: 1 }, { id: 3 }, { id: 2 }], write: { op: "move", id: 3, before: 2 } });
+  expect(stepCard(cards, 2, 1)).toEqual({ cards: [{ id: 1 }, { id: 3 }, { id: 2 }], write: { op: "move", id: 2, before: null } });
+  expect(stepCard(cards, 1, -1)).toBeNull();
+  expect(stepCard(cards, 3, 1)).toBeNull();
+  expect(stepCard(cards, 9, 1)).toBeNull();
 });
