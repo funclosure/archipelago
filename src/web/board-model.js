@@ -3,14 +3,31 @@ import { t } from "./i18n.js";
 
 export const CARD_KINDS = ["diagram", "note", "code", "demo"];
 /** The key that adds each kind while the board is open. */
-export const KIND_KEYS = { d: "diagram", n: "note", c: "code" };
+export const KIND_KEYS = { d: "diagram", n: "note", c: "code", p: "demo" };
 const DEFAULT_LANG = "swift";
 /** The language select's value for a code card with no language. */
 export const PLAIN = "plain";
 
-/** A fresh editor for a new card of `kind`. Code cards start in Swift; other kinds carry no lang. */
+/** What a new demo starts as: something that already runs, in the page's colours, to change rather than face a blank box. */
+export const DEMO_STARTER = `<button id="go">Count</button>
+<span id="n" style="margin-left: 8px; color: var(--lamp)">0</span>
+<script>
+  let n = 0;
+  document.getElementById("go").onclick = () => {
+    n += 1;
+    document.getElementById("n").textContent = n;
+    console.log("count is " + n);
+  };
+</script>`;
+
+/** A fresh editor for a new card of `kind`. Code cards start in Swift; other kinds carry no lang; a demo starts from `DEMO_STARTER`. */
 export function startAdd(kind) {
-  return { id: null, kind, body: "", lang: kind === "code" ? DEFAULT_LANG : null };
+  return { id: null, kind, body: kind === "demo" ? DEMO_STARTER : "", lang: kind === "code" ? DEFAULT_LANG : null };
+}
+
+/** A card waiting out its undo: the cards as the board shows them meanwhile. */
+export function withoutRemoving(cards, removingId) {
+  return removingId === null ? cards : cards.filter((c) => c.id !== removingId);
 }
 
 /** An editor over an existing card. */

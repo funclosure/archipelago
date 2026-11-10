@@ -572,7 +572,32 @@ body.pane-open .board { right: var(--pane-w); }
 .board .live { position: relative; }
 .board .live pre, .board .live textarea { margin: 0; padding: 12px 14px; font: 12px/1.5 var(--font-mono); white-space: pre; tab-size: 2; box-sizing: border-box; }
 .board .live textarea { position: relative; display: block; width: 100%; min-height: 160px; border: 0; background: transparent; color: transparent; caret-color: var(--text); resize: none; overflow: auto; outline: none; }
+.board .live pre { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
 .board .live code { color: var(--code-fg); }
+/* the demo editor: code and the running demo, stacked in a narrow board and side by side in a wide one */
+.board .editor.demo { container-type: inline-size; }
+.board .editor.demo .split { display: flex; flex-direction: column; }
+.board .editor.demo .split > .live { border-bottom: 1px solid var(--line); }
+.board .editor.demo .split > .preview { min-height: 120px; padding: 8px; }
+.board .editor.demo .split > .preview .demo { margin: 0; }
+@container (min-width: 820px) {
+  .board .editor.demo .split { flex-direction: row; align-items: stretch; }
+  .board .editor.demo .split > .live { flex: 1 1 50%; min-width: 0; border-bottom: 0; border-right: 1px solid var(--line); }
+  .board .editor.demo .split > .preview { flex: 1 1 50%; min-width: 0; }
+}
+.board .editor.full { position: fixed; inset: 0; width: auto; height: auto; max-width: none; max-height: none; margin: 0; border: 0; border-radius: 0; box-shadow: none; color: var(--text); }
+.board .editor.full .ebody { flex: 1 1 auto; min-height: 0; display: flex; }
+.board .editor.full .split { flex: 1 1 auto; min-height: 0; }
+.board .editor.full .split > .live { overflow: hidden; }
+.board .editor.full .split > .live textarea { height: 100% !important; overflow: auto !important; }
+.board .editor.full .split > .preview { overflow: auto; }
+@container (max-width: 819px) { .board .editor.full .split > .live { flex: 0 0 45%; } .board .editor.full .split > .preview { flex: 1 1 auto; } }
+/* a removed card's undo, until it runs out */
+.board .undo { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 12px; background: var(--panel); border: 1px dashed var(--line); border-radius: 10px; color: var(--text-2); font-size: 12px; }
+/* a card is one surface with one caption: the fence inside it drops its own box and its own name */
+.board .card .demo, .board .card .diagram { background: none; border: 0; padding: 0; }
+.board .card .demo > .bar > .cap, .board .card .diagram > .cap { display: none; }
+.board .card .demo > .bar { justify-content: flex-end; }
 .board-toggle { position: fixed; right: 16px; bottom: 16px; z-index: 2; display: flex; gap: 8px; align-items: center; background: var(--panel); border: 1px solid var(--line); color: var(--text);
   border-radius: 999px; padding: 6px 12px; font: 12px system-ui, sans-serif; cursor: pointer; box-shadow: 0 8px 24px var(--shadow-soft); transition: right .18s ease; }
 body.pane-open .board-toggle { right: calc(var(--pane-w) + 16px); }

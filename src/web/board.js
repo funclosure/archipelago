@@ -5,7 +5,8 @@ import { renderMarkdown, diagramElement } from "./markdown.js";
 import { codeElement, fillCode } from "./code.js";
 import { LANGS } from "./code-model.js";
 import { registerRegion, setRegion, region } from "./keys.js";
-import { startAdd, startEdit, canSave, writeOf, moveCard, keepCursor, authorLabel, bylineOf, kindLabel, hintCard, KIND_KEYS, PLAIN } from "./board-model.js";
+import { startAdd, startEdit, canSave, writeOf, moveCard, keepCursor, authorLabel, bylineOf, kindLabel, hintCard, withoutRemoving, KIND_KEYS, PLAIN } from "./board-model.js";
+import { isFull, setFull } from "./full.js";
 import { demoElement } from "./demo.js";
 import { syncPins } from "./pin.js";
 import { keyedChildren, patchChildren } from "./keep.js";
@@ -28,7 +29,9 @@ const state = {
   cursor: null,     // card id under the keyboard cursor
   saving: false,
   loadError: null,
+  removing: null,   // { id, kind, timer }: a card taken off the board, deleted for good when its undo runs out
 };
+const UNDO_MS = 7000;
 let loadGen = 0;
 let drawGen = 0;       // bumped when every card must be drawn again (a theme change)
 let previewTimer = 0;
@@ -87,7 +90,7 @@ function renderHint(island) {
 
 /** How many cards the selected island's board holds. */
 export function boardCount() {
-  return state.cards.length;
+  return shownCards().length;
 }
 
 export function closeBoard() {
@@ -112,11 +115,11 @@ function button(label, onClick, className = "") {
   return b;
 }
 
-const post = (write) =>
+const post = (write, island = state.slug) =>
   api("/api/board", {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ domain: app.domain, island: state.slug, ...write }),
+    body: JSON.stringify({ domain: app.domain, island, ...write }),
   });
 
 async function load(slug) {
@@ -144,6 +147,7 @@ async function load(slug) {
 function sync() {
   const slug = app.selected;
   if (slug !== state.slug) {
+    void flushRemove(); // the undo belonged to the board being left
     state.slug = slug;
     state.cards = [];
     state.loaded = false;
@@ -170,6 +174,7 @@ function setOpen(open) {
   if (!open) {
     state.editor = null;
     clearTimeout(previewTimer);
+    void flushRemove();
   }
   render();
   // the board lives in the map's slot; keys.js resolves the map container to #board while it is open
@@ -241,16 +246,42 @@ export function isPinned(body) {
   return state.cards.some((c) => c.body === body);
 }
 
-async function remove(id) {
+/** Deletes for good the card waiting out its undo, if there is one. */
+async function flushRemove() {
+  const gone = state.removing;
+  if (!gone) return;
+  clearTimeout(gone.timer);
+  state.removing = null;
   try {
-    await post({ op: "remove", id });
-    if (state.editor && state.editor.id === id) state.editor = null;
-    await load(state.slug);
+    await post({ op: "remove", id: gone.id }, gone.slug);
   } catch (error) {
-    state.loadError = error.message;
-    render();
+    if (state.slug === gone.slug) state.loadError = error.message;
   }
+  if (state.slug === gone.slug) await load(gone.slug);
+  else render();
 }
+
+/** Takes a card off the board. It is deleted when the undo runs out, on the next remove, or when the board closes. */
+async function remove(id) {
+  const card = state.cards.find((c) => c.id === id);
+  if (!card) return;
+  await flushRemove();
+  if (state.editor && state.editor.id === id) state.editor = null;
+  if (state.cursor === id) state.cursor = null;
+  state.removing = { id, kind: card.kind, slug: state.slug, timer: setTimeout(() => void flushRemove(), UNDO_MS) };
+  render();
+}
+
+function undoRemove() {
+  if (!state.removing) return;
+  clearTimeout(state.removing.timer);
+  state.cursor = state.removing.id;
+  state.removing = null;
+  render();
+}
+
+/** The cards on show: all of them but the one waiting out its undo. */
+const shownCards = () => withoutRemoving(state.cards, state.removing?.slug === state.slug ? state.removing.id : null);
 
 function setStatus(text, bad = false) {
   if (!editorStatus) return;
@@ -351,7 +382,7 @@ function tabs(names, current, onPick, labels = {}) {
  * A live code block: a transparent textarea over a highlighted mirror with the same metrics, so the reader
  * types into coloured code. The mirror repaints once per input frame and follows the textarea's scroll.
  */
-function liveCode(ed, onInput) {
+function liveCode(ed, onInput, { lang = () => (ed.lang === PLAIN ? "text" : ed.lang), kind = "code" } = {}) {
   const wrap = el("div", "live");
   const pre = document.createElement("pre");
   pre.setAttribute("aria-hidden", "true");
@@ -359,11 +390,11 @@ function liveCode(ed, onInput) {
   pre.append(code);
   const ta = document.createElement("textarea");
   ta.value = ed.body;
-  ta.placeholder = PLACEHOLDER.code;
+  ta.placeholder = PLACEHOLDER[kind];
   ta.spellcheck = false;
   ta.wrap = "off";
   ta.dataset.field = "body";
-  ta.setAttribute("aria-label", kindLabel("code"));
+  ta.setAttribute("aria-label", kindLabel(kind));
   wrap.append(pre, ta);
   let frame = 0;
   const follow = () => {
@@ -375,7 +406,7 @@ function liveCode(ed, onInput) {
     frame = requestAnimationFrame(() => {
       const text = ta.value;
       // a trailing newline would collapse in the mirror and leave the caret's line unpainted
-      fillCode(code, ed.lang === PLAIN ? "text" : ed.lang, text.endsWith("\n") ? `${text} ` : text, false);
+      fillCode(code, lang(), text.endsWith("\n") ? `${text} ` : text, false);
       grow(ta);
       follow();
     });
@@ -445,7 +476,34 @@ function editorEl(ed) {
     save.disabled = !canSave(ed) || state.saving;
   };
 
-  if (ed.kind === "code") {
+  if (ed.kind === "demo") {
+    // Code on one side, the demo running on the other: it starts over a beat after the typing stops.
+    const preview = el("div", "preview");
+    let shown = null;
+    const run = () => {
+      if (shown === ed.body || state.editor !== ed) return;
+      shown = ed.body;
+      preview.replaceChildren(ed.body.trim() ? demoElement(ed.body, { preview: true }) : el("div", "empty", t("board.nothingToPreview")));
+    };
+    const live = liveCode(ed, () => {
+      updateSave();
+      clearTimeout(previewTimer);
+      previewTimer = setTimeout(run, PREVIEW_MS);
+    }, { lang: () => "html", kind: "demo" });
+    const split = el("div", "split");
+    split.append(live.wrap, preview);
+    const full = button("", () => setFull(box, !isFull(box), drawFull));
+    const drawFull = () => {
+      full.textContent = t(isFull(box) ? "board.exitFull" : "board.full");
+      full.setAttribute("aria-pressed", String(isFull(box)));
+      live.paint(); // the writing surface is sized for the room it has now
+    };
+    drawFull();
+    head.append(el("span", "spacer"), full);
+    body.append(split);
+    editorFocus = () => live.ta.focus();
+    run();
+  } else if (ed.kind === "code") {
     const live = liveCode(ed, updateSave);
     head.append(el("span", "spacer"), langSelect(ed, live.paint));
     body.append(live.wrap);
@@ -580,8 +638,8 @@ function headEl(island) {
   const head = el("div", "head");
   // The adds are one group: when the title leaves no room, they wrap to a second row together, and the × stays top right.
   const adds = el("span", "adds");
-  adds.append(...["diagram", "note", "code"].map((kind) => button(t("board.addKind", { kind: kindLabel(kind) }), () => add(kind))));
-  head.append(el("span", "name", island.name), el("span", "count", t("board.cards", { n: state.cards.length })), adds, close());
+  adds.append(...["diagram", "note", "code", "demo"].map((kind) => button(t("board.addKind", { kind: kindLabel(kind) }), () => add(kind))));
+  head.append(el("span", "name", island.name), el("span", "count", t("board.cards", { n: shownCards().length })), adds, close());
   return head;
 }
 
@@ -590,8 +648,20 @@ function columnEntries() {
   const out = [];
   if (state.loadError) out.push({ build: () => el("div", "err-line", state.loadError) });
   if (state.editor && state.editor.id === null) out.push({ build: currentEditor });
-  if (state.loaded && state.cards.length === 0 && !state.editor) out.push({ build: () => el("div", "empty", t("board.empty")) });
-  for (const card of state.cards) {
+  if (state.removing?.slug === state.slug) {
+    const gone = state.removing;
+    out.push({
+      build: () => {
+        const bar = el("div", "undo");
+        bar.setAttribute("role", "status");
+        bar.append(el("span", null, t("board.removed", { kind: kindLabel(gone.kind) })), button(t("board.undo"), undoRemove));
+        return bar;
+      },
+    });
+  }
+  const cards = shownCards();
+  if (state.loaded && cards.length === 0 && !state.editor) out.push({ build: () => el("div", "empty", t("board.empty")) });
+  for (const card of cards) {
     if (state.editor && state.editor.id === card.id) out.push({ build: currentEditor });
     else out.push({ key: card.id, sig: JSON.stringify([drawGen, card]), build: () => cardEl(card) });
   }
@@ -601,7 +671,7 @@ function columnEntries() {
 function render() {
   const island = app.snapshot && state.slug ? app.snapshot.islands.find((i) => i.slug === state.slug) ?? null : null;
   toggle.hidden = !island || state.open;
-  if (island) toggle.replaceChildren(el("span", null, t("board.toggle", { n: state.cards.length })), el("kbd", null, "b"));
+  if (island) toggle.replaceChildren(el("span", null, t("board.toggle", { n: shownCards().length })), el("kbd", null, "b"));
   renderHint(island);
   const show = Boolean(island) && state.open;
   if (!show) {
@@ -645,7 +715,7 @@ export function installBoard() {
     save: () => (state.editor ? (void saveEditor(), true) : false),
     onKey(e) {
       if (state.editor) return false; // the fields own their keys; Escape and ⌘↵ are handled by keys.js
-      const moved = moveCard(state.cards.map((c) => c.id), state.cursor, e.key);
+      const moved = moveCard(shownCards().map((c) => c.id), state.cursor, e.key);
       if (moved !== null) {
         state.cursor = moved;
         paintCursor();

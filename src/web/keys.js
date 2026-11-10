@@ -4,7 +4,7 @@ import { app, toggleMode } from "./app.js";
 import { select } from "./interactions.js";
 import { REGIONS, nextRegion, isTyping, escapeRung, aboutKey, cheatSheet, isImeKey } from "./keys-model.js";
 import { cycleTheme } from "./theme.js";
-import { exitFullDemo } from "./demo.js";
+import { exitFull } from "./full.js";
 import { t } from "./i18n.js";
 
 const handlers = {}; // region name → handler
@@ -78,7 +78,7 @@ function toggleSheet() {
 }
 
 function escape(e) {
-  if (exitFullDemo()) { // a demo filling the window comes back first
+  if (exitFull()) { // whatever fills the window (a demo, the board's editor) comes back first
     e.preventDefault();
     e.stopImmediatePropagation();
     return;

@@ -1,5 +1,5 @@
 import { test, expect } from "bun:test";
-import { startAdd, startEdit, canSave, writeOf, moveCard, keepCursor, authorLabel, bylineOf, hintCard } from "../../src/web/board-model.js";
+import { DEMO_STARTER, KIND_KEYS, withoutRemoving, startAdd, startEdit, canSave, writeOf, moveCard, keepCursor, authorLabel, bylineOf, hintCard } from "../../src/web/board-model.js";
 
 test("startAdd and startEdit build editors without a title; lang lives only on code cards", () => {
   expect(startAdd("note")).toEqual({ id: null, kind: "note", body: "", lang: null });
@@ -62,4 +62,17 @@ test("bylineOf: the author, or you and whose reply a pinned card came from", () 
   expect(bylineOf({ author: "judge", forkedFrom: null })).toBe("the Keeper");
   expect(bylineOf({ author: "you", forkedFrom: "mentor" })).toBe("you · from the mentor");
   expect(bylineOf({ author: "you" })).toBe("you");
+});
+
+test("a new demo starts from a starter that runs; p adds one", () => {
+  expect(startAdd("demo")).toEqual({ id: null, kind: "demo", body: DEMO_STARTER, lang: null });
+  expect(DEMO_STARTER).toContain("<script>");
+  expect(DEMO_STARTER).toContain("var(--lamp)"); // the page's colours, never its own
+  expect(KIND_KEYS.p).toBe("demo");
+});
+
+test("a card waiting out its undo is off the board until it is deleted or brought back", () => {
+  const cards = [{ id: 1 }, { id: 2 }, { id: 3 }];
+  expect(withoutRemoving(cards, 2)).toEqual([{ id: 1 }, { id: 3 }]);
+  expect(withoutRemoving(cards, null)).toBe(cards);
 });
