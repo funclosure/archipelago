@@ -11,7 +11,7 @@ import {
   reefAnswerInputSchema, sketchDecisionSchema, slugSchema,
 } from "../core/validators.ts";
 import { attachAsks, listAsks, pickAsk, requireAsk } from "../core/repositories/askRepository.ts";
-import { listCards } from "../core/repositories/boardRepository.ts";
+import { listCards, moveCard } from "../core/repositories/boardRepository.ts";
 import { closeLooseEnd } from "../core/repositories/looseEndRepository.ts";
 import { attachPointers, listPointers, pointerFloor } from "../core/repositories/pointerRepository.ts";
 import { addSeaFrom, removeSea, updateSea } from "../core/repositories/seaRepository.ts";
@@ -269,6 +269,16 @@ async function handleApi(req: Request, url: URL, ctx: ApiContext): Promise<Respo
 
   if (route === "POST /api/board") {
     const { domain, island, ...write } = boardPostInputSchema.parse(await req.json());
+    if (write.op === "move") {
+      // The order is the reader's own arrangement: no persona's tool can move a card, so this never goes through boardWrite.
+      return json(
+        withDb(ctx, (db) => {
+          const d = requireDomain(db, domain);
+          const cards = moveCard(db, requireIsland(db, d.id, island).id, write.id, write.before);
+          return { cards, version: getViewState(db, d.id).version };
+        }),
+      );
+    }
     // The same function the judge's tool uses, as the reader: the ownership rules live in one place.
     const result = boardWrite({ dbPath: ctx.dbPath, domain, island }, write, "you");
     const version = withDb(ctx, (db) => getViewState(db, requireDomain(db, domain).id).version);

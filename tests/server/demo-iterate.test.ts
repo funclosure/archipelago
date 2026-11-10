@@ -8,7 +8,7 @@ import { openDatabase } from "../../src/core/db.ts";
 import { upsertDomain } from "../../src/core/repositories/domainRepository.ts";
 import { upsertIsland } from "../../src/core/repositories/islandRepository.ts";
 import { DEMO_STEPS_MAX, DEMO_STEP_MAX, probeInputSchema } from "../../src/core/validators.ts";
-import { islandContext } from "../../src/server/judge/tools.ts";
+import { boardWrite, islandContext } from "../../src/server/judge/tools.ts";
 import { renderJudgeContext, renderMentorContext } from "../../src/server/judge/persona.ts";
 import { startServer } from "../../src/server/index.ts";
 import { parseSse } from "./sse.ts";
@@ -69,4 +69,35 @@ test("through the route: steps reach the mentor only, and a change lands on the 
   } finally {
     server.stop(true);
   }
+});
+
+test("the reader moves a card; the order holds for new cards, and a move is never an edit", async () => {
+  writeFileSync(join(dir, "index.html"), "<!doctype html>");
+  const server = startServer({ port: 0, dbPath, staticRoot: dir, stub: true });
+  const base = `http://127.0.0.1:${server.port}`;
+  const post = async (body: unknown) => (await fetch(base + "/api/board", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ domain: "sd", island: "caching", ...(body as object) }) }));
+  const ids = async () => ((await (await fetch(`${base}/api/board?domain=sd&island=caching`)).json()).cards as { id: number; updatedAt: string }[]);
+  try {
+    const made: number[] = [];
+    for (const body of ["one", "two", "three"]) made.push((await (await post({ op: "add", kind: "note", body })).json()).card.id);
+    const [a, b, c] = made as [number, number, number];
+    const before = await ids();
+    const moved = await (await post({ op: "move", id: c, before: a })).json();
+    expect(moved.cards.map((x: { id: number }) => x.id)).toEqual([c, a, b]);
+    expect((await ids()).map((x) => x.id)).toEqual([c, a, b]);
+    expect((await ids()).map((x) => x.updatedAt).sort()).toEqual(before.map((x) => x.updatedAt).sort()); // not an edit
+    await post({ op: "move", id: c, before: null });
+    expect((await ids()).map((x) => x.id)).toEqual([a, b, c]);
+    await post({ op: "move", id: b, before: a });
+    const d = (await (await post({ op: "add", kind: "note", body: "four" })).json()).card.id;
+    expect((await ids()).map((x) => x.id)).toEqual([b, a, c, d]); // a new card lands at the end
+    expect((await post({ op: "move", id: 9999, before: null })).status).toBe(404);
+    expect((await post({ op: "move", id: a, before: 9999 })).status).toBe(404);
+  } finally {
+    server.stop(true);
+  }
+});
+
+test("no persona's tool can move a card", () => {
+  expect(() => boardWrite({ dbPath, domain: "sd", island: "caching" }, { op: "move", id: 1, before: null }, "mentor")).toThrow();
 });

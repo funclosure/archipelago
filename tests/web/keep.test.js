@@ -61,3 +61,18 @@ test("keyedChildren builds an entry with no key every time, and a repeated key o
   expect(parent.kids[0].name).toBe("loose#4");
   expect(parent.kids.length).toBe(3);
 });
+
+test("a child changing places is moved with moveBefore where the browser has it, so a frame in it keeps running", () => {
+  const parent = fakeParent();
+  parent.moveBefore = function (node, before) {
+    this.kids.splice(this.kids.indexOf(node), 1);
+    this.kids.splice(before ? this.kids.indexOf(before) : this.kids.length, 0, node);
+    this.moves.push(`~${node.name}`);
+  };
+  const [a, b] = ["a", "b"].map(node);
+  patchChildren(parent, [a, b]);
+  parent.moves.length = 0;
+  patchChildren(parent, [b, a]);
+  expect(names(parent)).toBe("b a");
+  expect(parent.moves).toEqual(["~b"]); // moved, never removed
+});
