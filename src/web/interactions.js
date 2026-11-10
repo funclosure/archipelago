@@ -9,6 +9,8 @@ let focusQueue = Promise.resolve();
 
 /** Selects an island (or null), re-renders listeners, and posts focus so "this one" works in the terminal. */
 export async function select(slug) {
+  // Every pick is announced, also of the island already open: a phone goes to its pane (places.js).
+  document.dispatchEvent(new CustomEvent("select", { detail: slug }));
   if (slug === app.selected) return;
   app.selected = slug;
   for (const fn of app.listeners) fn(app.snapshot);

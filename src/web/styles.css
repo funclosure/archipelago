@@ -187,7 +187,6 @@ body[data-mode="mentor"] .chip.hot:not(.lit):not(.explored) { border-color: var(
 @keyframes lit-pulse { 0% { box-shadow: 0 0 0 0 var(--lamp-pulse); } 100% { box-shadow: 0 0 0 10px transparent; } }
 .sub { display: flex; justify-content: space-between; gap: 10px; font-size: 12px; color: var(--muted); }
 .sub .links { display: flex; gap: 10px; }
-.sub .phone-only { display: none; }
 .link { background: none; border: 0; padding: 0; color: var(--text); font: inherit; font-size: 12px; text-decoration: underline;
   text-underline-offset: 2px; cursor: pointer; }
 .link:hover { color: var(--sand); }
@@ -695,34 +694,68 @@ body.empty .outline, body.empty .chrome, body.empty #map-focus, body.empty #boar
 .hosted-card .row { display: flex; gap: 6px; flex-wrap: wrap; }
 .hosted-card .btn.link { background: none; border: 0; padding: 0; color: var(--lamp); text-decoration: underline; cursor: pointer; font: inherit; font-size: 12px; }
 
-/* ---- phones: the outline starts as a rail (outline.js), the chrome wraps, the pane and the board take the screen ---- */
+/* ---- phones: one place at a time (places.js stamps body[data-place]) and a bar at the bottom to move between
+   them: the islands' list (the outline, full screen), the map, the island's pane, its board ---- */
+.places { display: none; }
 @media (max-width: 720px) {
-  :root { --pane-w: 100vw !important; }
+  :root { --pane-w: 100vw !important; --outline-w: 0px !important; --places-h: calc(56px + env(safe-area-inset-bottom)); }
+  .places { display: grid; grid-template-columns: repeat(4, 1fr); position: fixed; left: 0; right: 0; bottom: 0; height: var(--places-h); padding-bottom: env(safe-area-inset-bottom); box-sizing: border-box; background: var(--panel); border-top: 1px solid var(--line); z-index: 6; }
+  .places button { display: grid; justify-items: center; align-content: center; gap: 2px; min-width: 0; padding: 0 4px; background: none; border: 0; color: var(--muted); font: 11px system-ui, sans-serif; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+  .places button .lbl { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .places button[aria-current="true"] { color: var(--lamp); }
+  .places button:disabled { opacity: .35; cursor: default; }
+  /* Islands: the outline is the whole screen or not there. */
+  .outline { display: none; width: 100vw; bottom: var(--places-h); border-right: 0; z-index: 5; font-size: 15px; transition: none; }
+  body[data-place="islands"] .outline { display: flex; }
+  .outline .oh { height: 52px; }
+  .outline .ib, .outline .ft > :first-child { display: none; }
+  .outline .list .row { height: 46px; gap: 12px; }
+  .outline .list .row.islet { height: 40px; font-size: 14px; }
+  .outline .list .row .tw { width: 32px; height: 32px; font-size: 12px; }
+  .outline .list .row .n { font-size: 13px; }
+  .outline .menu { left: 8px; right: 8px; }
+  /* Map: the header is the breadcrumb and one line of cells that scrolls sideways. */
   .chrome { right: 0; padding: 10px 12px; }
-  .chrome-stack { min-width: 0; max-width: 100%; }
+  .chrome-stack { width: 100%; min-width: 0; pointer-events: none; }
+  .chrome-stack > * { pointer-events: auto; max-width: 100%; }
   .breadcrumb { flex-wrap: wrap; font-size: 16px; row-gap: 2px; }
-  .strip { flex-wrap: wrap; gap: 6px 14px; }
+  .strip { width: 100%; flex-wrap: nowrap; gap: 14px; max-width: calc(100vw - 24px); overflow-x: auto; scrollbar-width: none; }
+  .strip::-webkit-scrollbar { display: none; }
+  .strip-item { flex: none; }
   .strip-item .hint { position: fixed; top: auto; left: 12px; right: 12px; width: auto; margin-top: 8px; }
   .strip-item:last-child .hint { left: 12px; right: 12px; }
-  .pane { height: 100dvh; bottom: auto; border-left: 0; z-index: 4; }
+  .cta { left: 0; bottom: calc(var(--places-h) + 12px); padding: 0 12px; }
+  body:not([data-place="map"]) .cta { display: none; }
+  /* Island: the pane, above the bar. */
+  .pane { height: calc(100dvh - var(--places-h)); bottom: auto; border-left: 0; z-index: 4; }
+  body:not([data-place="island"]) .pane { display: none; }
   .pane .grip, .pane-width { display: none; }
-  .head { padding: 14px 16px 10px; }
+  /* The head stays short so the conversation has the screen: no summary, and the landmarks are one line that scrolls. */
+  .head { padding: 12px 16px 8px; gap: 6px; }
   .head .row, .pills, .sub, .sub .links { flex-wrap: wrap; }
-  .head .row { justify-content: flex-start; row-gap: 6px; }
-  .sub .phone-only { display: inline; }
-  .board, body.pane-open .board { top: 0; left: 0; right: 0; border-radius: 0; z-index: 4; }
+  .head .row { justify-content: space-between; row-gap: 6px; }
+  .head h2 { font-size: 19px; }
+  .head .summary { display: none; }
+  .head .chips { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin-right: -16px; padding-right: 16px; }
+  .head .chips::-webkit-scrollbar { display: none; }
+  .head .chips .chip { flex: none; }
+  /* The lamp lines that show which region the keyboard is in mean nothing under a thumb. */
+  body[data-focus] #outline, body[data-focus] #pane { box-shadow: none; }
+  .map-focus { display: none !important; }
+  /* Board: the sheet takes the screen above the bar; the bar's tab stands in for the toggle and its hint. */
+  .board, body.pane-open .board { top: 0; left: 0; right: 0; bottom: var(--places-h); border-radius: 0; z-index: 4; }
   .board-scrim, body.pane-open .board-scrim { left: 0; right: 0; }
+  .board-toggle, .board-hint { display: none; }
+  .board .column { padding: 12px 12px 40px; }
+  .board .card > .cap { flex-wrap: wrap; row-gap: 4px; }
+  .board .card > .cap .title { flex-basis: 100%; order: 3; }
   .keys, body.pane-open .keys { left: 0; right: 0; }
-  .map-focus { left: 0; }
-  .board-toggle { right: 12px; bottom: max(12px, env(safe-area-inset-bottom)); }
-  body.pane-open .board-toggle, body.pane-open .cta, body.pane-open .board-hint { display: none; }
-  .board-hint { right: 12px; bottom: calc(max(12px, env(safe-area-inset-bottom)) + 44px); }
-  .cta { left: 0; bottom: max(64px, calc(env(safe-area-inset-bottom) + 52px)); padding: 0 12px; }
   .about { left: 12px; right: 12px; top: 64px; }
   .about-card { width: auto; }
   .peek { display: none; }
   .new-domain-card .hint { display: none; }
   .new-domain.first .title { font-size: 28px; }
+}
 }
 .new-domain-card .sub-lbl { font-size: 11px; color: var(--muted); margin-top: 2px; }
 .new-domain-card textarea { resize: vertical; background: var(--water); border: 1px solid var(--line); border-radius: 6px; color: var(--text); padding: 8px 10px; font: inherit; font-size: 13px; line-height: 1.45; }

@@ -85,6 +85,15 @@ function renderHint(island) {
   hint.replaceChildren(text, dismiss);
 }
 
+/** How many cards the selected island's board holds. */
+export function boardCount() {
+  return state.cards.length;
+}
+
+export function closeBoard() {
+  setOpen(false);
+}
+
 export function boardOpen() {
   return state.open && Boolean(state.slug);
 }
@@ -123,6 +132,7 @@ async function load(slug) {
     state.version = version;
     state.cursor = keepCursor(cards.map((c) => c.id), state.cursor);
     syncPins();
+    document.dispatchEvent(new CustomEvent("board", { detail: {} })); // the cards changed
   } catch (error) {
     if (gen !== loadGen) return;
     state.loadError = error.message;
@@ -143,6 +153,7 @@ function sync() {
     state.loadError = null;
     if (!slug && state.open) {
       state.open = false;
+      document.dispatchEvent(new CustomEvent("board", { detail: { open: false } }));
       if (region() === "map") queueMicrotask(() => setRegion("map")); // after render() hides #board, so the map canvas takes focus
     }
   }
@@ -153,7 +164,9 @@ function sync() {
 function setOpen(open) {
   if (open && !state.slug) return;
   if (open) markSeen();
+  const was = state.open;
   state.open = open;
+  if (was !== open) document.dispatchEvent(new CustomEvent("board", { detail: { open } }));
   if (!open) {
     state.editor = null;
     clearTimeout(previewTimer);
