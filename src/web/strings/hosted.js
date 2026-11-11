@@ -2,6 +2,7 @@
 export default {
   en: {
     notice: "Your key stays in this browser and is sent only to {host}. Each turn is billed to your key; a long session on a large model can cost a few dollars. Your charts are stored in this browser only; export them from the domain menu to keep a copy.",
+    noticeProxy: "A private preview. Your access token stays in this browser and is sent only to Archipelago's own server, which passes each turn on to Claude and keeps none of it. Your charts are stored in this browser only; export them from the domain menu to keep a copy.",
     pasteKey: "Paste your API key, or choose Try without a key.",
     movedReason: "Archipelago moved to another tab",
     exportFailed: "Export failed: {message}",
@@ -40,6 +41,7 @@ export default {
   },
   "zh-TW": {
     notice: "你的金鑰只存在這個瀏覽器裡，也只會傳送到 {host}。每一輪對話都會向你的金鑰計費；在大型模型上長時間使用可能花費數美元。你的地圖只存在這個瀏覽器裡；要保留一份，請從領域選單匯出。",
+    noticeProxy: "私人預覽。你的存取權杖只存在這個瀏覽器裡，也只會傳送到 Archipelago 自己的伺服器；它把每一輪對話轉交給 Claude，本身不保留任何內容。你的地圖只存在這個瀏覽器裡；要保留一份，請從領域選單匯出。",
     pasteKey: "請貼上你的 API 金鑰，或選擇「不用金鑰試用」。",
     movedReason: "Archipelago 已移到另一個分頁",
     exportFailed: "匯出失敗：{message}",

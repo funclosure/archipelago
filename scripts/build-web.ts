@@ -6,7 +6,7 @@ import { cpSync, copyFileSync, mkdirSync, readFileSync, rmSync, writeFileSync } 
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { BunPlugin } from "bun";
-import { PROVIDERS } from "../src/hosted/settings.ts";
+import { providerOrigins, proxyUrl } from "../src/hosted/settings.ts";
 import { vendorBundle } from "../src/server/vendor.ts";
 import { DEMO_FRAME_CSP, DEMO_FRAME_PATH } from "../src/server/demo-frame.ts";
 
@@ -51,7 +51,7 @@ export function headersFile(html: string): string {
   );
   const csp = [
     "default-src 'self'",
-    `connect-src 'self' ${PROVIDERS.map((p) => `https://${p.host}`).join(" ")}`,
+    `connect-src 'self' ${providerOrigins().join(" ")}`,
     `script-src 'self' 'wasm-unsafe-eval' 'unsafe-eval' ${hashes.join(" ")}`,
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: blob:",
@@ -100,7 +100,8 @@ export async function buildWeb(out: string): Promise<void> {
     minify: true,
     plugins: [twins],
     // Read only when a turn runs on the API; the hosted build passes its settings in instead.
-    define: { "process.env.ARCHIPELAGO_MODEL": "undefined", "process.env.ARCHIPELAGO_EFFORT": "undefined" },
+    // The proxy's address is fixed at build time (ARCHIPELAGO_PROXY_URL); a build without it offers no proxy.
+    define: { "process.env.ARCHIPELAGO_MODEL": "undefined", "process.env.ARCHIPELAGO_EFFORT": "undefined", "process.env.ARCHIPELAGO_PROXY_URL": proxyUrl() ? JSON.stringify(proxyUrl()) : "undefined" },
   });
   if (!worker.success) throw new Error(`worker bundle failed: ${worker.logs.map((l) => l.message).join("; ")}`);
   writeFileSync(join(out, "worker.js"), await worker.outputs[0]!.text());

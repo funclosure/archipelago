@@ -37,6 +37,8 @@ export type ApiRunnerOptions = {
   apiKey?: string;
   /** In the browser (the hosted build): the SDK is told so, and errors point at Your key, not the environment. */
   hosted?: boolean;
+  /** Another address that speaks the Messages API: our proxy, where `apiKey` is the reader's access token. */
+  baseURL?: string;
 };
 
 /** `ARCHIPELAGO_EFFORT` when it names an effort level, else the default. */
@@ -84,13 +86,13 @@ export function describeApiError(error: unknown, model: string, hosted = false):
 }
 
 /** The SDK's client, made once and only when a turn needs it, so a server without a key still starts. */
-function defaultOpenStream({ apiKey, hosted }: Pick<ApiRunnerOptions, "apiKey" | "hosted">): OpenStream {
+function defaultOpenStream({ apiKey, hosted, baseURL }: Pick<ApiRunnerOptions, "apiKey" | "hosted" | "baseURL">): OpenStream {
   let client: Anthropic | undefined;
   return (params, options) => {
     if (!client) {
       try {
         // In a browser the SDK refuses to run unless told it is meant to (it then sends the header the API's CORS needs).
-        client = new Anthropic({ ...(apiKey ? { apiKey } : {}), ...(hosted ? { dangerouslyAllowBrowser: true } : {}) });
+        client = new Anthropic({ ...(apiKey ? { apiKey } : {}), ...(baseURL ? { baseURL } : {}), ...(hosted ? { dangerouslyAllowBrowser: true } : {}) });
       } catch {
         throw new ArchipelagoError(hosted ? HOSTED_MISSING_KEY : MISSING_KEY);
       }
@@ -110,7 +112,7 @@ const MISSING_KEY = "ANTHROPIC_API_KEY is not set. Set it in the server's enviro
 const HOSTED_MISSING_KEY = "No API key is set. Open Your key in the domain menu and paste one.";
 
 /** The Messages API as a ModelAdapter: one conversation per turn, its history in Claude's message shape. */
-export function claudeAdapter(options: Pick<ApiRunnerOptions, "openStream" | "effort" | "apiKey" | "hosted">): ModelAdapter {
+export function claudeAdapter(options: Pick<ApiRunnerOptions, "openStream" | "effort" | "apiKey" | "hosted" | "baseURL">): ModelAdapter {
   const open = options.openStream ?? defaultOpenStream(options);
   return {
     describeError: (error, model) => describeApiError(error, model, options.hosted),
