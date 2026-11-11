@@ -9,7 +9,7 @@ import { amountOf, PAID_CHECKS_MS } from "./credit-model.js";
 export const isHosted = () => globalThis.ARCHIPELAGO_HOSTED === true;
 
 /** `open`: null, "welcome" (no way out but a choice), "key" (Your key), "import" (the replace warning), "elsewhere". */
-const state = { open: null, view: null, provider: null, key: "", model: null, remember: true, saving: false, error: null, file: null, credit: null, buying: false, thanks: null };
+const state = { open: null, view: null, provider: null, key: "", model: null, remember: true, saving: false, error: null, file: null, credit: null, buying: false, thanks: null, switching: false, tokenField: false };
 let root = null;
 let started = null; // resolves the welcome gate
 
@@ -154,9 +154,10 @@ async function buy(pack) {
 }
 
 function open(kind) {
-  Object.assign(state, { open: kind, key: "", provider: state.view?.provider ?? null, model: state.view?.model ?? null, remember: state.view?.remember ?? true, saving: false, error: null });
+  Object.assign(state, { open: kind, key: "", provider: state.view?.provider ?? null, model: state.view?.model ?? null, remember: state.view?.remember ?? true, saving: false, error: null, switching: false, tokenField: false });
   render();
-  root.querySelector("input")?.focus();
+  // Focus goes to the provider that is chosen: on the first one it reads as if that were the choice.
+  (root.querySelector(".providers input:checked") ?? root.querySelector(".models input:checked") ?? root.querySelector("input"))?.focus();
 }
 
 function close() {
@@ -298,8 +299,13 @@ function renderKey(card) {
   const welcome = state.open === "welcome";
   const provider = providerNow();
   const keyHint = state.view?.keyHints?.[provider?.id];
-  card.append(el("div", "lbl", welcome ? "Archipelago" : t("hosted.yourKey")));
+  // On our own server the dialog starts as the credit and a model: providers and keys wait behind "Use my own key instead".
+  const simple = !welcome && Boolean(provider?.proxy) && !state.switching;
+  // Our own server needs nothing pasted: its field shows only to someone who says they were given a token.
+  const showKey = !simple && (!provider?.proxy || state.tokenField);
+  card.append(el("div", "lbl", welcome ? "Archipelago" : simple ? t("hosted.yourCredit") : t("hosted.yourKey")));
   if (welcome) card.append(el("p", "lede", t("hosted.lede")));
+  if (simple) card.append(creditEl());
   const form = el("form", "fields");
 
   const providers = el("div", "providers");
@@ -317,7 +323,9 @@ function renderKey(card) {
     if (state.view.keyHints?.[p.id]) label.append(el("span", "has-key", "•"));
     providers.append(label);
   }
-  form.append(providers);
+  if (!simple) form.append(providers);
+  // Among the providers, our own server's tab shows its credit where another's shows a key field.
+  if (!simple && !welcome && provider?.proxy) form.append(creditEl());
 
   const field = el("input");
   field.type = "password";
@@ -329,7 +337,7 @@ function renderKey(card) {
   field.disabled = state.saving;
   field.setAttribute("aria-label", t("hosted.keyLabel", { provider: provider?.name ?? "" }));
   field.addEventListener("input", () => (state.key = field.value));
-  form.append(field);
+  if (showKey) form.append(field);
 
   const models = el("div", "models");
   const radios = [];
@@ -374,7 +382,7 @@ function renderKey(card) {
   box.checked = state.remember;
   box.addEventListener("change", () => (state.remember = box.checked));
   remember.append(box, ` ${t("hosted.remember")}`);
-  form.append(remember);
+  if (showKey) form.append(remember);
 
   const actions = row(button(state.saving ? t("hosted.saving") : welcome ? t("hosted.start") : t("hosted.save"), () => void saveKey()));
   actions.firstChild.type = "submit";
@@ -383,7 +391,7 @@ function renderKey(card) {
   else {
     // The token is the only handle on credit that was paid for: no button here throws it away.
     const holdsCredit = provider?.proxy && state.credit?.purchased;
-    if (keyHint && !holdsCredit) actions.append(button(t("hosted.forgetKey"), () => void forgetKey(), "btn ghost"));
+    if (keyHint && !holdsCredit && !simple) actions.append(button(t("hosted.forgetKey"), () => void forgetKey(), "btn ghost"));
     actions.append(button(t("hosted.cancel"), close, "btn ghost"));
   }
   form.append(actions);
@@ -415,30 +423,58 @@ function renderKey(card) {
     other.append(before, link, after);
     card.append(other);
   }
-  // On our own server, where credit is on sale: what is left, and a button per pack.
-  if (!welcome && provider?.proxy && state.credit?.packs?.length) {
-    const credit = el("div", "credit");
-    const left = state.credit.balanceUsd;
-    if (state.thanks) credit.append(el("p", "thanks", t(state.thanks === "added" ? "hosted.creditAdded" : "hosted.creditThanks")));
-    if (typeof left === "number") credit.append(el("p", "left", left > 0 ? t("hosted.creditLeft", { amount: amountOf(left) }) : t("hosted.creditOut")));
-    const packs = row(...state.credit.packs.map((usd) => button(t("hosted.addCredit", { amount: usd }), () => void buy(usd), "btn ghost")));
-    for (const b of packs.children) b.disabled = state.buying;
-    credit.append(packs);
-    if (state.buying) credit.append(el("p", "help", t("hosted.openingCheckout")));
-    credit.append(el("p", "help", t("hosted.creditHelp")));
-    card.append(credit);
+  if (welcome) {
+    if (provider) card.append(noticeEl(provider));
+    return;
   }
-  if (provider) {
-    const notice = el("p", "help");
-    if (provider.proxy) notice.textContent = t("hosted.noticeProxy"); // our own server: the free start, no key
-    else {
-      const [before, after = ""] = t("hosted.notice", { host: "{host}" }).split("{host}");
-      notice.append(before, el("code", null, provider.host), after);
-    }
-    card.append(notice);
+  // One step further in, one line each: the way to a key from the credit view, the way to a token from our own tab.
+  const reveal = (key, change) =>
+    button(t(key), () => {
+      Object.assign(state, change);
+      render();
+      root.querySelector('.providers input:checked, input[type="password"]')?.focus();
+    }, "btn link");
+  if (simple) {
+    // Straight to the first provider that takes a key, with the others beside it.
+    const own = state.view?.providers?.find((p) => !p.proxy);
+    card.append(row(button(t("hosted.ownKey"), () => ((state.switching = true), own ? pickProvider(own.id) : render()), "btn link")));
   }
+  else if (provider?.proxy && !state.tokenField) card.append(row(reveal("hosted.haveToken", { tokenField: true })));
+  // The long explanations are there for whoever wants them, folded.
+  const more = el("details", "more");
+  more.append(el("summary", null, t("hosted.howItWorks")));
+  if (provider?.proxy && state.credit?.packs?.length) more.append(el("p", "help", t("hosted.creditHelp")));
+  if (provider) more.append(noticeEl(provider));
   // On our own server there is no stub to fall back to: forgetting its token starts a new free account.
-  if (!welcome && !provider?.proxy) card.append(el("p", "help", t("hosted.stubHelp")));
+  if (!provider?.proxy) more.append(el("p", "help", t("hosted.stubHelp")));
+  card.append(more);
+}
+
+/** Where a provider's turns go and what is kept, in one paragraph. */
+function noticeEl(provider) {
+  const notice = el("p", "help");
+  if (provider.proxy) notice.textContent = t("hosted.noticeProxy"); // our own server: the free start, no key
+  else {
+    const [before, after = ""] = t("hosted.notice", { host: "{host}" }).split("{host}");
+    notice.append(before, el("code", null, provider.host), after);
+  }
+  return notice;
+}
+
+/** This browser's credit on our own server: what is left, and where credit is on sale, a button per pack. */
+function creditEl() {
+  const credit = el("div", "credit");
+  const { balanceUsd: left = null, purchased = false, packs = [] } = state.credit ?? {};
+  if (state.thanks) credit.append(el("p", "thanks", t(state.thanks === "added" ? "hosted.creditAdded" : "hosted.creditThanks")));
+  if (typeof left !== "number") credit.append(el("p", "left", t("hosted.creditStart")));
+  else if (left <= 0) credit.append(el("p", "left", t(packs.length ? "hosted.creditOut" : "hosted.creditOutKey")));
+  else credit.append(el("p", "left", t(purchased ? "hosted.creditLeft" : "hosted.creditFree", { amount: amountOf(left) })));
+  if (packs.length) {
+    const buttons = row(...packs.map((usd) => button(t("hosted.addCredit", { amount: usd }), () => void buy(usd), "btn ghost")));
+    for (const b of buttons.children) b.disabled = state.buying;
+    credit.append(buttons, el("p", "help", t(state.buying ? "hosted.openingCheckout" : "hosted.creditShort")));
+  }
+  return credit;
 }
 
 function renderImport(card) {
