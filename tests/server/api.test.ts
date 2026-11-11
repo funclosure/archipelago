@@ -234,6 +234,9 @@ test("API errors become one actionable sentence; aborts and our own errors pass 
   expect(said(status(Anthropic.NotFoundError, 404))).toContain("ARCHIPELAGO_MODEL");
   expect(said(status(Anthropic.RateLimitError, 429))).toContain("rate-limited");
   expect(said(status(Anthropic.InternalServerError, 529))).toContain("overloaded");
+  const billing = (body: object) => said(new Anthropic.APIError(402, body, "x", headers));
+  expect(billing({ type: "error", error: { type: "billing_error", message: "Today's spending limit is reached. It starts again at midnight UTC." } })).toBe("Today's spending limit is reached. It starts again at midnight UTC.");
+  expect(billing({ type: "error", error: {} })).toBe("The account behind this key has no credit left.");
   expect(said(new Anthropic.APIConnectionError({ message: "down" }))).toContain("Cannot reach the Claude API");
   const abort = new Anthropic.APIUserAbortError();
   expect(describeApiError(abort, "m")).toBe(abort);

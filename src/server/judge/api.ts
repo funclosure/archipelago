@@ -79,6 +79,11 @@ export function describeApiError(error: unknown, model: string, hosted = false):
   if (error instanceof Anthropic.NotFoundError) {
     return say(hosted ? `The model ${model} is not available. Pick another model under Your key in the domain menu.` : `The model ${model} is not available. Set ARCHIPELAGO_MODEL (default ${API_DEFAULT_MODEL}).`);
   }
+  // 402 is a spending limit: our proxy's for the day, or the account's own credit. Its sentence says which.
+  if (error instanceof Anthropic.APIError && error.status === 402) {
+    const told = (error.error as { error?: { message?: unknown } } | undefined)?.error?.message;
+    return say(typeof told === "string" && told.trim() ? told.trim() : "The account behind this key has no credit left.");
+  }
   if (error instanceof Anthropic.RateLimitError) return say("Claude is rate-limited. Wait a moment and send again.");
   if (error instanceof Anthropic.InternalServerError) return say("Claude is overloaded. Wait a moment and send again.");
   if (error instanceof Anthropic.APIConnectionError) return say("Cannot reach the Claude API. Check the connection, then send again.");
