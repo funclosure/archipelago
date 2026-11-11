@@ -6,9 +6,10 @@ import { t } from "./i18n.js";
 import { request } from "./transport.js";
 import { setVoices } from "./voice.js";
 import { creditLabel } from "./credit-model.js";
+import { openYourKey } from "./hosted.js";
 
 let current = null;
-let credit = null; // US dollars left of the free credit; null when there is none to show
+let credit = null; // { balanceUsd, purchased, packs } on the hosted build's own server; null when there is no credit to show
 
 export function judgeModel() {
   return current;
@@ -17,8 +18,8 @@ export function judgeModel() {
 async function readCredit() {
   if (globalThis.ARCHIPELAGO_HOSTED !== true) return null;
   try {
-    const { balanceUsd } = await (await request("/hosted/credit")).json();
-    return typeof balanceUsd === "number" ? balanceUsd : null;
+    const view = await (await request("/hosted/credit")).json();
+    return typeof view.balanceUsd === "number" ? { balanceUsd: view.balanceUsd, purchased: view.purchased === true, packs: view.packs ?? [] } : null;
   } catch {
     return null;
   }
@@ -29,7 +30,7 @@ export async function refreshJudgeModel() {
   try {
     const [{ model, voices }, left] = await Promise.all([api("/api/judge"), readCredit()]);
     setVoices(voices);
-    const changed = (model ?? null) !== current || left !== credit;
+    const changed = (model ?? null) !== current || JSON.stringify(left) !== JSON.stringify(credit);
     current = model ?? null;
     credit = left;
     return changed;
@@ -43,8 +44,16 @@ export function modelEl() {
   if (!current) return null;
   const span = document.createElement("span");
   span.className = "model";
-  const label = creditLabel(current, credit);
+  const label = creditLabel(current, credit?.balanceUsd, credit?.purchased);
   span.textContent = label.key ? t(label.key, label.vars) : current;
-  span.title = label.key ? t("card.creditTitle") : t("card.modelTitle");
+  span.title = label.key ? t(credit.packs.length ? "card.creditTitleBuy" : "card.creditTitle") : t("card.modelTitle");
+  if (label.key && credit.packs.length) {
+    // Where credit is on sale, the balance is the way to more of it.
+    span.classList.add("buy");
+    span.setAttribute("role", "button");
+    span.tabIndex = 0;
+    span.addEventListener("click", openYourKey);
+    span.addEventListener("keydown", (e) => (e.key === "Enter" || e.key === " ") && (e.preventDefault(), openYourKey()));
+  }
   return span;
 }

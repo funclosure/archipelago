@@ -142,6 +142,6 @@ const scope = self as unknown as DedicatedWorkerGlobalScope;
 const onMessage = createHandler(
   () => ready,
   (message, transfer) => scope.postMessage(message, transfer ?? []),
-  (req) => handleHostedRequest(req, { settings, exportDatabase: () => pool.exportFile(FILE), importDatabase, credit: credit.view }),
+  (req) => handleHostedRequest(req, { settings, exportDatabase: () => pool.exportFile(FILE), importDatabase, credit: () => credit.view(), checkout: (pack) => credit.checkout(pack) }),
 );
 scope.addEventListener("message", (event: MessageEvent<PageMessage>) => void onMessage(event.data));

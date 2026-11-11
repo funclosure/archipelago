@@ -15,3 +15,9 @@ test("with no balance to show, the model stands alone", () => {
   expect(creditLabel("m", undefined)).toEqual({ key: null });
   expect(creditLabel("m", NaN)).toEqual({ key: null });
 });
+
+test("credit that was bought is no longer called free", () => {
+  expect(creditLabel("m", 9.5, true)).toEqual({ key: "card.modelPaid", vars: { model: "m", amount: "9.50" } });
+  expect(creditLabel("m", 0, true)).toEqual({ key: "card.modelPaidOut", vars: { model: "m" } });
+  expect(creditLabel("m", null, true)).toEqual({ key: null });
+});

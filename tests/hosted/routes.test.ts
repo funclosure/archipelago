@@ -229,10 +229,11 @@ test("the first turn starts a free account once, keeps its token like a key, and
     const fake = (async (url: string, init: RequestInit = {}) => {
       calls.push({ url, method: init.method ?? "GET", key: new Headers(init.headers).get("x-api-key") });
       if (url.endsWith("/accounts")) return Response.json({ token: "arch_0123456789abcdef0123456789abcdef", balanceUsd: 0.5 }, { status: 201 });
-      return Response.json({ account: "anon", balanceUsd: 0.42 });
+      if (url.endsWith("/checkout")) return Response.json({ url: `https://polar.example/checkout/${JSON.parse(String(init.body)).pack}` });
+      return Response.json({ account: "anon", balanceUsd: 0.42, purchased: false, packs: [10, 20] });
     }) as unknown as typeof fetch;
     const credit = createCredit({ settings, url: () => PROXY, fetch: fake });
-    expect(await credit.view()).toEqual({ balanceUsd: null }); // nothing started, nothing asked
+    expect(await credit.view()).toEqual({ balanceUsd: null, purchased: false, packs: [] }); // nothing started, nothing asked
     expect(calls).toHaveLength(0);
     const [a, b] = await Promise.all([credit.token(), credit.token()]);
     expect([a, b]).toEqual(["arch_0123456789abcdef0123456789abcdef", "arch_0123456789abcdef0123456789abcdef"]);
@@ -240,11 +241,31 @@ test("the first turn starts a free account once, keeps its token like a key, and
     expect(await credit.token()).toBe(a);
     expect(calls).toHaveLength(1);
     expect(store.saved).toMatchObject({ provider: "archipelago", keys: { archipelago: a } });
-    expect(await credit.view()).toEqual({ balanceUsd: 0.42 });
+    expect(await credit.view()).toEqual({ balanceUsd: 0.42, purchased: false, packs: [10, 20] });
     expect(calls.at(-1)).toEqual({ url: `${PROXY}/account`, method: "GET", key: a });
     const view = await (await handleHostedRequest(get("/hosted/credit"), deps(store, { settings, credit: credit.view }))).json();
-    expect(view).toEqual({ balanceUsd: 0.42 });
+    expect(view).toEqual({ balanceUsd: 0.42, purchased: false, packs: [10, 20] });
+    // A pack's checkout is asked for with the account's token, and its page comes back to open.
+    const d = deps(store, { settings, credit: () => credit.view(), checkout: (pack) => credit.checkout(pack) });
+    expect(await (await handleHostedRequest(post("/hosted/checkout", { pack: 20 }), d)).json()).toEqual({ url: "https://polar.example/checkout/20" });
+    expect(calls.at(-1)).toEqual({ url: `${PROXY}/checkout`, method: "POST", key: a });
+    expect((await handleHostedRequest(post("/hosted/checkout", { pack: "20" }), d)).status).toBe(400);
   });
+});
+
+test("a checkout that cannot be opened says why, and only a secure page is ever opened", async () => {
+  const { createCredit } = await import("../../src/hosted/credit.ts");
+  await withProxy(async () => {
+    const kept = () => createSettings(memoryStore({ provider: "archipelago", keys: { archipelago: "arch_0123456789abcdef0123456789abcdef" }, models: {} }));
+    const answering = (res: () => Response) => createCredit({ settings: kept(), url: () => PROXY, fetch: (async () => res()) as unknown as typeof fetch });
+    await expect(answering(() => Response.json({ type: "error", error: { message: "Pick one of $10, $20." } }, { status: 400 })).checkout(5)).rejects.toThrow("Pick one of $10, $20.");
+    await expect(answering(() => Response.json({ url: "javascript:alert(1)" })).checkout(10)).rejects.toThrow(/Could not open the checkout/);
+    await expect(answering(() => Response.json({ url: "http://polar.example/x" })).checkout(10)).rejects.toThrow(/Could not open the checkout/);
+    const down = createCredit({ settings: kept(), url: () => PROXY, fetch: (async () => { throw new TypeError("Failed to fetch"); }) as unknown as typeof fetch });
+    await expect(down.checkout(10)).rejects.toThrow(/Could not open the checkout/);
+  });
+  // A build without a proxy sells nothing.
+  expect((await handleHostedRequest(post("/hosted/checkout", { pack: 10 }), deps())).status).toBe(400);
 });
 
 test("a refused free start says the proxy's own sentence; an unreachable proxy says what to do", async () => {
@@ -257,5 +278,5 @@ test("a refused free start says the proxy's own sentence; an unreachable proxy s
     await expect(credit.token()).rejects.toThrow(/Could not reach Archipelago/);
     await expect(credit.token()).rejects.toThrow(/Could not reach Archipelago/); // a failed start is tried again
   });
-  expect(await (await handleHostedRequest(get("/hosted/credit"), deps())).json()).toEqual({ balanceUsd: null });
+  expect(await (await handleHostedRequest(get("/hosted/credit"), deps())).json()).toEqual({ balanceUsd: null, purchased: false, packs: [] });
 });

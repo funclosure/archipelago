@@ -15,6 +15,8 @@ export type HostedDeps = {
   importDatabase: (bytes: Uint8Array) => Promise<void>;
   /** The balance of this browser's free account on our proxy (`credit.ts`); absent in a build without one. */
   credit?: () => Promise<CreditView>;
+  /** The checkout page for a credit pack (`credit.ts`); absent in a build without a proxy. */
+  checkout?: (pack: number) => Promise<{ url: string }>;
 };
 
 export async function handleHostedRequest(req: Request, deps: HostedDeps): Promise<Response> {
@@ -27,7 +29,12 @@ export async function handleHostedRequest(req: Request, deps: HostedDeps): Promi
       if (error) throw new ArchipelagoError(error);
       return json(viewOf(await deps.settings.update(patch)));
     }
-    if (pathname === "/hosted/credit" && req.method === "GET") return json(deps.credit ? await deps.credit() : { balanceUsd: null });
+    if (pathname === "/hosted/credit" && req.method === "GET") return json(deps.credit ? await deps.credit() : { balanceUsd: null, purchased: false, packs: [] });
+    if (pathname === "/hosted/checkout" && req.method === "POST") {
+      const { pack } = (await req.json()) as { pack?: unknown };
+      if (!deps.checkout || typeof pack !== "number") throw new ArchipelagoError("No such credit pack.");
+      return json(await deps.checkout(pack));
+    }
     if (pathname === "/hosted/export" && req.method === "GET") {
       return new Response(deps.exportDatabase() as Uint8Array<ArrayBuffer>, {
         headers: { "content-type": DATABASE_TYPE, "content-disposition": `attachment; filename="${exportName()}"` },

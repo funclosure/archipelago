@@ -10,9 +10,15 @@ export type CreditDeps = {
   fetch?: typeof fetch;
 };
 
-/** What the page shows: the balance in US dollars. Null before the first turn, for a token with no balance (ours), or when it cannot be read. */
-export type CreditView = { balanceUsd: number | null };
+/**
+ * What the page shows. `balanceUsd`: null before the first turn, for a token with no balance (ours), or when it cannot
+ * be read. `purchased`: the account has bought credit, so what is left is no longer "free". `packs`: the credit packs
+ * on sale, in US dollars of credit; none where the proxy sells nothing.
+ */
+export type CreditView = { balanceUsd: number | null; purchased: boolean; packs: number[] };
+const NOTHING: CreditView = { balanceUsd: null, purchased: false, packs: [] };
 
+const NO_CHECKOUT = "Could not open the checkout. Check the connection and try again.";
 const UNREACHABLE = "Could not reach Archipelago to start your free chart. Check the connection and send again, or bring your own key under Your key.";
 
 export function createCredit({ settings, url, fetch: send = fetch }: CreditDeps) {
@@ -48,14 +54,36 @@ export function createCredit({ settings, url, fetch: send = fetch }: CreditDeps)
     async view(): Promise<CreditView> {
       const base = url();
       const token = (await settings.get()).keys.archipelago;
-      if (!base || !token) return { balanceUsd: null };
+      if (!base || !token) return NOTHING;
       try {
         const res = await send(`${base}/account`, { headers: { "x-api-key": token } });
-        const body = (await res.json()) as { balanceUsd?: unknown };
-        return { balanceUsd: res.ok && typeof body.balanceUsd === "number" ? body.balanceUsd : null };
+        const body = (await res.json()) as { balanceUsd?: unknown; purchased?: unknown; packs?: unknown };
+        if (!res.ok) return NOTHING;
+        return {
+          balanceUsd: typeof body.balanceUsd === "number" ? body.balanceUsd : null,
+          purchased: body.purchased === true,
+          packs: Array.isArray(body.packs) ? body.packs.filter((p): p is number => typeof p === "number" && p > 0) : [],
+        };
       } catch {
-        return { balanceUsd: null };
+        return NOTHING;
       }
+    },
+    /** The checkout page for one credit pack, at our payment provider. The paid order tops up this browser's account. */
+    async checkout(pack: number): Promise<{ url: string }> {
+      const base = url();
+      if (!base) throw new ArchipelagoError("This build sells no credit.");
+      const token = await this.token();
+      let res: Response;
+      try {
+        res = await send(`${base}/checkout`, { method: "POST", headers: { "content-type": "application/json", "x-api-key": token }, body: JSON.stringify({ pack }) });
+      } catch {
+        throw new ArchipelagoError(NO_CHECKOUT);
+      }
+      const body = (await res.json().catch(() => null)) as { url?: unknown; error?: { message?: unknown } } | null;
+      // Only a secure page is ever opened: the address comes from another server.
+      if (res.ok && typeof body?.url === "string" && body.url.startsWith("https://")) return { url: body.url };
+      const told = body?.error?.message;
+      throw new ArchipelagoError(typeof told === "string" && told ? told : NO_CHECKOUT);
     },
   };
 }
