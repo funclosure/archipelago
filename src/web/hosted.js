@@ -348,7 +348,8 @@ function renderKey(card) {
     }
     card.append(notice);
   }
-  if (!welcome) card.append(el("p", "help", t("hosted.stubHelp")));
+  // On our own server there is no stub to fall back to: forgetting its token starts a new free account.
+  if (!welcome && !provider?.proxy) card.append(el("p", "help", t("hosted.stubHelp")));
 }
 
 function renderImport(card) {
