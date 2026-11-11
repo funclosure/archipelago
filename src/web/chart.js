@@ -165,6 +165,7 @@ async function runTurn(message) {
   if (liveFrame) cancelAnimationFrame(liveFrame);
   liveFrame = 0;
   Object.assign(chart, { inFlight: false, live: "", progress: null, version: null }); // the reply and any sketch come back with the refetch
+  document.dispatchEvent(new Event("turn")); // the pane's foot re-reads the model and, on the free start, the credit left
   rerender();
   void refresh(); // a proposed sketch draws as drafts on the map in the same beat
   focusChartAnswer();

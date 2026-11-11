@@ -65,7 +65,7 @@ export async function welcomeGate() {
   if (!isHosted()) return;
   root ??= document.getElementById("hosted");
   state.view = await (await call("/hosted/settings")).json();
-  if (state.view.key || state.view.stub) return;
+  if (state.view.key || state.view.stub || state.view.free) return; // free: our own server answers, no key to ask for
   open("welcome");
   await new Promise((resolve) => (started = resolve));
 }
@@ -107,7 +107,7 @@ async function saveKey({ stub = false } = {}) {
   const patch = { provider: state.provider, model: state.model, remember: state.remember };
   if (stub) patch.stub = true;
   else if (state.key.trim()) patch.apiKey = state.key.trim();
-  else if (!state.view?.keyHints?.[state.provider]) {
+  else if (!state.view?.keyHints?.[state.provider] && !providerNow()?.proxy) {
     state.error = t("hosted.pasteKey");
     return render();
   }
@@ -249,7 +249,8 @@ function renderKey(card) {
   field.type = "password";
   field.autocomplete = "off";
   field.spellcheck = false;
-  field.placeholder = keyHint ? t("hosted.keySet", { hint: keyHint }) : provider?.placeholder ?? "";
+  // Our own server needs nothing pasted: the field is only for someone who was given an access token.
+  field.placeholder = keyHint ? t("hosted.keySet", { hint: keyHint }) : provider?.proxy ? t("hosted.tokenOptional") : provider?.placeholder ?? "";
   field.value = state.key;
   field.disabled = state.saving;
   field.setAttribute("aria-label", t("hosted.keyLabel", { provider: provider?.name ?? "" }));
@@ -340,7 +341,7 @@ function renderKey(card) {
   }
   if (provider) {
     const notice = el("p", "help");
-    if (provider.proxy) notice.textContent = t("hosted.noticeProxy"); // our own server: a token, not a key, and no bill
+    if (provider.proxy) notice.textContent = t("hosted.noticeProxy"); // our own server: the free start, no key
     else {
       const [before, after = ""] = t("hosted.notice", { host: "{host}" }).split("{host}");
       notice.append(before, el("code", null, provider.host), after);

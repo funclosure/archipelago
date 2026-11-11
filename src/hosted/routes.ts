@@ -3,6 +3,7 @@
 import { ArchipelagoError } from "../core/errors.ts";
 import { errorResponse, json } from "../server/api-routes.ts";
 import { exportName } from "./backup.ts";
+import type { CreditView } from "./credit.ts";
 import { patchError, viewOf, type createSettings, type SettingsPatch } from "./settings.ts";
 
 export const DATABASE_TYPE = "application/vnd.sqlite3";
@@ -12,6 +13,8 @@ export type HostedDeps = {
   exportDatabase: () => Uint8Array;
   /** Replaces the database with `bytes`; throws an ArchipelagoError carrying the sentence to show when it refuses. */
   importDatabase: (bytes: Uint8Array) => Promise<void>;
+  /** The balance of this browser's free account on our proxy (`credit.ts`); absent in a build without one. */
+  credit?: () => Promise<CreditView>;
 };
 
 export async function handleHostedRequest(req: Request, deps: HostedDeps): Promise<Response> {
@@ -24,6 +27,7 @@ export async function handleHostedRequest(req: Request, deps: HostedDeps): Promi
       if (error) throw new ArchipelagoError(error);
       return json(viewOf(await deps.settings.update(patch)));
     }
+    if (pathname === "/hosted/credit" && req.method === "GET") return json(deps.credit ? await deps.credit() : { balanceUsd: null });
     if (pathname === "/hosted/export" && req.method === "GET") {
       return new Response(deps.exportDatabase() as Uint8Array<ArrayBuffer>, {
         headers: { "content-type": DATABASE_TYPE, "content-disposition": `attachment; filename="${exportName()}"` },

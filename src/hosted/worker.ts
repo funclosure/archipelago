@@ -19,6 +19,7 @@ import { useDatabase } from "./db.ts";
 import { createHandler, type PageMessage } from "./handler.ts";
 import { handleHostedRequest } from "./routes.ts";
 import { activeOf, createSettings, indexedDbStore, proxyUrl } from "./settings.ts";
+import { createCredit } from "./credit.ts";
 
 const FILE = "/archipelago.sqlite";
 /** Where an import is opened and checked before it replaces FILE. */
@@ -61,8 +62,11 @@ const settings = createSettings(indexedDbStore());
 /** The reader's key answers on their provider's API; without one, the stub. One client per provider, key, and model. */
 let api: { id: string; run: JudgeRunner } | null = null;
 const toolbox = { context: (persona, deps) => persona.buildContext(deps), run: runTool } satisfies Parameters<typeof createApiRunner>[0]["toolbox"];
+const credit = createCredit({ settings, url: proxyUrl });
 const runner: JudgeRunner = async (turn) => {
-  const { provider, apiKey, model } = activeOf(await settings.get());
+  const { provider, apiKey: own, model, free } = activeOf(await settings.get());
+  // Our proxy needs no key from the reader: the first turn starts this browser's free account.
+  const apiKey = free ? await credit.token() : own;
   if (!apiKey) return stubRunner(turn);
   const id = `${provider.id}\n${apiKey}\n${model}`;
   if (api?.id !== id) {
@@ -77,8 +81,8 @@ const runner: JudgeRunner = async (turn) => {
 
 /** The model the next turn runs on: the one picked under Your key, none without a key (the stub). */
 const model = async () => {
-  const { apiKey, model } = activeOf(await settings.get());
-  return apiKey ? model : null;
+  const { apiKey, model, free } = activeOf(await settings.get());
+  return apiKey || free ? model : null;
 };
 
 type Pool = Awaited<ReturnType<Sqlite3Static["installOpfsSAHPoolVfs"]>>;
@@ -138,6 +142,6 @@ const scope = self as unknown as DedicatedWorkerGlobalScope;
 const onMessage = createHandler(
   () => ready,
   (message, transfer) => scope.postMessage(message, transfer ?? []),
-  (req) => handleHostedRequest(req, { settings, exportDatabase: () => pool.exportFile(FILE), importDatabase }),
+  (req) => handleHostedRequest(req, { settings, exportDatabase: () => pool.exportFile(FILE), importDatabase, credit: credit.view }),
 );
 scope.addEventListener("message", (event: MessageEvent<PageMessage>) => void onMessage(event.data));
