@@ -4,11 +4,12 @@
 import { request, release } from "./transport.js";
 import { registerRegion } from "./keys.js";
 import { t } from "./i18n.js";
+import { amountOf, PAID_CHECKS_MS } from "./credit-model.js";
 
 export const isHosted = () => globalThis.ARCHIPELAGO_HOSTED === true;
 
 /** `open`: null, "welcome" (no way out but a choice), "key" (Your key), "import" (the replace warning), "elsewhere". */
-const state = { open: null, view: null, provider: null, key: "", model: null, remember: true, saving: false, error: null, file: null };
+const state = { open: null, view: null, provider: null, key: "", model: null, remember: true, saving: false, error: null, file: null, credit: null, buying: false, thanks: null };
 let root = null;
 let started = null; // resolves the welcome gate
 
@@ -65,19 +66,72 @@ export async function welcomeGate() {
   if (!isHosted()) return;
   root ??= document.getElementById("hosted");
   state.view = await (await call("/hosted/settings")).json();
+  if (backFromCheckout()) setTimeout(thank, 0);
   if (state.view.key || state.view.stub || state.view.free) return; // free: our own server answers, no key to ask for
   open("welcome");
   await new Promise((resolve) => (started = resolve));
 }
 
 export function openYourKey() {
-  void call("/hosted/settings")
-    .then((r) => r.json())
-    .then((view) => {
+  void Promise.all([call("/hosted/settings").then((r) => r.json()), readCredit()])
+    .then(([view, credit]) => {
       state.view = view;
+      state.credit = credit;
       open("key");
     })
     .catch((error) => alert(error.message));
+}
+
+/** This browser's credit on our own server; null where there is none to show. */
+async function readCredit() {
+  try {
+    return await (await call("/hosted/credit")).json();
+  } catch {
+    return null;
+  }
+}
+
+/** True once, when the page was opened by the checkout's way back (`?credit=added`); the mark is taken off the address. */
+function backFromCheckout() {
+  const url = new URL(location.href);
+  if (url.searchParams.get("credit") !== "added") return false;
+  url.searchParams.delete("credit");
+  history.replaceState(null, "", url);
+  return true;
+}
+
+/** Back from paying: Your key opens with a thank-you, and the balance is read again until the payment has reached us. */
+function thank() {
+  state.thanks = "waiting";
+  const before = state.credit?.balanceUsd ?? null;
+  openYourKey();
+  for (const wait of PAID_CHECKS_MS) {
+    setTimeout(async () => {
+      if (state.thanks !== "waiting") return;
+      const credit = await readCredit();
+      if (!credit || credit.balanceUsd === (state.credit?.balanceUsd ?? before)) return;
+      state.credit = credit;
+      state.thanks = "added";
+      document.dispatchEvent(new Event("settings")); // the pane's foot shows the balance too
+      if (state.open === "key") render();
+    }, wait);
+  }
+}
+
+/** Opens the payment provider's checkout for one pack, in this tab; the way back is `?credit=added`. */
+async function buy(pack) {
+  if (state.buying) return;
+  state.buying = true;
+  state.error = null;
+  render();
+  try {
+    const { url } = await (await call("/hosted/checkout", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ pack }) })).json();
+    location.href = url;
+  } catch (error) {
+    state.buying = false;
+    state.error = error.message;
+    render();
+  }
 }
 
 function open(kind) {
@@ -88,6 +142,7 @@ function open(kind) {
 
 function close() {
   state.open = null;
+  state.thanks = null;
   render();
 }
 
@@ -307,7 +362,9 @@ function renderKey(card) {
   actions.firstChild.disabled = state.saving;
   if (welcome) actions.append(button(t("hosted.tryWithout"), () => void saveKey({ stub: true }), "btn ghost"));
   else {
-    if (keyHint) actions.append(button(t("hosted.forgetKey"), () => void forgetKey(), "btn ghost"));
+    // The token is the only handle on credit that was paid for: no button here throws it away.
+    const holdsCredit = provider?.proxy && state.credit?.purchased;
+    if (keyHint && !holdsCredit) actions.append(button(t("hosted.forgetKey"), () => void forgetKey(), "btn ghost"));
     actions.append(button(t("hosted.cancel"), close, "btn ghost"));
   }
   form.append(actions);
@@ -338,6 +395,19 @@ function renderKey(card) {
     const [before, after = ""] = t("hosted.claudeCode").split("{link}");
     other.append(before, link, after);
     card.append(other);
+  }
+  // On our own server, where credit is on sale: what is left, and a button per pack.
+  if (!welcome && provider?.proxy && state.credit?.packs?.length) {
+    const credit = el("div", "credit");
+    const left = state.credit.balanceUsd;
+    if (state.thanks) credit.append(el("p", "thanks", t(state.thanks === "added" ? "hosted.creditAdded" : "hosted.creditThanks")));
+    if (typeof left === "number") credit.append(el("p", "left", left > 0 ? t("hosted.creditLeft", { amount: amountOf(left) }) : t("hosted.creditOut")));
+    const packs = row(...state.credit.packs.map((usd) => button(t("hosted.addCredit", { amount: usd }), () => void buy(usd), "btn ghost")));
+    for (const b of packs.children) b.disabled = state.buying;
+    credit.append(packs);
+    if (state.buying) credit.append(el("p", "help", t("hosted.openingCheckout")));
+    credit.append(el("p", "help", t("hosted.creditHelp")));
+    card.append(credit);
   }
   if (provider) {
     const notice = el("p", "help");

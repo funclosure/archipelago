@@ -270,6 +270,8 @@ button:focus-visible, textarea:focus-visible, input:focus-visible { outline: 2px
 .btn.send.judge { background: var(--panel-2); color: var(--text); }
 .btn.send.mentor { background: var(--explore); color: var(--on-land); }
 .foot .meta { display: flex; justify-content: space-between; gap: 12px; font-size: 11px; color: var(--muted); }
+.foot .meta .model.buy { cursor: pointer; text-decoration: underline dotted; text-underline-offset: 3px; }
+.foot .meta .model.buy:hover, .foot .meta .model.buy:focus-visible { color: var(--text); }
 .foot .meta .model { font-family: var(--font-mono); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .foot .meta .meta-r { display: flex; align-items: center; gap: 12px; min-width: 0; }
 .read-aloud { background: none; border: 0; padding: 0; font: inherit; color: var(--muted); cursor: pointer; white-space: nowrap; }
@@ -726,6 +728,10 @@ body.empty .outline, body.empty .chrome, body.empty #map-focus, body.empty #boar
 .hosted-card .model .note { color: var(--muted); font-size: 12px; }
 .hosted-card .remember { font-size: 12px; color: var(--text-2); cursor: pointer; }
 .hosted-card .row { display: flex; gap: 6px; flex-wrap: wrap; }
+.hosted-card .credit { display: grid; gap: 8px; padding-top: 10px; border-top: 1px solid var(--line); }
+.hosted-card .credit p { margin: 0; }
+.hosted-card .credit .left { font-size: 13px; color: var(--text); }
+.hosted-card .credit .thanks { font-size: 13px; color: var(--lamp); }
 .hosted-card .btn.link { background: none; border: 0; padding: 0; color: var(--lamp); text-decoration: underline; cursor: pointer; font: inherit; font-size: 12px; }
 
 /* ---- phones: one place at a time (places.js stamps body[data-place]) and a bar at the bottom to move between
