@@ -173,3 +173,23 @@ test("migrationsError refuses a database from a newer build and one that is not 
   expect(migrationsError([...known, "9999_future"], known)).toContain("newer Archipelago");
   expect(migrationsError([], known)).toContain("not one of Archipelago's");
 });
+
+test("our proxy is a provider only in a build that names it, and takes an access token, not a key", async () => {
+  const { offered, providerOrigins, patchError } = await import("../../src/hosted/settings.ts");
+  const TOKEN = "arch_preview_0123456789abcdef";
+  expect(offered().map((p) => p.id)).not.toContain("archipelago");
+  expect(patchError({ provider: "archipelago", apiKey: TOKEN })).toMatch(/^Pick one of Claude, Gemini, OpenRouter\.$/);
+  process.env.ARCHIPELAGO_PROXY_URL = "https://archipelago-proxy.example.workers.dev";
+  try {
+    expect(offered().map((p) => p.id)).toEqual(["anthropic", "gemini", "openrouter", "archipelago"]);
+    expect(providerOrigins().at(-1)).toBe("https://archipelago-proxy.example.workers.dev");
+    expect(patchError({ provider: "archipelago", apiKey: KEY })).toMatch(/access token/);
+    expect(patchError({ provider: "archipelago", apiKey: TOKEN, model: "claude-opus-5-5" })).toBeNull();
+    const d = deps();
+    const view = await (await handleHostedRequest(post("/hosted/settings", { provider: "archipelago", apiKey: TOKEN }), d)).json();
+    expect(view).toMatchObject({ provider: "archipelago", key: true, keyHint: "…cdef", model: "claude-sonnet-5-5" });
+    expect(activeOf(await d.settings.get())).toMatchObject({ apiKey: TOKEN, provider: { id: "archipelago", proxy: true } });
+  } finally {
+    delete process.env.ARCHIPELAGO_PROXY_URL;
+  }
+});

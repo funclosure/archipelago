@@ -18,7 +18,7 @@ import { migrationsError, prepareImport } from "./backup.ts";
 import { useDatabase } from "./db.ts";
 import { createHandler, type PageMessage } from "./handler.ts";
 import { handleHostedRequest } from "./routes.ts";
-import { activeOf, createSettings, indexedDbStore } from "./settings.ts";
+import { activeOf, createSettings, indexedDbStore, proxyUrl } from "./settings.ts";
 
 const FILE = "/archipelago.sqlite";
 /** Where an import is opened and checked before it replaces FILE. */
@@ -69,7 +69,7 @@ const runner: JudgeRunner = async (turn) => {
     const run =
       "baseUrl" in provider
         ? createChatRunner({ toolbox, baseUrl: provider.baseUrl, apiKey, model, hosted: true })
-        : createApiRunner({ toolbox, apiKey, model, hosted: true });
+        : createApiRunner({ toolbox, apiKey, model, hosted: true, ...("proxy" in provider ? { baseURL: proxyUrl() } : {}) });
     api = { id, run };
   }
   return api.run(turn);

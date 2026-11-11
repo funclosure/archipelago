@@ -316,14 +316,18 @@ function renderKey(card) {
   });
   card.append(form);
   if (welcome && provider) {
-    const get = el("p", "help");
-    const link = el("a", null, new URL(provider.keysUrl).host);
-    link.href = provider.keysUrl;
-    link.target = "_blank";
-    link.rel = "noopener noreferrer";
-    const [before, after = ""] = t("hosted.noKey").split("{link}");
-    get.append(before, link, after);
-    card.append(get, row(button(t("hosted.importDatabase"), importDatabase, "btn link")));
+    // Our own proxy has no page to get a token from yet (a private preview), so no link there.
+    if (provider.keysUrl) {
+      const get = el("p", "help");
+      const link = el("a", null, new URL(provider.keysUrl).host);
+      link.href = provider.keysUrl;
+      link.target = "_blank";
+      link.rel = "noopener noreferrer";
+      const [before, after = ""] = t("hosted.noKey").split("{link}");
+      get.append(before, link, after);
+      card.append(get);
+    }
+    card.append(row(button(t("hosted.importDatabase"), importDatabase, "btn link")));
   }
   if (welcome) {
     // The landing page names every way to use Archipelago; Claude Code is the one this card cannot offer.
@@ -336,8 +340,11 @@ function renderKey(card) {
   }
   if (provider) {
     const notice = el("p", "help");
-    const [before, after = ""] = t("hosted.notice", { host: "{host}" }).split("{host}");
-    notice.append(before, el("code", null, provider.host), after);
+    if (provider.proxy) notice.textContent = t("hosted.noticeProxy"); // our own server: a token, not a key, and no bill
+    else {
+      const [before, after = ""] = t("hosted.notice", { host: "{host}" }).split("{host}");
+      notice.append(before, el("code", null, provider.host), after);
+    }
     card.append(notice);
   }
   if (!welcome) card.append(el("p", "help", t("hosted.stubHelp")));

@@ -48,14 +48,35 @@ export const PROVIDERS = [
       { id: "anthropic/claude-sonnet-5.5", name: "Sonnet 5.5", note: "noteSonnetRouted" },
     ],
   },
-] as const satisfies readonly { id: string; name: string; host: string; baseUrl?: string; keysUrl: string; placeholder: string; custom: boolean; models: readonly Model[] }[];
+  {
+    // Our own proxy (the paid way in; a private preview behind one access token): it speaks the Messages API and
+    // holds the Anthropic key, so the reader brings a token, not a key. Offered only in a build that names it.
+    id: "archipelago",
+    name: "Archipelago",
+    host: "",
+    proxy: true,
+    placeholder: "arch_…",
+    custom: false,
+    models: [
+      { id: "claude-sonnet-5-5", name: "Sonnet 5.5", note: "noteSonnet" },
+      { id: "claude-opus-5-5", name: "Opus 5.5", note: "noteOpus" },
+    ],
+  },
+] as const satisfies readonly { id: string; name: string; host: string; baseUrl?: string; proxy?: true; keysUrl?: string; placeholder: string; custom: boolean; models: readonly Model[] }[];
 
 export type ProviderId = (typeof PROVIDERS)[number]["id"];
 export type Provider = (typeof PROVIDERS)[number];
 export const HOSTED_DEFAULT_PROVIDER: ProviderId = "anthropic";
 export const HOSTED_DEFAULT_MODEL = PROVIDERS[0].models[0].id;
 
-export const providerOf = (id: string): Provider | undefined => PROVIDERS.find((p) => p.id === id);
+/** Where our proxy answers, written into the build by `build:web` from ARCHIPELAGO_PROXY_URL; none in a build without it. */
+export const proxyUrl = (): string | undefined => process.env.ARCHIPELAGO_PROXY_URL || undefined;
+/** The providers this build offers: the proxy's only when the build names a proxy. */
+export const offered = (): Provider[] => PROVIDERS.filter((p) => !("proxy" in p) || Boolean(proxyUrl()));
+/** The origins a turn may reach, for the build's CSP. */
+export const providerOrigins = (): string[] => offered().map((p) => ("proxy" in p ? new URL(proxyUrl()!).origin : `https://${p.host}`));
+
+export const providerOf = (id: string): Provider | undefined => offered().find((p) => p.id === id);
 
 export type Settings = {
   provider: ProviderId;
@@ -86,7 +107,7 @@ export type SettingsView = {
   keyHint: string | null;
   keyHints: Partial<Record<ProviderId, string>>;
   models: Partial<Record<ProviderId, string>>;
-  providers: typeof PROVIDERS;
+  providers: readonly Provider[];
 };
 
 /** `apiKey` and `model` are the patch's provider's (else the current one's). A null key forgets it. */
@@ -114,7 +135,7 @@ export function viewOf(settings: Settings): SettingsView {
     keyHint: apiKey ? hint(apiKey) : null,
     keyHints,
     models: settings.models,
-    providers: PROVIDERS,
+    providers: offered(),
   };
 }
 
@@ -132,6 +153,7 @@ const KEY_SHAPES: Record<ProviderId, RegExp> = {
   anthropic: /^sk-ant-[\w-]{8,}$/,
   gemini: /^[\w.-]{20,}$/, // Google has changed the shape before: anything long, with no spaces
   openrouter: /^sk-or-[\w-]{8,}$/,
+  archipelago: /^arch_[\w-]{16,}$/,
 };
 /** A model id a provider could serve: `vendor/model`, a version, a `:variant`. */
 const MODEL_ID = /^[\w.:/@-]{1,120}$/;
@@ -139,10 +161,11 @@ const MODEL_ID = /^[\w.:/@-]{1,120}$/;
 /** Checks a patch against the settings it lands on. Returns the sentence to show, or null. */
 export function patchError(patch: SettingsPatch, current: Settings = FRESH): string | null {
   const provider = providerOf(patch.provider ?? current.provider);
-  if (!provider) return `Pick one of ${PROVIDERS.map((p) => p.name).join(", ")}.`;
+  if (!provider) return `Pick one of ${offered().map((p) => p.name).join(", ")}.`;
   if (typeof patch.apiKey === "string" && !KEY_SHAPES[provider.id].test(patch.apiKey.trim())) {
     if (provider.id === "anthropic") return "That does not look like an Anthropic API key. Keys start with sk-ant-.";
     if (provider.id === "openrouter") return "That does not look like an OpenRouter key. Keys start with sk-or-.";
+    if (provider.id === "archipelago") return "That does not look like an Archipelago access token. Tokens start with arch_.";
     return `That does not look like a ${provider.name} API key.`;
   }
   if (patch.model !== undefined) {
@@ -180,7 +203,7 @@ export function createSettings(store: SettingsStore) {
       // Forgetting a key never moves the answering to that provider: it stays where it was while that one has a key,
       // else goes to any provider that still has one.
       const forgot = patch.apiKey === null;
-      const provider = !forgot ? target : keys[current.provider] ? current.provider : (PROVIDERS.find((p) => keys[p.id])?.id ?? target);
+      const provider = !forgot ? target : keys[current.provider] ? current.provider : (offered().find((p) => keys[p.id])?.id ?? target);
       current = { provider, keys, models, remember: patch.remember ?? current.remember, stub: patch.stub ?? current.stub };
       if (keys[provider]) current.stub = forgot ? false : (patch.stub ?? false); // a key replaces Try without a key
       await store.write(current.remember ? current : null).catch(() => {});
