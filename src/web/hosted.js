@@ -78,6 +78,11 @@ export function openYourKey() {
       state.view = view;
       state.credit = credit;
       open("key");
+      // Back from paying with the payment already here: the thank-you says so at once.
+      if (state.thanks === "waiting" && hasGrown(credit)) {
+        state.thanks = "added";
+        render();
+      }
     })
     .catch((error) => alert(error.message));
 }
@@ -91,6 +96,18 @@ async function readCredit() {
   }
 }
 
+const BEFORE_KEY = "credit:before"; // the balance as the reader left for the checkout, to tell when the payment has arrived
+function balanceBefore() {
+  try {
+    const raw = sessionStorage.getItem(BEFORE_KEY);
+    return raw === null ? null : Number(raw);
+  } catch {
+    return null;
+  }
+}
+/** Whether `credit` holds more than when the reader left to pay. */
+const hasGrown = (credit) => typeof credit?.balanceUsd === "number" && balanceBefore() !== null && credit.balanceUsd > balanceBefore();
+
 /** True once, when the page was opened by the checkout's way back (`?credit=added`); the mark is taken off the address. */
 function backFromCheckout() {
   const url = new URL(location.href);
@@ -103,13 +120,12 @@ function backFromCheckout() {
 /** Back from paying: Your key opens with a thank-you, and the balance is read again until the payment has reached us. */
 function thank() {
   state.thanks = "waiting";
-  const before = state.credit?.balanceUsd ?? null;
   openYourKey();
   for (const wait of PAID_CHECKS_MS) {
     setTimeout(async () => {
       if (state.thanks !== "waiting") return;
       const credit = await readCredit();
-      if (!credit || credit.balanceUsd === (state.credit?.balanceUsd ?? before)) return;
+      if (!credit || !(hasGrown(credit) || (balanceBefore() === null && credit.balanceUsd !== state.credit?.balanceUsd))) return;
       state.credit = credit;
       state.thanks = "added";
       document.dispatchEvent(new Event("settings")); // the pane's foot shows the balance too
@@ -126,6 +142,9 @@ async function buy(pack) {
   render();
   try {
     const { url } = await (await call("/hosted/checkout", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ pack }) })).json();
+    try {
+      sessionStorage.setItem(BEFORE_KEY, String(state.credit?.balanceUsd ?? 0));
+    } catch {}
     location.href = url;
   } catch (error) {
     state.buying = false;
