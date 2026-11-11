@@ -156,7 +156,8 @@ async function buy(pack) {
 function open(kind) {
   Object.assign(state, { open: kind, key: "", provider: state.view?.provider ?? null, model: state.view?.model ?? null, remember: state.view?.remember ?? true, saving: false, error: null });
   render();
-  root.querySelector("input")?.focus();
+  // Focus goes to the provider that is chosen: on the first one it reads as if that were the choice.
+  (root.querySelector(".providers input:checked") ?? root.querySelector("input"))?.focus();
 }
 
 function close() {
