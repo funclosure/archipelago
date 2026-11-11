@@ -193,3 +193,69 @@ test("our proxy is a provider only in a build that names it, and takes an access
     delete process.env.ARCHIPELAGO_PROXY_URL;
   }
 });
+
+const PROXY = "https://archipelago-proxy.example.workers.dev";
+/** Runs `body` as a build that names our proxy. */
+async function withProxy<T>(body: () => Promise<T>): Promise<T> {
+  process.env.ARCHIPELAGO_PROXY_URL = PROXY;
+  try {
+    return await body();
+  } finally {
+    delete process.env.ARCHIPELAGO_PROXY_URL;
+  }
+}
+
+test("with a proxy, a new browser starts on it with nothing to ask; one that has its own key stays on that", async () => {
+  await withProxy(async () => {
+    const view = await (await handleHostedRequest(get("/hosted/settings"), deps())).json();
+    expect(view).toMatchObject({ provider: "archipelago", key: false, free: true, stub: false, model: "claude-sonnet-5-5" });
+    const mine = await (await handleHostedRequest(get("/hosted/settings"), deps(memoryStore({ provider: "gemini", keys: { gemini: "AQ.abcdefghijklmnopqrstuvwxyz" }, models: {} })))).json();
+    expect(mine).toMatchObject({ provider: "gemini", key: true, free: false });
+    // They had tried without a key: the free start is the better way in now.
+    const tried = await (await handleHostedRequest(get("/hosted/settings"), deps(memoryStore({ provider: "anthropic", keys: {}, models: {}, stub: true })))).json();
+    expect(tried).toMatchObject({ provider: "archipelago", free: true, stub: false });
+  });
+  // The same saved record in a build without a proxy is untouched.
+  const tried = await (await handleHostedRequest(get("/hosted/settings"), deps(memoryStore({ provider: "anthropic", keys: {}, models: {}, stub: true })))).json();
+  expect(tried).toMatchObject({ provider: "anthropic", free: false, stub: true });
+});
+
+test("the first turn starts a free account once, keeps its token like a key, and the balance is read with it", async () => {
+  const { createCredit } = await import("../../src/hosted/credit.ts");
+  await withProxy(async () => {
+    const store = memoryStore();
+    const settings = createSettings(store);
+    const calls: { url: string; method: string; key: string | null }[] = [];
+    const fake = (async (url: string, init: RequestInit = {}) => {
+      calls.push({ url, method: init.method ?? "GET", key: new Headers(init.headers).get("x-api-key") });
+      if (url.endsWith("/accounts")) return Response.json({ token: "arch_0123456789abcdef0123456789abcdef", balanceUsd: 0.5 }, { status: 201 });
+      return Response.json({ account: "anon", balanceUsd: 0.42 });
+    }) as unknown as typeof fetch;
+    const credit = createCredit({ settings, url: () => PROXY, fetch: fake });
+    expect(await credit.view()).toEqual({ balanceUsd: null }); // nothing started, nothing asked
+    expect(calls).toHaveLength(0);
+    const [a, b] = await Promise.all([credit.token(), credit.token()]);
+    expect([a, b]).toEqual(["arch_0123456789abcdef0123456789abcdef", "arch_0123456789abcdef0123456789abcdef"]);
+    expect(calls).toEqual([{ url: `${PROXY}/accounts`, method: "POST", key: null }]);
+    expect(await credit.token()).toBe(a);
+    expect(calls).toHaveLength(1);
+    expect(store.saved).toMatchObject({ provider: "archipelago", keys: { archipelago: a } });
+    expect(await credit.view()).toEqual({ balanceUsd: 0.42 });
+    expect(calls.at(-1)).toEqual({ url: `${PROXY}/account`, method: "GET", key: a });
+    const view = await (await handleHostedRequest(get("/hosted/credit"), deps(store, { settings, credit: credit.view }))).json();
+    expect(view).toEqual({ balanceUsd: 0.42 });
+  });
+});
+
+test("a refused free start says the proxy's own sentence; an unreachable proxy says what to do", async () => {
+  const { createCredit } = await import("../../src/hosted/credit.ts");
+  await withProxy(async () => {
+    const refused = (async () => Response.json({ type: "error", error: { type: "rate_limit_error", message: "Today's free starts are used up. Bring your own key under Your key, or come back tomorrow." } }, { status: 429 })) as unknown as typeof fetch;
+    await expect(createCredit({ settings: createSettings(memoryStore()), url: () => PROXY, fetch: refused }).token()).rejects.toThrow("Today's free starts are used up.");
+    const down = (async () => { throw new TypeError("Failed to fetch"); }) as unknown as typeof fetch;
+    const credit = createCredit({ settings: createSettings(memoryStore()), url: () => PROXY, fetch: down });
+    await expect(credit.token()).rejects.toThrow(/Could not reach Archipelago/);
+    await expect(credit.token()).rejects.toThrow(/Could not reach Archipelago/); // a failed start is tried again
+  });
+  expect(await (await handleHostedRequest(get("/hosted/credit"), deps())).json()).toEqual({ balanceUsd: null });
+});

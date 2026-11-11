@@ -120,12 +120,17 @@ function lightLandmark(e, on) {
 
 /** Re-reads the model the personas answer on, and redraws the pane when it changed. */
 function remodel() {
-  void refreshJudgeModel().then((changed) => changed && render());
+  const read = () => void refreshJudgeModel().then((changed) => changed && render());
+  read();
+  // The free credit's balance is written just after a reply ends, so it is read once more a moment later.
+  if (globalThis.ARCHIPELAGO_HOSTED === true) setTimeout(read, CREDIT_SETTLE_MS);
 }
+const CREDIT_SETTLE_MS = 2500;
 
 export function installCard() {
   remodel();
   document.addEventListener("settings", remodel);
+  document.addEventListener("turn", remodel); // a cartographer turn ended (chart.js)
   pane.addEventListener("mouseover", (e) => lightLandmark(e, true));
   pane.addEventListener("mouseout", (e) => lightLandmark(e, false));
   // A demo that grows (its frame finds its height, a console line lands) keeps a followed log at its end.

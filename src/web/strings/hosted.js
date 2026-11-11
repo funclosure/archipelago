@@ -2,7 +2,8 @@
 export default {
   en: {
     notice: "Your key stays in this browser and is sent only to {host}. Each turn is billed to your key; a long session on a large model can cost a few dollars. Your charts are stored in this browser only; export them from the domain menu to keep a copy.",
-    noticeProxy: "A private preview. Your access token stays in this browser and is sent only to Archipelago's own server, which passes each turn on to Claude and keeps none of it. Your charts are stored in this browser only; export them from the domain menu to keep a copy.",
+    noticeProxy: "No key needed: your first domain is free, on a small allowance. Each turn goes through Archipelago's own server to Claude; the server keeps no conversation text, only what each reply cost. When the allowance runs out, pick another provider here and bring your own key. Your charts are stored in this browser only; export them from the domain menu to keep a copy.",
+    tokenOptional: "access token (only if you were given one)",
     pasteKey: "Paste your API key, or choose Try without a key.",
     movedReason: "Archipelago moved to another tab",
     exportFailed: "Export failed: {message}",
@@ -41,7 +42,8 @@ export default {
   },
   "zh-TW": {
     notice: "你的金鑰只存在這個瀏覽器裡，也只會傳送到 {host}。每一輪對話都會向你的金鑰計費；在大型模型上長時間使用可能花費數美元。你的地圖只存在這個瀏覽器裡；要保留一份，請從領域選單匯出。",
-    noticeProxy: "私人預覽。你的存取權杖只存在這個瀏覽器裡，也只會傳送到 Archipelago 自己的伺服器；它把每一輪對話轉交給 Claude，本身不保留任何內容。你的地圖只存在這個瀏覽器裡；要保留一份，請從領域選單匯出。",
+    noticeProxy: "不需要金鑰：你的第一個領域免費，有一小筆額度可用。每一輪對話都經由 Archipelago 自己的伺服器轉交給 Claude；伺服器不保留任何對話內容，只記錄每則回覆的費用。額度用完後，請在這裡改選其他供應商並帶入自己的金鑰。你的地圖只存在這個瀏覽器裡；要保留一份，請從領域選單匯出。",
+    tokenOptional: "存取權杖（有人給過你才需要填）",
     pasteKey: "請貼上你的 API 金鑰，或選擇「不用金鑰試用」。",
     movedReason: "Archipelago 已移到另一個分頁",
     exportFailed: "匯出失敗：{message}",

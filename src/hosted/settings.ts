@@ -90,10 +90,13 @@ export type Settings = {
   stub: boolean;
 };
 
-/** What answers right now: the chosen provider, its key (null: the stub answers), and its model. */
-export function activeOf(settings: Settings): { provider: Provider; apiKey: string | null; model: string } {
+/**
+ * What answers right now: the chosen provider, its key (null: the stub answers), and its model. `free` is our proxy,
+ * which needs no key from the reader: its first turn starts a free account (`credit.ts`).
+ */
+export function activeOf(settings: Settings): { provider: Provider; apiKey: string | null; model: string; free: boolean } {
   const provider = providerOf(settings.provider) ?? PROVIDERS[0];
-  return { provider, apiKey: settings.keys[provider.id] ?? null, model: settings.models[provider.id] ?? provider.models[0].id };
+  return { provider, apiKey: settings.keys[provider.id] ?? null, model: settings.models[provider.id] ?? provider.models[0].id, free: "proxy" in provider };
 }
 
 /** What the page sees: each key's last four characters, never a key. */
@@ -104,6 +107,8 @@ export type SettingsView = {
   stub: boolean;
   /** The chosen provider has a key. */
   key: boolean;
+  /** The chosen provider is our proxy: no key is needed, so there is nothing to ask before the map. */
+  free: boolean;
   keyHint: string | null;
   keyHints: Partial<Record<ProviderId, string>>;
   models: Partial<Record<ProviderId, string>>;
@@ -119,12 +124,13 @@ export type SettingsStore = {
   write(settings: Settings | null): Promise<void>;
 };
 
-const FRESH: Settings = { provider: HOSTED_DEFAULT_PROVIDER, keys: {}, models: {}, remember: true, stub: false };
+/** A new browser starts on our proxy, the free start, in a build that has one; else on the reader's own Claude key. */
+const fresh = (): Settings => ({ provider: proxyUrl() ? "archipelago" : HOSTED_DEFAULT_PROVIDER, keys: {}, models: {}, remember: true, stub: false });
 
 const hint = (key: string) => `…${key.slice(-4)}`;
 
 export function viewOf(settings: Settings): SettingsView {
-  const { provider, apiKey, model } = activeOf(settings);
+  const { provider, apiKey, model, free } = activeOf(settings);
   const keyHints = Object.fromEntries(Object.entries(settings.keys).flatMap(([id, key]) => (key ? [[id, hint(key)]] : [])));
   return {
     provider: provider.id,
@@ -132,6 +138,7 @@ export function viewOf(settings: Settings): SettingsView {
     remember: settings.remember,
     stub: settings.stub,
     key: Boolean(apiKey),
+    free,
     keyHint: apiKey ? hint(apiKey) : null,
     keyHints,
     models: settings.models,
@@ -142,10 +149,13 @@ export function viewOf(settings: Settings): SettingsView {
 /** A record saved before there were providers held one Anthropic key and its model. */
 function fromSaved(saved: Partial<Settings> & { apiKey?: string | null; model?: string }): Settings {
   const { apiKey, model, ...rest } = saved;
-  const settings: Settings = { ...FRESH, ...rest, keys: { ...rest.keys }, models: { ...rest.models }, remember: true };
+  // A browser that was here before the free start keeps what it chose then: its own key's provider, or the stub.
+  const settings: Settings = { ...fresh(), provider: HOSTED_DEFAULT_PROVIDER, ...rest, keys: { ...rest.keys }, models: { ...rest.models }, remember: true };
   if (apiKey) settings.keys.anthropic ??= apiKey;
   if (model) settings.models.anthropic ??= model;
   if (!providerOf(settings.provider)) settings.provider = HOSTED_DEFAULT_PROVIDER;
+  // No key of their own (they tried without one, or forgot it): the free start is the better way in now.
+  if (proxyUrl() && !Object.values(settings.keys).some(Boolean)) Object.assign(settings, { provider: "archipelago", stub: false });
   return settings;
 }
 
@@ -159,7 +169,7 @@ const KEY_SHAPES: Record<ProviderId, RegExp> = {
 const MODEL_ID = /^[\w.:/@-]{1,120}$/;
 
 /** Checks a patch against the settings it lands on. Returns the sentence to show, or null. */
-export function patchError(patch: SettingsPatch, current: Settings = FRESH): string | null {
+export function patchError(patch: SettingsPatch, current: Settings = fresh()): string | null {
   const provider = providerOf(patch.provider ?? current.provider);
   if (!provider) return `Pick one of ${offered().map((p) => p.name).join(", ")}.`;
   if (typeof patch.apiKey === "string" && !KEY_SHAPES[provider.id].test(patch.apiKey.trim())) {
@@ -178,7 +188,7 @@ export function patchError(patch: SettingsPatch, current: Settings = FRESH): str
 }
 
 export function createSettings(store: SettingsStore) {
-  let current: Settings = { ...FRESH };
+  let current: Settings = fresh();
   const loaded = store.read().then(
     (saved) => {
       if (saved) current = fromSaved(saved);
