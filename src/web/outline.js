@@ -9,6 +9,7 @@ import { applyTheme, endPreview, savedTheme } from "./theme.js";
 import { openAbout } from "./learner.js";
 import { exportDatabase, importDatabase, isHosted, openYourKey } from "./hosted.js";
 import { openDomainEdit, openNewDomain } from "./new-domain.js";
+import { mapFileName } from "./map-model.js";
 import { request } from "./transport.js";
 import { LANGUAGES, language, setLanguage, t } from "./i18n.js";
 
@@ -19,6 +20,21 @@ import { LANGUAGES, language, setLanguage, t } from "./i18n.js";
 const state = { rail: false, expanded: new Set(), menuOpen: false, themesOpen: false, languagesOpen: false, domains: null, cursor: null, cursorCleared: false };
 let root = null;
 let peek = null;
+
+/** Downloads the open domain as a map file (GET /api/map). */
+async function exportMap() {
+  try {
+    const file = await api(`/api/map?domain=${encodeURIComponent(app.domain)}`);
+    const url = URL.createObjectURL(new Blob([JSON.stringify(file, null, 2) + "\n"], { type: "application/json" }));
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = mapFileName(file.slug ?? app.domain);
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 10_000);
+  } catch (error) {
+    alert(error.message);
+  }
+}
 
 function storageKey() {
   return `outline:${app.domain}`;
@@ -240,6 +256,10 @@ function headerEl(outline) {
       menu.append(row);
     }
     menu.append(button(t("outline.newDomain"), () => { closeMenu(); openNewDomain(); }, "mi new"));
+    // The open domain as one file to share: its structure, with nothing the reader said.
+    const share = button(t("outline.exportMap"), () => { closeMenu(); void exportMap(); }, "mi");
+    share.title = t("outline.exportMapHint");
+    menu.append(share);
     // Theme: one row naming the chosen theme; a click opens the list under it. Hovering a theme previews it on the
     // whole page; leaving the list (or closing the menu) goes back; a click keeps it and closes the menu.
     const cur = savedTheme();

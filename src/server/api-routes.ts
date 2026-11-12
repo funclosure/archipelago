@@ -1,5 +1,6 @@
 // The JSON API and the persona turns: everything under /api/. No file system, no Bun-only call, so the hosted
 // build runs it unchanged inside a Web Worker (`src/hosted/worker.ts`); routes.ts adds the static files and vendor bundles.
+import { exportMap, importMap, parseMapFile } from "../core/map-file.ts";
 import type { Database } from "../core/sql.ts";
 import type { MessageMode, MessageRole } from "../core/types.ts";
 import { forVoice, speakableText, speechLanguage } from "../core/speakable.ts";
@@ -374,6 +375,15 @@ async function handleApi(req: Request, url: URL, ctx: ApiContext): Promise<Respo
   if (route === "POST /api/domains") {
     const input = domainCreateSchema.parse(await req.json());
     return json({ domain: withDb(ctx, (db) => createDomain(db, input)) });
+  }
+
+  // A domain as one map file (structure only, nothing the reader said), and a new domain from such a file.
+  if (route === "GET /api/map") return json(withDb(ctx, (db) => exportMap(db, slugSchema.parse(q("domain")))));
+
+  if (route === "POST /api/map") {
+    const file = parseMapFile(await req.json());
+    const { domain, ...tally } = withDb(ctx, (db) => importMap(db, file));
+    return json({ domain, ...tally });
   }
 
   if (route === "POST /api/domains/update") {

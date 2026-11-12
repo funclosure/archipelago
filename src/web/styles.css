@@ -675,6 +675,11 @@ body.empty .board-hint { display: none; }
 .new-domain-card .ex { background: transparent; border: 1px solid var(--line); color: var(--text-2); border-radius: 999px; padding: 4px 10px; font: 12px system-ui, sans-serif; cursor: pointer; }
 .new-domain-card .ex:hover { border-color: var(--lamp); color: var(--text); }
 .new-domain-card .row { align-items: center; }
+.new-domain-card .as-link { background: none; border: 0; padding: 0; width: fit-content; color: var(--text-2); text-decoration: underline; cursor: pointer; font: inherit; font-size: 12px; }
+.new-domain-card .as-link:hover { color: var(--lamp); }
+.new-domain-card textarea.map-text { font: 12px/1.5 var(--font-mono); min-height: 120px; }
+.new-domain-card .other-ai { display: flex; gap: 12px; align-items: center; padding-top: 10px; border-top: 1px solid var(--line); }
+.new-domain-card .other-ai .btn { flex: none; }
 .new-domain-card .hint { margin-left: auto; font: 11px var(--font-mono); color: var(--muted); }
 body.empty .outline, body.empty .chrome, body.empty #map-focus, body.empty #board-toggle { display: none; }
 .new-domain.first { background: transparent; align-items: center; padding: 24px 16px; }
