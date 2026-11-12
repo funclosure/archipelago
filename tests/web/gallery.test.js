@@ -61,6 +61,15 @@ test("the gallery's rules say what is wrong with a map in words", () => {
   expect(bad).toContain("every island belongs to exactly one sea");
 });
 
+test("a map's icon is one emoji", () => {
+  const withIcon = (icon) => () => parseMapFile({ ...PROMPT_EXAMPLE, icon });
+  expect(withIcon("🗄️")().icon).toBe("🗄️");
+  expect(withIcon("🇹🇼")().icon).toBe("🇹🇼");
+  expect(withIcon("ab")).toThrow("must be one emoji");
+  expect(withIcon("🌿🌿")).toThrow("must be one emoji");
+  expect(galleryProblems("caching.archipelago.json", parseMapFile({ ...PROMPT_EXAMPLE, slug: "caching" })).join()).toContain('needs "icon"');
+});
+
 test("an index entry carries what a reader sees before opening the map", () => {
   expect(galleryEntry({ ...PROMPT_EXAMPLE, slug: "caching", by: "A" })).toEqual({
     file: "caching.archipelago.json",
@@ -69,6 +78,7 @@ test("an index entry carries what a reader sees before opening the map", () => {
     name: "Caching",
     description: PROMPT_EXAMPLE.description,
     by: "A",
+    icon: "",
     islands: ["Eviction", "Invalidation"],
     landmarks: 8,
   });

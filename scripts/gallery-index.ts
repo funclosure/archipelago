@@ -11,7 +11,7 @@ export const GALLERY_DIR = fileURLToPath(new URL("../src/web/gallery/", import.m
 /** What a shared map must be, beyond a map the app can read. */
 export const GALLERY_RULES = { islands: [6, 12], landmarks: [3, 8], languages: ["en", "zh-TW"] } as const;
 
-export type GalleryEntry = { file: string; slug: string; language: string; name: string; description: string; by: string; islands: string[]; landmarks: number };
+export type GalleryEntry = { file: string; slug: string; language: string; name: string; description: string; by: string; icon: string; islands: string[]; landmarks: number };
 
 /** What is wrong with a map as a gallery map, in words; empty when nothing is. */
 export function galleryProblems(file: string, map: MapFile): string[] {
@@ -21,6 +21,7 @@ export function galleryProblems(file: string, map: MapFile): string[] {
   if (!map.slug) say("needs a slug");
   if (!map.description) say("needs a description: one or two sentences on what the map is for");
   if (!map.by) say('needs "by": who made it');
+  if (!map.icon) say('needs "icon": one emoji for its island in the gallery');
   if (!(languages as readonly string[]).includes(map.language ?? "en")) say(`language is one of ${languages.join(", ")}`);
   if (map.slug && file !== galleryFileName(map.slug, map.language ?? "en")) say(`should be named ${galleryFileName(map.slug, map.language ?? "en")}`);
   if (map.islands.length < islands[0] || map.islands.length > islands[1]) say(`has ${map.islands.length} islands at the top; a shared map has ${islands[0]} to ${islands[1]}`);

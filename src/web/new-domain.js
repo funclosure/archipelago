@@ -7,6 +7,7 @@ import { registerRegion } from "./keys.js";
 import { CENTRE, COAST, RING_STEP, ringPoints } from "./contour.js";
 import { language, t } from "./i18n.js";
 import { agentPrompt, mapFromText } from "./map-model.js";
+import { mapIcon } from "./map-icon.js";
 import { GALLERY_INDEX, GALLERY_PATH, galleryFor } from "./gallery-model.js";
 
 /** Descriptions to start from: a click puts one in the field, to send or to edit. */
@@ -177,7 +178,9 @@ function galleryView(card) {
     row.disabled = state.saving;
     row.classList.toggle("picked", entry.slug === state.pick);
     const meta = t("newDomain.galleryMeta", { islands: entry.islands.length, landmarks: entry.landmarks });
-    row.append(el("span", "nm", entry.name), el("span", "ds", entry.description), el("span", "mt", state.adding === entry.slug ? t("newDomain.galleryAdding") : meta));
+    const words = el("span", "words");
+    words.append(el("span", "nm", entry.name), el("span", "ds", entry.description), el("span", "mt", state.adding === entry.slug ? t("newDomain.galleryAdding") : meta));
+    row.append(mapIcon(entry), words);
     row.addEventListener("click", () => void addShared(entry));
     row.addEventListener("keydown", (e) => {
       if (e.key !== "Escape") return;
@@ -486,7 +489,9 @@ function render() {
         tile.type = "button";
         tile.dataset.slug = entry.slug;
         tile.disabled = state.saving;
-        tile.append(el("span", "nm", entry.name), el("span", "mt", t("newDomain.tileMeta", { islands: entry.islands.length })));
+        const words = el("span", "words");
+        words.append(el("span", "nm", entry.name), el("span", "mt", t("newDomain.tileMeta", { islands: entry.islands.length })));
+        tile.append(mapIcon(entry), words);
         tile.addEventListener("click", () => showGallery(true, entry.slug));
         tiles.append(tile);
       }

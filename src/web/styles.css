@@ -681,10 +681,17 @@ body.empty .board-hint { display: none; }
 .new-domain-card .other-ai { display: flex; gap: 12px; align-items: center; padding-top: 10px; border-top: 1px solid var(--line); }
 .new-domain-card .other-ai .btn { flex: none; }
 .new-domain-card .shared-maps { display: flex; flex-direction: column; gap: 8px; max-height: min(52vh, 460px); overflow-y: auto; margin: 0 -4px; padding: 4px; }
-.new-domain-card .shared-map { display: grid; gap: 2px; text-align: left; background: var(--water); border: 1px solid var(--line); border-radius: 10px; padding: 13px 14px; color: var(--text); font: inherit; cursor: pointer; }
+.new-domain-card .shared-map { display: flex; gap: 12px; align-items: flex-start; text-align: left; background: var(--water); border: 1px solid var(--line); border-radius: 10px; padding: 13px 14px; color: var(--text); font: inherit; cursor: pointer; }
 .new-domain-card .shared-map:hover:not(:disabled), .new-domain-card .shared-map:focus-visible { border-color: var(--lamp); outline: none; }
 .new-domain-card .shared-map.picked { border-color: var(--lamp); box-shadow: 0 0 0 3px var(--lamp-tint); }
 .new-domain-card .shared-map:disabled { cursor: default; opacity: .7; }
+.new-domain-card .shared-map .words { display: grid; gap: 2px; min-width: 0; }
+.new-domain-card .shared-map .map-icon { width: 52px; height: 52px; }
+/* A shared map's picture: one island as the map draws it, its emoji standing on it (map-icon.js). */
+.map-icon { flex: none; overflow: visible; }
+.map-icon .coast { fill: var(--sand-fill); fill-opacity: .9; stroke: var(--line-07); stroke-width: 5; }
+.map-icon .ring { fill: none; stroke: var(--line-07); stroke-width: 2.5; stroke-opacity: .6; }
+.map-icon text { font-size: 84px; text-anchor: middle; dominant-baseline: central; }
 .new-domain-card .shared-map .nm { font-size: 15px; }
 .new-domain-card .shared-map .ds { font-size: 13px; line-height: 1.5; color: var(--text-2); }
 .new-domain-card .shared-map .mt { font-size: 11px; color: var(--muted); }
@@ -826,7 +833,9 @@ body.empty .outline, body.empty .chrome, body.empty #map-focus, body.empty #boar
 .new-domain-card .other-ways { display: grid; gap: 12px; margin-top: 8px; padding-top: 18px; border-top: 1px solid var(--line); }
 .new-domain-card .other-ways .sub-lbl { margin-top: 0; }
 .new-domain-card .map-tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
-.new-domain-card .map-tile { display: grid; gap: 4px; align-content: start; text-align: left; background: var(--water); border: 1px solid var(--line); border-radius: 10px; padding: 12px 12px 10px; color: var(--text); font: inherit; cursor: pointer; min-height: 72px; }
+.new-domain-card .map-tile { display: flex; gap: 9px; align-items: center; text-align: left; background: var(--water); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px 10px 10px; color: var(--text); font: inherit; cursor: pointer; min-height: 72px; }
+.new-domain-card .map-tile .words { display: grid; gap: 4px; min-width: 0; }
+.new-domain-card .map-tile .map-icon { width: 40px; height: 40px; }
 .new-domain-card .map-tile:hover:not(:disabled), .new-domain-card .map-tile:focus-visible { border-color: var(--lamp); outline: none; }
 .new-domain-card .map-tile .nm { font-size: 13px; line-height: 1.3; }
 .new-domain-card .map-tile .mt { font-size: 11px; color: var(--muted); }

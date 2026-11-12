@@ -5,7 +5,7 @@ The maps on <https://archipelago.school/maps> and under **New domain → Start f
 ## Adding a map
 
 1. Export a domain (**Export this map** in the domain menu, or `archipelago map export --domain <slug>`), or have another AI write one with the prompt under **New domain → Import a map**.
-2. Add `"by": "Your name"` to the file, and `"language": "zh-TW"` if it is in Traditional Chinese. Remove any `x` / `y` positions, so each reader arranges their own.
+2. Add `"by": "Your name"` and `"icon": "🧭"` (one emoji, drawn on the map's island in the gallery) to the file, and `"language": "zh-TW"` if it is in Traditional Chinese. Remove any `x` / `y` positions, so each reader arranges their own.
 3. Save it here as `<slug>.archipelago.json` (English) or `<slug>.zh-TW.archipelago.json`, where `<slug>` is the file's own `slug`. A translation keeps every slug of the original.
 4. Run `bun run gallery:index`, which checks every map and rewrites `index.json`, then `bun test tests/web/gallery.test.js`.
 5. Open a pull request.
