@@ -2,7 +2,7 @@
   "archipelago": 1,
   "name": "How large language models work",
   "slug": "large-language-models",
-  "description": "What happens between a prompt and a reply: tokens, attention, training, and why a model that only predicts the next word can do so much and still be wrong. For anyone who uses a chat assistant and wants to know what is inside it; no maths needed.",
+  "description": "What happens between a prompt and a reply: tokens, attention, training, and why a model that only predicts the next word can do so much and still be wrong. For anyone who uses a chat assistant and wants to know what is inside it; no math needed.",
   "by": "Archipelago",
   "language": "en",
   "islands": [
@@ -249,16 +249,16 @@
           "slug": "predicting-text-well-takes-picking-up-facts-and-patterns",
           "name": "Predicting text well takes picking up facts and patterns",
           "terms": [
-            "generalisation",
+            "generalization",
             "world knowledge",
             "compression"
           ]
         },
         {
-          "slug": "not-a-database-though-some-text-is-memorised",
-          "name": "Not a database, though some text is memorised",
+          "slug": "not-a-database-though-some-text-is-memorized",
+          "name": "Not a database, though some text is memorized",
           "terms": [
-            "memorisation",
+            "memorization",
             "database",
             "verbatim",
             "lookup"
@@ -574,7 +574,7 @@
     {
       "from": "fine-tuning",
       "to": "limits",
-      "name": "Trained behaviour can be talked around"
+      "name": "Trained behavior can be talked around"
     },
     {
       "from": "context",

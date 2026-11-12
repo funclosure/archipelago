@@ -57,7 +57,7 @@
           ]
         },
         {
-          "slug": "overtones-give-an-instrument-its-colour",
+          "slug": "overtones-give-an-instrument-its-color",
           "name": "泛音造就樂器的音色",
           "terms": [
             "泛音",
@@ -92,7 +92,7 @@
           ]
         },
         {
-          "slug": "metre-is-a-pattern-of-strong-and-weak-beats",
+          "slug": "meter-is-a-pattern-of-strong-and-weak-beats",
           "name": "拍子是強拍與弱拍的固定排列",
           "terms": [
             "拍子",
@@ -121,7 +121,7 @@
           ]
         },
         {
-          "slug": "syncopation-puts-accents-where-the-metre-is-weak",
+          "slug": "syncopation-puts-accents-where-the-meter-is-weak",
           "name": "切分音把重音放在弱的位置",
           "terms": [
             "切分音",
@@ -366,7 +366,7 @@
           ]
         },
         {
-          "slug": "chords-from-outside-the-key-add-colour-without-changing-key",
+          "slug": "chords-from-outside-the-key-add-color-without-changing-key",
           "name": "調外的和弦不必轉調就能增添色彩",
           "terms": [
             "副屬和弦",

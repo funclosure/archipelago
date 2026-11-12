@@ -9,7 +9,7 @@
     {
       "slug": "describing",
       "name": "Describing data",
-      "summary": "Summarising many numbers in a few, without hiding what matters.",
+      "summary": "Summarizing many numbers in a few, without hiding what matters.",
       "landmarks": [
         {
           "slug": "mean-median-and-when-they-differ",
@@ -362,11 +362,11 @@
       "summary": "How a study is set up decides what it can show, above all whether one thing causes another.",
       "landmarks": [
         {
-          "slug": "why-randomising-works",
-          "name": "Why randomising works",
+          "slug": "why-randomizing-works",
+          "name": "Why randomizing works",
           "terms": [
-            "randomisation",
-            "randomised",
+            "randomization",
+            "randomized",
             "random assignment",
             "comparable groups"
           ]
@@ -411,7 +411,7 @@
           "slug": "who-a-studys-results-apply-to",
           "name": "Who a study's results apply to",
           "terms": [
-            "generalise",
+            "generalize",
             "external validity",
             "who was studied"
           ]
@@ -512,7 +512,7 @@
     {
       "from": "correlation",
       "to": "study-design",
-      "name": "Randomising balances confounders on average"
+      "name": "Randomizing balances confounders on average"
     },
     {
       "from": "sampling",

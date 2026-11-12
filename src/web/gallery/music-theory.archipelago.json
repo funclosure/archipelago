@@ -57,8 +57,8 @@
           ]
         },
         {
-          "slug": "overtones-give-an-instrument-its-colour",
-          "name": "Overtones give an instrument its colour",
+          "slug": "overtones-give-an-instrument-its-color",
+          "name": "Overtones give an instrument its color",
           "terms": [
             "overtone",
             "harmonic series",
@@ -69,8 +69,8 @@
     },
     {
       "slug": "rhythm",
-      "name": "Rhythm and metre",
-      "summary": "How music is organised in time.",
+      "name": "Rhythm and meter",
+      "summary": "How music is organized in time.",
       "landmarks": [
         {
           "slug": "tempo-is-how-fast-the-beat-goes",
@@ -92,10 +92,10 @@
           ]
         },
         {
-          "slug": "metre-is-a-pattern-of-strong-and-weak-beats",
-          "name": "Metre is a pattern of strong and weak beats",
+          "slug": "meter-is-a-pattern-of-strong-and-weak-beats",
+          "name": "Meter is a pattern of strong and weak beats",
           "terms": [
-            "metre",
+            "meter",
             "downbeat",
             "accent"
           ]
@@ -113,15 +113,15 @@
           "slug": "beats-divide-in-two-or-in-three",
           "name": "Beats divide in two or in three",
           "terms": [
-            "simple metre",
-            "compound metre",
+            "simple meter",
+            "compound meter",
             "triplet",
             "swing"
           ]
         },
         {
-          "slug": "syncopation-puts-accents-where-the-metre-is-weak",
-          "name": "Syncopation puts accents where the metre is weak",
+          "slug": "syncopation-puts-accents-where-the-meter-is-weak",
+          "name": "Syncopation puts accents where the meter is weak",
           "terms": [
             "syncopation",
             "off-beat",
@@ -366,8 +366,8 @@
           ]
         },
         {
-          "slug": "chords-from-outside-the-key-add-colour-without-changing-key",
-          "name": "Chords from outside the key add colour without changing key",
+          "slug": "chords-from-outside-the-key-add-color-without-changing-key",
+          "name": "Chords from outside the key add color without changing key",
           "terms": [
             "secondary dominant",
             "borrowed chord"

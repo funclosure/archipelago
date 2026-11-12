@@ -341,7 +341,7 @@
       "summary": "一則訊息怎麼切成小塊橫越世界，每一塊各自找路。",
       "landmarks": [
         {
-          "slug": "links-carry-bits-by-wire-fibre-and-radio",
+          "slug": "links-carry-bits-by-wire-fiber-and-radio",
           "name": "線路用電線、光纖和無線電傳送位元",
           "terms": [
             "乙太網路",
@@ -561,7 +561,7 @@
           ]
         },
         {
-          "slug": "html-for-structure-css-for-looks-javascript-for-behaviour",
+          "slug": "html-for-structure-css-for-looks-javascript-for-behavior",
           "name": "HTML 管結構，CSS 管外觀，JavaScript 管行為",
           "terms": [
             "HTML",
@@ -589,7 +589,7 @@
           ]
         },
         {
-          "slug": "pages-come-from-servers-in-data-centres-often-a-copy-near-you",
+          "slug": "pages-come-from-servers-in-data-centers-often-a-copy-near-you",
           "name": "網頁來自資料中心裡的伺服器，常常是離你近的一份副本",
           "terms": [
             "伺服器",

@@ -322,11 +322,11 @@
       "summary": "How a message crosses the world in small pieces, each routed on its own.",
       "landmarks": [
         {
-          "slug": "links-carry-bits-by-wire-fibre-and-radio",
-          "name": "Links carry bits by wire, fibre and radio",
+          "slug": "links-carry-bits-by-wire-fiber-and-radio",
+          "name": "Links carry bits by wire, fiber and radio",
           "terms": [
             "Ethernet",
-            "fibre",
+            "fiber",
             "Wi-Fi",
             "bandwidth"
           ]
@@ -465,7 +465,7 @@
           "name": "Lost data is resent until it is acknowledged",
           "terms": [
             "sequence number",
-            "acknowledgement",
+            "acknowledgment",
             "retransmission"
           ]
         },
@@ -531,8 +531,8 @@
           ]
         },
         {
-          "slug": "html-for-structure-css-for-looks-javascript-for-behaviour",
-          "name": "HTML for structure, CSS for looks, JavaScript for behaviour",
+          "slug": "html-for-structure-css-for-looks-javascript-for-behavior",
+          "name": "HTML for structure, CSS for looks, JavaScript for behavior",
           "terms": [
             "HTML",
             "CSS",
@@ -558,12 +558,12 @@
           ]
         },
         {
-          "slug": "pages-come-from-servers-in-data-centres-often-a-copy-near-you",
-          "name": "Pages come from servers in data centres, often a copy near you",
+          "slug": "pages-come-from-servers-in-data-centers-often-a-copy-near-you",
+          "name": "Pages come from servers in data centers, often a copy near you",
           "terms": [
             "server",
             "CDN",
-            "data centre"
+            "data center"
           ]
         }
       ]
