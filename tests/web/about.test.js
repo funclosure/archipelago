@@ -2,7 +2,7 @@
 // string table must say the same thing; and their one inline script must be index.html's, whose hash the hosted CSP
 // already allows.
 import { test, expect } from "bun:test";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { TABLES } from "../../src/web/strings/index.js";
 
 const read = (name) => readFileSync(new URL(`../../src/web/${name}`, import.meta.url), "utf8");
@@ -63,4 +63,16 @@ test("the legal pages link to each other, to support, and from the landing page"
     expect(html).toContain('href="/privacy"');
   }
   for (const name of ["terms", "privacy"]) expect(read(`${name}.html`)).toContain("mailto:support@archipelago.school");
+});
+
+test("every page carries what a link preview reads", () => {
+  for (const [file, path] of [["index", "/"], ["about", "/about"], ["maps", "/maps"], ["terms", "/terms"], ["privacy", "/privacy"]]) {
+    const html = readFileSync(new URL(`../../src/web/${file}.html`, import.meta.url), "utf8");
+    const og = (name) => html.match(new RegExp(`<meta property="og:${name}" content="([^"]+)">`))?.[1];
+    expect([file, og("url")]).toEqual([file, `https://archipelago.school${path}`]);
+    expect([file, og("image")]).toEqual([file, "https://archipelago.school/og.jpg"]);
+    expect([file, Boolean(og("title") && og("description"))]).toEqual([file, true]);
+    expect([file, html.includes('<meta name="twitter:card" content="summary_large_image">')]).toEqual([file, true]);
+  }
+  expect(existsSync(new URL("../../src/web/og.jpg", import.meta.url))).toBe(true);
 });
