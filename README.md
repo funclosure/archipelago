@@ -4,7 +4,7 @@ A conversational tool for charting what you understand about a domain, shown as 
 
 The cartographer sketches islands and straits, either Claude in the terminal (a skill driving a CLI) or the cartographer in the map's own pane; either way you approve the sketch before it is drawn, into a local SQLite file. The judge lives in the browser: click an island, press **Make landfall**, and a conversation runs inside the map server on the Claude Agent SDK, through your Claude Code login. Verdicts land on the map within two seconds.
 
-Start at https://archipelago-c24.pages.dev/about: what it is, and the three ways to use it (in the browser, in Claude Code, from source).
+Start at https://archipelago.school/about: what it is, and the three ways to use it (in the browser, in Claude Code, from source).
 
 Read `docs/BRIEF.md` for the idea and `docs/superpowers/specs/2026-09-03-archipelago-slice1-design.md` for how this slice is built.
 
@@ -31,7 +31,7 @@ From a clone instead: `bun install`, then `bun link` puts `archipelago` on your 
 
 ## In the browser, with your own key
 
-The hosted build is the same map as a static site, with nothing to install: https://archipelago-c24.pages.dev. Open it, paste an Anthropic API key (or choose **Try without a key** to see how a turn goes on a scripted stand-in), and press **New domain…**: say what you want to chart and why, in your own words. The cartographer names the domain and sketches the islands and the judge runs in the page, on your key, with Sonnet 5.5 by default and Opus 5.5 one click away under **Your key** in the domain menu. Your key stays in that browser and is sent only to `api.anthropic.com`; every turn is billed to it.
+The hosted build is the same map as a static site, with nothing to install: https://archipelago.school. Open it, paste an Anthropic API key (or choose **Try without a key** to see how a turn goes on a scripted stand-in), and press **New domain…**: say what you want to chart and why, in your own words. The cartographer names the domain and sketches the islands and the judge runs in the page, on your key, with Sonnet 5.5 by default and Opus 5.5 one click away under **Your key** in the domain menu. Your key stays in that browser and is sent only to `api.anthropic.com`; every turn is billed to it.
 
 The page speaks English and Traditional Chinese (繁體中文): it follows the browser's language, and **Language** in the domain menu switches it. The Keeper, the mentor, and the cartographer reply in the language you write in, and follow the page when that's unclear.
 
