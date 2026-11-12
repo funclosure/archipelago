@@ -687,10 +687,10 @@ body.empty .board-hint { display: none; }
 .new-domain-card .shared-map:disabled { cursor: default; opacity: .7; }
 .new-domain-card .shared-map .words { display: grid; gap: 2px; min-width: 0; }
 .new-domain-card .shared-map .map-icon { width: 52px; height: 52px; }
-/* A shared map's picture: one island as the map draws it, its emoji standing on it (map-icon.js). */
+/* A shared map's picture: one island in the water's own tone with a pale coast, its emoji standing on it (map-icon.js). */
 .map-icon { flex: none; overflow: visible; }
-.map-icon .coast { fill: var(--sand-fill); fill-opacity: .9; stroke: var(--line-07); stroke-width: 5; }
-.map-icon .ring { fill: none; stroke: var(--line-07); stroke-width: 2.5; stroke-opacity: .6; }
+.map-icon .coast { fill: color-mix(in oklab, var(--text) 26%, var(--water)); stroke: var(--line-07); stroke-width: 4; }
+.map-icon .ring { fill: none; stroke: var(--line-03); stroke-width: 2.5; }
 .map-icon text { font-size: 84px; text-anchor: middle; dominant-baseline: central; }
 .new-domain-card .shared-map .nm { font-size: 15px; }
 .new-domain-card .shared-map .ds { font-size: 13px; line-height: 1.5; color: var(--text-2); }
@@ -698,8 +698,9 @@ body.empty .board-hint { display: none; }
 .new-domain-card .as-link.push { margin-left: auto; }
 .new-domain-card .hint { margin-left: auto; font: 11px var(--font-mono); color: var(--muted); }
 body.empty .outline, body.empty .chrome, body.empty #map-focus, body.empty #board-toggle { display: none; }
-.new-domain.first { background: transparent; align-items: center; padding: 24px 16px; }
-.new-domain.first .new-domain-card { background: transparent; border: 0; box-shadow: none; width: min(600px, 100%); gap: 14px; padding: 0; }
+/* Centred by the card's auto margins, never by align-items: a card taller than the window must start at the top, or its head is cut off beyond reach of the scroll. */
+.new-domain.first { background: transparent; padding: 24px 16px; }
+.new-domain.first .new-domain-card { background: transparent; border: 0; box-shadow: none; width: min(600px, 100%); gap: 14px; padding: 0; margin: auto; }
 .new-domain.first .lbl { font-size: 11px; }
 .new-domain.first .title { margin: -6px 0 0; font: 400 34px/1.15 Georgia, serif; letter-spacing: -.01em; color: var(--text); }
 .new-domain.first .help { font-size: 14px; line-height: 1.55; color: var(--text-2); max-width: 54ch; }
