@@ -65,10 +65,8 @@ test("the legal pages link to each other, to support, and from the landing page"
   for (const name of ["terms", "privacy"]) expect(read(`${name}.html`)).toContain("mailto:support@archipelago.school");
 });
 
-// The home page declares /?ref=share, not /: Telegram files a preview under the declared address, and it holds an
-// empty one for / from before the tags existed, which its own refresh bot does not clear.
 test("every page carries what a link preview reads", () => {
-  for (const [file, path] of [["index", "/?ref=share"], ["about", "/about"], ["maps", "/maps"], ["terms", "/terms"], ["privacy", "/privacy"]]) {
+  for (const [file, path] of [["index", "/"], ["about", "/about"], ["maps", "/maps"], ["terms", "/terms"], ["privacy", "/privacy"]]) {
     const html = readFileSync(new URL(`../../src/web/${file}.html`, import.meta.url), "utf8");
     const og = (name) => html.match(new RegExp(`<meta property="og:${name}" content="([^"]+)">`))?.[1];
     expect([file, og("url")]).toEqual([file, `https://archipelago.school${path}`]);
