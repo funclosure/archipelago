@@ -1,0 +1,568 @@
+{
+  "archipelago": 1,
+  "name": "How large language models work",
+  "slug": "large-language-models",
+  "description": "What happens between a prompt and a reply: tokens, attention, training, and why a model that only predicts the next word can do so much and still be wrong.",
+  "by": "Archipelago",
+  "language": "en",
+  "islands": [
+    {
+      "slug": "tokens",
+      "name": "Tokens",
+      "summary": "The pieces of text a model reads and writes, which are not quite words.",
+      "landmarks": [
+        {
+          "slug": "why-not-words-or-letters",
+          "name": "Why not words or letters",
+          "terms": [
+            "token",
+            "vocabulary",
+            "subword"
+          ]
+        },
+        {
+          "slug": "how-a-tokenizer-splits-text",
+          "name": "How a tokenizer splits text",
+          "terms": [
+            "tokenizer",
+            "byte-pair encoding",
+            "merge"
+          ]
+        },
+        {
+          "slug": "tokens-are-numbers-to-the-model",
+          "name": "Tokens are numbers to the model",
+          "terms": [
+            "token id",
+            "vocabulary size"
+          ]
+        },
+        {
+          "slug": "why-token-counts-matter",
+          "name": "Why token counts matter",
+          "terms": [
+            "context length",
+            "cost",
+            "limit"
+          ]
+        },
+        {
+          "slug": "where-tokenizing-goes-wrong",
+          "name": "Where tokenizing goes wrong",
+          "terms": [
+            "spelling",
+            "arithmetic",
+            "rare words"
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "embeddings",
+      "name": "Embeddings",
+      "summary": "Turning each token into a list of numbers whose geometry carries meaning.",
+      "landmarks": [
+        {
+          "slug": "a-token-becomes-a-vector",
+          "name": "A token becomes a vector",
+          "terms": [
+            "embedding",
+            "vector",
+            "dimension"
+          ]
+        },
+        {
+          "slug": "near-means-similar",
+          "name": "Near means similar",
+          "terms": [
+            "similarity",
+            "distance",
+            "cosine"
+          ]
+        },
+        {
+          "slug": "directions-that-carry-meaning",
+          "name": "Directions that carry meaning",
+          "terms": [
+            "direction",
+            "analogy",
+            "feature"
+          ]
+        },
+        {
+          "slug": "where-the-order-of-words-comes-from",
+          "name": "Where the order of words comes from",
+          "terms": [
+            "position",
+            "positional encoding"
+          ]
+        },
+        {
+          "slug": "embeddings-are-learned-not-designed",
+          "name": "Embeddings are learned, not designed",
+          "terms": [
+            "learned",
+            "parameters"
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "attention",
+      "name": "Attention",
+      "summary": "How each token gathers what it needs from the tokens before it.",
+      "landmarks": [
+        {
+          "slug": "every-token-looks-at-the-others",
+          "name": "Every token looks at the others",
+          "terms": [
+            "attention",
+            "context",
+            "weight"
+          ]
+        },
+        {
+          "slug": "queries-keys-and-values",
+          "name": "Queries, keys and values",
+          "terms": [
+            "query",
+            "key",
+            "value"
+          ]
+        },
+        {
+          "slug": "many-heads-many-kinds-of-relation",
+          "name": "Many heads, many kinds of relation",
+          "terms": [
+            "attention head",
+            "multi-head"
+          ]
+        },
+        {
+          "slug": "looking-only-backwards",
+          "name": "Looking only backwards",
+          "terms": [
+            "causal mask",
+            "autoregressive"
+          ]
+        },
+        {
+          "slug": "why-attention-replaced-recurrence",
+          "name": "Why attention replaced recurrence",
+          "terms": [
+            "parallel",
+            "long-range",
+            "recurrent network"
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "transformer",
+      "name": "The transformer",
+      "summary": "The block that is stacked dozens of times to make the whole model.",
+      "landmarks": [
+        {
+          "slug": "attention-then-a-feed-forward-layer",
+          "name": "Attention, then a feed-forward layer",
+          "terms": [
+            "layer",
+            "feed-forward",
+            "MLP"
+          ]
+        },
+        {
+          "slug": "the-residual-stream",
+          "name": "The residual stream",
+          "terms": [
+            "residual connection",
+            "skip connection"
+          ]
+        },
+        {
+          "slug": "normalisation-keeps-it-trainable",
+          "name": "Normalisation keeps it trainable",
+          "terms": [
+            "layer norm",
+            "stability"
+          ]
+        },
+        {
+          "slug": "depth-builds-up-abstraction",
+          "name": "Depth builds up abstraction",
+          "terms": [
+            "layers",
+            "depth",
+            "features"
+          ]
+        },
+        {
+          "slug": "parameters-and-what-a-models-size-means",
+          "name": "Parameters and what a model's size means",
+          "terms": [
+            "parameters",
+            "weights",
+            "billion"
+          ]
+        },
+        {
+          "slug": "from-the-last-layer-to-a-next-token-guess",
+          "name": "From the last layer to a next-token guess",
+          "terms": [
+            "logits",
+            "softmax",
+            "probability"
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "pretraining",
+      "name": "Pretraining",
+      "summary": "Learning from an enormous amount of text by guessing what comes next.",
+      "landmarks": [
+        {
+          "slug": "the-task-is-next-token-prediction",
+          "name": "The task is next-token prediction",
+          "terms": [
+            "next-token prediction",
+            "self-supervised"
+          ]
+        },
+        {
+          "slug": "loss-says-how-wrong-a-guess-was",
+          "name": "Loss says how wrong a guess was",
+          "terms": [
+            "loss",
+            "cross-entropy"
+          ]
+        },
+        {
+          "slug": "gradient-descent-nudges-every-weight",
+          "name": "Gradient descent nudges every weight",
+          "terms": [
+            "gradient descent",
+            "backpropagation",
+            "learning rate"
+          ]
+        },
+        {
+          "slug": "why-predicting-text-teaches-about-the-world",
+          "name": "Why predicting text teaches about the world",
+          "terms": [
+            "compression",
+            "generalisation",
+            "world knowledge"
+          ]
+        },
+        {
+          "slug": "data-compute-and-scale",
+          "name": "Data, compute and scale",
+          "terms": [
+            "training data",
+            "GPU",
+            "scaling"
+          ]
+        },
+        {
+          "slug": "the-knowledge-cutoff",
+          "name": "The knowledge cutoff",
+          "terms": [
+            "cutoff",
+            "training date"
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "fine-tuning",
+      "name": "Fine-tuning and alignment",
+      "summary": "Turning a text predictor into an assistant that answers, refuses and follows instructions.",
+      "landmarks": [
+        {
+          "slug": "from-completing-text-to-holding-a-chat",
+          "name": "From completing text to holding a chat",
+          "terms": [
+            "chat format",
+            "instruction tuning"
+          ]
+        },
+        {
+          "slug": "fine-tuning-on-examples",
+          "name": "Fine-tuning on examples",
+          "terms": [
+            "fine-tuning",
+            "supervised",
+            "examples"
+          ]
+        },
+        {
+          "slug": "learning-from-human-preferences",
+          "name": "Learning from human preferences",
+          "terms": [
+            "reinforcement learning",
+            "feedback",
+            "RLHF"
+          ]
+        },
+        {
+          "slug": "the-system-prompt",
+          "name": "The system prompt",
+          "terms": [
+            "system prompt",
+            "instructions",
+            "role"
+          ]
+        },
+        {
+          "slug": "what-alignment-is-trying-to-achieve",
+          "name": "What alignment is trying to achieve",
+          "terms": [
+            "alignment",
+            "safety",
+            "values"
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "generation",
+      "name": "Generation",
+      "summary": "How a reply is written one token at a time, and why the same prompt gives different answers.",
+      "landmarks": [
+        {
+          "slug": "one-token-then-again",
+          "name": "One token, then again",
+          "terms": [
+            "autoregressive",
+            "decoding",
+            "loop"
+          ]
+        },
+        {
+          "slug": "sampling-and-temperature",
+          "name": "Sampling and temperature",
+          "terms": [
+            "sampling",
+            "temperature",
+            "randomness"
+          ]
+        },
+        {
+          "slug": "top-k-and-top-p",
+          "name": "Top-k and top-p",
+          "terms": [
+            "top-p",
+            "nucleus",
+            "top-k"
+          ]
+        },
+        {
+          "slug": "why-it-cannot-go-back-and-revise",
+          "name": "Why it cannot go back and revise",
+          "terms": [
+            "left to right",
+            "commit"
+          ]
+        },
+        {
+          "slug": "thinking-before-answering",
+          "name": "Thinking before answering",
+          "terms": [
+            "reasoning",
+            "chain of thought",
+            "scratchpad"
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "context",
+      "name": "Context and tools",
+      "summary": "Everything the model can see at once, and how it reaches beyond it.",
+      "landmarks": [
+        {
+          "slug": "the-context-window-is-its-working-memory",
+          "name": "The context window is its working memory",
+          "terms": [
+            "context window",
+            "working memory"
+          ]
+        },
+        {
+          "slug": "no-memory-between-conversations",
+          "name": "No memory between conversations",
+          "terms": [
+            "stateless",
+            "memory"
+          ]
+        },
+        {
+          "slug": "learning-from-examples-in-the-prompt",
+          "name": "Learning from examples in the prompt",
+          "terms": [
+            "few-shot",
+            "in-context learning"
+          ]
+        },
+        {
+          "slug": "retrieval-brings-in-documents",
+          "name": "Retrieval brings in documents",
+          "terms": [
+            "retrieval",
+            "RAG",
+            "search"
+          ]
+        },
+        {
+          "slug": "tools-and-agents",
+          "name": "Tools and agents",
+          "terms": [
+            "tool use",
+            "function calling",
+            "agent"
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "limits",
+      "name": "Limits and failure",
+      "summary": "Where these models go wrong, and how to tell.",
+      "landmarks": [
+        {
+          "slug": "hallucination",
+          "name": "Hallucination",
+          "terms": [
+            "hallucination",
+            "confabulation",
+            "fluent"
+          ]
+        },
+        {
+          "slug": "fluent-is-not-the-same-as-true",
+          "name": "Fluent is not the same as true",
+          "terms": [
+            "confidence",
+            "calibration"
+          ]
+        },
+        {
+          "slug": "bias-from-the-training-data",
+          "name": "Bias from the training data",
+          "terms": [
+            "bias",
+            "training data"
+          ]
+        },
+        {
+          "slug": "prompt-injection",
+          "name": "Prompt injection",
+          "terms": [
+            "prompt injection",
+            "untrusted input"
+          ]
+        },
+        {
+          "slug": "how-models-are-evaluated",
+          "name": "How models are evaluated",
+          "terms": [
+            "benchmark",
+            "evaluation"
+          ]
+        },
+        {
+          "slug": "what-nobody-yet-understands-inside",
+          "name": "What nobody yet understands inside",
+          "terms": [
+            "interpretability",
+            "black box"
+          ]
+        }
+      ]
+    }
+  ],
+  "straits": [
+    {
+      "from": "tokens",
+      "to": "embeddings",
+      "name": "Each token id picks a vector"
+    },
+    {
+      "from": "embeddings",
+      "to": "attention",
+      "name": "Attention mixes the vectors"
+    },
+    {
+      "from": "attention",
+      "to": "transformer",
+      "name": "Attention is half of every block"
+    },
+    {
+      "from": "transformer",
+      "to": "pretraining",
+      "name": "Training sets the block's weights"
+    },
+    {
+      "from": "pretraining",
+      "to": "fine-tuning",
+      "name": "The same learning, on chosen data"
+    },
+    {
+      "from": "transformer",
+      "to": "generation",
+      "name": "The final layer gives the probabilities"
+    },
+    {
+      "from": "tokens",
+      "to": "context",
+      "name": "The window is counted in tokens"
+    },
+    {
+      "from": "generation",
+      "to": "context",
+      "name": "Every token written joins the context"
+    },
+    {
+      "from": "pretraining",
+      "to": "limits",
+      "name": "It learned what was likely, not what was true"
+    },
+    {
+      "from": "generation",
+      "to": "limits",
+      "name": "Sampling can commit to a wrong path"
+    },
+    {
+      "from": "fine-tuning",
+      "to": "limits",
+      "name": "Instructions can be overridden"
+    }
+  ],
+  "seas": [
+    {
+      "name": "The machinery",
+      "islands": [
+        "tokens",
+        "embeddings",
+        "attention",
+        "transformer"
+      ]
+    },
+    {
+      "name": "How it learns",
+      "islands": [
+        "pretraining",
+        "fine-tuning"
+      ]
+    },
+    {
+      "name": "Using one",
+      "islands": [
+        "generation",
+        "context",
+        "limits"
+      ]
+    }
+  ]
+}

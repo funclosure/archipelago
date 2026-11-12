@@ -574,6 +574,16 @@ async function syncLanguage() {
   }
 }
 
+/** The shared map a link asked for (`?map=<slug>`), taken off the address so a reload does not ask again. */
+function sharedMap() {
+  const slug = params.get("map");
+  if (!slug) return null;
+  const url = new URL(location.href);
+  url.searchParams.delete("map");
+  history.replaceState(null, "", url);
+  return slug;
+}
+
 async function boot() {
   labelStatics();
   installNewDomain();
@@ -593,7 +603,7 @@ async function boot() {
     if (domains.length === 0) {
       // Nothing to show but the start: the page is the New domain field, with no outline and no chrome around it.
       document.body.classList.add("empty");
-      openNewDomain({ first: true });
+      openNewDomain({ first: true, map: sharedMap() });
       return;
     }
     app.domain = domains[0].slug;
@@ -639,6 +649,9 @@ async function boot() {
     history.replaceState(null, "", url);
     openChart(null, { start: true });
   }
+  // A link from the gallery page (/?map=<slug>): New domain opens on the shared maps with that one picked out.
+  const shared = sharedMap();
+  if (shared) openNewDomain({ map: shared });
   setInterval(poll, 2000);
   requestAnimationFrame(frame);
 }

@@ -1,0 +1,533 @@
+{
+  "archipelago": 1,
+  "name": "Music theory",
+  "slug": "music-theory",
+  "description": "Why some notes sound good together: the handful of ideas behind scales, chords, rhythm and the shape of a song, for someone who plays or listens and wants to know why.",
+  "by": "Archipelago",
+  "language": "en",
+  "islands": [
+    {
+      "slug": "pitch",
+      "name": "Pitch and notes",
+      "summary": "How a vibration becomes a note with a name, and why there are twelve of them.",
+      "landmarks": [
+        {
+          "slug": "frequency-is-pitch",
+          "name": "Frequency is pitch",
+          "terms": [
+            "frequency",
+            "hertz",
+            "vibration"
+          ]
+        },
+        {
+          "slug": "the-octave",
+          "name": "The octave",
+          "terms": [
+            "octave",
+            "doubling",
+            "same note"
+          ]
+        },
+        {
+          "slug": "twelve-notes-and-their-names",
+          "name": "Twelve notes and their names",
+          "terms": [
+            "semitone",
+            "chromatic",
+            "note name"
+          ]
+        },
+        {
+          "slug": "sharps-and-flats",
+          "name": "Sharps and flats",
+          "terms": [
+            "sharp",
+            "flat",
+            "enharmonic"
+          ]
+        },
+        {
+          "slug": "reading-notes-on-a-staff",
+          "name": "Reading notes on a staff",
+          "terms": [
+            "staff",
+            "clef",
+            "ledger line"
+          ]
+        },
+        {
+          "slug": "overtones-give-an-instrument-its-colour",
+          "name": "Overtones give an instrument its colour",
+          "terms": [
+            "overtone",
+            "harmonic",
+            "timbre"
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "rhythm",
+      "name": "Rhythm and metre",
+      "summary": "How music is organised in time.",
+      "landmarks": [
+        {
+          "slug": "beat-and-tempo",
+          "name": "Beat and tempo",
+          "terms": [
+            "beat",
+            "tempo",
+            "BPM"
+          ]
+        },
+        {
+          "slug": "note-lengths",
+          "name": "Note lengths",
+          "terms": [
+            "whole note",
+            "quarter note",
+            "rest"
+          ]
+        },
+        {
+          "slug": "bars-and-time-signatures",
+          "name": "Bars and time signatures",
+          "terms": [
+            "bar",
+            "time signature",
+            "metre"
+          ]
+        },
+        {
+          "slug": "strong-and-weak-beats",
+          "name": "Strong and weak beats",
+          "terms": [
+            "downbeat",
+            "accent",
+            "pulse"
+          ]
+        },
+        {
+          "slug": "syncopation",
+          "name": "Syncopation",
+          "terms": [
+            "syncopation",
+            "off-beat",
+            "groove"
+          ]
+        },
+        {
+          "slug": "three-against-two",
+          "name": "Three against two",
+          "terms": [
+            "triplet",
+            "swing",
+            "polyrhythm"
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "intervals",
+      "name": "Intervals",
+      "summary": "The distance between two notes, the unit everything else is built from.",
+      "landmarks": [
+        {
+          "slug": "counting-an-interval",
+          "name": "Counting an interval",
+          "terms": [
+            "interval",
+            "semitone",
+            "whole tone"
+          ]
+        },
+        {
+          "slug": "major-minor-and-perfect",
+          "name": "Major, minor and perfect",
+          "terms": [
+            "major third",
+            "minor third",
+            "perfect fifth"
+          ]
+        },
+        {
+          "slug": "consonance-and-dissonance",
+          "name": "Consonance and dissonance",
+          "terms": [
+            "consonance",
+            "dissonance",
+            "tension"
+          ]
+        },
+        {
+          "slug": "simple-ratios-sound-stable",
+          "name": "Simple ratios sound stable",
+          "terms": [
+            "ratio",
+            "frequency ratio",
+            "fifth"
+          ]
+        },
+        {
+          "slug": "hearing-intervals-by-ear",
+          "name": "Hearing intervals by ear",
+          "terms": [
+            "ear training",
+            "relative pitch"
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "scales",
+      "name": "Scales and keys",
+      "summary": "Choosing seven notes out of twelve, and what makes one of them home.",
+      "landmarks": [
+        {
+          "slug": "the-major-scale-pattern",
+          "name": "The major scale pattern",
+          "terms": [
+            "major scale",
+            "whole and half steps"
+          ]
+        },
+        {
+          "slug": "the-tonic-is-home",
+          "name": "The tonic is home",
+          "terms": [
+            "tonic",
+            "key",
+            "resolution"
+          ]
+        },
+        {
+          "slug": "the-minor-scales",
+          "name": "The minor scales",
+          "terms": [
+            "natural minor",
+            "harmonic minor",
+            "relative minor"
+          ]
+        },
+        {
+          "slug": "key-signatures-and-the-circle-of-fifths",
+          "name": "Key signatures and the circle of fifths",
+          "terms": [
+            "key signature",
+            "circle of fifths"
+          ]
+        },
+        {
+          "slug": "modes",
+          "name": "Modes",
+          "terms": [
+            "mode",
+            "Dorian",
+            "Mixolydian"
+          ]
+        },
+        {
+          "slug": "pentatonic-and-blues-scales",
+          "name": "Pentatonic and blues scales",
+          "terms": [
+            "pentatonic",
+            "blues scale",
+            "blue note"
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "chords",
+      "name": "Chords",
+      "summary": "Notes sounded together, stacked in thirds.",
+      "landmarks": [
+        {
+          "slug": "triads",
+          "name": "Triads",
+          "terms": [
+            "triad",
+            "root",
+            "third and fifth"
+          ]
+        },
+        {
+          "slug": "major-minor-diminished-augmented",
+          "name": "Major, minor, diminished, augmented",
+          "terms": [
+            "major chord",
+            "minor chord",
+            "diminished"
+          ]
+        },
+        {
+          "slug": "inversions",
+          "name": "Inversions",
+          "terms": [
+            "inversion",
+            "bass note",
+            "voicing"
+          ]
+        },
+        {
+          "slug": "seventh-chords",
+          "name": "Seventh chords",
+          "terms": [
+            "seventh chord",
+            "dominant seventh",
+            "major seventh"
+          ]
+        },
+        {
+          "slug": "the-chords-that-belong-to-a-key",
+          "name": "The chords that belong to a key",
+          "terms": [
+            "diatonic",
+            "Roman numerals",
+            "scale degree"
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "harmony",
+      "name": "Harmony and progressions",
+      "summary": "How chords follow one another, creating tension and letting it go.",
+      "landmarks": [
+        {
+          "slug": "tonic-subdominant-dominant",
+          "name": "Tonic, subdominant, dominant",
+          "terms": [
+            "tonic",
+            "dominant",
+            "function"
+          ]
+        },
+        {
+          "slug": "why-v-wants-to-go-to-i",
+          "name": "Why V wants to go to I",
+          "terms": [
+            "leading tone",
+            "resolution",
+            "tritone"
+          ]
+        },
+        {
+          "slug": "cadences",
+          "name": "Cadences",
+          "terms": [
+            "cadence",
+            "authentic",
+            "deceptive"
+          ]
+        },
+        {
+          "slug": "progressions-everybody-knows",
+          "name": "Progressions everybody knows",
+          "terms": [
+            "I-V-vi-IV",
+            "twelve-bar blues",
+            "ii-V-I"
+          ]
+        },
+        {
+          "slug": "borrowing-from-outside-the-key",
+          "name": "Borrowing from outside the key",
+          "terms": [
+            "secondary dominant",
+            "borrowed chord"
+          ]
+        },
+        {
+          "slug": "changing-key",
+          "name": "Changing key",
+          "terms": [
+            "modulation",
+            "pivot chord"
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "melody",
+      "name": "Melody",
+      "summary": "What makes a line of single notes memorable.",
+      "landmarks": [
+        {
+          "slug": "steps-and-leaps",
+          "name": "Steps and leaps",
+          "terms": [
+            "step",
+            "leap",
+            "contour"
+          ]
+        },
+        {
+          "slug": "chord-tones-and-passing-tones",
+          "name": "Chord tones and passing tones",
+          "terms": [
+            "chord tone",
+            "passing tone",
+            "non-chord tone"
+          ]
+        },
+        {
+          "slug": "motifs-and-repetition",
+          "name": "Motifs and repetition",
+          "terms": [
+            "motif",
+            "repetition",
+            "variation"
+          ]
+        },
+        {
+          "slug": "phrases-breathe",
+          "name": "Phrases breathe",
+          "terms": [
+            "phrase",
+            "question and answer",
+            "period"
+          ]
+        },
+        {
+          "slug": "a-melody-implies-its-harmony",
+          "name": "A melody implies its harmony",
+          "terms": [
+            "implied harmony",
+            "outline"
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "form",
+      "name": "Form",
+      "summary": "How a piece is laid out so the listener knows where they are.",
+      "landmarks": [
+        {
+          "slug": "repetition-and-contrast",
+          "name": "Repetition and contrast",
+          "terms": [
+            "repetition",
+            "contrast",
+            "section"
+          ]
+        },
+        {
+          "slug": "verse-chorus-bridge",
+          "name": "Verse, chorus, bridge",
+          "terms": [
+            "verse",
+            "chorus",
+            "bridge"
+          ]
+        },
+        {
+          "slug": "twelve-bar-blues-and-aaba",
+          "name": "Twelve-bar blues and AABA",
+          "terms": [
+            "twelve-bar blues",
+            "AABA",
+            "song form"
+          ]
+        },
+        {
+          "slug": "theme-and-development",
+          "name": "Theme and development",
+          "terms": [
+            "theme",
+            "development",
+            "sonata form"
+          ]
+        },
+        {
+          "slug": "dynamics-and-texture-shape-a-piece",
+          "name": "Dynamics and texture shape a piece",
+          "terms": [
+            "dynamics",
+            "texture",
+            "arrangement"
+          ]
+        }
+      ]
+    }
+  ],
+  "straits": [
+    {
+      "from": "pitch",
+      "to": "intervals",
+      "name": "An interval is two pitches apart"
+    },
+    {
+      "from": "intervals",
+      "to": "scales",
+      "name": "A scale is a pattern of intervals"
+    },
+    {
+      "from": "intervals",
+      "to": "chords",
+      "name": "A chord is stacked thirds"
+    },
+    {
+      "from": "scales",
+      "to": "chords",
+      "name": "Each scale degree carries a chord"
+    },
+    {
+      "from": "chords",
+      "to": "harmony",
+      "name": "Harmony is chords in motion"
+    },
+    {
+      "from": "scales",
+      "to": "melody",
+      "name": "A melody moves within a scale"
+    },
+    {
+      "from": "harmony",
+      "to": "melody",
+      "name": "Each implies the other"
+    },
+    {
+      "from": "rhythm",
+      "to": "melody",
+      "name": "A tune is pitch plus rhythm"
+    },
+    {
+      "from": "harmony",
+      "to": "form",
+      "name": "Cadences mark the ends of sections"
+    },
+    {
+      "from": "rhythm",
+      "to": "form",
+      "name": "Sections are counted in bars"
+    }
+  ],
+  "seas": [
+    {
+      "name": "Raw material",
+      "islands": [
+        "pitch",
+        "rhythm"
+      ]
+    },
+    {
+      "name": "Building blocks",
+      "islands": [
+        "intervals",
+        "scales",
+        "chords"
+      ]
+    },
+    {
+      "name": "Putting it together",
+      "islands": [
+        "harmony",
+        "melody",
+        "form"
+      ]
+    }
+  ]
+}

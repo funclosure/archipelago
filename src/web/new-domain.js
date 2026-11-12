@@ -7,6 +7,7 @@ import { registerRegion } from "./keys.js";
 import { CENTRE, COAST, RING_STEP, ringPoints } from "./contour.js";
 import { language, t } from "./i18n.js";
 import { agentPrompt, mapFromText } from "./map-model.js";
+import { GALLERY_INDEX, GALLERY_PATH, galleryFor } from "./gallery-model.js";
 
 /** Descriptions to start from: a click puts one in the field, to send or to edit. */
 export const EXAMPLES = [1, 2, 3, 4, 5, 6].map((n) => t(`newDomain.example${n}`));
@@ -17,7 +18,8 @@ export const DESCRIPTION_MAX = 500;
 /** `editing`: null for a new domain, else the slug of the domain being edited. `first`: there are no domains yet, so the dialog is the page. */
 /** `deleting`: the edit dialog is asking whether to delete the domain. */
 /** `importing`: the new-domain dialog is on its other way in, a map file (pasted, picked, or written by another AI from our prompt). */
-const state = { open: false, name: "", description: "", editing: null, first: false, saving: false, error: null, deleting: false, importing: false, mapText: "", copied: false };
+/** `gallery`: it is on the shared maps (`maps`: null until the index is read; `pick`: the slug a link asked for; `adding`: the one being added). */
+const state = { open: false, name: "", description: "", editing: null, first: false, saving: false, error: null, deleting: false, importing: false, mapText: "", copied: false, gallery: false, maps: null, pick: null, adding: null };
 let root = null;
 
 function el(tag, className, text) {
@@ -32,9 +34,11 @@ export function installNewDomain() {
   registerRegion("newDomain", { isOpen: () => state.open, close });
 }
 
-export function openNewDomain({ first = false } = {}) {
+/** `map`: open on the shared maps with this one picked out, as a link from the gallery page asks (`/?map=<slug>`). */
+export function openNewDomain({ first = false, map = null } = {}) {
   if (!root) return;
-  Object.assign(state, { open: true, name: "", description: "", editing: null, first, saving: false, error: null, deleting: false, importing: false, mapText: "", copied: false });
+  Object.assign(state, { open: true, name: "", description: "", editing: null, first, saving: false, error: null, deleting: false, importing: false, mapText: "", copied: false, gallery: false, pick: map, adding: null });
+  if (map) return void showGallery(true);
   render();
   root.querySelector("#new-domain-description")?.focus();
 }
@@ -45,7 +49,7 @@ export async function openDomainEdit(slug) {
   const { domains } = await api("/api/domains");
   const domain = domains.find((d) => d.slug === slug);
   if (!domain) return;
-  Object.assign(state, { open: true, name: domain.name, description: domain.description ?? "", editing: slug, first: false, saving: false, error: null, deleting: false, importing: false });
+  Object.assign(state, { open: true, name: domain.name, description: domain.description ?? "", editing: slug, first: false, saving: false, error: null, deleting: false, importing: false, gallery: false });
   render();
   root.querySelector("#new-domain-description")?.focus();
 }
@@ -54,6 +58,10 @@ function close() {
   if (state.importing) {
     // One step back, to the description; a map being imported is let finish.
     if (!state.saving) showImport(false);
+    return;
+  }
+  if (state.gallery) {
+    if (!state.saving) showGallery(false);
     return;
   }
   if (state.first) return; // nothing behind it to go back to
@@ -76,6 +84,96 @@ function showImport(on) {
   root.querySelector(on ? "#new-domain-map" : "#new-domain-description")?.focus();
 }
 
+/** The page on a domain just made from a map. */
+function openDomain(slug) {
+  const url = new URL(location.href);
+  url.search = "";
+  url.searchParams.set("domain", slug);
+  location.href = url.toString();
+}
+
+/** The shared maps: the index is read once, the first time they are shown. */
+function showGallery(on) {
+  Object.assign(state, { gallery: on, error: null });
+  if (!on) state.pick = null;
+  render();
+  if (!on) return void root.querySelector("#new-domain-description")?.focus();
+  if (state.maps) return focusGallery();
+  fetch(GALLERY_INDEX)
+    .then((res) => (res.ok ? res.json() : Promise.reject(new Error(String(res.status)))))
+    .then((index) => {
+      state.maps = galleryFor(index, language());
+      if (state.open && state.gallery) {
+        render();
+        focusGallery();
+      }
+    })
+    .catch(() => {
+      state.error = t("newDomain.galleryFailed");
+      if (state.open && state.gallery) render();
+    });
+}
+
+function focusGallery() {
+  const rows = [...root.querySelectorAll(".shared-map")];
+  const row = rows.find((r) => r.dataset.slug === state.pick) ?? rows[0];
+  row?.focus();
+  if (state.pick) row?.scrollIntoView({ block: "nearest" });
+}
+
+/** A new domain from one of the shared maps: its file, then the same import a pasted one goes through. */
+async function addShared(entry) {
+  if (state.saving) return;
+  Object.assign(state, { saving: true, adding: entry.slug, error: null });
+  render();
+  try {
+    const res = await fetch(`${GALLERY_PATH}/${entry.file}`);
+    if (!res.ok) throw new Error(t("newDomain.galleryFailed"));
+    const { domain } = await post("/api/map", await res.json());
+    openDomain(domain.slug);
+  } catch (error) {
+    Object.assign(state, { saving: false, adding: null, error: error.message });
+    render();
+    focusGallery();
+  }
+}
+
+/** The dialog on the shared maps: one row each, and a click adds it as a new domain. */
+function galleryView(card) {
+  card.append(el("div", "lbl", t("newDomain.galleryTitle")), el("p", "help", t("newDomain.galleryHelp")));
+  const list = el("div", "shared-maps");
+  if (!state.maps && !state.error) list.append(el("p", "help", t("newDomain.galleryLoading")));
+  for (const entry of state.maps ?? []) {
+    const row = el("button", "shared-map");
+    row.type = "button";
+    row.dataset.slug = entry.slug;
+    row.disabled = state.saving;
+    row.classList.toggle("picked", entry.slug === state.pick);
+    const meta = t("newDomain.galleryMeta", { islands: entry.islands.length, landmarks: entry.landmarks });
+    row.append(el("span", "nm", entry.name), el("span", "ds", entry.description), el("span", "mt", state.adding === entry.slug ? t("newDomain.galleryAdding") : meta));
+    row.addEventListener("click", () => void addShared(entry));
+    row.addEventListener("keydown", (e) => {
+      if (e.key !== "Escape") return;
+      e.preventDefault();
+      close();
+    });
+    list.append(row);
+  }
+  card.append(list);
+  if (state.error) card.append(el("p", "error", state.error));
+  const row = el("div", "row");
+  const back = el("button", "btn ghost", t("newDomain.back"));
+  back.type = "button";
+  back.disabled = state.saving;
+  back.addEventListener("click", () => showGallery(false));
+  const all = el("a", "as-link push", t("newDomain.galleryAll"));
+  all.href = "/maps";
+  all.target = "_blank";
+  all.rel = "noopener";
+  row.append(back, all);
+  card.append(row);
+}
+
 /** A new domain from a map file's text: the app checks it, and says in words what is wrong with one it refuses. */
 async function importMap(text = state.mapText) {
   if (state.saving) return;
@@ -89,10 +187,7 @@ async function importMap(text = state.mapText) {
   render();
   try {
     const { domain } = await post("/api/map", file);
-    const url = new URL(location.href);
-    url.search = "";
-    url.searchParams.set("domain", domain.slug);
-    location.href = url.toString();
+    openDomain(domain.slug);
   } catch (error) {
     state.saving = false;
     state.error = error.message;
@@ -269,6 +364,12 @@ function render() {
     card.querySelector(".btn.ghost")?.focus();
     return;
   }
+  if (state.gallery) {
+    galleryView(card);
+    card.addEventListener("submit", (e) => e.preventDefault());
+    root.append(card);
+    return;
+  }
   if (state.importing) {
     importView(card, keys);
     card.addEventListener("submit", (e) => {
@@ -348,6 +449,12 @@ function render() {
   card.append(row);
   if (!state.editing) {
     // The other way in: a map that already exists, or one another AI writes from our prompt. No model turn of ours.
+    const shared = el("button", "as-link", t("newDomain.sharedMaps"));
+    shared.type = "button";
+    shared.id = "shared-maps";
+    shared.disabled = state.saving;
+    shared.addEventListener("click", () => showGallery(true));
+    card.append(shared);
     const have = el("button", "as-link", t("newDomain.importMap"));
     have.type = "button";
     have.id = "import-map";

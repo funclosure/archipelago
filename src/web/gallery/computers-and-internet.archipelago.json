@@ -1,0 +1,689 @@
+{
+  "archipelago": 1,
+  "name": "How computers and the internet work",
+  "slug": "computers-and-internet",
+  "description": "From a switch that is on or off to a web page arriving over an encrypted connection: each layer, and what it hides from the one above.",
+  "by": "Archipelago",
+  "language": "en",
+  "islands": [
+    {
+      "slug": "bits",
+      "name": "Bits and encoding",
+      "summary": "How on and off become numbers, text, pictures and sound.",
+      "landmarks": [
+        {
+          "slug": "why-two-states",
+          "name": "Why two states",
+          "terms": [
+            "bit",
+            "binary",
+            "voltage"
+          ]
+        },
+        {
+          "slug": "counting-in-binary-and-hexadecimal",
+          "name": "Counting in binary and hexadecimal",
+          "terms": [
+            "binary",
+            "hexadecimal",
+            "byte"
+          ]
+        },
+        {
+          "slug": "text-as-numbers",
+          "name": "Text as numbers",
+          "terms": [
+            "ASCII",
+            "Unicode",
+            "UTF-8"
+          ]
+        },
+        {
+          "slug": "pictures-and-sound-as-samples",
+          "name": "Pictures and sound as samples",
+          "terms": [
+            "pixel",
+            "sample rate",
+            "resolution"
+          ]
+        },
+        {
+          "slug": "the-same-bits-mean-what-the-reader-decides",
+          "name": "The same bits mean what the reader decides",
+          "terms": [
+            "encoding",
+            "format",
+            "interpretation"
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "logic",
+      "name": "Logic and circuits",
+      "summary": "Switches wired into gates, and gates into circuits that add and remember.",
+      "landmarks": [
+        {
+          "slug": "the-transistor-as-a-switch",
+          "name": "The transistor as a switch",
+          "terms": [
+            "transistor",
+            "switch",
+            "gate"
+          ]
+        },
+        {
+          "slug": "and-or-and-not",
+          "name": "AND, OR and NOT",
+          "terms": [
+            "logic gate",
+            "truth table",
+            "NAND"
+          ]
+        },
+        {
+          "slug": "adding-with-gates",
+          "name": "Adding with gates",
+          "terms": [
+            "adder",
+            "carry",
+            "half adder"
+          ]
+        },
+        {
+          "slug": "circuits-that-remember",
+          "name": "Circuits that remember",
+          "terms": [
+            "flip-flop",
+            "latch",
+            "state"
+          ]
+        },
+        {
+          "slug": "the-clock-that-steps-everything",
+          "name": "The clock that steps everything",
+          "terms": [
+            "clock",
+            "cycle",
+            "hertz"
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "processor",
+      "name": "The processor",
+      "summary": "A machine that fetches an instruction, does it, and fetches the next, billions of times a second.",
+      "landmarks": [
+        {
+          "slug": "fetch-decode-execute",
+          "name": "Fetch, decode, execute",
+          "terms": [
+            "instruction cycle",
+            "program counter"
+          ]
+        },
+        {
+          "slug": "instructions-and-machine-code",
+          "name": "Instructions and machine code",
+          "terms": [
+            "instruction set",
+            "opcode",
+            "machine code"
+          ]
+        },
+        {
+          "slug": "registers",
+          "name": "Registers",
+          "terms": [
+            "register",
+            "accumulator",
+            "word size"
+          ]
+        },
+        {
+          "slug": "jumps-make-loops-and-decisions",
+          "name": "Jumps make loops and decisions",
+          "terms": [
+            "branch",
+            "jump",
+            "condition"
+          ]
+        },
+        {
+          "slug": "cores-and-why-clock-speed-stopped-rising",
+          "name": "Cores and why clock speed stopped rising",
+          "terms": [
+            "core",
+            "parallel",
+            "heat"
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "memory",
+      "name": "Memory and storage",
+      "summary": "Where data lives, from the fastest and smallest to the slowest and largest.",
+      "landmarks": [
+        {
+          "slug": "memory-as-numbered-cells",
+          "name": "Memory as numbered cells",
+          "terms": [
+            "address",
+            "RAM",
+            "pointer"
+          ]
+        },
+        {
+          "slug": "ram-forgets-storage-keeps",
+          "name": "RAM forgets, storage keeps",
+          "terms": [
+            "volatile",
+            "SSD",
+            "disk"
+          ]
+        },
+        {
+          "slug": "the-hierarchy-of-speed-and-size",
+          "name": "The hierarchy of speed and size",
+          "terms": [
+            "cache",
+            "RAM",
+            "latency"
+          ]
+        },
+        {
+          "slug": "why-caches-work",
+          "name": "Why caches work",
+          "terms": [
+            "locality",
+            "cache hit",
+            "cache miss"
+          ]
+        },
+        {
+          "slug": "files-and-file-systems",
+          "name": "Files and file systems",
+          "terms": [
+            "file system",
+            "directory",
+            "block"
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "operating-system",
+      "name": "The operating system",
+      "summary": "The program that shares one machine among many programs and keeps them apart.",
+      "landmarks": [
+        {
+          "slug": "processes-and-their-isolation",
+          "name": "Processes and their isolation",
+          "terms": [
+            "process",
+            "address space",
+            "isolation"
+          ]
+        },
+        {
+          "slug": "sharing-the-processor",
+          "name": "Sharing the processor",
+          "terms": [
+            "scheduler",
+            "time slice",
+            "context switch"
+          ]
+        },
+        {
+          "slug": "virtual-memory",
+          "name": "Virtual memory",
+          "terms": [
+            "virtual memory",
+            "page",
+            "swap"
+          ]
+        },
+        {
+          "slug": "system-calls",
+          "name": "System calls",
+          "terms": [
+            "system call",
+            "kernel",
+            "user mode"
+          ]
+        },
+        {
+          "slug": "drivers-and-devices-as-files",
+          "name": "Drivers and devices as files",
+          "terms": [
+            "driver",
+            "device",
+            "interrupt"
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "programs",
+      "name": "From code to running program",
+      "summary": "How text a person wrote becomes instructions the processor runs.",
+      "landmarks": [
+        {
+          "slug": "source-compiler-machine-code",
+          "name": "Source, compiler, machine code",
+          "terms": [
+            "compiler",
+            "source code",
+            "binary"
+          ]
+        },
+        {
+          "slug": "interpreters-and-virtual-machines",
+          "name": "Interpreters and virtual machines",
+          "terms": [
+            "interpreter",
+            "bytecode",
+            "runtime"
+          ]
+        },
+        {
+          "slug": "the-stack-and-the-heap",
+          "name": "The stack and the heap",
+          "terms": [
+            "stack",
+            "heap",
+            "allocation"
+          ]
+        },
+        {
+          "slug": "libraries-and-linking",
+          "name": "Libraries and linking",
+          "terms": [
+            "library",
+            "linking",
+            "dependency"
+          ]
+        },
+        {
+          "slug": "abstraction-layer-upon-layer",
+          "name": "Abstraction, layer upon layer",
+          "terms": [
+            "abstraction",
+            "interface",
+            "layer"
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "packets",
+      "name": "Packets and addresses",
+      "summary": "How a message crosses the world in small pieces, each finding its own way.",
+      "landmarks": [
+        {
+          "slug": "cutting-data-into-packets",
+          "name": "Cutting data into packets",
+          "terms": [
+            "packet",
+            "header",
+            "payload"
+          ]
+        },
+        {
+          "slug": "ip-addresses",
+          "name": "IP addresses",
+          "terms": [
+            "IP address",
+            "IPv4",
+            "IPv6"
+          ]
+        },
+        {
+          "slug": "routers-pass-packets-hop-by-hop",
+          "name": "Routers pass packets hop by hop",
+          "terms": [
+            "router",
+            "routing table",
+            "hop"
+          ]
+        },
+        {
+          "slug": "a-network-of-networks",
+          "name": "A network of networks",
+          "terms": [
+            "ISP",
+            "backbone",
+            "peering"
+          ]
+        },
+        {
+          "slug": "your-home-network-and-its-one-public-address",
+          "name": "Your home network and its one public address",
+          "terms": [
+            "NAT",
+            "private address",
+            "Wi-Fi router"
+          ]
+        },
+        {
+          "slug": "best-effort-with-no-promises",
+          "name": "Best effort, with no promises",
+          "terms": [
+            "packet loss",
+            "best effort",
+            "latency"
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "names",
+      "name": "Names and DNS",
+      "summary": "Turning a name a person can remember into an address a router can use.",
+      "landmarks": [
+        {
+          "slug": "why-names-and-addresses-are-separate",
+          "name": "Why names and addresses are separate",
+          "terms": [
+            "domain name",
+            "IP address"
+          ]
+        },
+        {
+          "slug": "the-hierarchy-of-a-name",
+          "name": "The hierarchy of a name",
+          "terms": [
+            "root",
+            "top-level domain",
+            "subdomain"
+          ]
+        },
+        {
+          "slug": "resolving-a-name-step-by-step",
+          "name": "Resolving a name step by step",
+          "terms": [
+            "resolver",
+            "name server",
+            "query"
+          ]
+        },
+        {
+          "slug": "caching-and-time-to-live",
+          "name": "Caching and time to live",
+          "terms": [
+            "TTL",
+            "cache",
+            "propagation"
+          ]
+        },
+        {
+          "slug": "records",
+          "name": "Records",
+          "terms": [
+            "A record",
+            "CNAME",
+            "MX"
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "reliable-delivery",
+      "name": "Reliable delivery",
+      "summary": "How TCP builds a dependable stream on a network that loses and reorders packets.",
+      "landmarks": [
+        {
+          "slug": "ports-name-the-program",
+          "name": "Ports name the program",
+          "terms": [
+            "port",
+            "socket"
+          ]
+        },
+        {
+          "slug": "the-handshake",
+          "name": "The handshake",
+          "terms": [
+            "handshake",
+            "SYN",
+            "connection"
+          ]
+        },
+        {
+          "slug": "numbering-acknowledging-resending",
+          "name": "Numbering, acknowledging, resending",
+          "terms": [
+            "sequence number",
+            "acknowledgement",
+            "retransmission"
+          ]
+        },
+        {
+          "slug": "slowing-down-for-a-busy-network",
+          "name": "Slowing down for a busy network",
+          "terms": [
+            "congestion control",
+            "window"
+          ]
+        },
+        {
+          "slug": "when-udp-is-the-better-choice",
+          "name": "When UDP is the better choice",
+          "terms": [
+            "UDP",
+            "real-time",
+            "datagram"
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "web",
+      "name": "The web",
+      "summary": "A browser asking a server for a page, and everything that happens before it shows.",
+      "landmarks": [
+        {
+          "slug": "a-url-piece-by-piece",
+          "name": "A URL, piece by piece",
+          "terms": [
+            "URL",
+            "scheme",
+            "path"
+          ]
+        },
+        {
+          "slug": "request-and-response",
+          "name": "Request and response",
+          "terms": [
+            "HTTP",
+            "method",
+            "status code"
+          ]
+        },
+        {
+          "slug": "html-css-and-javascript",
+          "name": "HTML, CSS and JavaScript",
+          "terms": [
+            "HTML",
+            "CSS",
+            "JavaScript"
+          ]
+        },
+        {
+          "slug": "stateless-requests-and-cookies",
+          "name": "Stateless requests and cookies",
+          "terms": [
+            "cookie",
+            "session",
+            "stateless"
+          ]
+        },
+        {
+          "slug": "from-typing-an-address-to-seeing-a-page",
+          "name": "From typing an address to seeing a page",
+          "terms": [
+            "browser",
+            "rendering",
+            "round trip"
+          ]
+        },
+        {
+          "slug": "servers-data-centres-and-cdns",
+          "name": "Servers, data centres and CDNs",
+          "terms": [
+            "server",
+            "CDN",
+            "data centre"
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "security",
+      "name": "Encryption and trust",
+      "summary": "Keeping a conversation private and knowing who is on the other end.",
+      "landmarks": [
+        {
+          "slug": "symmetric-and-public-key-encryption",
+          "name": "Symmetric and public-key encryption",
+          "terms": [
+            "symmetric key",
+            "public key",
+            "private key"
+          ]
+        },
+        {
+          "slug": "agreeing-on-a-key-in-the-open",
+          "name": "Agreeing on a key in the open",
+          "terms": [
+            "key exchange",
+            "Diffie-Hellman"
+          ]
+        },
+        {
+          "slug": "certificates-and-who-vouches-for-them",
+          "name": "Certificates and who vouches for them",
+          "terms": [
+            "certificate",
+            "certificate authority"
+          ]
+        },
+        {
+          "slug": "what-https-hides-and-what-it-does-not",
+          "name": "What HTTPS hides and what it does not",
+          "terms": [
+            "HTTPS",
+            "TLS",
+            "metadata"
+          ]
+        },
+        {
+          "slug": "hashes-and-passwords",
+          "name": "Hashes and passwords",
+          "terms": [
+            "hash",
+            "salt",
+            "password"
+          ]
+        }
+      ]
+    }
+  ],
+  "straits": [
+    {
+      "from": "bits",
+      "to": "logic",
+      "name": "Gates compute on bits"
+    },
+    {
+      "from": "logic",
+      "to": "processor",
+      "name": "A processor is gates and a clock"
+    },
+    {
+      "from": "processor",
+      "to": "memory",
+      "name": "Instructions and data both live in memory"
+    },
+    {
+      "from": "memory",
+      "to": "operating-system",
+      "name": "Virtual memory hides the real one"
+    },
+    {
+      "from": "processor",
+      "to": "programs",
+      "name": "Compiled code is the processor's instructions"
+    },
+    {
+      "from": "operating-system",
+      "to": "programs",
+      "name": "A running program is a process"
+    },
+    {
+      "from": "operating-system",
+      "to": "packets",
+      "name": "The network is reached through system calls"
+    },
+    {
+      "from": "packets",
+      "to": "names",
+      "name": "A name becomes an address first"
+    },
+    {
+      "from": "packets",
+      "to": "reliable-delivery",
+      "name": "TCP repairs what IP drops"
+    },
+    {
+      "from": "reliable-delivery",
+      "to": "web",
+      "name": "HTTP rides on a reliable stream"
+    },
+    {
+      "from": "names",
+      "to": "web",
+      "name": "Every URL starts with a lookup"
+    },
+    {
+      "from": "web",
+      "to": "security",
+      "name": "HTTPS is HTTP inside TLS"
+    },
+    {
+      "from": "bits",
+      "to": "security",
+      "name": "Encryption is arithmetic on bits"
+    }
+  ],
+  "seas": [
+    {
+      "name": "Inside the machine",
+      "islands": [
+        "bits",
+        "logic",
+        "processor",
+        "memory"
+      ]
+    },
+    {
+      "name": "Running programs",
+      "islands": [
+        "operating-system",
+        "programs"
+      ]
+    },
+    {
+      "name": "Between machines",
+      "islands": [
+        "packets",
+        "names",
+        "reliable-delivery",
+        "web",
+        "security"
+      ]
+    }
+  ]
+}

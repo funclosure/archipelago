@@ -1,0 +1,538 @@
+{
+  "archipelago": 1,
+  "name": "Git",
+  "slug": "git",
+  "description": "從裡到外認識 Git：commit 到底是什麼、branch 和遠端怎麼移動，以及出狀況時如何不慌不忙地脫身。",
+  "by": "Archipelago",
+  "language": "zh-TW",
+  "islands": [
+    {
+      "slug": "snapshots",
+      "name": "Commit 就是快照",
+      "summary": "Git 真正保存的東西：一份份完整的快照，以內容命名，再串成歷史。",
+      "landmarks": [
+        {
+          "slug": "a-commit-is-a-snapshot-not-a-diff",
+          "name": "Commit 是快照，不是差異",
+          "terms": [
+            "快照",
+            "snapshot",
+            "commit",
+            "tree"
+          ]
+        },
+        {
+          "slug": "content-addressing-by-hash",
+          "name": "用雜湊值做內容定址",
+          "terms": [
+            "雜湊值",
+            "hash",
+            "SHA",
+            "物件 ID"
+          ]
+        },
+        {
+          "slug": "blobs-trees-and-commits",
+          "name": "Blob、tree 與 commit",
+          "terms": [
+            "blob",
+            "tree",
+            "物件",
+            "object"
+          ]
+        },
+        {
+          "slug": "parents-and-the-commit-graph",
+          "name": "Parent 與 commit 圖",
+          "terms": [
+            "parent",
+            "commit graph",
+            "有向無環圖",
+            "DAG"
+          ]
+        },
+        {
+          "slug": "why-a-commit-can-never-change",
+          "name": "為什麼 commit 永遠不會變",
+          "terms": [
+            "不可變",
+            "immutable",
+            "新的 commit"
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "staging",
+      "name": "三棵樹",
+      "summary": "工作目錄、index 和 HEAD，以及一筆修改怎麼在三者之間移動。",
+      "landmarks": [
+        {
+          "slug": "working-directory-index-head",
+          "name": "工作目錄、index、HEAD",
+          "terms": [
+            "工作目錄",
+            "working tree",
+            "index",
+            "HEAD"
+          ]
+        },
+        {
+          "slug": "what-staging-is-for",
+          "name": "暫存區是做什麼用的",
+          "terms": [
+            "暫存區",
+            "staging area",
+            "git add",
+            "部分提交"
+          ]
+        },
+        {
+          "slug": "reading-git-status",
+          "name": "讀懂 git status",
+          "terms": [
+            "untracked",
+            "modified",
+            "staged",
+            "未追蹤"
+          ]
+        },
+        {
+          "slug": "diff-between-each-pair-of-trees",
+          "name": "兩兩比較三棵樹的 diff",
+          "terms": [
+            "git diff",
+            "--staged",
+            "差異"
+          ]
+        },
+        {
+          "slug": "ignoring-files",
+          "name": "忽略檔案",
+          "terms": [
+            ".gitignore",
+            "untracked",
+            "忽略"
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "branches",
+      "name": "Branch 與 HEAD",
+      "summary": "Branch 是一個會移動的名字，指向某個 commit；HEAD 則說明你現在在哪裡。",
+      "landmarks": [
+        {
+          "slug": "a-branch-is-a-pointer-to-a-commit",
+          "name": "Branch 是指向 commit 的指標",
+          "terms": [
+            "branch",
+            "分支",
+            "ref",
+            "指標"
+          ]
+        },
+        {
+          "slug": "head-and-the-current-branch",
+          "name": "HEAD 與目前的 branch",
+          "terms": [
+            "HEAD",
+            "checkout",
+            "switch"
+          ]
+        },
+        {
+          "slug": "detached-head",
+          "name": "分離的 HEAD（detached HEAD）",
+          "terms": [
+            "detached HEAD",
+            "分離的 HEAD",
+            "commit ID"
+          ]
+        },
+        {
+          "slug": "creating-and-switching-cost-nothing",
+          "name": "建立和切換 branch 幾乎不花成本",
+          "terms": [
+            "git switch",
+            "輕量",
+            "lightweight"
+          ]
+        },
+        {
+          "slug": "tags-as-fixed-names",
+          "name": "Tag 是固定不動的名字",
+          "terms": [
+            "tag",
+            "標籤",
+            "annotated tag",
+            "release"
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "merging",
+      "name": "合併（merge）",
+      "summary": "把兩條各自發展的工作合在一起，以及兩邊改得不一樣時 Git 怎麼處理。",
+      "landmarks": [
+        {
+          "slug": "fast-forward-and-three-way-merge",
+          "name": "Fast-forward 與三方合併",
+          "terms": [
+            "fast-forward",
+            "快轉",
+            "三方合併",
+            "merge commit"
+          ]
+        },
+        {
+          "slug": "the-merge-base",
+          "name": "Merge base：共同的起點",
+          "terms": [
+            "merge base",
+            "共同祖先",
+            "common ancestor"
+          ]
+        },
+        {
+          "slug": "why-conflicts-happen",
+          "name": "為什麼會發生衝突",
+          "terms": [
+            "衝突",
+            "conflict",
+            "同一行",
+            "兩邊都改"
+          ]
+        },
+        {
+          "slug": "resolving-a-conflict",
+          "name": "解決衝突",
+          "terms": [
+            "衝突標記",
+            "conflict markers",
+            "resolve",
+            "git add"
+          ]
+        },
+        {
+          "slug": "a-merge-commit-has-two-parents",
+          "name": "Merge commit 有兩個 parent",
+          "terms": [
+            "merge commit",
+            "parent",
+            "合併提交"
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "remotes",
+      "name": "遠端（remote）",
+      "summary": "同一個儲存庫的其他副本，以及 commit 怎麼在它們之間往來。",
+      "landmarks": [
+        {
+          "slug": "a-remote-is-another-copy",
+          "name": "Remote 就是另一份副本",
+          "terms": [
+            "remote",
+            "遠端",
+            "origin",
+            "clone"
+          ]
+        },
+        {
+          "slug": "remote-tracking-branches",
+          "name": "遠端追蹤分支",
+          "terms": [
+            "origin/main",
+            "遠端追蹤分支",
+            "tracking branch"
+          ]
+        },
+        {
+          "slug": "fetch-and-pull-are-different",
+          "name": "Fetch 和 pull 不一樣",
+          "terms": [
+            "fetch",
+            "pull",
+            "merge"
+          ]
+        },
+        {
+          "slug": "push-and-why-it-gets-rejected",
+          "name": "Push，以及它為什麼被拒絕",
+          "terms": [
+            "push",
+            "non-fast-forward",
+            "rejected",
+            "被拒絕"
+          ]
+        },
+        {
+          "slug": "upstream-and-ahead-or-behind",
+          "name": "Upstream，與領先或落後",
+          "terms": [
+            "upstream",
+            "上游",
+            "ahead",
+            "behind"
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "rebasing",
+      "name": "Rebase 與改寫歷史",
+      "summary": "把 commit 搬到別處重新套用一遍，以及讓這件事保持安全的唯一規則。",
+      "landmarks": [
+        {
+          "slug": "rebase-replays-commits-as-new-ones",
+          "name": "Rebase 會把 commit 重放成新的 commit",
+          "terms": [
+            "rebase",
+            "重放",
+            "replay",
+            "新的 commit"
+          ]
+        },
+        {
+          "slug": "rebase-or-merge",
+          "name": "該用 rebase 還是 merge",
+          "terms": [
+            "線性歷史",
+            "linear history",
+            "merge commit"
+          ]
+        },
+        {
+          "slug": "interactive-rebase",
+          "name": "互動式 rebase",
+          "terms": [
+            "互動式 rebase",
+            "squash",
+            "reword",
+            "fixup"
+          ]
+        },
+        {
+          "slug": "amend-makes-a-new-commit",
+          "name": "Amend 其實是做出新的 commit",
+          "terms": [
+            "amend",
+            "--amend",
+            "修改上一個 commit"
+          ]
+        },
+        {
+          "slug": "never-rewrite-shared-history",
+          "name": "絕不改寫已經共享的歷史",
+          "terms": [
+            "force push",
+            "強制推送",
+            "共用分支",
+            "--force-with-lease"
+          ]
+        },
+        {
+          "slug": "cherry-pick",
+          "name": "Cherry-pick",
+          "terms": [
+            "cherry-pick",
+            "複製 commit",
+            "挑選"
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "undoing",
+      "name": "復原與反悔",
+      "summary": "選對回頭的路：restore、reset、revert，以及在它們底下接住你的那張安全網。",
+      "landmarks": [
+        {
+          "slug": "restore-a-file",
+          "name": "還原一個檔案",
+          "terms": [
+            "git restore",
+            "捨棄修改",
+            "discard"
+          ]
+        },
+        {
+          "slug": "reset-soft-mixed-and-hard",
+          "name": "Reset 的 soft、mixed 與 hard",
+          "terms": [
+            "reset",
+            "--soft",
+            "--mixed",
+            "--hard"
+          ]
+        },
+        {
+          "slug": "revert-adds-an-opposite-commit",
+          "name": "Revert 是加上一個反向的 commit",
+          "terms": [
+            "revert",
+            "反向 commit",
+            "公開的歷史"
+          ]
+        },
+        {
+          "slug": "the-reflog-remembers-where-you-were",
+          "name": "Reflog 記得你去過哪裡",
+          "terms": [
+            "reflog",
+            "遺失的 commit",
+            "救回"
+          ]
+        },
+        {
+          "slug": "stash-sets-work-aside",
+          "name": "Stash 把手上的工作先擱著",
+          "terms": [
+            "stash",
+            "pop",
+            "先收起來"
+          ]
+        },
+        {
+          "slug": "what-can-truly-be-lost",
+          "name": "什麼才真的會弄丟",
+          "terms": [
+            "未 commit 的修改",
+            "untracked",
+            "垃圾回收",
+            "git gc"
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "history",
+      "name": "閱讀歷史",
+      "summary": "查出改了什麼、什麼時候改的、誰改的，以及是哪個 commit 把東西弄壞的。",
+      "landmarks": [
+        {
+          "slug": "log-and-its-filters",
+          "name": "Log 與它的篩選條件",
+          "terms": [
+            "git log",
+            "--oneline",
+            "--graph"
+          ]
+        },
+        {
+          "slug": "naming-commits-relative-to-others",
+          "name": "用相對位置指稱 commit",
+          "terms": [
+            "HEAD~1",
+            "^ 符號",
+            "範圍",
+            "range"
+          ]
+        },
+        {
+          "slug": "blame-a-line",
+          "name": "Blame：查某一行是誰改的",
+          "terms": [
+            "blame",
+            "annotate",
+            "逐行歷史"
+          ]
+        },
+        {
+          "slug": "bisect-to-find-the-breaking-commit",
+          "name": "用 bisect 找出弄壞東西的 commit",
+          "terms": [
+            "bisect",
+            "二分搜尋",
+            "good 與 bad"
+          ]
+        },
+        {
+          "slug": "writing-a-commit-message-worth-reading",
+          "name": "寫出值得一讀的 commit 訊息",
+          "terms": [
+            "commit 訊息",
+            "commit message",
+            "標題",
+            "為什麼"
+          ]
+        }
+      ]
+    }
+  ],
+  "straits": [
+    {
+      "from": "snapshots",
+      "to": "branches",
+      "name": "Branch 只是替 commit 取名"
+    },
+    {
+      "from": "snapshots",
+      "to": "staging",
+      "name": "Index 就是下一張快照"
+    },
+    {
+      "from": "branches",
+      "to": "merging",
+      "name": "合併會移動 branch"
+    },
+    {
+      "from": "branches",
+      "to": "remotes",
+      "name": "遠端分支也是指標"
+    },
+    {
+      "from": "merging",
+      "to": "rebasing",
+      "name": "合併工作的兩種方式"
+    },
+    {
+      "from": "remotes",
+      "to": "rebasing",
+      "name": "改寫別人已經拿到的歷史"
+    },
+    {
+      "from": "rebasing",
+      "to": "undoing",
+      "name": "Reflog 能救回弄壞的 rebase"
+    },
+    {
+      "from": "snapshots",
+      "to": "history",
+      "name": "歷史就是 parent 連成的圖"
+    },
+    {
+      "from": "staging",
+      "to": "undoing",
+      "name": "Reset 在三棵樹之間移動"
+    }
+  ],
+  "seas": [
+    {
+      "name": "Git 存了什麼",
+      "islands": [
+        "snapshots",
+        "staging",
+        "branches"
+      ]
+    },
+    {
+      "name": "與人協作",
+      "islands": [
+        "merging",
+        "remotes",
+        "rebasing"
+      ]
+    },
+    {
+      "name": "回頭看",
+      "islands": [
+        "history",
+        "undoing"
+      ]
+    }
+  ]
+}

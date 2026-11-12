@@ -1,0 +1,603 @@
+{
+  "archipelago": 1,
+  "name": "大型語言模型如何運作",
+  "slug": "large-language-models",
+  "description": "從提示詞到回覆之間發生了什麼：token、注意力、訓練，以及為什麼一個只會預測下一個字的模型能做這麼多事，卻還是會出錯。",
+  "by": "Archipelago",
+  "language": "zh-TW",
+  "islands": [
+    {
+      "slug": "tokens",
+      "name": "Token",
+      "summary": "模型讀和寫的文字片段，和我們說的「字詞」不太一樣。",
+      "landmarks": [
+        {
+          "slug": "why-not-words-or-letters",
+          "name": "為什麼不用單字或字母",
+          "terms": [
+            "token",
+            "詞元",
+            "詞彙表",
+            "子詞"
+          ]
+        },
+        {
+          "slug": "how-a-tokenizer-splits-text",
+          "name": "Tokenizer 怎麼切文字",
+          "terms": [
+            "tokenizer",
+            "分詞器",
+            "BPE",
+            "合併"
+          ]
+        },
+        {
+          "slug": "tokens-are-numbers-to-the-model",
+          "name": "對模型來說，token 就是數字",
+          "terms": [
+            "token ID",
+            "詞彙表大小"
+          ]
+        },
+        {
+          "slug": "why-token-counts-matter",
+          "name": "為什麼 token 數量很重要",
+          "terms": [
+            "上下文長度",
+            "費用",
+            "上限"
+          ]
+        },
+        {
+          "slug": "where-tokenizing-goes-wrong",
+          "name": "切 token 會在哪裡出錯",
+          "terms": [
+            "拼字",
+            "算術",
+            "罕見字"
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "embeddings",
+      "name": "嵌入（embedding）",
+      "summary": "把每個 token 變成一串數字，讓它們的幾何關係帶著意義。",
+      "landmarks": [
+        {
+          "slug": "a-token-becomes-a-vector",
+          "name": "Token 變成向量",
+          "terms": [
+            "embedding",
+            "嵌入",
+            "向量",
+            "維度"
+          ]
+        },
+        {
+          "slug": "near-means-similar",
+          "name": "距離近，意思就相近",
+          "terms": [
+            "相似度",
+            "距離",
+            "餘弦相似度"
+          ]
+        },
+        {
+          "slug": "directions-that-carry-meaning",
+          "name": "帶有意義的方向",
+          "terms": [
+            "方向",
+            "類比",
+            "特徵"
+          ]
+        },
+        {
+          "slug": "where-the-order-of-words-comes-from",
+          "name": "字的先後順序從哪裡來",
+          "terms": [
+            "位置",
+            "位置編碼",
+            "positional encoding"
+          ]
+        },
+        {
+          "slug": "embeddings-are-learned-not-designed",
+          "name": "嵌入是學出來的，不是設計出來的",
+          "terms": [
+            "學習而來",
+            "參數"
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "attention",
+      "name": "注意力（attention）",
+      "summary": "每個 token 怎麼從前面的 token 取得它需要的資訊。",
+      "landmarks": [
+        {
+          "slug": "every-token-looks-at-the-others",
+          "name": "每個 token 都會看其他 token",
+          "terms": [
+            "注意力",
+            "attention",
+            "上下文",
+            "權重"
+          ]
+        },
+        {
+          "slug": "queries-keys-and-values",
+          "name": "Query、key 與 value",
+          "terms": [
+            "query",
+            "key",
+            "value"
+          ]
+        },
+        {
+          "slug": "many-heads-many-kinds-of-relation",
+          "name": "多個 head，多種關係",
+          "terms": [
+            "注意力頭",
+            "attention head",
+            "多頭注意力",
+            "multi-head"
+          ]
+        },
+        {
+          "slug": "looking-only-backwards",
+          "name": "只能往回看",
+          "terms": [
+            "因果遮罩",
+            "causal mask",
+            "自迴歸"
+          ]
+        },
+        {
+          "slug": "why-attention-replaced-recurrence",
+          "name": "為什麼注意力取代了循環結構",
+          "terms": [
+            "平行運算",
+            "長距離依賴",
+            "循環神經網路",
+            "RNN"
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "transformer",
+      "name": "Transformer",
+      "summary": "一個區塊，重複疊上幾十層，就成了整個模型。",
+      "landmarks": [
+        {
+          "slug": "attention-then-a-feed-forward-layer",
+          "name": "先注意力，再前饋層",
+          "terms": [
+            "層",
+            "前饋層",
+            "feed-forward",
+            "MLP"
+          ]
+        },
+        {
+          "slug": "the-residual-stream",
+          "name": "殘差流（residual stream）",
+          "terms": [
+            "殘差連接",
+            "residual connection",
+            "skip connection"
+          ]
+        },
+        {
+          "slug": "normalisation-keeps-it-trainable",
+          "name": "正規化讓模型訓練得起來",
+          "terms": [
+            "層正規化",
+            "layer norm",
+            "穩定性"
+          ]
+        },
+        {
+          "slug": "depth-builds-up-abstraction",
+          "name": "層數越深，抽象程度越高",
+          "terms": [
+            "層",
+            "深度",
+            "特徵"
+          ]
+        },
+        {
+          "slug": "parameters-and-what-a-models-size-means",
+          "name": "參數，以及模型「大小」的意思",
+          "terms": [
+            "參數",
+            "權重",
+            "十億"
+          ]
+        },
+        {
+          "slug": "from-the-last-layer-to-a-next-token-guess",
+          "name": "從最後一層到猜下一個 token",
+          "terms": [
+            "logits",
+            "softmax",
+            "機率"
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "pretraining",
+      "name": "預訓練",
+      "summary": "從海量的文字裡學習，方法是猜接下來是什麼。",
+      "landmarks": [
+        {
+          "slug": "the-task-is-next-token-prediction",
+          "name": "任務就是預測下一個 token",
+          "terms": [
+            "下一個 token 預測",
+            "自監督式學習",
+            "self-supervised"
+          ]
+        },
+        {
+          "slug": "loss-says-how-wrong-a-guess-was",
+          "name": "Loss 說明猜得有多離譜",
+          "terms": [
+            "損失",
+            "loss",
+            "交叉熵",
+            "cross-entropy"
+          ]
+        },
+        {
+          "slug": "gradient-descent-nudges-every-weight",
+          "name": "梯度下降一點一點推動每個權重",
+          "terms": [
+            "梯度下降",
+            "反向傳播",
+            "學習率"
+          ]
+        },
+        {
+          "slug": "why-predicting-text-teaches-about-the-world",
+          "name": "為什麼預測文字能學到世界的知識",
+          "terms": [
+            "壓縮",
+            "泛化",
+            "世界知識"
+          ]
+        },
+        {
+          "slug": "data-compute-and-scale",
+          "name": "資料、算力與規模",
+          "terms": [
+            "訓練資料",
+            "GPU",
+            "規模化"
+          ]
+        },
+        {
+          "slug": "the-knowledge-cutoff",
+          "name": "知識截止日",
+          "terms": [
+            "知識截止日",
+            "cutoff",
+            "訓練日期"
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "fine-tuning",
+      "name": "微調與對齊",
+      "summary": "把一個文字預測器變成會回答、會拒絕、會聽從指示的助理。",
+      "landmarks": [
+        {
+          "slug": "from-completing-text-to-holding-a-chat",
+          "name": "從接續文字到進行對話",
+          "terms": [
+            "對話格式",
+            "指令微調",
+            "instruction tuning"
+          ]
+        },
+        {
+          "slug": "fine-tuning-on-examples",
+          "name": "用範例微調",
+          "terms": [
+            "微調",
+            "fine-tuning",
+            "監督式學習",
+            "範例"
+          ]
+        },
+        {
+          "slug": "learning-from-human-preferences",
+          "name": "從人類的偏好中學習",
+          "terms": [
+            "強化學習",
+            "回饋",
+            "RLHF"
+          ]
+        },
+        {
+          "slug": "the-system-prompt",
+          "name": "系統提示詞",
+          "terms": [
+            "系統提示詞",
+            "system prompt",
+            "指示",
+            "角色"
+          ]
+        },
+        {
+          "slug": "what-alignment-is-trying-to-achieve",
+          "name": "對齊想達成什麼",
+          "terms": [
+            "對齊",
+            "alignment",
+            "安全",
+            "價值觀"
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "generation",
+      "name": "生成",
+      "summary": "回覆怎麼一次一個 token 寫出來，以及為什麼同樣的提示詞會得到不同的答案。",
+      "landmarks": [
+        {
+          "slug": "one-token-then-again",
+          "name": "一個 token，然後再一個",
+          "terms": [
+            "自迴歸",
+            "autoregressive",
+            "解碼",
+            "迴圈"
+          ]
+        },
+        {
+          "slug": "sampling-and-temperature",
+          "name": "取樣與溫度",
+          "terms": [
+            "取樣",
+            "sampling",
+            "溫度",
+            "temperature",
+            "隨機性"
+          ]
+        },
+        {
+          "slug": "top-k-and-top-p",
+          "name": "Top-k 與 top-p",
+          "terms": [
+            "top-p",
+            "nucleus sampling",
+            "top-k"
+          ]
+        },
+        {
+          "slug": "why-it-cannot-go-back-and-revise",
+          "name": "為什麼它不能回頭修改",
+          "terms": [
+            "由左到右",
+            "寫了就定"
+          ]
+        },
+        {
+          "slug": "thinking-before-answering",
+          "name": "先思考再回答",
+          "terms": [
+            "推理",
+            "思維鏈",
+            "chain of thought",
+            "草稿區"
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "context",
+      "name": "上下文與工具",
+      "summary": "模型一次能看到的所有東西，以及它怎麼伸手到這之外。",
+      "landmarks": [
+        {
+          "slug": "the-context-window-is-its-working-memory",
+          "name": "上下文視窗就是它的工作記憶",
+          "terms": [
+            "上下文視窗",
+            "context window",
+            "工作記憶"
+          ]
+        },
+        {
+          "slug": "no-memory-between-conversations",
+          "name": "對話之間沒有記憶",
+          "terms": [
+            "無狀態",
+            "stateless",
+            "記憶"
+          ]
+        },
+        {
+          "slug": "learning-from-examples-in-the-prompt",
+          "name": "從提示詞裡的範例學習",
+          "terms": [
+            "few-shot",
+            "少樣本",
+            "in-context learning",
+            "情境內學習"
+          ]
+        },
+        {
+          "slug": "retrieval-brings-in-documents",
+          "name": "檢索把文件帶進來",
+          "terms": [
+            "檢索",
+            "RAG",
+            "搜尋"
+          ]
+        },
+        {
+          "slug": "tools-and-agents",
+          "name": "工具與 agent",
+          "terms": [
+            "工具使用",
+            "function calling",
+            "agent",
+            "代理"
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "limits",
+      "name": "極限與失誤",
+      "summary": "這些模型會在哪裡出錯，以及怎麼看出來。",
+      "landmarks": [
+        {
+          "slug": "hallucination",
+          "name": "幻覺（hallucination）",
+          "terms": [
+            "幻覺",
+            "hallucination",
+            "虛構",
+            "流暢"
+          ]
+        },
+        {
+          "slug": "fluent-is-not-the-same-as-true",
+          "name": "流暢不等於正確",
+          "terms": [
+            "信心",
+            "校準",
+            "calibration"
+          ]
+        },
+        {
+          "slug": "bias-from-the-training-data",
+          "name": "訓練資料帶來的偏見",
+          "terms": [
+            "偏見",
+            "bias",
+            "訓練資料"
+          ]
+        },
+        {
+          "slug": "prompt-injection",
+          "name": "提示詞注入（prompt injection）",
+          "terms": [
+            "提示詞注入",
+            "prompt injection",
+            "不可信的輸入"
+          ]
+        },
+        {
+          "slug": "how-models-are-evaluated",
+          "name": "模型是怎麼被評估的",
+          "terms": [
+            "基準測試",
+            "benchmark",
+            "評估"
+          ]
+        },
+        {
+          "slug": "what-nobody-yet-understands-inside",
+          "name": "模型內部還沒有人弄懂的事",
+          "terms": [
+            "可解釋性",
+            "interpretability",
+            "黑盒子"
+          ]
+        }
+      ]
+    }
+  ],
+  "straits": [
+    {
+      "from": "tokens",
+      "to": "embeddings",
+      "name": "每個 token ID 挑出一個向量"
+    },
+    {
+      "from": "embeddings",
+      "to": "attention",
+      "name": "注意力把向量混合起來"
+    },
+    {
+      "from": "attention",
+      "to": "transformer",
+      "name": "注意力占每個區塊的一半"
+    },
+    {
+      "from": "transformer",
+      "to": "pretraining",
+      "name": "訓練決定了區塊裡的權重"
+    },
+    {
+      "from": "pretraining",
+      "to": "fine-tuning",
+      "name": "同樣的學習方式，換成挑選過的資料"
+    },
+    {
+      "from": "transformer",
+      "to": "generation",
+      "name": "最後一層給出機率"
+    },
+    {
+      "from": "tokens",
+      "to": "context",
+      "name": "視窗大小以 token 計算"
+    },
+    {
+      "from": "generation",
+      "to": "context",
+      "name": "寫出的每個 token 都加入上下文"
+    },
+    {
+      "from": "pretraining",
+      "to": "limits",
+      "name": "它學到的是什麼常見，不是什麼為真"
+    },
+    {
+      "from": "generation",
+      "to": "limits",
+      "name": "取樣可能走上錯的路就回不來"
+    },
+    {
+      "from": "fine-tuning",
+      "to": "limits",
+      "name": "指示有可能被蓋過"
+    }
+  ],
+  "seas": [
+    {
+      "name": "內部構造",
+      "islands": [
+        "tokens",
+        "embeddings",
+        "attention",
+        "transformer"
+      ]
+    },
+    {
+      "name": "如何學習",
+      "islands": [
+        "pretraining",
+        "fine-tuning"
+      ]
+    },
+    {
+      "name": "實際使用",
+      "islands": [
+        "generation",
+        "context",
+        "limits"
+      ]
+    }
+  ]
+}

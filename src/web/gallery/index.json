@@ -1,0 +1,238 @@
+[
+  {
+    "file": "computers-and-internet.archipelago.json",
+    "slug": "computers-and-internet",
+    "language": "en",
+    "name": "How computers and the internet work",
+    "description": "From a switch that is on or off to a web page arriving over an encrypted connection: each layer, and what it hides from the one above.",
+    "by": "Archipelago",
+    "islands": [
+      "Bits and encoding",
+      "Logic and circuits",
+      "The processor",
+      "Memory and storage",
+      "The operating system",
+      "From code to running program",
+      "Packets and addresses",
+      "Names and DNS",
+      "Reliable delivery",
+      "The web",
+      "Encryption and trust"
+    ],
+    "landmarks": 57
+  },
+  {
+    "file": "computers-and-internet.zh-TW.archipelago.json",
+    "slug": "computers-and-internet",
+    "language": "zh-TW",
+    "name": "電腦與網際網路如何運作",
+    "description": "從一個只有開和關的開關，到一張網頁經由加密連線送到你眼前：一層一層往上看，以及每一層替上一層藏起了什麼。",
+    "by": "Archipelago",
+    "islands": [
+      "位元與編碼",
+      "邏輯與電路",
+      "處理器",
+      "記憶體與儲存",
+      "作業系統",
+      "從程式碼到執行中的程式",
+      "封包與位址",
+      "名稱與 DNS",
+      "可靠的傳輸",
+      "Web（全球資訊網）",
+      "加密與信任"
+    ],
+    "landmarks": 57
+  },
+  {
+    "file": "git.archipelago.json",
+    "slug": "git",
+    "language": "en",
+    "name": "Git",
+    "description": "Git from the inside out: what a commit really is, how branches and remotes move, and how to get out of trouble without fear.",
+    "by": "Archipelago",
+    "islands": [
+      "Commits as snapshots",
+      "The three trees",
+      "Branches and HEAD",
+      "Merging",
+      "Remotes",
+      "Rebasing and rewriting",
+      "Undoing things",
+      "Reading history"
+    ],
+    "landmarks": 42
+  },
+  {
+    "file": "git.zh-TW.archipelago.json",
+    "slug": "git",
+    "language": "zh-TW",
+    "name": "Git",
+    "description": "從裡到外認識 Git：commit 到底是什麼、branch 和遠端怎麼移動，以及出狀況時如何不慌不忙地脫身。",
+    "by": "Archipelago",
+    "islands": [
+      "Commit 就是快照",
+      "三棵樹",
+      "Branch 與 HEAD",
+      "合併（merge）",
+      "遠端（remote）",
+      "Rebase 與改寫歷史",
+      "復原與反悔",
+      "閱讀歷史"
+    ],
+    "landmarks": 42
+  },
+  {
+    "file": "large-language-models.archipelago.json",
+    "slug": "large-language-models",
+    "language": "en",
+    "name": "How large language models work",
+    "description": "What happens between a prompt and a reply: tokens, attention, training, and why a model that only predicts the next word can do so much and still be wrong.",
+    "by": "Archipelago",
+    "islands": [
+      "Tokens",
+      "Embeddings",
+      "Attention",
+      "The transformer",
+      "Pretraining",
+      "Fine-tuning and alignment",
+      "Generation",
+      "Context and tools",
+      "Limits and failure"
+    ],
+    "landmarks": 48
+  },
+  {
+    "file": "large-language-models.zh-TW.archipelago.json",
+    "slug": "large-language-models",
+    "language": "zh-TW",
+    "name": "大型語言模型如何運作",
+    "description": "從提示詞到回覆之間發生了什麼：token、注意力、訓練，以及為什麼一個只會預測下一個字的模型能做這麼多事，卻還是會出錯。",
+    "by": "Archipelago",
+    "islands": [
+      "Token",
+      "嵌入（embedding）",
+      "注意力（attention）",
+      "Transformer",
+      "預訓練",
+      "微調與對齊",
+      "生成",
+      "上下文與工具",
+      "極限與失誤"
+    ],
+    "landmarks": 48
+  },
+  {
+    "file": "music-theory.archipelago.json",
+    "slug": "music-theory",
+    "language": "en",
+    "name": "Music theory",
+    "description": "Why some notes sound good together: the handful of ideas behind scales, chords, rhythm and the shape of a song, for someone who plays or listens and wants to know why.",
+    "by": "Archipelago",
+    "islands": [
+      "Pitch and notes",
+      "Rhythm and metre",
+      "Intervals",
+      "Scales and keys",
+      "Chords",
+      "Harmony and progressions",
+      "Melody",
+      "Form"
+    ],
+    "landmarks": 44
+  },
+  {
+    "file": "music-theory.zh-TW.archipelago.json",
+    "slug": "music-theory",
+    "language": "zh-TW",
+    "name": "樂理",
+    "description": "為什麼有些音放在一起就是好聽：音階、和弦、節奏與曲式背後的幾個核心觀念，寫給會演奏或愛聽音樂、又想知道為什麼的人。",
+    "by": "Archipelago",
+    "islands": [
+      "音高與音名",
+      "節奏與拍子",
+      "音程",
+      "音階與調",
+      "和弦",
+      "和聲與和弦進行",
+      "旋律",
+      "曲式"
+    ],
+    "landmarks": 44
+  },
+  {
+    "file": "reading-studies.archipelago.json",
+    "slug": "reading-studies",
+    "language": "en",
+    "name": "Statistics for reading studies",
+    "description": "Enough statistics to read a study or a headline and judge it yourself: what the numbers claim, what they cannot show, and the usual ways they mislead.",
+    "by": "Archipelago",
+    "islands": [
+      "Describing data",
+      "Samples and populations",
+      "Uncertainty",
+      "Hypothesis tests",
+      "Effect size",
+      "Correlation and causation",
+      "Experiments",
+      "How numbers mislead"
+    ],
+    "landmarks": 43
+  },
+  {
+    "file": "reading-studies.zh-TW.archipelago.json",
+    "slug": "reading-studies",
+    "language": "zh-TW",
+    "name": "讀懂研究的統計學",
+    "description": "足夠讓你讀一篇研究或一則新聞標題、並且自己下判斷的統計學：這些數字主張了什麼、無法證明什麼，以及它們常用哪些方式誤導人。",
+    "by": "Archipelago",
+    "islands": [
+      "描述資料",
+      "樣本與母體",
+      "不確定性",
+      "假設檢定",
+      "效果量",
+      "相關與因果",
+      "實驗",
+      "數字如何誤導人"
+    ],
+    "landmarks": 43
+  },
+  {
+    "file": "sql-and-databases.archipelago.json",
+    "slug": "sql-and-databases",
+    "language": "en",
+    "name": "SQL and relational databases",
+    "description": "Thinking in tables: how to model data, ask questions of it, and understand why a query is fast, slow, or wrong.",
+    "by": "Archipelago",
+    "islands": [
+      "The relational model",
+      "Schema design",
+      "Basic queries",
+      "Joins",
+      "Grouping and aggregates",
+      "Indexes",
+      "Transactions",
+      "The query planner"
+    ],
+    "landmarks": 44
+  },
+  {
+    "file": "sql-and-databases.zh-TW.archipelago.json",
+    "slug": "sql-and-databases",
+    "language": "zh-TW",
+    "name": "SQL 與關聯式資料庫",
+    "description": "用資料表思考：怎麼為資料建模、怎麼向它提問，以及怎麼弄懂一個查詢為什麼快、為什麼慢、為什麼錯。",
+    "by": "Archipelago",
+    "islands": [
+      "關聯式模型",
+      "Schema 設計",
+      "基本查詢",
+      "JOIN（聯結）",
+      "分組與彙總",
+      "索引",
+      "交易（transaction）",
+      "查詢規劃器"
+    ],
+    "landmarks": 44
+  }
+]

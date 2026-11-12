@@ -64,6 +64,7 @@ A map file is one domain's structure as JSON: its islands at every scale, their 
 - **Export**: *Export this map* in the domain menu, or `archipelago map export --domain <slug> [--out map.json]`.
 - **Import**: *Import a map…* under New domain (paste it or choose the file), or `archipelago map import --file map.json` (`--file -` reads stdin). An import always makes a new domain and never changes one that is there. No model runs.
 - **From another AI**: the import view's *Copy the prompt* gives ChatGPT, Gemini, Claude or a coding agent the format and the rules; paste what it writes back.
+- **Shared maps**: <https://archipelago.school/maps> and *Start from a shared map…* under New domain list maps anyone can take for free (Git, how computers and the internet work, large language models, SQL, music theory, statistics). They are files in [`src/web/gallery/`](src/web/gallery/); add yours by pull request ([how](src/web/gallery/README.md)).
 
 ```json
 {

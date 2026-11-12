@@ -12,6 +12,7 @@ const PAGES = [
   { name: "about", least: 25, scriptOnly: ["copied", "copy"] },
   { name: "terms", least: 30, scriptOnly: [] },
   { name: "privacy", least: 30, scriptOnly: [] },
+  { name: "maps", least: 12, scriptOnly: ["by", "download", "failed", "meta", "open"] },
 ];
 
 /** Each `data-t` element's text as written, by `table.key`, with a `data-slot` child read back as its `{slot}`. */

@@ -53,7 +53,7 @@ export type MapIsland = {
   straits?: MapStrait[];
   seas?: MapSea[];
 };
-export type MapFile = { archipelago: number; name: string; slug?: string; description?: string; language?: string; islands: MapIsland[]; straits?: MapStrait[]; seas?: MapSea[] };
+export type MapFile = { archipelago: number; name: string; slug?: string; description?: string; language?: string; /** Who made it: a credit shown in the gallery, kept by no domain. */ by?: string; islands: MapIsland[]; straits?: MapStrait[]; seas?: MapSea[] };
 
 const island: z.ZodType<MapIsland> = z.lazy(() =>
   z
@@ -77,6 +77,7 @@ export const mapFileSchema = z.object({
   slug: slugSchema.optional(),
   description: z.string().trim().max(DESCRIPTION_MAX).optional(),
   language: z.string().trim().max(20).optional(),
+  by: oneLine(80).optional(),
   islands: z.array(island).min(1).max(MAP_SCALE_MAX),
   straits: z.array(strait).max(60).optional(),
   seas: z.array(sea).max(8).optional(),

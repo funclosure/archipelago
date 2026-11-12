@@ -1,0 +1,529 @@
+{
+  "archipelago": 1,
+  "name": "讀懂研究的統計學",
+  "slug": "reading-studies",
+  "description": "足夠讓你讀一篇研究或一則新聞標題、並且自己下判斷的統計學：這些數字主張了什麼、無法證明什麼，以及它們常用哪些方式誤導人。",
+  "by": "Archipelago",
+  "language": "zh-TW",
+  "islands": [
+    {
+      "slug": "describing",
+      "name": "描述資料",
+      "summary": "用幾個數字概括一大堆數字，又不把要緊的東西藏起來。",
+      "landmarks": [
+        {
+          "slug": "mean-median-and-when-they-differ",
+          "name": "平均數、中位數，以及兩者何時不同",
+          "terms": [
+            "平均數",
+            "中位數",
+            "偏態"
+          ]
+        },
+        {
+          "slug": "spread",
+          "name": "離散程度",
+          "terms": [
+            "標準差",
+            "變異數",
+            "全距"
+          ]
+        },
+        {
+          "slug": "the-shape-of-a-distribution",
+          "name": "分布的形狀",
+          "terms": [
+            "分布",
+            "直方圖",
+            "離群值"
+          ]
+        },
+        {
+          "slug": "the-normal-curve-and-where-it-fails",
+          "name": "常態曲線，以及它在哪裡不管用",
+          "terms": [
+            "常態分布",
+            "鐘形曲線",
+            "厚尾"
+          ]
+        },
+        {
+          "slug": "percentages-and-percentage-points",
+          "name": "百分比與百分點",
+          "terms": [
+            "百分點",
+            "基數",
+            "相對變化"
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "sampling",
+      "name": "樣本與母體",
+      "summary": "問一部分人來了解所有人，以及這件事怎麼出錯。",
+      "landmarks": [
+        {
+          "slug": "sample-and-population",
+          "name": "樣本與母體",
+          "terms": [
+            "樣本",
+            "母體",
+            "估計"
+          ]
+        },
+        {
+          "slug": "random-sampling",
+          "name": "隨機抽樣",
+          "terms": [
+            "隨機抽樣",
+            "隨機樣本",
+            "代表性"
+          ]
+        },
+        {
+          "slug": "selection-bias",
+          "name": "選擇偏誤",
+          "terms": [
+            "選擇偏誤",
+            "自我選擇",
+            "便利抽樣"
+          ]
+        },
+        {
+          "slug": "survivorship-bias",
+          "name": "倖存者偏誤",
+          "terms": [
+            "倖存者偏誤",
+            "遺漏的資料"
+          ]
+        },
+        {
+          "slug": "why-size-is-not-everything",
+          "name": "為什麼樣本大不代表一切",
+          "terms": [
+            "樣本數",
+            "偏誤",
+            "大而偏"
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "uncertainty",
+      "name": "不確定性",
+      "summary": "從樣本得到的估計，可能離真相多遠。",
+      "landmarks": [
+        {
+          "slug": "sampling-variation",
+          "name": "抽樣變異",
+          "terms": [
+            "抽樣變異",
+            "機遇",
+            "重複抽樣"
+          ]
+        },
+        {
+          "slug": "standard-error",
+          "name": "標準誤",
+          "terms": [
+            "標準誤",
+            "standard error",
+            "精確度"
+          ]
+        },
+        {
+          "slug": "confidence-intervals",
+          "name": "信賴區間",
+          "terms": [
+            "信賴區間",
+            "95%",
+            "範圍"
+          ]
+        },
+        {
+          "slug": "margin-of-error-in-polls",
+          "name": "民調的誤差範圍",
+          "terms": [
+            "抽樣誤差",
+            "誤差範圍",
+            "民調"
+          ]
+        },
+        {
+          "slug": "why-a-bigger-sample-helps-only-so-much",
+          "name": "為什麼樣本再大，幫助也有限",
+          "terms": [
+            "平方根",
+            "報酬遞減"
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "testing",
+      "name": "假設檢定",
+      "summary": "p 值說了什麼，以及它沒說的許多事。",
+      "landmarks": [
+        {
+          "slug": "the-null-hypothesis",
+          "name": "虛無假設",
+          "terms": [
+            "虛無假設",
+            "null hypothesis",
+            "沒有效果"
+          ]
+        },
+        {
+          "slug": "what-a-p-value-is",
+          "name": "p 值是什麼",
+          "terms": [
+            "p 值",
+            "機率",
+            "同樣極端"
+          ]
+        },
+        {
+          "slug": "what-a-p-value-is-not",
+          "name": "p 值不是什麼",
+          "terms": [
+            "誤解",
+            "假設為真的機率"
+          ]
+        },
+        {
+          "slug": "statistically-significant",
+          "name": "統計上顯著",
+          "terms": [
+            "顯著性",
+            "顯著水準",
+            "門檻",
+            "0.05"
+          ]
+        },
+        {
+          "slug": "two-kinds-of-error",
+          "name": "兩種錯誤",
+          "terms": [
+            "偽陽性",
+            "偽陰性",
+            "檢定力"
+          ]
+        },
+        {
+          "slug": "testing-many-things-at-once",
+          "name": "一次檢定很多件事",
+          "terms": [
+            "多重比較",
+            "p-hacking"
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "effect-size",
+      "name": "效果量",
+      "summary": "一個真實存在的差異，是不是也大到值得在意。",
+      "landmarks": [
+        {
+          "slug": "significant-is-not-the-same-as-important",
+          "name": "顯著不等於重要",
+          "terms": [
+            "效果量",
+            "effect size",
+            "實務顯著性"
+          ]
+        },
+        {
+          "slug": "relative-and-absolute-risk",
+          "name": "相對風險與絕對風險",
+          "terms": [
+            "相對風險",
+            "絕對風險",
+            "風險加倍"
+          ]
+        },
+        {
+          "slug": "number-needed-to-treat",
+          "name": "需治療人數（NNT）",
+          "terms": [
+            "需治療人數",
+            "NNT",
+            "益一需治數"
+          ]
+        },
+        {
+          "slug": "base-rates",
+          "name": "基本比率",
+          "terms": [
+            "基本比率",
+            "base rate",
+            "事前機率",
+            "誤報"
+          ]
+        },
+        {
+          "slug": "odds-ratios-in-plain-words",
+          "name": "白話講勝算比",
+          "terms": [
+            "勝算比",
+            "odds ratio",
+            "勝算",
+            "風險"
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "correlation",
+      "name": "相關與因果",
+      "summary": "兩件事一起變動，以及可能造成這種現象的各種原因。",
+      "landmarks": [
+        {
+          "slug": "what-a-correlation-measures",
+          "name": "相關衡量的是什麼",
+          "terms": [
+            "相關",
+            "相關係數",
+            "散布圖"
+          ]
+        },
+        {
+          "slug": "confounding",
+          "name": "干擾因子（confounding）",
+          "terms": [
+            "干擾因子",
+            "混淆變項",
+            "confounder",
+            "第三變數"
+          ]
+        },
+        {
+          "slug": "reverse-causation",
+          "name": "反向因果",
+          "terms": [
+            "反向因果",
+            "因果方向"
+          ]
+        },
+        {
+          "slug": "controlling-for-a-variable",
+          "name": "控制某個變數",
+          "terms": [
+            "校正",
+            "迴歸",
+            "控制變數"
+          ]
+        },
+        {
+          "slug": "simpsons-paradox",
+          "name": "辛普森悖論",
+          "terms": [
+            "辛普森悖論",
+            "子群體",
+            "逆轉"
+          ]
+        },
+        {
+          "slug": "regression-to-the-mean",
+          "name": "向平均值迴歸",
+          "terms": [
+            "向平均值迴歸",
+            "極端值",
+            "自然波動"
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "experiments",
+      "name": "實驗",
+      "summary": "研究要怎麼設計，才能證明一件事造成另一件事。",
+      "landmarks": [
+        {
+          "slug": "why-randomising-works",
+          "name": "隨機分派為什麼有效",
+          "terms": [
+            "隨機化",
+            "隨機分派"
+          ]
+        },
+        {
+          "slug": "control-groups-and-placebos",
+          "name": "對照組與安慰劑",
+          "terms": [
+            "對照組",
+            "安慰劑"
+          ]
+        },
+        {
+          "slug": "blinding",
+          "name": "盲法（blinding）",
+          "terms": [
+            "盲法",
+            "雙盲",
+            "預期心理"
+          ]
+        },
+        {
+          "slug": "observational-studies",
+          "name": "觀察性研究",
+          "terms": [
+            "觀察性研究",
+            "世代研究",
+            "病例對照研究"
+          ]
+        },
+        {
+          "slug": "what-a-studys-result-applies-to",
+          "name": "研究結果適用於誰",
+          "terms": [
+            "外推",
+            "外在效度",
+            "external validity"
+          ]
+        },
+        {
+          "slug": "meta-analysis",
+          "name": "統合分析",
+          "terms": [
+            "統合分析",
+            "meta-analysis",
+            "系統性回顧",
+            "合併結果"
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "pitfalls",
+      "name": "數字如何誤導人",
+      "summary": "一再出現的手法和無心的錯誤，學會之後你就認得出來。",
+      "landmarks": [
+        {
+          "slug": "cherry-picked-results",
+          "name": "挑著報的結果",
+          "terms": [
+            "選擇性報告",
+            "cherry-picking",
+            "只挑好的講"
+          ]
+        },
+        {
+          "slug": "publication-bias-and-replication",
+          "name": "發表偏誤與再現性",
+          "terms": [
+            "發表偏誤",
+            "再現性",
+            "replication",
+            "抽屜問題"
+          ]
+        },
+        {
+          "slug": "misleading-charts",
+          "name": "誤導人的圖表",
+          "terms": [
+            "截斷的座標軸",
+            "刻度",
+            "圖表"
+          ]
+        },
+        {
+          "slug": "averages-that-hide-groups",
+          "name": "把群體藏起來的平均數",
+          "terms": [
+            "整體數字",
+            "子群體",
+            "生態謬誤"
+          ]
+        },
+        {
+          "slug": "questions-to-ask-of-any-study",
+          "name": "面對任何研究都該問的問題",
+          "terms": [
+            "研究了誰",
+            "跟什麼比",
+            "差多少"
+          ]
+        }
+      ]
+    }
+  ],
+  "straits": [
+    {
+      "from": "describing",
+      "to": "sampling",
+      "name": "摘要描述的只是樣本"
+    },
+    {
+      "from": "sampling",
+      "to": "uncertainty",
+      "name": "隨機樣本的變動有規律可循"
+    },
+    {
+      "from": "uncertainty",
+      "to": "testing",
+      "name": "檢定和區間說的是同一件事"
+    },
+    {
+      "from": "testing",
+      "to": "effect-size",
+      "name": "顯著與否，跟大小無關"
+    },
+    {
+      "from": "uncertainty",
+      "to": "effect-size",
+      "name": "效果要連同它的區間一起看"
+    },
+    {
+      "from": "correlation",
+      "to": "experiments",
+      "name": "隨機分派排除了干擾因子"
+    },
+    {
+      "from": "sampling",
+      "to": "experiments",
+      "name": "研究了誰，決定結果適用於誰"
+    },
+    {
+      "from": "testing",
+      "to": "pitfalls",
+      "name": "做了很多檢定，只報了幾個"
+    },
+    {
+      "from": "correlation",
+      "to": "pitfalls",
+      "name": "把相關說成因果"
+    },
+    {
+      "from": "describing",
+      "to": "pitfalls",
+      "name": "摘要可能藏住分布的形狀"
+    }
+  ],
+  "seas": [
+    {
+      "name": "描述資料",
+      "islands": [
+        "describing",
+        "sampling"
+      ]
+    },
+    {
+      "name": "從樣本到結論",
+      "islands": [
+        "uncertainty",
+        "testing",
+        "effect-size"
+      ]
+    },
+    {
+      "name": "為什麼會這樣",
+      "islands": [
+        "correlation",
+        "experiments",
+        "pitfalls"
+      ]
+    }
+  ]
+}

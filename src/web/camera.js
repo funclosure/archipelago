@@ -42,9 +42,13 @@ export function createCamera() {
       const ah = Math.max(1, h - top - bottom);
       return { x: left + aw / 2 - point.x * scale, y: top + ah / 2 - point.y * scale, scale };
     },
-    /** True while the camera sits where `fit` last put it (the reader has not panned or zoomed since). */
+    /**
+     * True while the camera sits where `fit` last put it (the reader has not panned or zoomed since), or is on its
+     * way there: a home that moves during that glide (the strip wraps, new islands settle) is still followed.
+     */
     atHome() {
-      return !anim && Math.abs(cam.x - home.x) < 0.5 && Math.abs(cam.y - home.y) < 0.5 && Math.abs(cam.scale - home.scale) < 1e-6;
+      if (anim) return anim.home;
+      return Math.abs(cam.x - home.x) < 0.5 && Math.abs(cam.y - home.y) < 0.5 && Math.abs(cam.scale - home.scale) < 1e-6;
     },
     /** The select zoom: a step in from home, unless the reader is already closer. */
     closer() {
@@ -74,7 +78,7 @@ export function createCamera() {
       anim = null;
     },
     animateTo(target, ms = 500) {
-      anim = { from: { ...cam }, to: target, start: performance.now(), ms };
+      anim = { from: { ...cam }, to: target, start: performance.now(), ms, home: target === home };
     },
     tick(now) {
       if (!anim) return false;
