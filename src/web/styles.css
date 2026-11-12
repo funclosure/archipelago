@@ -519,7 +519,7 @@ body.pane-open .board { right: var(--pane-w); }
 .board .head button { height: 26px; padding: 0 10px; display: inline-flex; align-items: center; justify-content: center; line-height: 1; white-space: nowrap; flex: none; }
 .board .head .close { position: absolute; top: 12px; right: 20px; width: 26px; padding: 0; }
 .board .head .close svg { display: block; }
-.board button { background: transparent; border: 1px solid var(--line-03); color: var(--text); border-radius: 999px; padding: 4px 10px; font: 12px system-ui, sans-serif; cursor: pointer; }
+.board button { background: transparent; border: 1px solid var(--line-03); color: var(--text); border-radius: 999px; padding: 5px 12px; font: 12px/1.3 system-ui, sans-serif; cursor: pointer; text-align: left; }
 .board button:hover { border-color: var(--lamp); color: var(--lamp); }
 .board button.primary { background: var(--lamp); color: var(--sea); border-color: var(--lamp); }
 .board button.primary:hover { color: var(--sea); }
@@ -662,7 +662,7 @@ body.empty .board-hint { display: none; }
 .menu .mi.new { color: var(--lamp); }
 
 /* New domain: one field, over a scrim on the map; with no domains yet (.first) it is the whole page. */
-.new-domain { position: fixed; inset: 0; z-index: 6; display: flex; justify-content: center; align-items: flex-start; padding: 12vh 16px 16px; background: var(--scrim); overflow-y: auto; }
+.new-domain { position: fixed; inset: 0; z-index: 6; display: flex; justify-content: center; align-items: flex-start; padding: 8vh 16px 24px; background: var(--scrim); overflow-y: auto; }
 .new-domain[hidden] { display: none; }
 .new-domain-card .btn.push { margin-left: auto; }
 .new-domain-card .btn.danger { border: 1px solid var(--reef); color: var(--reef); background: transparent; }
@@ -670,23 +670,23 @@ body.empty .board-hint { display: none; }
 .new-domain-card .btn.danger:not(.ghost) { background: var(--reef); color: var(--text); }
 .new-domain-card .btn.danger:not(.ghost):hover:not(:disabled) { filter: brightness(1.1); }
 .new-domain-card textarea:focus, .new-domain-card input:focus { outline: none; border-color: var(--lamp); box-shadow: 0 0 0 3px var(--lamp-tint); }
-.new-domain-card .examples { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.new-domain-card .examples { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: -6px; }
 .new-domain-card .ex-lbl { font-size: 11px; color: var(--muted); margin-right: 2px; }
 .new-domain-card .ex { background: transparent; border: 1px solid var(--line); color: var(--text-2); border-radius: 999px; padding: 4px 10px; font: 12px system-ui, sans-serif; cursor: pointer; }
 .new-domain-card .ex:hover { border-color: var(--lamp); color: var(--text); }
-.new-domain-card .row { align-items: center; }
-.new-domain-card .as-link { background: none; border: 0; padding: 0; width: fit-content; color: var(--text-2); text-decoration: underline; cursor: pointer; font: inherit; font-size: 12px; }
+.new-domain-card .row { align-items: center; margin-top: 4px; }
+.new-domain-card .as-link { background: none; border: 0; padding: 0; width: fit-content; color: var(--text-2); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; font: inherit; font-size: 13px; text-align: left; }
 .new-domain-card .as-link:hover { color: var(--lamp); }
 .new-domain-card textarea.map-text { font: 12px/1.5 var(--font-mono); min-height: 120px; }
 .new-domain-card .other-ai { display: flex; gap: 12px; align-items: center; padding-top: 10px; border-top: 1px solid var(--line); }
 .new-domain-card .other-ai .btn { flex: none; }
-.new-domain-card .shared-maps { display: flex; flex-direction: column; gap: 6px; max-height: min(52vh, 460px); overflow-y: auto; margin: 0 -4px; padding: 4px; }
-.new-domain-card .shared-map { display: grid; gap: 2px; text-align: left; background: var(--water); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; color: var(--text); font: inherit; cursor: pointer; }
+.new-domain-card .shared-maps { display: flex; flex-direction: column; gap: 8px; max-height: min(52vh, 460px); overflow-y: auto; margin: 0 -4px; padding: 4px; }
+.new-domain-card .shared-map { display: grid; gap: 2px; text-align: left; background: var(--water); border: 1px solid var(--line); border-radius: 10px; padding: 13px 14px; color: var(--text); font: inherit; cursor: pointer; }
 .new-domain-card .shared-map:hover:not(:disabled), .new-domain-card .shared-map:focus-visible { border-color: var(--lamp); outline: none; }
 .new-domain-card .shared-map.picked { border-color: var(--lamp); box-shadow: 0 0 0 3px var(--lamp-tint); }
 .new-domain-card .shared-map:disabled { cursor: default; opacity: .7; }
-.new-domain-card .shared-map .nm { font-size: 14px; }
-.new-domain-card .shared-map .ds { font-size: 12px; line-height: 1.45; color: var(--text-2); }
+.new-domain-card .shared-map .nm { font-size: 15px; }
+.new-domain-card .shared-map .ds { font-size: 13px; line-height: 1.5; color: var(--text-2); }
 .new-domain-card .shared-map .mt { font-size: 11px; color: var(--muted); }
 .new-domain-card .as-link.push { margin-left: auto; }
 .new-domain-card .hint { margin-left: auto; font: 11px var(--font-mono); color: var(--muted); }
@@ -707,10 +707,11 @@ body.empty .outline, body.empty .chrome, body.empty #map-focus, body.empty #boar
 .art .settled .ring { stroke: var(--on-land); stroke-opacity: .55; }
 .art .sandbar .ring { stroke: var(--on-land); stroke-opacity: .45; }
 .art text { fill: var(--muted); font: italic 15px Georgia, serif; text-anchor: middle; }
-.new-domain-card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px; box-shadow: 0 12px 32px var(--shadow);
-  width: min(480px, 100%); box-sizing: border-box; display: grid; gap: 10px; }
+.new-domain-card { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 26px 28px 24px; box-shadow: 0 12px 32px var(--shadow);
+  width: min(580px, 100%); box-sizing: border-box; display: grid; gap: 14px; }
 .new-domain-card .lbl { font-size: 10px; text-transform: uppercase; letter-spacing: .1em; color: var(--lamp); }
-.new-domain-card .help { margin: 0; font-size: 12px; color: var(--muted); }
+.new-domain-card .help { margin: 0; font-size: 13px; line-height: 1.55; color: var(--text-2); max-width: 60ch; }
+.new-domain-card h2.title { margin: -4px 0 -4px; font: 400 24px/1.2 Georgia, serif; letter-spacing: -.01em; color: var(--text); }
 .new-domain-card input { background: var(--water); border: 1px solid var(--line); border-radius: 6px; color: var(--text); padding: 8px 10px; font: inherit; font-size: 14px; }
 .new-domain-card .row { display: flex; gap: 6px; }
 .new-domain-card .error { margin: 0; font-size: 12px; color: var(--reef); }
@@ -820,8 +821,24 @@ body.empty .outline, body.empty .chrome, body.empty #map-focus, body.empty #boar
   .new-domain.first .title { font-size: 28px; }
 }
 }
-.new-domain-card .sub-lbl { font-size: 11px; color: var(--muted); margin-top: 2px; }
-.new-domain-card textarea { resize: vertical; background: var(--water); border: 1px solid var(--line); border-radius: 6px; color: var(--text); padding: 8px 10px; font: inherit; font-size: 13px; line-height: 1.45; }
+.new-domain-card .sub-lbl { font-size: 12px; color: var(--muted); margin-top: 4px; }
+/* The other ways in, under the description: ready-made maps as tiles, then the links. */
+.new-domain-card .other-ways { display: grid; gap: 12px; margin-top: 8px; padding-top: 18px; border-top: 1px solid var(--line); }
+.new-domain-card .other-ways .sub-lbl { margin-top: 0; }
+.new-domain-card .map-tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.new-domain-card .map-tile { display: grid; gap: 4px; align-content: start; text-align: left; background: var(--water); border: 1px solid var(--line); border-radius: 10px; padding: 12px 12px 10px; color: var(--text); font: inherit; cursor: pointer; min-height: 72px; }
+.new-domain-card .map-tile:hover:not(:disabled), .new-domain-card .map-tile:focus-visible { border-color: var(--lamp); outline: none; }
+.new-domain-card .map-tile .nm { font-size: 13px; line-height: 1.3; }
+.new-domain-card .map-tile .mt { font-size: 11px; color: var(--muted); }
+.new-domain-card .other-ways .links { display: flex; flex-wrap: wrap; gap: 8px 22px; margin-top: 2px; }
+.new-domain.first .map-tile { background: var(--panel); }
+.new-domain.first .other-ways { margin-top: 10px; }
+@media (max-width: 720px) {
+  .new-domain-card { padding: 20px 18px 18px; }
+  .new-domain-card .map-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .new-domain { padding-bottom: calc(var(--places-h, 0px) + 24px); }
+}
+.new-domain-card textarea { resize: vertical; background: var(--water); border: 1px solid var(--line); border-radius: 8px; color: var(--text); padding: 11px 13px; font: inherit; font-size: 14px; line-height: 1.5; }
 .outline .mi.theme-row { display: flex; align-items: center; gap: 8px; }
 .outline .mi.theme-row .cur { margin-left: auto; color: var(--muted); }
 .outline .mi.theme-row .chev { color: var(--muted); font-size: 10px; width: 10px; text-align: center; }
