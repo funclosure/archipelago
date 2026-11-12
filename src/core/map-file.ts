@@ -38,6 +38,13 @@ const sea = z
   .object({ name: oneLine(SEA_NAME_MAX), x: coordinate.optional(), y: coordinate.optional(), islands: z.array(slugSchema).min(1).max(MAP_SCALE_MAX).optional() })
   .refine((s) => (s.x !== undefined && s.y !== undefined) || s.islands !== undefined, { message: "a sea is at x and y, or over islands" });
 
+/** One emoji: the picture on a shared map's island in the gallery. */
+const oneEmoji = z
+  .string()
+  .trim()
+  .max(16)
+  .refine((t) => /\p{Extended_Pictographic}|\p{Regional_Indicator}/u.test(t) && [...new Intl.Segmenter(undefined, { granularity: "grapheme" }).segment(t)].length === 1, { message: "must be one emoji" });
+
 export type MapLandmark = z.infer<typeof landmark>;
 export type MapStrait = z.infer<typeof strait>;
 export type MapSea = z.infer<typeof sea>;
@@ -53,7 +60,7 @@ export type MapIsland = {
   straits?: MapStrait[];
   seas?: MapSea[];
 };
-export type MapFile = { archipelago: number; name: string; slug?: string; description?: string; language?: string; /** Who made it: a credit shown in the gallery, kept by no domain. */ by?: string; islands: MapIsland[]; straits?: MapStrait[]; seas?: MapSea[] };
+export type MapFile = { archipelago: number; name: string; slug?: string; description?: string; language?: string; /** Who made it: a credit shown in the gallery, kept by no domain. */ by?: string; /** One emoji for the gallery, kept by no domain. */ icon?: string; islands: MapIsland[]; straits?: MapStrait[]; seas?: MapSea[] };
 
 const island: z.ZodType<MapIsland> = z.lazy(() =>
   z
@@ -78,6 +85,7 @@ export const mapFileSchema = z.object({
   description: z.string().trim().max(DESCRIPTION_MAX).optional(),
   language: z.string().trim().max(20).optional(),
   by: oneLine(80).optional(),
+  icon: oneEmoji.optional(),
   islands: z.array(island).min(1).max(MAP_SCALE_MAX),
   straits: z.array(strait).max(60).optional(),
   seas: z.array(sea).max(8).optional(),

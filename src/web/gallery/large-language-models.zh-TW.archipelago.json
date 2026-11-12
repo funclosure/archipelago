@@ -4,6 +4,7 @@
   "slug": "large-language-models",
   "description": "從提示詞到回覆之間發生了什麼：token、注意力、訓練，以及為什麼一個只會預測下一個字的模型能做這麼多事，卻還是會出錯。寫給用過聊天助理、想知道裡面是什麼的人；不需要數學。",
   "by": "Archipelago",
+  "icon": "🧠",
   "language": "zh-TW",
   "islands": [
     {

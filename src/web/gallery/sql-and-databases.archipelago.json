@@ -4,6 +4,7 @@
   "slug": "sql-and-databases",
   "description": "Thinking in tables: how to ask questions of data, how to design the tables that hold it, and why a query is fast, slow, or wrong. For anyone who writes SQL or is about to start.",
   "by": "Archipelago",
+  "icon": "🗄️",
   "language": "en",
   "islands": [
     {

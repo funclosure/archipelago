@@ -4,6 +4,7 @@
   "slug": "git",
   "description": "從裡到外認識 Git，寫給剛接觸、或靠背指令撐著用的人：commit 是什麼、branch 和遠端怎麼移動，以及做錯了怎麼復原。",
   "by": "Archipelago",
+  "icon": "🌿",
   "language": "zh-TW",
   "islands": [
     {

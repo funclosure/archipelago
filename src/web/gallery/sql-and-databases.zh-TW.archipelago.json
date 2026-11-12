@@ -4,6 +4,7 @@
   "slug": "sql-and-databases",
   "description": "用資料表思考：怎麼向資料提問、怎麼設計存放資料的資料表，以及一個查詢為什麼快、為什麼慢、為什麼錯。寫給正在寫 SQL 或正要開始的人。",
   "by": "Archipelago",
+  "icon": "🗄️",
   "language": "zh-TW",
   "islands": [
     {

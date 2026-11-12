@@ -18,6 +18,7 @@ export function galleryEntry(map) {
     name: map.name,
     description: map.description ?? "",
     by: map.by ?? "",
+    icon: map.icon ?? "",
     islands: map.islands.map((i) => i.name),
     landmarks: map.islands.reduce((n, i) => n + (i.landmarks?.length ?? 0), 0),
   };

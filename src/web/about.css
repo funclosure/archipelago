@@ -69,6 +69,8 @@ body.landing { font: 16px/1.6 var(--font-text); }
 .gallery .maps .status { color: var(--muted); font-size: 15px; margin: 0; }
 .gallery .map { display: flex; flex-direction: column; gap: 10px; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 18px; min-width: 0; scroll-margin-top: 80px; }
 .gallery .map:target { border-color: var(--lamp); }
+.gallery .map .map-head { display: flex; align-items: center; gap: 14px; }
+.gallery .map .map-icon { width: 60px; height: 60px; }
 .gallery .map h3 { font: 22px/1.25 Georgia, serif; margin: 0; }
 .gallery .map .ds { margin: 0; color: var(--text-2); font-size: 15px; }
 .gallery .map .isles { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }

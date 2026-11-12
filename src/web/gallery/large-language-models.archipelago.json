@@ -4,6 +4,7 @@
   "slug": "large-language-models",
   "description": "What happens between a prompt and a reply: tokens, attention, training, and why a model that only predicts the next word can do so much and still be wrong. For anyone who uses a chat assistant and wants to know what is inside it; no math needed.",
   "by": "Archipelago",
+  "icon": "🧠",
   "language": "en",
   "islands": [
     {
