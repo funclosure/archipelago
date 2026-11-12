@@ -1,0 +1,667 @@
+{
+  "archipelago": 1,
+  "name": "SQL 與關聯式資料庫",
+  "slug": "sql-and-databases",
+  "description": "用資料表思考：怎麼向資料提問、怎麼設計存放資料的資料表，以及一個查詢為什麼快、為什麼慢、為什麼錯。寫給正在寫 SQL 或正要開始的人。",
+  "by": "Archipelago",
+  "language": "zh-TW",
+  "islands": [
+    {
+      "slug": "relational-model",
+      "name": "關聯式模型",
+      "summary": "資料是由一列列資料組成的資料表，每一列是一件事實，再用鍵把資料表串在一起。",
+      "landmarks": [
+        {
+          "slug": "a-row-is-one-fact-a-column-one-attribute",
+          "name": "一列是一件事實，一欄是一個屬性",
+          "terms": [
+            "一件事實",
+            "屬性",
+            "tuple"
+          ]
+        },
+        {
+          "slug": "a-primary-key-identifies-each-row-uniquely",
+          "name": "主鍵讓每一列都能被唯一識別",
+          "terms": [
+            "主鍵",
+            "primary key",
+            "唯一識別"
+          ]
+        },
+        {
+          "slug": "a-foreign-key-points-at-a-row-in-another-table",
+          "name": "外鍵指向另一張資料表裡的某一列",
+          "terms": [
+            "外鍵",
+            "foreign key",
+            "參照",
+            "參照完整性"
+          ]
+        },
+        {
+          "slug": "null-marks-a-missing-value-not-zero-or-empty",
+          "name": "NULL 表示缺少值，不是零也不是空字串",
+          "terms": [
+            "NULL",
+            "缺少值",
+            "nullable"
+          ]
+        },
+        {
+          "slug": "constraints-let-the-database-refuse-bad-data",
+          "name": "條件約束讓資料庫拒絕不對的資料",
+          "terms": [
+            "資料型別",
+            "條件約束",
+            "constraint",
+            "NOT NULL",
+            "CHECK"
+          ]
+        },
+        {
+          "slug": "a-querys-result-is-a-table-too",
+          "name": "查詢的結果也是一張資料表",
+          "terms": [
+            "關聯",
+            "relation",
+            "結果集"
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "queries",
+      "name": "基本查詢",
+      "summary": "挑選、排序、修改資料列，以及 SQL 真正的執行順序。",
+      "landmarks": [
+        {
+          "slug": "select-picks-columns-where-picks-rows",
+          "name": "SELECT 挑欄，WHERE 挑列",
+          "terms": [
+            "SELECT",
+            "FROM",
+            "WHERE",
+            "篩選"
+          ]
+        },
+        {
+          "slug": "logically-from-and-where-come-before-select",
+          "name": "邏輯上，FROM 和 WHERE 在 SELECT 之前",
+          "terms": [
+            "邏輯順序",
+            "求值順序",
+            "別名"
+          ]
+        },
+        {
+          "slug": "a-comparison-with-null-is-unknown-neither-true-nor-false",
+          "name": "和 NULL 比較的結果是未知，既非真也非假",
+          "terms": [
+            "IS NULL",
+            "未知",
+            "三值邏輯",
+            "COALESCE"
+          ]
+        },
+        {
+          "slug": "without-order-by-the-row-order-is-not-guaranteed",
+          "name": "沒有 ORDER BY，列的順序就沒有保證",
+          "terms": [
+            "ORDER BY",
+            "LIMIT",
+            "OFFSET"
+          ]
+        },
+        {
+          "slug": "update-and-delete-change-every-row-the-where-matches",
+          "name": "UPDATE 和 DELETE 會改動 WHERE 符合的每一列",
+          "terms": [
+            "INSERT",
+            "UPDATE",
+            "DELETE",
+            "受影響的列數"
+          ]
+        },
+        {
+          "slug": "values-go-in-as-parameters-not-pasted-text",
+          "name": "值要當成參數傳入，不要直接拼進字串",
+          "terms": [
+            "參數",
+            "佔位符",
+            "SQL injection",
+            "prepared statement"
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "joins",
+      "name": "JOIN（聯結）",
+      "summary": "把兩張資料表的列並排放在一起，以及對不上的列會怎麼樣。",
+      "landmarks": [
+        {
+          "slug": "a-join-pairs-rows-that-satisfy-a-condition",
+          "name": "JOIN 把符合條件的列配成對",
+          "terms": [
+            "聯結條件",
+            "ON",
+            "cross join"
+          ]
+        },
+        {
+          "slug": "an-inner-join-keeps-matches-only",
+          "name": "INNER JOIN 只留下對得上的",
+          "terms": [
+            "INNER JOIN",
+            "內部聯結",
+            "對得上的列"
+          ]
+        },
+        {
+          "slug": "an-outer-join-keeps-unmatched-rows-filled-with-nulls",
+          "name": "OUTER JOIN 留下對不上的列，並用 NULL 補上",
+          "terms": [
+            "LEFT JOIN",
+            "outer join",
+            "外部聯結",
+            "對不上的列"
+          ]
+        },
+        {
+          "slug": "a-row-appears-once-for-every-match-so-joins-multiply-rows",
+          "name": "每對上一次就出現一列，所以 JOIN 會讓列數變多",
+          "terms": [
+            "重複資料",
+            "列數膨脹",
+            "一對多"
+          ]
+        },
+        {
+          "slug": "a-table-can-be-joined-to-itself-under-two-aliases",
+          "name": "一張資料表可以用兩個別名和自己 JOIN",
+          "terms": [
+            "self join",
+            "自我聯結",
+            "別名",
+            "階層"
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "aggregation",
+      "name": "分組與彙總",
+      "summary": "把許多列變成一份摘要，需要時也同時留住明細。",
+      "landmarks": [
+        {
+          "slug": "an-aggregate-turns-many-rows-into-one-value",
+          "name": "彙總函式把許多列變成一個值",
+          "terms": [
+            "彙總函式",
+            "COUNT",
+            "SUM",
+            "AVG"
+          ]
+        },
+        {
+          "slug": "group-by-makes-one-row-per-group",
+          "name": "GROUP BY 讓每個群組變成一列",
+          "terms": [
+            "GROUP BY",
+            "分組鍵",
+            "每個群組"
+          ]
+        },
+        {
+          "slug": "a-column-neither-grouped-nor-aggregated-has-no-single-value-per-group",
+          "name": "沒分組也沒彙總的欄位，在群組裡沒有唯一的值",
+          "terms": [
+            "select list",
+            "未分組的欄位",
+            "任意值"
+          ]
+        },
+        {
+          "slug": "where-filters-rows-having-filters-groups",
+          "name": "WHERE 篩選列，HAVING 篩選群組",
+          "terms": [
+            "HAVING",
+            "分組之前",
+            "分組之後"
+          ]
+        },
+        {
+          "slug": "aggregates-skip-nulls-only-count-counts-every-row",
+          "name": "彙總函式會跳過 NULL，只有 COUNT(*) 每一列都算",
+          "terms": [
+            "COUNT(*)",
+            "COUNT(欄位)",
+            "忽略 NULL"
+          ]
+        },
+        {
+          "slug": "a-window-function-summarises-without-collapsing-rows",
+          "name": "視窗函式做彙總，卻不把列壓成一列",
+          "terms": [
+            "視窗函式",
+            "window function",
+            "OVER",
+            "PARTITION BY"
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "subqueries",
+      "name": "查詢裡的查詢",
+      "summary": "用小問題組出大問題，因為每個結果都是一張資料表。",
+      "landmarks": [
+        {
+          "slug": "a-subquery-stands-for-a-value-a-list-or-a-table",
+          "name": "子查詢可以代表一個值、一份清單或一張資料表",
+          "terms": [
+            "子查詢",
+            "subquery",
+            "純量子查詢",
+            "衍生資料表"
+          ]
+        },
+        {
+          "slug": "a-correlated-subquery-depends-on-the-outer-row",
+          "name": "相關子查詢取決於外層的那一列",
+          "terms": [
+            "相關子查詢",
+            "correlated subquery",
+            "外層查詢"
+          ]
+        },
+        {
+          "slug": "exists-asks-whether-any-row-matches",
+          "name": "EXISTS 問的是有沒有任何一列符合",
+          "terms": [
+            "EXISTS",
+            "IN",
+            "NOT IN"
+          ]
+        },
+        {
+          "slug": "with-names-a-subquery-so-later-steps-can-use-it",
+          "name": "WITH 替子查詢取名，讓後面的步驟能用",
+          "terms": [
+            "通用資料表運算式",
+            "CTE",
+            "WITH",
+            "遞迴"
+          ]
+        },
+        {
+          "slug": "union-stacks-results-union-all-keeps-duplicates",
+          "name": "UNION 把結果疊起來；UNION ALL 保留重複的列",
+          "terms": [
+            "UNION",
+            "UNION ALL",
+            "集合運算"
+          ]
+        },
+        {
+          "slug": "a-view-is-a-saved-query",
+          "name": "View 是存起來的查詢",
+          "terms": [
+            "view",
+            "檢視表",
+            "materialized view",
+            "具體化檢視表"
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "design",
+      "name": "Schema 設計",
+      "summary": "決定要有哪些資料表，讓每件事實只存一次。",
+      "landmarks": [
+        {
+          "slug": "one-to-many-is-a-foreign-key-many-to-many-needs-a-third-table",
+          "name": "一對多用外鍵；多對多需要第三張資料表",
+          "terms": [
+            "一對多",
+            "多對多",
+            "中介資料表",
+            "join table",
+            "junction table"
+          ]
+        },
+        {
+          "slug": "a-fact-stored-twice-can-disagree-with-itself",
+          "name": "同一件事實存兩份，就可能自相矛盾",
+          "terms": [
+            "資料重複",
+            "冗餘",
+            "更新異常"
+          ]
+        },
+        {
+          "slug": "in-a-normalised-table-every-column-depends-on-the-whole-key-and-nothing-else",
+          "name": "正規化的資料表裡，每一欄都只取決於整個鍵",
+          "terms": [
+            "正規化",
+            "normalization",
+            "第三正規化",
+            "功能相依"
+          ]
+        },
+        {
+          "slug": "a-natural-key-comes-from-the-data-a-surrogate-key-is-made-up",
+          "name": "自然鍵來自資料本身，代理鍵是另外編的",
+          "terms": [
+            "自然鍵",
+            "代理鍵",
+            "surrogate key",
+            "自動遞增"
+          ]
+        },
+        {
+          "slug": "denormalising-buys-faster-reads-with-harder-writes",
+          "name": "反正規化用更難的寫入換更快的讀取",
+          "terms": [
+            "反正規化",
+            "denormalization",
+            "重複的副本"
+          ]
+        },
+        {
+          "slug": "a-migration-changes-the-schema-and-the-data-already-in-it",
+          "name": "Migration 會改動 schema 和裡面已有的資料",
+          "terms": [
+            "migration",
+            "資料庫遷移",
+            "ALTER TABLE",
+            "schema 變更"
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "indexes",
+      "name": "索引",
+      "summary": "讓資料庫不必把所有列讀過一遍就能找到資料的結構。",
+      "landmarks": [
+        {
+          "slug": "without-an-index-the-database-reads-every-row",
+          "name": "沒有索引，資料庫就得讀每一列",
+          "terms": [
+            "全表掃描",
+            "table scan",
+            "循序掃描"
+          ]
+        },
+        {
+          "slug": "a-b-tree-keeps-keys-sorted-so-lookups-and-ranges-are-fast",
+          "name": "B-tree 讓鍵保持排序，所以單筆查詢和範圍查詢都快",
+          "terms": [
+            "B-tree",
+            "B 樹",
+            "範圍掃描",
+            "對數時間"
+          ]
+        },
+        {
+          "slug": "a-composite-index-is-sorted-by-its-first-column-then-the-next",
+          "name": "複合索引先按第一欄排序，再按下一欄",
+          "terms": [
+            "複合索引",
+            "composite index",
+            "最左前綴"
+          ]
+        },
+        {
+          "slug": "a-covering-index-can-answer-a-query-without-the-table",
+          "name": "涵蓋索引不必讀資料表就能回答查詢",
+          "terms": [
+            "涵蓋索引",
+            "covering index",
+            "index-only scan"
+          ]
+        },
+        {
+          "slug": "every-index-slows-writes-and-takes-space",
+          "name": "每個索引都會拖慢寫入，也占空間",
+          "terms": [
+            "寫入成本",
+            "磁碟空間",
+            "索引維護"
+          ]
+        },
+        {
+          "slug": "wrapping-a-column-in-a-function-or-matching-most-rows-defeats-an-index",
+          "name": "對欄位套函式，或符合的列太多，索引就派不上用場",
+          "terms": [
+            "選擇性",
+            "selectivity",
+            "運算式索引"
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "planner",
+      "name": "查詢規劃器",
+      "summary": "資料庫怎麼決定用什麼方式去執行你要的東西。",
+      "landmarks": [
+        {
+          "slug": "sql-says-what-the-planner-decides-how",
+          "name": "SQL 說要什麼，規劃器決定怎麼做",
+          "terms": [
+            "宣告式",
+            "查詢計畫",
+            "最佳化器",
+            "optimizer"
+          ]
+        },
+        {
+          "slug": "explain-shows-the-plan-the-database-chose",
+          "name": "EXPLAIN 顯示資料庫選擇的計畫",
+          "terms": [
+            "EXPLAIN",
+            "EXPLAIN ANALYZE",
+            "執行計畫",
+            "預估成本"
+          ]
+        },
+        {
+          "slug": "the-planner-estimates-row-counts-from-statistics",
+          "name": "規劃器用統計資訊估計列數",
+          "terms": [
+            "統計資訊",
+            "基數",
+            "cardinality",
+            "估計列數"
+          ]
+        },
+        {
+          "slug": "a-join-can-run-as-a-nested-loop-a-hash-join-or-a-merge-join",
+          "name": "JOIN 可以用 nested loop、hash join 或 merge join 來執行",
+          "terms": [
+            "nested loop",
+            "巢狀迴圈",
+            "hash join",
+            "merge join"
+          ]
+        },
+        {
+          "slug": "n-1-a-query-per-row-instead-of-one-join",
+          "name": "N+1：每一列各查一次，而不是一次 JOIN",
+          "terms": [
+            "N+1",
+            "往返",
+            "ORM"
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "transactions",
+      "name": "交易（transaction）",
+      "summary": "讓好幾項變更像一項那樣一起成立，同時別人也在讀寫。",
+      "landmarks": [
+        {
+          "slug": "a-transactions-changes-all-happen-or-none-do",
+          "name": "交易裡的變更要嘛全部發生，要嘛都不發生",
+          "terms": [
+            "原子性",
+            "atomicity",
+            "COMMIT",
+            "ROLLBACK",
+            "ACID"
+          ]
+        },
+        {
+          "slug": "without-isolation-concurrent-transactions-see-and-overwrite-each-others-work",
+          "name": "少了隔離，同時進行的交易會看到並蓋掉彼此的工作",
+          "terms": [
+            "髒讀",
+            "dirty read",
+            "遺失更新",
+            "幻讀"
+          ]
+        },
+        {
+          "slug": "each-isolation-level-permits-some-anomalies-in-exchange-for-concurrency",
+          "name": "每種隔離層級都容許某些異常，以換取並行",
+          "terms": [
+            "隔離層級",
+            "read committed",
+            "repeatable read",
+            "serializable"
+          ]
+        },
+        {
+          "slug": "under-mvcc-readers-see-a-snapshot-and-do-not-block-writers",
+          "name": "在 MVCC 之下，讀的人看到快照，不會擋住寫的人",
+          "terms": [
+            "MVCC",
+            "快照",
+            "snapshot",
+            "資料列版本"
+          ]
+        },
+        {
+          "slug": "a-deadlock-is-two-transactions-waiting-on-each-others-locks",
+          "name": "死結是兩筆交易互相等對方的鎖",
+          "terms": [
+            "列鎖",
+            "row lock",
+            "死結",
+            "deadlock",
+            "被擋住"
+          ]
+        },
+        {
+          "slug": "a-commit-survives-a-crash",
+          "name": "COMMIT 過的資料當機後還在",
+          "terms": [
+            "持久性",
+            "durability",
+            "預寫式日誌",
+            "WAL",
+            "當機復原"
+          ]
+        }
+      ]
+    }
+  ],
+  "straits": [
+    {
+      "from": "relational-model",
+      "to": "queries",
+      "name": "查詢讀進資料表，也回傳資料表"
+    },
+    {
+      "from": "relational-model",
+      "to": "design",
+      "name": "主鍵和外鍵表達出關係"
+    },
+    {
+      "from": "queries",
+      "to": "joins",
+      "name": "JOIN 是 FROM 子句的一部分"
+    },
+    {
+      "from": "joins",
+      "to": "aggregation",
+      "name": "列數變多的 JOIN 會讓總和灌水"
+    },
+    {
+      "from": "joins",
+      "to": "subqueries",
+      "name": "EXISTS 檢查有沒有對上，卻不會讓列數變多"
+    },
+    {
+      "from": "aggregation",
+      "to": "subqueries",
+      "name": "分組後的結果可以當成子查詢再查一次"
+    },
+    {
+      "from": "design",
+      "to": "joins",
+      "name": "正規化拆開的資料表，靠 JOIN 接回來"
+    },
+    {
+      "from": "design",
+      "to": "indexes",
+      "name": "主鍵和唯一約束靠索引來落實"
+    },
+    {
+      "from": "queries",
+      "to": "indexes",
+      "name": "索引服務的是 WHERE 和 ORDER BY"
+    },
+    {
+      "from": "indexes",
+      "to": "planner",
+      "name": "用不用索引，由規劃器決定"
+    },
+    {
+      "from": "joins",
+      "to": "planner",
+      "name": "規劃器替每個 JOIN 挑一種演算法"
+    },
+    {
+      "from": "queries",
+      "to": "transactions",
+      "name": "交易把必須一起成功的寫入綁在一起"
+    },
+    {
+      "from": "design",
+      "to": "transactions",
+      "name": "違反條件約束的資料，交易無法 COMMIT"
+    }
+  ],
+  "seas": [
+    {
+      "name": "資料表",
+      "islands": [
+        "relational-model",
+        "design"
+      ]
+    },
+    {
+      "name": "向資料提問",
+      "islands": [
+        "queries",
+        "joins",
+        "aggregation",
+        "subqueries"
+      ]
+    },
+    {
+      "name": "底層運作",
+      "islands": [
+        "indexes",
+        "planner",
+        "transactions"
+      ]
+    }
+  ]
+}

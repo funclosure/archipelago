@@ -1,0 +1,769 @@
+{
+  "archipelago": 1,
+  "name": "電腦與網際網路如何運作",
+  "slug": "computers-and-internet",
+  "description": "寫給每天用電腦、想知道底下發生什麼事的人。從一個只有開和關的開關，到一張網頁經由加密連線送到你眼前，一次看一層。",
+  "by": "Archipelago",
+  "language": "zh-TW",
+  "islands": [
+    {
+      "slug": "bits",
+      "name": "位元與編碼",
+      "summary": "開和關怎麼變成數字、文字、圖片和聲音。",
+      "landmarks": [
+        {
+          "slug": "two-states-are-the-easiest-to-tell-apart",
+          "name": "兩種狀態最容易分辨",
+          "terms": [
+            "位元",
+            "bit",
+            "電壓",
+            "雜訊"
+          ]
+        },
+        {
+          "slug": "counting-in-binary-and-hexadecimal",
+          "name": "用二進位和十六進位數數",
+          "terms": [
+            "二進位",
+            "十六進位",
+            "位元組",
+            "byte"
+          ]
+        },
+        {
+          "slug": "text-is-stored-as-a-number-for-each-character",
+          "name": "文字是把每個字元存成一個數字",
+          "terms": [
+            "ASCII",
+            "Unicode",
+            "UTF-8",
+            "字元編碼"
+          ]
+        },
+        {
+          "slug": "pictures-and-sound-become-numbers-by-sampling",
+          "name": "圖片和聲音靠取樣變成數字",
+          "terms": [
+            "像素",
+            "取樣率",
+            "解析度"
+          ]
+        },
+        {
+          "slug": "bits-mean-nothing-until-an-encoding-says-how-to-read-them",
+          "name": "位元本身沒有意義，要有編碼說明怎麼讀",
+          "terms": [
+            "編碼",
+            "檔案格式"
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "logic",
+      "name": "邏輯與電路",
+      "summary": "開關接成邏輯閘，邏輯閘再接成會做加法、會記住東西的電路。",
+      "landmarks": [
+        {
+          "slug": "the-transistor-is-a-switch-worked-by-electricity",
+          "name": "電晶體是用電控制的開關",
+          "terms": [
+            "電晶體",
+            "開關"
+          ]
+        },
+        {
+          "slug": "and-or-and-not-build-every-other-circuit",
+          "name": "AND、OR、NOT 可以組出其他所有電路",
+          "terms": [
+            "邏輯閘",
+            "真值表",
+            "NAND"
+          ]
+        },
+        {
+          "slug": "gates-wired-together-can-add-numbers",
+          "name": "把邏輯閘接起來就能做加法",
+          "terms": [
+            "加法器",
+            "進位",
+            "半加器"
+          ]
+        },
+        {
+          "slug": "feedback-lets-a-circuit-remember-a-bit",
+          "name": "回授讓電路能記住一個位元",
+          "terms": [
+            "正反器",
+            "flip-flop",
+            "閂鎖器",
+            "回授"
+          ]
+        },
+        {
+          "slug": "a-clock-keeps-every-part-in-step",
+          "name": "時脈讓每個部分步調一致",
+          "terms": [
+            "時脈",
+            "clock",
+            "週期",
+            "赫茲"
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "processor",
+      "name": "處理器",
+      "summary": "一部機器：取出一道指令、執行、再取下一道，每秒重複數十億次。",
+      "landmarks": [
+        {
+          "slug": "the-processor-repeats-fetch-decode-execute",
+          "name": "處理器不斷重複擷取、解碼、執行",
+          "terms": [
+            "指令週期",
+            "程式計數器",
+            "program counter",
+            "解碼"
+          ]
+        },
+        {
+          "slug": "instructions-are-numbers-too",
+          "name": "指令也是數字",
+          "terms": [
+            "機器碼",
+            "運算碼",
+            "opcode",
+            "指令集"
+          ]
+        },
+        {
+          "slug": "registers-hold-what-is-being-worked-on",
+          "name": "暫存器放著正在處理的資料",
+          "terms": [
+            "暫存器",
+            "register",
+            "字長"
+          ]
+        },
+        {
+          "slug": "jumps-make-loops-and-decisions",
+          "name": "跳躍造就迴圈與判斷",
+          "terms": [
+            "分支",
+            "跳躍",
+            "條件"
+          ]
+        },
+        {
+          "slug": "heat-capped-clock-speed-so-chips-gained-cores",
+          "name": "發熱限制了時脈速度，晶片於是改增加核心",
+          "terms": [
+            "核心",
+            "多核心",
+            "時脈速度",
+            "發熱"
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "memory",
+      "name": "記憶體與儲存",
+      "summary": "資料住在哪裡：從最快最小的，到最慢最大的。",
+      "landmarks": [
+        {
+          "slug": "memory-is-a-row-of-numbered-cells",
+          "name": "記憶體是一排編了號的格子",
+          "terms": [
+            "位址",
+            "指標",
+            "格子"
+          ]
+        },
+        {
+          "slug": "ram-forgets-without-power-storage-keeps",
+          "name": "RAM 斷電就忘，儲存裝置會留住",
+          "terms": [
+            "RAM",
+            "揮發性",
+            "SSD",
+            "硬碟"
+          ]
+        },
+        {
+          "slug": "faster-memory-is-smaller-and-costs-more",
+          "name": "越快的記憶體，容量越小也越貴",
+          "terms": [
+            "記憶體階層",
+            "快取",
+            "cache",
+            "存取時間"
+          ]
+        },
+        {
+          "slug": "caches-work-because-programs-reuse-nearby-data",
+          "name": "快取有用，是因為程式會重複用鄰近的資料",
+          "terms": [
+            "區域性",
+            "locality",
+            "快取命中",
+            "快取未命中"
+          ]
+        },
+        {
+          "slug": "a-file-system-turns-blocks-into-named-files",
+          "name": "檔案系統把區塊變成有名字的檔案",
+          "terms": [
+            "檔案系統",
+            "目錄",
+            "區塊"
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "programs",
+      "name": "從程式碼到執行中的程式",
+      "summary": "人寫下的文字，怎麼變成處理器執行的指令。",
+      "landmarks": [
+        {
+          "slug": "a-compiler-translates-source-code-into-machine-code",
+          "name": "編譯器把原始碼翻譯成機器碼",
+          "terms": [
+            "編譯器",
+            "compiler",
+            "原始碼",
+            "執行檔"
+          ]
+        },
+        {
+          "slug": "an-interpreter-is-a-program-that-runs-other-code-directly",
+          "name": "直譯器是直接執行其他程式碼的程式",
+          "terms": [
+            "直譯器",
+            "位元組碼",
+            "bytecode",
+            "runtime"
+          ]
+        },
+        {
+          "slug": "the-stack-holds-calls-in-progress-the-heap-holds-longer-lived-data",
+          "name": "堆疊放進行中的呼叫，堆積放活得更久的資料",
+          "terms": [
+            "堆疊",
+            "stack",
+            "堆積",
+            "heap",
+            "記憶體配置"
+          ]
+        },
+        {
+          "slug": "linking-joins-your-code-to-libraries-others-wrote",
+          "name": "連結把你的程式碼和別人寫的函式庫接在一起",
+          "terms": [
+            "函式庫",
+            "連結",
+            "linking",
+            "相依性"
+          ]
+        },
+        {
+          "slug": "each-layer-hides-the-one-below-behind-an-interface",
+          "name": "每一層都用介面把下一層藏起來",
+          "terms": [
+            "抽象",
+            "介面",
+            "API"
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "operating-system",
+      "name": "作業系統",
+      "summary": "讓許多程式共用同一部機器、又彼此不相干擾的那個程式。",
+      "landmarks": [
+        {
+          "slug": "each-process-is-kept-apart-from-the-others",
+          "name": "每個行程都和其他行程隔開",
+          "terms": [
+            "行程",
+            "process",
+            "位址空間",
+            "隔離"
+          ]
+        },
+        {
+          "slug": "the-scheduler-switches-the-processor-between-processes",
+          "name": "排程器讓處理器在行程之間切換",
+          "terms": [
+            "排程器",
+            "時間片段",
+            "context switch"
+          ]
+        },
+        {
+          "slug": "virtual-memory-gives-each-process-its-own-addresses",
+          "name": "虛擬記憶體讓每個行程有自己的位址",
+          "terms": [
+            "虛擬記憶體",
+            "分頁表",
+            "page table",
+            "swap"
+          ]
+        },
+        {
+          "slug": "system-calls-ask-the-kernel-to-act",
+          "name": "系統呼叫是請核心代為動作",
+          "terms": [
+            "系統呼叫",
+            "system call",
+            "kernel",
+            "使用者模式"
+          ]
+        },
+        {
+          "slug": "drivers-and-interrupts-connect-the-devices",
+          "name": "驅動程式和中斷把裝置接上來",
+          "terms": [
+            "驅動程式",
+            "中斷",
+            "interrupt"
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "packets",
+      "name": "封包與位址",
+      "summary": "一則訊息怎麼切成小塊橫越世界，每一塊各自找路。",
+      "landmarks": [
+        {
+          "slug": "links-carry-bits-by-wire-fibre-and-radio",
+          "name": "線路用電線、光纖和無線電傳送位元",
+          "terms": [
+            "乙太網路",
+            "Ethernet",
+            "光纖",
+            "Wi-Fi",
+            "頻寬"
+          ]
+        },
+        {
+          "slug": "data-is-cut-into-packets-each-with-its-own-header",
+          "name": "資料被切成封包，每個都有自己的標頭",
+          "terms": [
+            "封包",
+            "標頭",
+            "header",
+            "payload"
+          ]
+        },
+        {
+          "slug": "an-ip-address-says-where-a-packet-is-going",
+          "name": "IP 位址說明封包要去哪裡",
+          "terms": [
+            "IP 位址",
+            "IPv4",
+            "IPv6"
+          ]
+        },
+        {
+          "slug": "routers-pass-packets-hop-by-hop",
+          "name": "路由器一站一站地轉送封包",
+          "terms": [
+            "路由器",
+            "路由表",
+            "hop"
+          ]
+        },
+        {
+          "slug": "the-internet-is-many-networks-joined-together",
+          "name": "網際網路是許多網路連在一起",
+          "terms": [
+            "ISP",
+            "骨幹網路",
+            "對等互連",
+            "peering"
+          ]
+        },
+        {
+          "slug": "a-home-network-usually-shares-one-public-address",
+          "name": "家裡的網路通常共用一個公用 IP",
+          "terms": [
+            "NAT",
+            "私有 IP",
+            "公用 IP"
+          ]
+        },
+        {
+          "slug": "delivery-is-best-effort-packets-can-be-lost-or-reordered",
+          "name": "傳送只是盡力而為：封包可能遺失或亂序",
+          "terms": [
+            "封包遺失",
+            "盡力而為",
+            "best effort",
+            "亂序"
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "names",
+      "name": "名稱與 DNS",
+      "summary": "把人記得住的名稱，換成路由器用得上的位址。",
+      "landmarks": [
+        {
+          "slug": "a-name-can-stay-the-same-while-its-address-changes",
+          "name": "名稱可以不變，位址卻可以換",
+          "terms": [
+            "網域名稱",
+            "domain name",
+            "DNS"
+          ]
+        },
+        {
+          "slug": "a-domain-name-is-a-hierarchy-read-from-the-right",
+          "name": "網域名稱是從右邊讀起的階層",
+          "terms": [
+            "根網域",
+            "頂級網域",
+            "子網域"
+          ]
+        },
+        {
+          "slug": "a-resolver-follows-referrals-from-the-root-down-to-the-names-own-server",
+          "name": "解析器從根開始，一路被轉介到該名稱自己的伺服器",
+          "terms": [
+            "解析器",
+            "resolver",
+            "名稱伺服器",
+            "DNS 查詢"
+          ]
+        },
+        {
+          "slug": "answers-are-cached-until-their-time-to-live-runs-out",
+          "name": "答案會被快取，直到存活時間用完",
+          "terms": [
+            "TTL",
+            "存活時間",
+            "DNS 生效"
+          ]
+        },
+        {
+          "slug": "renting-a-name-and-pointing-it-somewhere",
+          "name": "租一個名稱，再把它指到某個地方",
+          "terms": [
+            "網域註冊商",
+            "DNS 紀錄",
+            "權威伺服器"
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "reliable-delivery",
+      "name": "可靠的傳輸",
+      "summary": "在一個會掉封包、會打亂順序的網路上，TCP 怎麼建立起可靠的資料流。",
+      "landmarks": [
+        {
+          "slug": "a-port-number-says-which-program-gets-the-data",
+          "name": "連接埠號碼說明資料要交給哪個程式",
+          "terms": [
+            "連接埠",
+            "port",
+            "socket"
+          ]
+        },
+        {
+          "slug": "a-three-way-handshake-opens-a-connection",
+          "name": "三向交握開啟一條連線",
+          "terms": [
+            "三向交握",
+            "three-way handshake",
+            "SYN"
+          ]
+        },
+        {
+          "slug": "lost-data-is-resent-until-it-is-acknowledged",
+          "name": "遺失的資料會一直重送，直到對方確認收到",
+          "terms": [
+            "序號",
+            "ACK",
+            "確認收到",
+            "重送"
+          ]
+        },
+        {
+          "slug": "a-sender-slows-down-when-the-network-is-busy",
+          "name": "網路忙的時候，傳送端會放慢",
+          "terms": [
+            "壅塞控制",
+            "congestion control",
+            "視窗"
+          ]
+        },
+        {
+          "slug": "when-udp-is-the-better-choice",
+          "name": "什麼時候 UDP 更合適",
+          "terms": [
+            "UDP",
+            "即時",
+            "datagram"
+          ]
+        },
+        {
+          "slug": "each-layer-wraps-the-one-above",
+          "name": "每一層都把上一層包起來",
+          "terms": [
+            "分層",
+            "封裝",
+            "encapsulation",
+            "協定堆疊"
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "web",
+      "name": "Web（全球資訊網）",
+      "summary": "瀏覽器向伺服器要一張網頁，以及網頁顯示出來之前發生的所有事。",
+      "landmarks": [
+        {
+          "slug": "the-web-is-one-use-of-the-internet",
+          "name": "Web 只是網際網路的用途之一",
+          "terms": [
+            "全球資訊網",
+            "World Wide Web",
+            "用戶端",
+            "電子郵件"
+          ]
+        },
+        {
+          "slug": "a-url-piece-by-piece",
+          "name": "一段一段拆解 URL",
+          "terms": [
+            "URL",
+            "scheme",
+            "主機",
+            "路徑"
+          ]
+        },
+        {
+          "slug": "every-page-starts-with-an-http-request-and-a-response",
+          "name": "每張網頁都從一次 HTTP 請求與回應開始",
+          "terms": [
+            "HTTP",
+            "GET",
+            "狀態碼"
+          ]
+        },
+        {
+          "slug": "html-for-structure-css-for-looks-javascript-for-behaviour",
+          "name": "HTML 管結構，CSS 管外觀，JavaScript 管行為",
+          "terms": [
+            "HTML",
+            "CSS",
+            "JavaScript"
+          ]
+        },
+        {
+          "slug": "http-forgets-each-request-so-cookies-carry-the-memory",
+          "name": "HTTP 不記得上一個請求，所以靠 cookie 帶著記憶",
+          "terms": [
+            "cookie",
+            "session",
+            "無狀態"
+          ]
+        },
+        {
+          "slug": "from-typing-an-address-to-seeing-a-page",
+          "name": "從輸入網址到看見網頁",
+          "terms": [
+            "渲染",
+            "render",
+            "往返",
+            "頁面載入"
+          ]
+        },
+        {
+          "slug": "pages-come-from-servers-in-data-centres-often-a-copy-near-you",
+          "name": "網頁來自資料中心裡的伺服器，常常是離你近的一份副本",
+          "terms": [
+            "伺服器",
+            "CDN",
+            "資料中心"
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "security",
+      "name": "加密與信任",
+      "summary": "讓對話不被旁人看見，並且確定另一頭是誰。",
+      "landmarks": [
+        {
+          "slug": "three-threats-listening-altering-impersonating",
+          "name": "三種威脅：竊聽、竄改、冒充",
+          "terms": [
+            "竊聽",
+            "竄改",
+            "冒充"
+          ]
+        },
+        {
+          "slug": "one-shared-key-or-a-public-key-and-a-private-key",
+          "name": "共用一把金鑰，或是一把公鑰配一把私鑰",
+          "terms": [
+            "對稱金鑰",
+            "公鑰",
+            "私鑰"
+          ]
+        },
+        {
+          "slug": "agreeing-on-a-key-in-the-open",
+          "name": "在公開的線路上約定金鑰",
+          "terms": [
+            "金鑰交換",
+            "key exchange",
+            "Diffie-Hellman",
+            "共享的秘密"
+          ]
+        },
+        {
+          "slug": "a-certificate-ties-a-public-key-to-a-name",
+          "name": "憑證把公鑰和名稱綁在一起",
+          "terms": [
+            "憑證",
+            "憑證機構",
+            "CA",
+            "簽章"
+          ]
+        },
+        {
+          "slug": "https-hides-the-content-not-which-site-you-visit",
+          "name": "HTTPS 藏住內容，藏不住你上了哪個網站",
+          "terms": [
+            "HTTPS",
+            "TLS",
+            "中繼資料",
+            "metadata"
+          ]
+        },
+        {
+          "slug": "a-hash-is-one-way-so-sites-store-hashes-not-passwords",
+          "name": "雜湊是單向的，所以網站存的是雜湊而不是密碼",
+          "terms": [
+            "雜湊",
+            "hash",
+            "加鹽",
+            "salt",
+            "單向"
+          ]
+        }
+      ]
+    }
+  ],
+  "straits": [
+    {
+      "from": "bits",
+      "to": "logic",
+      "name": "邏輯閘對位元做運算"
+    },
+    {
+      "from": "logic",
+      "to": "processor",
+      "name": "處理器由邏輯閘和時脈組成"
+    },
+    {
+      "from": "processor",
+      "to": "memory",
+      "name": "指令和資料都住在記憶體裡"
+    },
+    {
+      "from": "memory",
+      "to": "operating-system",
+      "name": "虛擬記憶體把實體記憶體藏起來"
+    },
+    {
+      "from": "processor",
+      "to": "programs",
+      "name": "編譯出來的就是處理器的指令"
+    },
+    {
+      "from": "memory",
+      "to": "programs",
+      "name": "堆疊和堆積都是記憶體裡的區域"
+    },
+    {
+      "from": "programs",
+      "to": "operating-system",
+      "name": "執行中的程式就是行程"
+    },
+    {
+      "from": "operating-system",
+      "to": "packets",
+      "name": "要用網路，得透過系統呼叫"
+    },
+    {
+      "from": "packets",
+      "to": "names",
+      "name": "名稱得先換成位址"
+    },
+    {
+      "from": "packets",
+      "to": "reliable-delivery",
+      "name": "TCP 補回 IP 弄丟的封包"
+    },
+    {
+      "from": "reliable-delivery",
+      "to": "web",
+      "name": "HTTP 跑在可靠的資料流上"
+    },
+    {
+      "from": "names",
+      "to": "web",
+      "name": "載入 URL 從一次 DNS 查詢開始"
+    },
+    {
+      "from": "web",
+      "to": "security",
+      "name": "HTTPS 就是包在 TLS 裡的 HTTP"
+    },
+    {
+      "from": "bits",
+      "to": "security",
+      "name": "加密是對位元做算術"
+    }
+  ],
+  "seas": [
+    {
+      "name": "機器內部",
+      "islands": [
+        "bits",
+        "logic",
+        "processor",
+        "memory"
+      ]
+    },
+    {
+      "name": "執行程式",
+      "islands": [
+        "programs",
+        "operating-system"
+      ]
+    },
+    {
+      "name": "機器之間",
+      "islands": [
+        "packets",
+        "names",
+        "reliable-delivery",
+        "web",
+        "security"
+      ]
+    }
+  ]
+}

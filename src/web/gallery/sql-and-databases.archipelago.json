@@ -1,0 +1,639 @@
+{
+  "archipelago": 1,
+  "name": "SQL and relational databases",
+  "slug": "sql-and-databases",
+  "description": "Thinking in tables: how to ask questions of data, how to design the tables that hold it, and why a query is fast, slow, or wrong. For anyone who writes SQL or is about to start.",
+  "by": "Archipelago",
+  "language": "en",
+  "islands": [
+    {
+      "slug": "relational-model",
+      "name": "The relational model",
+      "summary": "Data as tables of rows, each row a fact, with keys that tie tables together.",
+      "landmarks": [
+        {
+          "slug": "a-row-is-one-fact-a-column-one-attribute",
+          "name": "A row is one fact, a column one attribute",
+          "terms": [
+            "one fact",
+            "attribute",
+            "tuple"
+          ]
+        },
+        {
+          "slug": "a-primary-key-identifies-each-row-uniquely",
+          "name": "A primary key identifies each row uniquely",
+          "terms": [
+            "primary key",
+            "uniquely",
+            "identifies"
+          ]
+        },
+        {
+          "slug": "a-foreign-key-points-at-a-row-in-another-table",
+          "name": "A foreign key points at a row in another table",
+          "terms": [
+            "foreign key",
+            "references",
+            "referential integrity"
+          ]
+        },
+        {
+          "slug": "null-marks-a-missing-value-not-zero-or-empty",
+          "name": "NULL marks a missing value, not zero or empty",
+          "terms": [
+            "NULL",
+            "missing",
+            "nullable"
+          ]
+        },
+        {
+          "slug": "constraints-let-the-database-refuse-bad-data",
+          "name": "Constraints let the database refuse bad data",
+          "terms": [
+            "data type",
+            "constraint",
+            "NOT NULL",
+            "CHECK"
+          ]
+        },
+        {
+          "slug": "a-querys-result-is-a-table-too",
+          "name": "A query's result is a table too",
+          "terms": [
+            "relation",
+            "result set"
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "queries",
+      "name": "Basic queries",
+      "summary": "Choosing, ordering and changing rows, and the order SQL really works in.",
+      "landmarks": [
+        {
+          "slug": "select-picks-columns-where-picks-rows",
+          "name": "SELECT picks columns, WHERE picks rows",
+          "terms": [
+            "SELECT",
+            "FROM",
+            "WHERE",
+            "filter"
+          ]
+        },
+        {
+          "slug": "logically-from-and-where-come-before-select",
+          "name": "Logically, FROM and WHERE come before SELECT",
+          "terms": [
+            "logical order",
+            "evaluation order",
+            "alias"
+          ]
+        },
+        {
+          "slug": "a-comparison-with-null-is-unknown-neither-true-nor-false",
+          "name": "A comparison with NULL is unknown, neither true nor false",
+          "terms": [
+            "IS NULL",
+            "unknown",
+            "three-valued logic",
+            "COALESCE"
+          ]
+        },
+        {
+          "slug": "without-order-by-the-row-order-is-not-guaranteed",
+          "name": "Without ORDER BY the row order is not guaranteed",
+          "terms": [
+            "ORDER BY",
+            "LIMIT",
+            "OFFSET"
+          ]
+        },
+        {
+          "slug": "update-and-delete-change-every-row-the-where-matches",
+          "name": "UPDATE and DELETE change every row the WHERE matches",
+          "terms": [
+            "INSERT",
+            "UPDATE",
+            "DELETE",
+            "affected rows"
+          ]
+        },
+        {
+          "slug": "values-go-in-as-parameters-not-pasted-text",
+          "name": "Values go in as parameters, not pasted text",
+          "terms": [
+            "parameter",
+            "placeholder",
+            "SQL injection",
+            "prepared statement"
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "joins",
+      "name": "Joins",
+      "summary": "Putting rows from two tables side by side, and what happens to rows without a match.",
+      "landmarks": [
+        {
+          "slug": "a-join-pairs-rows-that-satisfy-a-condition",
+          "name": "A join pairs rows that satisfy a condition",
+          "terms": [
+            "join condition",
+            "ON",
+            "cross join"
+          ]
+        },
+        {
+          "slug": "an-inner-join-keeps-matches-only",
+          "name": "An inner join keeps matches only",
+          "terms": [
+            "INNER JOIN",
+            "inner join",
+            "matching rows"
+          ]
+        },
+        {
+          "slug": "an-outer-join-keeps-unmatched-rows-filled-with-nulls",
+          "name": "An outer join keeps unmatched rows, filled with NULLs",
+          "terms": [
+            "LEFT JOIN",
+            "outer join",
+            "unmatched rows"
+          ]
+        },
+        {
+          "slug": "a-row-appears-once-for-every-match-so-joins-multiply-rows",
+          "name": "A row appears once for every match, so joins multiply rows",
+          "terms": [
+            "duplicates",
+            "fan-out",
+            "one-to-many"
+          ]
+        },
+        {
+          "slug": "a-table-can-be-joined-to-itself-under-two-aliases",
+          "name": "A table can be joined to itself under two aliases",
+          "terms": [
+            "self join",
+            "alias",
+            "hierarchy"
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "aggregation",
+      "name": "Grouping and aggregates",
+      "summary": "Turning many rows into a summary, and keeping the detail when you need both.",
+      "landmarks": [
+        {
+          "slug": "an-aggregate-turns-many-rows-into-one-value",
+          "name": "An aggregate turns many rows into one value",
+          "terms": [
+            "COUNT",
+            "SUM",
+            "AVG"
+          ]
+        },
+        {
+          "slug": "group-by-makes-one-row-per-group",
+          "name": "GROUP BY makes one row per group",
+          "terms": [
+            "GROUP BY",
+            "grouping key",
+            "per group"
+          ]
+        },
+        {
+          "slug": "a-column-neither-grouped-nor-aggregated-has-no-single-value-per-group",
+          "name": "A column neither grouped nor aggregated has no single value per group",
+          "terms": [
+            "select list",
+            "non-grouped column",
+            "arbitrary value"
+          ]
+        },
+        {
+          "slug": "where-filters-rows-having-filters-groups",
+          "name": "WHERE filters rows, HAVING filters groups",
+          "terms": [
+            "HAVING",
+            "before grouping",
+            "after grouping"
+          ]
+        },
+        {
+          "slug": "aggregates-skip-nulls-only-count-counts-every-row",
+          "name": "Aggregates skip NULLs; only COUNT(*) counts every row",
+          "terms": [
+            "COUNT(*)",
+            "COUNT(column)",
+            "ignores NULLs"
+          ]
+        },
+        {
+          "slug": "a-window-function-summarises-without-collapsing-rows",
+          "name": "A window function summarises without collapsing rows",
+          "terms": [
+            "window function",
+            "OVER",
+            "PARTITION BY"
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "subqueries",
+      "name": "Queries inside queries",
+      "summary": "Building a larger question from smaller ones, because every result is a table.",
+      "landmarks": [
+        {
+          "slug": "a-subquery-stands-for-a-value-a-list-or-a-table",
+          "name": "A subquery stands for a value, a list or a table",
+          "terms": [
+            "subquery",
+            "scalar subquery",
+            "derived table"
+          ]
+        },
+        {
+          "slug": "a-correlated-subquery-depends-on-the-outer-row",
+          "name": "A correlated subquery depends on the outer row",
+          "terms": [
+            "correlated subquery",
+            "outer query"
+          ]
+        },
+        {
+          "slug": "exists-asks-whether-any-row-matches",
+          "name": "EXISTS asks whether any row matches",
+          "terms": [
+            "EXISTS",
+            "IN",
+            "NOT IN"
+          ]
+        },
+        {
+          "slug": "with-names-a-subquery-so-later-steps-can-use-it",
+          "name": "WITH names a subquery so later steps can use it",
+          "terms": [
+            "common table expression",
+            "CTE",
+            "WITH",
+            "recursive"
+          ]
+        },
+        {
+          "slug": "union-stacks-results-union-all-keeps-duplicates",
+          "name": "UNION stacks results; UNION ALL keeps duplicates",
+          "terms": [
+            "UNION",
+            "UNION ALL",
+            "set operation"
+          ]
+        },
+        {
+          "slug": "a-view-is-a-saved-query",
+          "name": "A view is a saved query",
+          "terms": [
+            "view",
+            "materialised view"
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "design",
+      "name": "Schema design",
+      "summary": "Deciding what the tables are, so each fact is stored once.",
+      "landmarks": [
+        {
+          "slug": "one-to-many-is-a-foreign-key-many-to-many-needs-a-third-table",
+          "name": "One-to-many is a foreign key; many-to-many needs a third table",
+          "terms": [
+            "one-to-many",
+            "many-to-many",
+            "join table",
+            "junction table"
+          ]
+        },
+        {
+          "slug": "a-fact-stored-twice-can-disagree-with-itself",
+          "name": "A fact stored twice can disagree with itself",
+          "terms": [
+            "redundancy",
+            "update anomaly"
+          ]
+        },
+        {
+          "slug": "in-a-normalised-table-every-column-depends-on-the-whole-key-and-nothing-else",
+          "name": "In a normalised table every column depends on the whole key and nothing else",
+          "terms": [
+            "normalisation",
+            "third normal form",
+            "functional dependency"
+          ]
+        },
+        {
+          "slug": "a-natural-key-comes-from-the-data-a-surrogate-key-is-made-up",
+          "name": "A natural key comes from the data, a surrogate key is made up",
+          "terms": [
+            "natural key",
+            "surrogate key",
+            "auto-increment"
+          ]
+        },
+        {
+          "slug": "denormalising-buys-faster-reads-with-harder-writes",
+          "name": "Denormalising buys faster reads with harder writes",
+          "terms": [
+            "denormalisation",
+            "denormalise",
+            "redundant copy"
+          ]
+        },
+        {
+          "slug": "a-migration-changes-the-schema-and-the-data-already-in-it",
+          "name": "A migration changes the schema and the data already in it",
+          "terms": [
+            "migration",
+            "ALTER TABLE",
+            "schema change"
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "indexes",
+      "name": "Indexes",
+      "summary": "The structures that let a database find rows without reading them all.",
+      "landmarks": [
+        {
+          "slug": "without-an-index-the-database-reads-every-row",
+          "name": "Without an index the database reads every row",
+          "terms": [
+            "table scan",
+            "sequential scan",
+            "full scan"
+          ]
+        },
+        {
+          "slug": "a-b-tree-keeps-keys-sorted-so-lookups-and-ranges-are-fast",
+          "name": "A B-tree keeps keys sorted, so lookups and ranges are fast",
+          "terms": [
+            "B-tree",
+            "sorted order",
+            "range scan",
+            "logarithmic"
+          ]
+        },
+        {
+          "slug": "a-composite-index-is-sorted-by-its-first-column-then-the-next",
+          "name": "A composite index is sorted by its first column, then the next",
+          "terms": [
+            "composite index",
+            "leftmost prefix"
+          ]
+        },
+        {
+          "slug": "a-covering-index-can-answer-a-query-without-the-table",
+          "name": "A covering index can answer a query without the table",
+          "terms": [
+            "covering index",
+            "index-only scan"
+          ]
+        },
+        {
+          "slug": "every-index-slows-writes-and-takes-space",
+          "name": "Every index slows writes and takes space",
+          "terms": [
+            "write cost",
+            "disk space",
+            "index maintenance"
+          ]
+        },
+        {
+          "slug": "wrapping-a-column-in-a-function-or-matching-most-rows-defeats-an-index",
+          "name": "Wrapping a column in a function or matching most rows defeats an index",
+          "terms": [
+            "selectivity",
+            "selective",
+            "expression index"
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "planner",
+      "name": "The query planner",
+      "summary": "How the database decides the way to run what you asked for.",
+      "landmarks": [
+        {
+          "slug": "sql-says-what-the-planner-decides-how",
+          "name": "SQL says what, the planner decides how",
+          "terms": [
+            "declarative",
+            "query plan",
+            "optimizer"
+          ]
+        },
+        {
+          "slug": "explain-shows-the-plan-the-database-chose",
+          "name": "EXPLAIN shows the plan the database chose",
+          "terms": [
+            "EXPLAIN",
+            "EXPLAIN ANALYZE",
+            "execution plan",
+            "estimated cost"
+          ]
+        },
+        {
+          "slug": "the-planner-estimates-row-counts-from-statistics",
+          "name": "The planner estimates row counts from statistics",
+          "terms": [
+            "statistics",
+            "cardinality",
+            "row estimate"
+          ]
+        },
+        {
+          "slug": "a-join-can-run-as-a-nested-loop-a-hash-join-or-a-merge-join",
+          "name": "A join can run as a nested loop, a hash join or a merge join",
+          "terms": [
+            "nested loop",
+            "hash join",
+            "merge join"
+          ]
+        },
+        {
+          "slug": "n-1-a-query-per-row-instead-of-one-join",
+          "name": "N+1: a query per row instead of one join",
+          "terms": [
+            "N+1",
+            "round trip",
+            "ORM"
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "transactions",
+      "name": "Transactions",
+      "summary": "Making several changes behave as one, while others read and write at the same time.",
+      "landmarks": [
+        {
+          "slug": "a-transactions-changes-all-happen-or-none-do",
+          "name": "A transaction's changes all happen or none do",
+          "terms": [
+            "atomicity",
+            "COMMIT",
+            "ROLLBACK",
+            "ACID"
+          ]
+        },
+        {
+          "slug": "without-isolation-concurrent-transactions-see-and-overwrite-each-others-work",
+          "name": "Without isolation concurrent transactions see and overwrite each other's work",
+          "terms": [
+            "dirty read",
+            "lost update",
+            "phantom"
+          ]
+        },
+        {
+          "slug": "each-isolation-level-permits-some-anomalies-in-exchange-for-concurrency",
+          "name": "Each isolation level permits some anomalies in exchange for concurrency",
+          "terms": [
+            "isolation level",
+            "read committed",
+            "repeatable read",
+            "serializable"
+          ]
+        },
+        {
+          "slug": "under-mvcc-readers-see-a-snapshot-and-do-not-block-writers",
+          "name": "Under MVCC readers see a snapshot and do not block writers",
+          "terms": [
+            "MVCC",
+            "snapshot",
+            "row version"
+          ]
+        },
+        {
+          "slug": "a-deadlock-is-two-transactions-waiting-on-each-others-locks",
+          "name": "A deadlock is two transactions waiting on each other's locks",
+          "terms": [
+            "row lock",
+            "deadlock",
+            "blocked"
+          ]
+        },
+        {
+          "slug": "a-commit-survives-a-crash",
+          "name": "A commit survives a crash",
+          "terms": [
+            "durability",
+            "write-ahead log",
+            "crash recovery"
+          ]
+        }
+      ]
+    }
+  ],
+  "straits": [
+    {
+      "from": "relational-model",
+      "to": "queries",
+      "name": "A query reads and returns tables"
+    },
+    {
+      "from": "relational-model",
+      "to": "design",
+      "name": "Primary and foreign keys express the relationships"
+    },
+    {
+      "from": "queries",
+      "to": "joins",
+      "name": "A join is part of the FROM clause"
+    },
+    {
+      "from": "joins",
+      "to": "aggregation",
+      "name": "A join that multiplies rows inflates a sum"
+    },
+    {
+      "from": "joins",
+      "to": "subqueries",
+      "name": "EXISTS checks for a match without multiplying rows"
+    },
+    {
+      "from": "aggregation",
+      "to": "subqueries",
+      "name": "A grouped result can be queried again as a subquery"
+    },
+    {
+      "from": "design",
+      "to": "joins",
+      "name": "Normalised tables are joined back together"
+    },
+    {
+      "from": "design",
+      "to": "indexes",
+      "name": "Primary keys and unique constraints are enforced by indexes"
+    },
+    {
+      "from": "queries",
+      "to": "indexes",
+      "name": "An index serves WHERE and ORDER BY"
+    },
+    {
+      "from": "indexes",
+      "to": "planner",
+      "name": "The planner chooses whether to use an index"
+    },
+    {
+      "from": "joins",
+      "to": "planner",
+      "name": "The planner picks an algorithm for each join"
+    },
+    {
+      "from": "queries",
+      "to": "transactions",
+      "name": "A transaction groups writes that must succeed together"
+    },
+    {
+      "from": "design",
+      "to": "transactions",
+      "name": "A transaction cannot commit data that breaks a constraint"
+    }
+  ],
+  "seas": [
+    {
+      "name": "Tables",
+      "islands": [
+        "relational-model",
+        "design"
+      ]
+    },
+    {
+      "name": "Asking questions",
+      "islands": [
+        "queries",
+        "joins",
+        "aggregation",
+        "subqueries"
+      ]
+    },
+    {
+      "name": "Under the hood",
+      "islands": [
+        "indexes",
+        "planner",
+        "transactions"
+      ]
+    }
+  ]
+}

@@ -66,6 +66,20 @@ test("atHome holds until the reader pans", () => {
   expect(cam.atHome()).toBe(false);
 });
 
+test("a camera gliding home is at home, even when home moves under it; one gliding elsewhere is not", () => {
+  const cam = createCamera();
+  cam.fit(1000, 800);
+  cam.snapHome();
+  cam.fit(1000, 800, {}, { x0: 0, y0: 0, x1: 3000, y1: 3000 });
+  expect(cam.atHome()).toBe(false);
+  cam.animateTo(cam.home, 100);
+  expect(cam.atHome()).toBe(true);
+  cam.fit(1000, 800, {}, { x0: 0, y0: 0, x1: 5000, y1: 5000 }); // home moves during the glide
+  expect(cam.atHome()).toBe(true);
+  cam.animateTo({ x: 1, y: 2, scale: 3 }, 100);
+  expect(cam.atHome()).toBe(false);
+});
+
 test("home frames the islands, wherever they are, and never zooms closer than MAX_HOME", () => {
   const cam = createCamera();
   // islands spread far to the left of the old square: home takes them all in

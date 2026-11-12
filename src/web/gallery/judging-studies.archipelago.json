@@ -1,0 +1,563 @@
+{
+  "archipelago": 1,
+  "name": "Statistics for judging studies",
+  "slug": "judging-studies",
+  "description": "Enough statistics to read a study or a headline and judge it yourself: what the numbers claim, what they cannot show, and the usual ways they mislead. For readers of news and research, not for people who run the analyses.",
+  "by": "Archipelago",
+  "language": "en",
+  "islands": [
+    {
+      "slug": "describing",
+      "name": "Describing data",
+      "summary": "Summarising many numbers in a few, without hiding what matters.",
+      "landmarks": [
+        {
+          "slug": "mean-median-and-when-they-differ",
+          "name": "Mean, median and when they differ",
+          "terms": [
+            "the mean",
+            "median",
+            "skewed"
+          ]
+        },
+        {
+          "slug": "why-an-average-needs-a-spread",
+          "name": "Why an average needs a spread",
+          "terms": [
+            "standard deviation",
+            "spread",
+            "range"
+          ]
+        },
+        {
+          "slug": "the-shape-of-a-distribution",
+          "name": "The shape of a distribution",
+          "terms": [
+            "distribution",
+            "histogram",
+            "outlier"
+          ]
+        },
+        {
+          "slug": "the-normal-curve-and-where-it-fails",
+          "name": "The normal curve and where it fails",
+          "terms": [
+            "normal distribution",
+            "bell curve",
+            "heavy tail"
+          ]
+        },
+        {
+          "slug": "a-count-needs-a-denominator",
+          "name": "A count needs a denominator",
+          "terms": [
+            "rate",
+            "per capita",
+            "denominator"
+          ]
+        },
+        {
+          "slug": "percentages-and-percentage-points",
+          "name": "Percentages and percentage points",
+          "terms": [
+            "percentage point",
+            "relative change",
+            "baseline"
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "sampling",
+      "name": "Samples and populations",
+      "summary": "Learning about everyone by asking some, and how that goes wrong.",
+      "landmarks": [
+        {
+          "slug": "sample-and-population",
+          "name": "Sample and population",
+          "terms": [
+            "sample",
+            "population",
+            "estimate"
+          ]
+        },
+        {
+          "slug": "why-random-sampling-works",
+          "name": "Why random sampling works",
+          "terms": [
+            "random sample",
+            "representative",
+            "equal chance"
+          ]
+        },
+        {
+          "slug": "selection-bias",
+          "name": "Selection bias",
+          "terms": [
+            "selection bias",
+            "self-selection",
+            "non-response"
+          ]
+        },
+        {
+          "slug": "survivorship-bias",
+          "name": "Survivorship bias",
+          "terms": [
+            "survivorship bias",
+            "survivors",
+            "failures"
+          ]
+        },
+        {
+          "slug": "a-big-sample-does-not-fix-a-biased-one",
+          "name": "A big sample does not fix a biased one",
+          "terms": [
+            "sample size",
+            "biased sample",
+            "convenience sample"
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "uncertainty",
+      "name": "Uncertainty",
+      "summary": "How far an estimate from a sample might be from the truth.",
+      "landmarks": [
+        {
+          "slug": "a-different-sample-would-give-a-different-answer",
+          "name": "A different sample would give a different answer",
+          "terms": [
+            "sampling variation",
+            "sampling error",
+            "luck of the draw"
+          ]
+        },
+        {
+          "slug": "what-a-standard-error-measures",
+          "name": "What a standard error measures",
+          "terms": [
+            "standard error",
+            "precision",
+            "precise"
+          ]
+        },
+        {
+          "slug": "what-a-confidence-interval-does-and-does-not-say",
+          "name": "What a confidence interval does and does not say",
+          "terms": [
+            "confidence interval",
+            "95 percent",
+            "95%",
+            "plausible values",
+            "repeated samples"
+          ]
+        },
+        {
+          "slug": "a-margin-of-error-covers-only-sampling-variation",
+          "name": "A margin of error covers only sampling variation",
+          "terms": [
+            "margin of error",
+            "poll",
+            "plus or minus"
+          ]
+        },
+        {
+          "slug": "halving-the-error-takes-four-times-the-sample",
+          "name": "Halving the error takes four times the sample",
+          "terms": [
+            "square root",
+            "four times",
+            "diminishing returns"
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "testing",
+      "name": "Hypothesis tests",
+      "summary": "What a p-value says, and the many things it does not.",
+      "landmarks": [
+        {
+          "slug": "the-null-hypothesis",
+          "name": "The null hypothesis",
+          "terms": [
+            "null hypothesis",
+            "no effect"
+          ]
+        },
+        {
+          "slug": "what-a-p-value-is",
+          "name": "What a p-value is",
+          "terms": [
+            "p-value",
+            "as extreme",
+            "assuming the null"
+          ]
+        },
+        {
+          "slug": "a-p-value-is-not-the-chance-the-null-is-true",
+          "name": "A p-value is not the chance the null is true",
+          "terms": [
+            "not the probability",
+            "due to chance",
+            "null is true"
+          ]
+        },
+        {
+          "slug": "what-statistically-significant-means",
+          "name": "What statistically significant means",
+          "terms": [
+            "statistically significant",
+            "significance",
+            "threshold",
+            "0.05"
+          ]
+        },
+        {
+          "slug": "two-kinds-of-error",
+          "name": "Two kinds of error",
+          "terms": [
+            "false positive",
+            "false negative"
+          ]
+        },
+        {
+          "slug": "not-significant-does-not-mean-no-effect",
+          "name": "Not significant does not mean no effect",
+          "terms": [
+            "not significant",
+            "power",
+            "absence of evidence"
+          ]
+        },
+        {
+          "slug": "test-enough-things-and-some-will-pass-by-chance",
+          "name": "Test enough things and some will pass by chance",
+          "terms": [
+            "multiple comparisons",
+            "by chance",
+            "many tests"
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "effect-size",
+      "name": "Effect size",
+      "summary": "Whether a difference that is real is also big enough to matter.",
+      "landmarks": [
+        {
+          "slug": "significant-is-not-the-same-as-important",
+          "name": "Significant is not the same as important",
+          "terms": [
+            "effect size",
+            "practical significance"
+          ]
+        },
+        {
+          "slug": "relative-risk-means-little-without-absolute-risk",
+          "name": "Relative risk means little without absolute risk",
+          "terms": [
+            "relative risk",
+            "absolute risk",
+            "double"
+          ]
+        },
+        {
+          "slug": "number-needed-to-treat",
+          "name": "Number needed to treat",
+          "terms": [
+            "number needed to treat",
+            "NNT"
+          ]
+        },
+        {
+          "slug": "an-odds-ratio-exaggerates-relative-risk-unless-the-outcome-is-rare",
+          "name": "An odds ratio exaggerates relative risk unless the outcome is rare",
+          "terms": [
+            "odds ratio",
+            "odds",
+            "rare outcome"
+          ]
+        },
+        {
+          "slug": "why-a-positive-test-for-a-rare-condition-is-often-a-false-alarm",
+          "name": "Why a positive test for a rare condition is often a false alarm",
+          "terms": [
+            "base rate",
+            "screening",
+            "false alarm",
+            "false positive"
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "correlation",
+      "name": "Correlation and causation",
+      "summary": "Two things moving together, and the reasons that can be so.",
+      "landmarks": [
+        {
+          "slug": "what-a-correlation-measures",
+          "name": "What a correlation measures",
+          "terms": [
+            "correlation coefficient",
+            "coefficient",
+            "scatter plot",
+            "straight line"
+          ]
+        },
+        {
+          "slug": "confounding",
+          "name": "Confounding",
+          "terms": [
+            "confounder",
+            "confounding",
+            "third variable"
+          ]
+        },
+        {
+          "slug": "reverse-causation",
+          "name": "Reverse causation",
+          "terms": [
+            "reverse causation",
+            "other way round",
+            "which came first"
+          ]
+        },
+        {
+          "slug": "controlling-for-a-variable-and-what-it-cannot-fix",
+          "name": "Controlling for a variable and what it cannot fix",
+          "terms": [
+            "controlling for",
+            "adjusted",
+            "unmeasured",
+            "like with like"
+          ]
+        },
+        {
+          "slug": "simpsons-paradox",
+          "name": "Simpson's paradox",
+          "terms": [
+            "Simpson's paradox",
+            "subgroup",
+            "reversal"
+          ]
+        },
+        {
+          "slug": "regression-to-the-mean",
+          "name": "Regression to the mean",
+          "terms": [
+            "regression to the mean",
+            "extreme",
+            "natural variation"
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "study-design",
+      "name": "Study design",
+      "summary": "How a study is set up decides what it can show, above all whether one thing causes another.",
+      "landmarks": [
+        {
+          "slug": "why-randomising-works",
+          "name": "Why randomising works",
+          "terms": [
+            "randomisation",
+            "randomised",
+            "random assignment",
+            "comparable groups"
+          ]
+        },
+        {
+          "slug": "control-groups-and-placebos",
+          "name": "Control groups and placebos",
+          "terms": [
+            "control group",
+            "placebo"
+          ]
+        },
+        {
+          "slug": "blinding",
+          "name": "Blinding",
+          "terms": [
+            "blinding",
+            "blinded",
+            "double-blind",
+            "expectation"
+          ]
+        },
+        {
+          "slug": "what-an-observational-study-can-and-cannot-show",
+          "name": "What an observational study can and cannot show",
+          "terms": [
+            "observational",
+            "cohort",
+            "case-control"
+          ]
+        },
+        {
+          "slug": "what-was-measured-is-not-always-what-is-claimed",
+          "name": "What was measured is not always what is claimed",
+          "terms": [
+            "proxy",
+            "surrogate",
+            "self-reported"
+          ]
+        },
+        {
+          "slug": "who-a-studys-results-apply-to",
+          "name": "Who a study's results apply to",
+          "terms": [
+            "generalise",
+            "external validity",
+            "who was studied"
+          ]
+        },
+        {
+          "slug": "why-one-study-is-rarely-enough",
+          "name": "Why one study is rarely enough",
+          "terms": [
+            "meta-analysis",
+            "systematic review",
+            "pooling",
+            "single study"
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "pitfalls",
+      "name": "How numbers mislead",
+      "summary": "The recurring tricks and honest mistakes, so you can spot them.",
+      "landmarks": [
+        {
+          "slug": "cherry-picked-results",
+          "name": "Cherry-picked results",
+          "terms": [
+            "cherry-picking",
+            "cherry-picked",
+            "selective reporting"
+          ]
+        },
+        {
+          "slug": "choosing-the-analysis-after-seeing-the-data",
+          "name": "Choosing the analysis after seeing the data",
+          "terms": [
+            "p-hacking",
+            "preregistration",
+            "preregistered",
+            "forking paths"
+          ]
+        },
+        {
+          "slug": "why-a-published-finding-may-not-replicate",
+          "name": "Why a published finding may not replicate",
+          "terms": [
+            "publication bias",
+            "replication",
+            "replicate",
+            "file drawer"
+          ]
+        },
+        {
+          "slug": "misleading-charts",
+          "name": "Misleading charts",
+          "terms": [
+            "truncated axis",
+            "y-axis",
+            "start at zero"
+          ]
+        },
+        {
+          "slug": "questions-to-ask-of-any-study",
+          "name": "Questions to ask of any study",
+          "terms": [
+            "who was studied",
+            "compared to what",
+            "how big"
+          ]
+        }
+      ]
+    }
+  ],
+  "straits": [
+    {
+      "from": "describing",
+      "to": "sampling",
+      "name": "A summary describes only the sample"
+    },
+    {
+      "from": "sampling",
+      "to": "uncertainty",
+      "name": "Random samples vary in a known way"
+    },
+    {
+      "from": "uncertainty",
+      "to": "testing",
+      "name": "An interval holds the values a test would not reject"
+    },
+    {
+      "from": "testing",
+      "to": "effect-size",
+      "name": "A small p-value is not a big effect"
+    },
+    {
+      "from": "uncertainty",
+      "to": "effect-size",
+      "name": "An estimated effect comes with an interval"
+    },
+    {
+      "from": "correlation",
+      "to": "study-design",
+      "name": "Randomising balances confounders on average"
+    },
+    {
+      "from": "sampling",
+      "to": "study-design",
+      "name": "Who was studied limits who it applies to"
+    },
+    {
+      "from": "testing",
+      "to": "pitfalls",
+      "name": "Many tests, a few reported"
+    },
+    {
+      "from": "correlation",
+      "to": "pitfalls",
+      "name": "A correlation told as a cause"
+    },
+    {
+      "from": "describing",
+      "to": "pitfalls",
+      "name": "A summary can hide the shape"
+    }
+  ],
+  "seas": [
+    {
+      "name": "The data and where it came from",
+      "islands": [
+        "describing",
+        "sampling"
+      ]
+    },
+    {
+      "name": "From sample to claim",
+      "islands": [
+        "uncertainty",
+        "testing",
+        "effect-size"
+      ]
+    },
+    {
+      "name": "From claim to cause",
+      "islands": [
+        "correlation",
+        "study-design",
+        "pitfalls"
+      ]
+    }
+  ]
+}

@@ -680,6 +680,15 @@ body.empty .board-hint { display: none; }
 .new-domain-card textarea.map-text { font: 12px/1.5 var(--font-mono); min-height: 120px; }
 .new-domain-card .other-ai { display: flex; gap: 12px; align-items: center; padding-top: 10px; border-top: 1px solid var(--line); }
 .new-domain-card .other-ai .btn { flex: none; }
+.new-domain-card .shared-maps { display: flex; flex-direction: column; gap: 6px; max-height: min(52vh, 460px); overflow-y: auto; margin: 0 -4px; padding: 4px; }
+.new-domain-card .shared-map { display: grid; gap: 2px; text-align: left; background: var(--water); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; color: var(--text); font: inherit; cursor: pointer; }
+.new-domain-card .shared-map:hover:not(:disabled), .new-domain-card .shared-map:focus-visible { border-color: var(--lamp); outline: none; }
+.new-domain-card .shared-map.picked { border-color: var(--lamp); box-shadow: 0 0 0 3px var(--lamp-tint); }
+.new-domain-card .shared-map:disabled { cursor: default; opacity: .7; }
+.new-domain-card .shared-map .nm { font-size: 14px; }
+.new-domain-card .shared-map .ds { font-size: 12px; line-height: 1.45; color: var(--text-2); }
+.new-domain-card .shared-map .mt { font-size: 11px; color: var(--muted); }
+.new-domain-card .as-link.push { margin-left: auto; }
 .new-domain-card .hint { margin-left: auto; font: 11px var(--font-mono); color: var(--muted); }
 body.empty .outline, body.empty .chrome, body.empty #map-focus, body.empty #board-toggle { display: none; }
 .new-domain.first { background: transparent; align-items: center; padding: 24px 16px; }

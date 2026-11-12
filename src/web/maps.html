@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title data-t="maps.title">Shared maps · Archipelago</title>
+<meta name="description" content="Maps of whole subjects, already drawn and free to take: Git, how computers and the internet work, large language models, SQL, music theory, statistics. Open one in Archipelago and chart what you understand.">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<script>try { var t = localStorage.getItem("theme"); if (t) document.documentElement.dataset.theme = t; var l = localStorage.getItem("lang"); document.documentElement.lang = l === "en" || l === "zh-TW" ? l : (navigator.languages || []).some(function (b) { return /^zh\b/i.test(b); }) ? "zh-TW" : "en"; } catch (e) {}</script>
+<link rel="stylesheet" href="/fonts/noto-sans-tc.css">
+<link rel="stylesheet" href="/styles.css">
+<link rel="stylesheet" href="/about.css">
+</head>
+<body class="landing gallery">
+<!-- The gallery of shared maps. Like about.html: the English below is the page without script, and about.js puts in
+     the reader's language from strings/maps.js. The maps themselves are drawn by maps.js from /gallery/index.json. -->
+<header class="top">
+  <a class="mark" href="/about">Archipelago</a>
+  <nav>
+    <a href="/about" data-t="about.navAbout">What it is</a>
+    <button type="button" class="lang" id="lang" data-t="about.otherLanguage">中文</button>
+    <a class="btn" href="/" data-t="about.navOpen">Open the map</a>
+  </nav>
+</header>
+
+<main>
+  <section>
+    <h1 data-t="maps.heading">Shared maps</h1>
+    <p class="lede" data-t="maps.intro">Whole subjects, already drawn as islands and free to take. Open one and it becomes a domain of your own: every island starts as open water, and the map fills in as you show the Keeper what you understand, or ask the Mentor about what you don't.</p>
+    <div class="maps" id="maps"><p class="status" data-t="maps.loading">Reading the maps…</p></div>
+  </section>
+
+  <section id="share">
+    <h2 data-t="maps.shareTitle">Share a map of your own</h2>
+    <p class="lede" data-t="maps.shareIntro">The gallery is a folder of files in the open-source repository, and a map joins it by pull request.</p>
+    <ol class="how">
+      <li data-t="maps.share1">Chart a domain in Archipelago, or have another AI write one: New domain, then Import a map, has a prompt to copy.</li>
+      <li data-t="maps.share2">Choose Export this map in the domain menu. The file holds the structure only: its islands, landmarks, straits and seas. Nothing you said is in it, and no verdict.</li>
+      <li data-t="maps.share3">Add a line saying who made it, <code data-slot="by">"by": "Your name"</code>, and name the file <code data-slot="file">&lt;slug&gt;.archipelago.json</code>.</li>
+      <li data-t="maps.share4">Open a pull request that adds it to <a data-slot="folder" href="https://github.com/funclosure/archipelago/tree/main/src/web/gallery">src/web/gallery</a>. The README there says how to check it first.</li>
+    </ol>
+    <h3 data-t="maps.rulesTitle">What a shared map needs</h3>
+    <ul class="how">
+      <li data-t="maps.rule1">Six to twelve islands, each with a one-line summary and three to eight landmarks: the ideas someone must be able to explain to say they understand it.</li>
+      <li data-t="maps.rule2">Two to four seas, with every island in exactly one.</li>
+      <li data-t="maps.rule3">Accurate, and your own work. A map is read by people who do not yet know the subject.</li>
+      <li data-t="maps.rule4">English or Traditional Chinese. A translation is a second file with the same slugs.</li>
+      <li data-t="maps.rule5">Shared under the MIT License, like the rest of the repository, so anyone may use and change it.</li>
+    </ul>
+  </section>
+</main>
+
+<footer>
+  <span>Archipelago</span>
+  <a href="/terms" data-t="about.footerTerms">Terms</a>
+  <a href="/privacy" data-t="about.footerPrivacy">Privacy</a>
+  <a href="https://github.com/funclosure/archipelago" data-t="about.footerSource">Source on GitHub</a>
+</footer>
+<script type="module" src="/about.js"></script>
+<script type="module" src="/maps.js"></script>
+</body>
+</html>

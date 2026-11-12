@@ -63,6 +63,24 @@ body.landing { font: 16px/1.6 var(--font-text); }
   font-size: 13px; color: var(--muted); }
 .landing footer a { color: var(--text-2); }
 
+/* The gallery of shared maps (maps.html): a card per map, then how to share one. */
+.gallery h1 { margin-bottom: 12px; }
+.gallery .maps { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px; }
+.gallery .maps .status { color: var(--muted); font-size: 15px; margin: 0; }
+.gallery .map { display: flex; flex-direction: column; gap: 10px; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 18px; min-width: 0; scroll-margin-top: 80px; }
+.gallery .map:target { border-color: var(--lamp); }
+.gallery .map h3 { font: 22px/1.25 Georgia, serif; margin: 0; }
+.gallery .map .ds { margin: 0; color: var(--text-2); font-size: 15px; }
+.gallery .map .isles { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+.gallery .map .isles li { border: 1px solid var(--line); border-radius: 999px; padding: 2px 10px; font-size: 12px; color: var(--text-2); }
+.gallery .map .mt { margin: 0; font-size: 13px; color: var(--muted); }
+.gallery .map .actions { margin-top: auto; padding-top: 6px; align-items: center; gap: 16px; }
+.gallery .map .file { font-size: 13px; color: var(--text-2); }
+.gallery #share .lede { margin-bottom: 14px; }
+.gallery .how { margin: 0 0 8px; padding-left: 22px; max-width: 46em; color: var(--text-2); font-size: 15px; }
+.gallery .how li { margin-bottom: 8px; }
+.gallery #share h3 { margin-top: 26px; }
+
 /* The terms and privacy pages (terms.html, privacy.html): one narrow column of plain text. */
 .legal main { max-width: 720px; padding-top: 48px; }
 .legal h1 { font-size: 36px; margin-bottom: 6px; }
