@@ -57,6 +57,32 @@ Islands keep their place. The map lays out new islands once, around the ones alr
 
 Name the seas between your islands: double-click open water and write a name ("The React side", "Under the hood"). The cartographer suggests a few in its first sketch of each scale; they come with the sketch, so you approve, change, or discard them with it. A sea is your own grouping of the domain. It's drawn the way old charts drew named water: stippled around the islands nearest its name, lettered in wide capitals under everything. Drag a name to move it, double-click to rename it, select it and press Delete to remove it. The cartographer reads your seas when it sketches, and never changes them. `archipelago island update --domain <slug> --slug <island> --x <n> --y <n>` sets a position by hand.
 
+## Sharing a map
+
+A map file is one domain's structure as JSON: its islands at every scale, their landmarks, straits, seas, and where you put them. Nothing you said is in it: no conversation, verdict, lit landmark, loose end or board.
+
+- **Export**: *Export this map* in the domain menu, or `archipelago map export --domain <slug> [--out map.json]`.
+- **Import**: *Import a map…* under New domain (paste it or choose the file), or `archipelago map import --file map.json` (`--file -` reads stdin). An import always makes a new domain and never changes one that is there. No model runs.
+- **From another AI**: the import view's *Copy the prompt* gives ChatGPT, Gemini, Claude or a coding agent the format and the rules; paste what it writes back.
+
+```json
+{
+  "archipelago": 1,
+  "name": "Caching",
+  "description": "Caching for backend engineers.",
+  "islands": [
+    { "slug": "eviction", "name": "Eviction", "summary": "What leaves a full cache.",
+      "landmarks": [{ "slug": "lru", "name": "Least recently used", "terms": ["LRU"] }],
+      "islets": [], "straits": [], "seas": [] },
+    { "slug": "invalidation", "name": "Invalidation" }
+  ],
+  "straits": [{ "from": "eviction", "to": "invalidation", "name": "An expired entry is both" }],
+  "seas": [{ "name": "Keeping it right", "islands": ["eviction", "invalidation"] }]
+}
+```
+
+Slugs are lowercase ASCII with hyphens and unique across the map. Straits and seas name islands of their own scale; an island's `islets`, `straits` and `seas` are the scale inside it. `x` and `y` on an island or a sea are where the reader put it; leave them out and the page lays the map out.
+
 ## The judge
 
 `archipelago serve` runs the judge one of two ways. With `ANTHROPIC_API_KEY` set in the server's environment it runs on the Messages API (`--judge api`, default model `claude-opus-5-5` at effort `high`; `ARCHIPELAGO_EFFORT` changes the effort). Without a key it runs on `@anthropic-ai/claude-agent-sdk` through your Claude Code login (`--judge sdk`, default model `claude-opus-5-5`). `--judge` or `ARCHIPELAGO_JUDGE` picks one explicitly, and the startup line names the judge and model in use. Set `ARCHIPELAGO_MODEL` to change the model for either. A turn that runs past 180 s is cancelled and the island released; set `ARCHIPELAGO_TURN_TIMEOUT_MS` (milliseconds) to change that. `archipelago serve --stub` (or `ARCHIPELAGO_STUB=1`) runs a canned judge with no login, for development: a message containing `settled` charts the island, `reef` proposes a reef, `unlock <slug>` lights a landmark, `fail` errors; an island with no landmarks gets four canned ones (`shape`, `scale`, `failure`, `tradeoff`) on the first open. The stub also asks a three-option question on your second answer.

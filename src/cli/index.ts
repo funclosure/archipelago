@@ -1,4 +1,5 @@
 #!/usr/bin/env bun
+import { exportMap, importMap } from "../core/map-file.ts";
 import { Command, CommanderError } from "commander";
 import type { Database } from "../core/sql.ts";
 import { openDatabase } from "../core/db.ts";
@@ -27,7 +28,7 @@ import { getViewState, setFocus } from "../core/repositories/viewStateRepository
 import { buildSnapshot, listCommentViews } from "../core/view-model.ts";
 import { resolveVerdictTarget } from "../core/targets.ts";
 import { emit, fail, readStdinJson } from "./io.ts";
-import { existsSync, statSync } from "node:fs";
+import { existsSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { exportName } from "../hosted/backup.ts";
 import { startServer } from "../server/index.ts";
@@ -507,6 +508,44 @@ common(
     return { out, bytes: statSync(out).size };
   }),
 );
+
+// ---- map files ----
+const map = program.command("map").description("A domain as one JSON map file: its structure, with nothing the reader said. For sharing, and for importing a map another program wrote");
+map
+  .command("export")
+  .description("Print a domain as a map file, or write it to --out")
+  .option("--domain <slug>")
+  .option("--out <file>")
+  .option("--json", "compact output")
+  .action(
+    run((o) => {
+      const file = withDb((db) => exportMap(db, slugSchema.parse(o.domain)));
+      if (!o.out) return file;
+      const out = resolve(String(o.out));
+      if (existsSync(out)) throw new ArchipelagoError(`${out} already exists. Pick another --out.`);
+      writeFileSync(out, JSON.stringify(file, null, 2) + "\n");
+      return { out, islands: file.islands.length };
+    }),
+  );
+map
+  .command("import")
+  .description("Make a new domain from a map file; never changes a domain that is already there")
+  .option("--file <file>", "the map file (- reads it from stdin)")
+  .option("--json", "compact output")
+  .action(
+    run(async (o) => {
+      if (!o.file) throw new ArchipelagoError("pass --file <map.json>, or --file - to read it from stdin");
+      const text = o.file === "-" ? await Bun.stdin.text() : readFileSync(resolve(String(o.file)), "utf8");
+      let parsed: unknown;
+      try {
+        parsed = JSON.parse(text);
+      } catch {
+        throw new ArchipelagoError("not a map file: it is not JSON");
+      }
+      const { domain, ...tally } = withDb((db) => importMap(db, parsed));
+      return { domain: { slug: domain.slug, name: domain.name }, ...tally };
+    }),
+  );
 
 // ---- serve ----
 program

@@ -5,7 +5,8 @@
 import { api } from "./app.js";
 import { registerRegion } from "./keys.js";
 import { CENTRE, COAST, RING_STEP, ringPoints } from "./contour.js";
-import { t } from "./i18n.js";
+import { language, t } from "./i18n.js";
+import { agentPrompt, mapFromText } from "./map-model.js";
 
 /** Descriptions to start from: a click puts one in the field, to send or to edit. */
 export const EXAMPLES = [1, 2, 3, 4, 5, 6].map((n) => t(`newDomain.example${n}`));
@@ -15,7 +16,8 @@ export const DESCRIPTION_MAX = 500;
 
 /** `editing`: null for a new domain, else the slug of the domain being edited. `first`: there are no domains yet, so the dialog is the page. */
 /** `deleting`: the edit dialog is asking whether to delete the domain. */
-const state = { open: false, name: "", description: "", editing: null, first: false, saving: false, error: null, deleting: false };
+/** `importing`: the new-domain dialog is on its other way in, a map file (pasted, picked, or written by another AI from our prompt). */
+const state = { open: false, name: "", description: "", editing: null, first: false, saving: false, error: null, deleting: false, importing: false, mapText: "", copied: false };
 let root = null;
 
 function el(tag, className, text) {
@@ -32,7 +34,7 @@ export function installNewDomain() {
 
 export function openNewDomain({ first = false } = {}) {
   if (!root) return;
-  Object.assign(state, { open: true, name: "", description: "", editing: null, first, saving: false, error: null, deleting: false });
+  Object.assign(state, { open: true, name: "", description: "", editing: null, first, saving: false, error: null, deleting: false, importing: false, mapText: "", copied: false });
   render();
   root.querySelector("#new-domain-description")?.focus();
 }
@@ -43,12 +45,17 @@ export async function openDomainEdit(slug) {
   const { domains } = await api("/api/domains");
   const domain = domains.find((d) => d.slug === slug);
   if (!domain) return;
-  Object.assign(state, { open: true, name: domain.name, description: domain.description ?? "", editing: slug, first: false, saving: false, error: null, deleting: false });
+  Object.assign(state, { open: true, name: domain.name, description: domain.description ?? "", editing: slug, first: false, saving: false, error: null, deleting: false, importing: false });
   render();
   root.querySelector("#new-domain-description")?.focus();
 }
 
 function close() {
+  if (state.importing) {
+    // One step back, to the description; a map being imported is let finish.
+    if (!state.saving) showImport(false);
+    return;
+  }
   if (state.first) return; // nothing behind it to go back to
   if (state.deleting && !state.saving) {
     // Escape on the delete question backs out to the edit dialog
@@ -63,8 +70,110 @@ function close() {
 
 const post = (path, body) => api(path, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
 
+function showImport(on) {
+  Object.assign(state, { importing: on, error: null, copied: false });
+  render();
+  root.querySelector(on ? "#new-domain-map" : "#new-domain-description")?.focus();
+}
+
+/** A new domain from a map file's text: the app checks it, and says in words what is wrong with one it refuses. */
+async function importMap(text = state.mapText) {
+  if (state.saving) return;
+  const file = mapFromText(text);
+  if (!file) {
+    state.error = t("newDomain.notAMap");
+    return render();
+  }
+  state.saving = true;
+  state.error = null;
+  render();
+  try {
+    const { domain } = await post("/api/map", file);
+    const url = new URL(location.href);
+    url.search = "";
+    url.searchParams.set("domain", domain.slug);
+    location.href = url.toString();
+  } catch (error) {
+    state.saving = false;
+    state.error = error.message;
+    render();
+    root.querySelector("#new-domain-map")?.focus();
+  }
+}
+
+/** Picks a map file from the device and imports it. */
+function chooseMap() {
+  const input = el("input");
+  input.type = "file";
+  input.accept = ".json,application/json";
+  input.addEventListener("change", async () => {
+    const file = input.files?.[0];
+    if (!file) return;
+    state.mapText = await file.text();
+    void importMap();
+  });
+  input.click();
+}
+
+/** Puts the prompt for another AI on the clipboard, with what the reader wrote as its subject. */
+async function copyPrompt() {
+  try {
+    await navigator.clipboard.writeText(agentPrompt({ subject: state.description, language: language() }));
+    state.copied = true;
+    state.error = null;
+    render();
+    setTimeout(() => {
+      if (!state.copied) return;
+      state.copied = false;
+      if (state.open && state.importing && !state.saving) render();
+    }, 1500);
+  } catch {
+    state.error = t("newDomain.copyRefused");
+    render();
+  }
+}
+
+/** The dialog's other way in: a map file. Paste it or pick it, or copy the prompt that has another AI write one. */
+function importView(card, keys) {
+  card.append(el("div", "lbl", t("newDomain.importTitle")), el("p", "help", t("newDomain.importHelp")));
+  const text = el("textarea", "map-text");
+  text.id = "new-domain-map";
+  text.rows = 7;
+  text.spellcheck = false;
+  text.placeholder = t("newDomain.importPlaceholder");
+  text.value = state.mapText;
+  text.disabled = state.saving;
+  text.setAttribute("aria-label", t("newDomain.importPlaceholder"));
+  text.addEventListener("input", () => (state.mapText = text.value));
+  text.addEventListener("keydown", keys);
+  card.append(text);
+  if (state.error) card.append(el("p", "error", state.error));
+  const row = el("div", "row");
+  const go = el("button", "btn", state.saving ? t("newDomain.importing") : t("newDomain.importGo"));
+  go.type = "submit";
+  go.disabled = state.saving;
+  const pick = el("button", "btn ghost", t("newDomain.chooseFile"));
+  pick.type = "button";
+  pick.disabled = state.saving;
+  pick.addEventListener("click", chooseMap);
+  const back = el("button", "btn ghost", t("newDomain.back"));
+  back.type = "button";
+  back.disabled = state.saving;
+  back.addEventListener("click", () => showImport(false));
+  row.append(go, pick, back);
+  card.append(row);
+  const other = el("div", "other-ai");
+  const copy = el("button", "btn ghost", state.copied ? t("newDomain.copied") : t("newDomain.copyPrompt"));
+  copy.type = "button";
+  copy.id = "copy-map-prompt";
+  copy.addEventListener("click", () => void copyPrompt());
+  other.append(el("p", "help", t(state.description.trim() ? "newDomain.promptHelpSubject" : "newDomain.promptHelp")), copy);
+  card.append(other);
+}
+
 async function submit() {
   if (state.saving) return;
+  if (state.importing) return void importMap();
   if (state.editing ? !state.name.trim() : !state.description.trim()) return;
   state.saving = true;
   state.error = null;
@@ -160,6 +269,15 @@ function render() {
     card.querySelector(".btn.ghost")?.focus();
     return;
   }
+  if (state.importing) {
+    importView(card, keys);
+    card.addEventListener("submit", (e) => {
+      e.preventDefault();
+      void submit();
+    });
+    root.append(card);
+    return;
+  }
   if (state.editing) {
     card.append(el("div", "lbl", t("newDomain.editTitle")));
     const name = el("input");
@@ -228,6 +346,15 @@ function render() {
     row.append(del);
   }
   card.append(row);
+  if (!state.editing) {
+    // The other way in: a map that already exists, or one another AI writes from our prompt. No model turn of ours.
+    const have = el("button", "as-link", t("newDomain.importMap"));
+    have.type = "button";
+    have.id = "import-map";
+    have.disabled = state.saving;
+    have.addEventListener("click", () => showImport(true));
+    card.append(have);
+  }
   card.addEventListener("submit", (e) => {
     e.preventDefault();
     void submit();
