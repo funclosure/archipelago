@@ -687,10 +687,10 @@ body.empty .board-hint { display: none; }
 .new-domain-card .shared-map:disabled { cursor: default; opacity: .7; }
 .new-domain-card .shared-map .words { display: grid; gap: 2px; min-width: 0; }
 .new-domain-card .shared-map .map-icon { width: 52px; height: 52px; }
-/* A shared map's picture: one island as the map draws it, its emoji standing on it (map-icon.js). */
+/* A shared map's picture: one island in the water's own tone with a pale coast, its emoji standing on it (map-icon.js). */
 .map-icon { flex: none; overflow: visible; }
-.map-icon .coast { fill: var(--sand-fill); fill-opacity: .9; stroke: var(--line-07); stroke-width: 5; }
-.map-icon .ring { fill: none; stroke: var(--line-07); stroke-width: 2.5; stroke-opacity: .6; }
+.map-icon .coast { fill: color-mix(in oklab, var(--text) 26%, var(--water)); stroke: var(--line-07); stroke-width: 4; }
+.map-icon .ring { fill: none; stroke: var(--line-03); stroke-width: 2.5; }
 .map-icon text { font-size: 84px; text-anchor: middle; dominant-baseline: central; }
 .new-domain-card .shared-map .nm { font-size: 15px; }
 .new-domain-card .shared-map .ds { font-size: 13px; line-height: 1.5; color: var(--text-2); }
