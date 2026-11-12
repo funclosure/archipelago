@@ -235,8 +235,8 @@
           ]
         },
         {
-          "slug": "a-window-function-summarises-without-collapsing-rows",
-          "name": "A window function summarises without collapsing rows",
+          "slug": "a-window-function-summarizes-without-collapsing-rows",
+          "name": "A window function summarizes without collapsing rows",
           "terms": [
             "window function",
             "OVER",
@@ -300,7 +300,7 @@
           "name": "A view is a saved query",
           "terms": [
             "view",
-            "materialised view"
+            "materialized view"
           ]
         }
       ]
@@ -329,10 +329,10 @@
           ]
         },
         {
-          "slug": "in-a-normalised-table-every-column-depends-on-the-whole-key-and-nothing-else",
-          "name": "In a normalised table every column depends on the whole key and nothing else",
+          "slug": "in-a-normalized-table-every-column-depends-on-the-whole-key-and-nothing-else",
+          "name": "In a normalized table every column depends on the whole key and nothing else",
           "terms": [
-            "normalisation",
+            "normalization",
             "third normal form",
             "functional dependency"
           ]
@@ -347,11 +347,11 @@
           ]
         },
         {
-          "slug": "denormalising-buys-faster-reads-with-harder-writes",
-          "name": "Denormalising buys faster reads with harder writes",
+          "slug": "denormalizing-buys-faster-reads-with-harder-writes",
+          "name": "Denormalizing buys faster reads with harder writes",
           "terms": [
-            "denormalisation",
-            "denormalise",
+            "denormalization",
+            "denormalize",
             "redundant copy"
           ]
         },
@@ -577,7 +577,7 @@
     {
       "from": "design",
       "to": "joins",
-      "name": "Normalised tables are joined back together"
+      "name": "Normalized tables are joined back together"
     },
     {
       "from": "design",

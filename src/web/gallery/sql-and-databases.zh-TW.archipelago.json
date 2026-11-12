@@ -241,7 +241,7 @@
           ]
         },
         {
-          "slug": "a-window-function-summarises-without-collapsing-rows",
+          "slug": "a-window-function-summarizes-without-collapsing-rows",
           "name": "視窗函式做彙總，卻不把列壓成一列",
           "terms": [
             "視窗函式",
@@ -342,7 +342,7 @@
           ]
         },
         {
-          "slug": "in-a-normalised-table-every-column-depends-on-the-whole-key-and-nothing-else",
+          "slug": "in-a-normalized-table-every-column-depends-on-the-whole-key-and-nothing-else",
           "name": "正規化的資料表裡，每一欄都只取決於整個鍵",
           "terms": [
             "正規化",
@@ -362,7 +362,7 @@
           ]
         },
         {
-          "slug": "denormalising-buys-faster-reads-with-harder-writes",
+          "slug": "denormalizing-buys-faster-reads-with-harder-writes",
           "name": "反正規化用更難的寫入換更快的讀取",
           "terms": [
             "反正規化",

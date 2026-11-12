@@ -48,7 +48,7 @@
     "slug": "git",
     "language": "en",
     "name": "Git",
-    "description": "Git from the inside out, for anyone new to it or getting by on memorised commands: what a commit is, how branches and remotes move, and how to undo a mistake.",
+    "description": "Git from the inside out, for anyone new to it or getting by on memorized commands: what a commit is, how branches and remotes move, and how to undo a mistake.",
     "by": "Archipelago",
     "islands": [
       "Commits as snapshots",
@@ -124,7 +124,7 @@
     "slug": "large-language-models",
     "language": "en",
     "name": "How large language models work",
-    "description": "What happens between a prompt and a reply: tokens, attention, training, and why a model that only predicts the next word can do so much and still be wrong. For anyone who uses a chat assistant and wants to know what is inside it; no maths needed.",
+    "description": "What happens between a prompt and a reply: tokens, attention, training, and why a model that only predicts the next word can do so much and still be wrong. For anyone who uses a chat assistant and wants to know what is inside it; no math needed.",
     "by": "Archipelago",
     "islands": [
       "Tokens",
@@ -168,7 +168,7 @@
     "by": "Archipelago",
     "islands": [
       "Pitch and notes",
-      "Rhythm and metre",
+      "Rhythm and meter",
       "Intervals",
       "Scales and keys",
       "Chords",
