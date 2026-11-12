@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title data-t="privacy.title">Privacy · Archipelago</title>
+<meta name="description" content="What Archipelago stores and where: your charts stay in your browser, replies pass through to the AI model, and a small cost ledger is kept.">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<script>try { var t = localStorage.getItem("theme"); if (t) document.documentElement.dataset.theme = t; var l = localStorage.getItem("lang"); document.documentElement.lang = l === "en" || l === "zh-TW" ? l : (navigator.languages || []).some(function (b) { return /^zh\b/i.test(b); }) ? "zh-TW" : "en"; } catch (e) {}</script>
+<link rel="stylesheet" href="/fonts/noto-sans-tc.css">
+<link rel="stylesheet" href="/styles.css">
+<link rel="stylesheet" href="/about.css">
+</head>
+<body class="landing legal">
+<!-- Privacy for the hosted site. Like about.html: the English below is the page without script, and about.js
+     puts in the reader's language from strings/privacy.js. tests/web/about.test.js keeps the two the same. -->
+<header class="top">
+  <a class="mark" href="/about">Archipelago</a>
+  <nav>
+    <button type="button" class="lang" id="lang" data-t="about.otherLanguage">中文</button>
+    <a class="btn" href="/" data-t="about.navOpen">Open the map</a>
+  </nav>
+</header>
+
+<main>
+  <h1 data-t="privacy.heading">Privacy</h1>
+  <p class="updated" data-t="privacy.updated">Last updated 12 November 2026</p>
+  <p class="lede" data-t="privacy.intro">Archipelago is built so that your charts stay with you. This page says what is stored where, who else handles it, and what we never collect. It covers the hosted site at archipelago.school.</p>
+  <section>
+    <h2 data-t="privacy.s1Title">The short version</h2>
+    <ul>
+      <li data-t="privacy.s1a">Your charts, conversations and settings are stored in your browser, not on our servers.</li>
+      <li data-t="privacy.s1b">When a persona replies, your messages for that turn are sent to an AI model. We pass them along without keeping them.</li>
+      <li data-t="privacy.s1c">We keep a small ledger of what each reply cost, so that credit can work.</li>
+      <li data-t="privacy.s1d">No ads, no analytics trackers, no cookies, no selling of data.</li>
+    </ul>
+  </section>
+  <section>
+    <h2 data-t="privacy.s2Title">What stays in your browser</h2>
+    <p data-t="privacy.s2a">Everything you chart: domains, islands, conversations with the personas, board cards, the About you note, your theme and language, and any API key you paste (if you choose to remember it). It lives in this browser's storage for archipelago.school. We cannot see it, and we cannot recover it if the browser's data is cleared. Download a backup from the domain menu to keep a copy.</p>
+  </section>
+  <section>
+    <h2 data-t="privacy.s3Title">What is sent to AI models</h2>
+    <p data-t="privacy.s3a">Each turn sends the model what it needs to answer: the persona's instructions, the island and the chart around it, the conversation on that island, your About you note, and your new message.</p>
+    <p data-t="privacy.s3b">On Archipelago credit, the request goes through our server to Anthropic, the maker of Claude. Our server forwards it and does not store or log its content. Anthropic handles it under its own commercial terms and privacy policy (<a data-slot="anthropic" href="https://www.anthropic.com/legal/privacy">anthropic.com/legal</a>).</p>
+    <p data-t="privacy.s3c">With your own key, the request goes straight from your browser to the provider you chose (Anthropic, Google or OpenRouter) and never touches our server. Their privacy policies apply.</p>
+  </section>
+  <section>
+    <h2 data-t="privacy.s4Title">What our server keeps</h2>
+    <p data-t="privacy.s4a">Using Archipelago credit creates an anonymous account for your browser. For it we keep:</p>
+    <ul>
+      <li data-t="privacy.s4b">a random account id and a one-way hash of the account's token (the token itself is only in your browser);</li>
+      <li data-t="privacy.s4c">for each reply: the time, the model, how many tokens it used and what it cost. Never the text;</li>
+      <li data-t="privacy.s4d">credit added to the account: the free start, and each purchase or refund with Polar's order number;</li>
+      <li data-t="privacy.s4e">a salted one-way hash of the network address that created the account, used only to limit free accounts per address.</li>
+    </ul>
+    <p data-t="privacy.s4f">We keep this ledger while the account exists, and for purchases as long as accounting rules require. There is no name or email in it.</p>
+  </section>
+  <section>
+    <h2 data-t="privacy.s5Title">Payments</h2>
+    <p data-t="privacy.s5a">Purchases are handled by <a data-slot="polar" href="https://polar.sh">Polar</a>, our merchant of record. Polar and its payment processor Stripe collect your email, card details and billing country, and handle tax. We never see your card number.</p>
+    <p data-t="privacy.s5b">Polar tells our server when an order is paid or refunded, so the credit can be added or removed. Our server stores the order number only. We can see the buyer's email in Polar's dashboard, and use it only to answer you about that order.</p>
+  </section>
+  <section>
+    <h2 data-t="privacy.s6Title">Others who handle data</h2>
+    <ul>
+      <li data-t="privacy.s6a">Cloudflare hosts the site, our server and its database, and forwards support mail. Like any host it processes network addresses and request details to deliver and protect the service.</li>
+      <li data-t="privacy.s6b">Anthropic answers turns made on Archipelago credit.</li>
+      <li data-t="privacy.s6c">Polar and Stripe handle payments.</li>
+    </ul>
+    <p data-t="privacy.s6d">These companies may process data in the United States and other countries. We do not sell data, and we share it with no one else.</p>
+  </section>
+  <section>
+    <h2 data-t="privacy.s7Title">Support mail</h2>
+    <p data-t="privacy.s7a">If you write to <a data-slot="email" href="mailto:support@archipelago.school">support@archipelago.school</a>, we keep your message and address in order to answer you.</p>
+  </section>
+  <section>
+    <h2 data-t="privacy.s8Title">Your choices</h2>
+    <p data-t="privacy.s8a">Clearing this site's data in your browser removes everything stored there, including the token for your credit. To have an account's ledger deleted, or to ask what we hold about a purchase, write to <a data-slot="email" href="mailto:support@archipelago.school">support@archipelago.school</a>; a receipt helps us find it. Depending on where you live you may have further rights over your data, such as access, correction, deletion, or complaining to a regulator; we will honour them.</p>
+  </section>
+  <section>
+    <h2 data-t="privacy.s9Title">Children</h2>
+    <p data-t="privacy.s9a">Archipelago is not directed at children under 13, and we do not knowingly collect their data.</p>
+  </section>
+  <section>
+    <h2 data-t="privacy.s10Title">Changes</h2>
+    <p data-t="privacy.s10a">If this page changes, the date above changes with it, and a change that matters will be announced on the site.</p>
+  </section>
+</main>
+
+<footer>
+  <span>Archipelago</span>
+  <a href="/terms" data-t="about.footerTerms">Terms</a>
+  <a href="/privacy" data-t="about.footerPrivacy">Privacy</a>
+  <a href="mailto:support@archipelago.school">support@archipelago.school</a>
+  <a href="https://github.com/funclosure/archipelago" data-t="about.footerSource">Source on GitHub</a>
+</footer>
+<script type="module" src="/about.js"></script>
+</body>
+</html>

@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title data-t="terms.title">Terms of use · Archipelago</title>
+<meta name="description" content="The terms for using the hosted Archipelago at archipelago.school: your charts, AI answers, free and purchased credit, refunds.">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<script>try { var t = localStorage.getItem("theme"); if (t) document.documentElement.dataset.theme = t; var l = localStorage.getItem("lang"); document.documentElement.lang = l === "en" || l === "zh-TW" ? l : (navigator.languages || []).some(function (b) { return /^zh\b/i.test(b); }) ? "zh-TW" : "en"; } catch (e) {}</script>
+<link rel="stylesheet" href="/fonts/noto-sans-tc.css">
+<link rel="stylesheet" href="/styles.css">
+<link rel="stylesheet" href="/about.css">
+</head>
+<body class="landing legal">
+<!-- Terms of use for the hosted site. Like about.html: the English below is the page without script, and about.js
+     puts in the reader's language from strings/terms.js. tests/web/about.test.js keeps the two the same. -->
+<header class="top">
+  <a class="mark" href="/about">Archipelago</a>
+  <nav>
+    <button type="button" class="lang" id="lang" data-t="about.otherLanguage">中文</button>
+    <a class="btn" href="/" data-t="about.navOpen">Open the map</a>
+  </nav>
+</header>
+
+<main>
+  <h1 data-t="terms.heading">Terms of use</h1>
+  <p class="updated" data-t="terms.updated">Last updated 12 November 2026</p>
+  <p class="lede" data-t="terms.intro">These terms cover the hosted Archipelago at archipelago.school. They are written to be read. By using the site you agree to them; if you do not, please do not use it.</p>
+  <section>
+    <h2 data-t="terms.s1Title">What Archipelago is</h2>
+    <p data-t="terms.s1a">Archipelago is a learning tool: you chart what you understand about a subject as islands on a map, and AI personas (a cartographer, a Mentor and a Keeper) sketch, explain and ask you questions. It is run by an independent developer based in Taiwan (“we”).</p>
+    <p data-t="terms.s1b">The software is open source under the MIT License (<a data-slot="source" href="https://github.com/funclosure/archipelago">github.com/funclosure/archipelago</a>). That license covers the code. These terms cover the service we host.</p>
+  </section>
+  <section>
+    <h2 data-t="terms.s2Title">Who can use it</h2>
+    <p data-t="terms.s2a">You need to be at least 13. If you are under 18, use it with a parent or guardian's permission, and only they may buy credit.</p>
+  </section>
+  <section>
+    <h2 data-t="terms.s3Title">Your charts and your words</h2>
+    <p data-t="terms.s3a">What you write and chart is yours. It is stored in your browser, not on our servers, so keeping a copy is up to you: download a backup from the domain menu.</p>
+    <p data-t="terms.s3b">To answer you, your messages and the chart around them are sent to the AI model you are using. <a data-slot="privacy" href="/privacy">archipelago.school/privacy</a> says exactly what goes where.</p>
+  </section>
+  <section>
+    <h2 data-t="terms.s4Title">AI answers</h2>
+    <p data-t="terms.s4a">The personas are AI models. They can be wrong, out of date, or confidently mistaken. Check anything that matters, and do not treat a reply as medical, legal, financial or other professional advice.</p>
+    <p data-t="terms.s4b">The map's marks (lit landmarks, settled or mountainous islands) are a study aid. They are not a grade, a certificate or a qualification.</p>
+  </section>
+  <section>
+    <h2 data-t="terms.s5Title">Free credit</h2>
+    <p data-t="terms.s5a">A new browser starts with a small amount of free credit, so you can chart a first domain without a key. It has no cash value, and we may change its size or stop offering it.</p>
+    <p data-t="terms.s5b">Please do not create accounts in bulk or by script to collect free credit.</p>
+  </section>
+  <section>
+    <h2 data-t="terms.s6Title">Buying credit</h2>
+    <p data-t="terms.s6a">You can buy credit in packs, in US dollars, as one-time payments. There is no subscription and nothing renews.</p>
+    <p data-t="terms.s6b">Payments are handled by <a data-slot="polar" href="https://polar.sh">Polar</a>, our reseller and merchant of record: Polar takes the payment, charges any sales tax or VAT that applies, and emails your receipt. Polar's own terms apply to the purchase.</p>
+    <p data-t="terms.s6c">Credit pays for replies. Each reply takes what the AI model cost us plus a quarter, which covers payment fees. Your balance is always shown, and a larger model uses credit faster.</p>
+    <p data-t="terms.s6d">Credit does not expire. It can be used only in Archipelago, cannot be transferred or exchanged for money, and is not a deposit or stored value.</p>
+    <p data-t="terms.s6e">For now credit belongs to the browser you bought it in. There is no sign-in yet, so clearing this site's data, or switching browser or device, loses access to it. Keep your receipt: with it we can help if that happens.</p>
+  </section>
+  <section>
+    <h2 data-t="terms.s7Title">Refunds</h2>
+    <p data-t="terms.s7a">If you have used none of a pack, we will refund it in full within 14 days of purchase. Write to <a data-slot="email" href="mailto:support@archipelago.school">support@archipelago.school</a> with your receipt.</p>
+    <p data-t="terms.s7b">If you have used part of it, or more time has passed, write anyway: we will refund what is fair. A refund removes the same credit from your balance.</p>
+    <p data-t="terms.s7c">If we ever close the service, we will say so on the site at least 30 days ahead and refund unused purchased credit on request.</p>
+  </section>
+  <section>
+    <h2 data-t="terms.s8Title">Bringing your own key</h2>
+    <p data-t="terms.s8a">You can instead use your own API key from Anthropic, Google or OpenRouter. Your key stays in your browser, requests go straight to that provider, they bill you, and their terms apply. We charge nothing.</p>
+  </section>
+  <section>
+    <h2 data-t="terms.s9Title">Fair use</h2>
+    <p data-t="terms.s9a">Use Archipelago to learn. Do not use it to break the law, to harm others, to get around its limits, or to reach the AI models for purposes unrelated to it. The model providers' usage policies apply to what you send, including Anthropic's (<a data-slot="aup" href="https://www.anthropic.com/legal/aup">anthropic.com/legal/aup</a>).</p>
+    <p data-t="terms.s9b">To keep costs bounded there are limits on spending per account and per day. We may suspend an account that abuses the service, refunding unused purchased credit unless the abuse was fraud.</p>
+  </section>
+  <section>
+    <h2 data-t="terms.s10Title">Availability and changes</h2>
+    <p data-t="terms.s10a">The service is provided as it is. It may be slow, unavailable, or changed, and AI models may be replaced by newer ones. We do not promise it will suit a particular purpose.</p>
+    <p data-t="terms.s10b">To the extent the law allows, our total liability to you is limited to what you paid us in the twelve months before the claim. Nothing here removes rights you have as a consumer where you live.</p>
+    <p data-t="terms.s10c">We may update these terms; the date above changes when we do, and a change that matters will be announced on the site. These terms are governed by the laws of Taiwan.</p>
+  </section>
+  <section>
+    <h2 data-t="terms.s11Title">Contact</h2>
+    <p data-t="terms.s11a">Questions, refunds, anything else: <a data-slot="email" href="mailto:support@archipelago.school">support@archipelago.school</a>.</p>
+  </section>
+</main>
+
+<footer>
+  <span>Archipelago</span>
+  <a href="/terms" data-t="about.footerTerms">Terms</a>
+  <a href="/privacy" data-t="about.footerPrivacy">Privacy</a>
+  <a href="mailto:support@archipelago.school">support@archipelago.school</a>
+  <a href="https://github.com/funclosure/archipelago" data-t="about.footerSource">Source on GitHub</a>
+</footer>
+<script type="module" src="/about.js"></script>
+</body>
+</html>

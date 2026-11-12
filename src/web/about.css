@@ -63,6 +63,18 @@ body.landing { font: 16px/1.6 var(--font-text); }
   font-size: 13px; color: var(--muted); }
 .landing footer a { color: var(--text-2); }
 
+/* The terms and privacy pages (terms.html, privacy.html): one narrow column of plain text. */
+.legal main { max-width: 720px; padding-top: 48px; }
+.legal h1 { font-size: 36px; margin-bottom: 6px; }
+.legal .updated { margin: 0 0 20px; font-size: 13px; color: var(--muted); }
+.legal .lede { font-size: 17px; margin-bottom: 8px; }
+.legal section { padding: 28px 0 0; }
+.legal h2 { font-size: 21px; margin: 0 0 10px; }
+.legal section p, .legal section li { color: var(--text-2); font-size: 15px; margin: 0 0 10px; }
+.legal section ul { margin: 0 0 10px; padding-left: 20px; }
+.legal section li { margin-bottom: 6px; }
+.legal footer { max-width: 720px; }
+
 @media (max-width: 860px) {
   .landing .steps, .landing .ways { grid-template-columns: 1fr; }
   .landing #claude-code { grid-column: auto; grid-row: auto; }
