@@ -2,7 +2,7 @@
   "archipelago": 1,
   "name": "大型語言模型如何運作",
   "slug": "large-language-models",
-  "description": "從提示詞到回覆之間發生了什麼：token、注意力、訓練，以及為什麼一個只會預測下一個字的模型能做這麼多事，卻還是會出錯。",
+  "description": "從提示詞到回覆之間發生了什麼：token、注意力、訓練，以及為什麼一個只會預測下一個字的模型能做這麼多事，卻還是會出錯。寫給用過聊天助理、想知道裡面是什麼的人；不需要數學。",
   "by": "Archipelago",
   "language": "zh-TW",
   "islands": [
@@ -12,13 +12,13 @@
       "summary": "模型讀和寫的文字片段，和我們說的「字詞」不太一樣。",
       "landmarks": [
         {
-          "slug": "why-not-words-or-letters",
-          "name": "為什麼不用單字或字母",
+          "slug": "why-models-read-word-pieces-not-words-or-letters",
+          "name": "為什麼模型讀的是字的片段，不是單字或字母",
           "terms": [
             "token",
             "詞元",
-            "詞彙表",
-            "子詞"
+            "子詞",
+            "詞彙表"
           ]
         },
         {
@@ -32,28 +32,28 @@
           ]
         },
         {
-          "slug": "tokens-are-numbers-to-the-model",
-          "name": "對模型來說，token 就是數字",
+          "slug": "the-model-sees-token-ids-not-text",
+          "name": "模型看到的是 token ID，不是文字",
           "terms": [
             "token ID",
             "詞彙表大小"
           ]
         },
         {
-          "slug": "why-token-counts-matter",
-          "name": "為什麼 token 數量很重要",
+          "slug": "limits-and-prices-are-counted-in-tokens",
+          "name": "上限和價格都以 token 計算",
           "terms": [
+            "token 數",
             "上下文長度",
-            "費用",
-            "上限"
+            "每個 token"
           ]
         },
         {
-          "slug": "where-tokenizing-goes-wrong",
-          "name": "切 token 會在哪裡出錯",
+          "slug": "where-tokenizing-causes-trouble",
+          "name": "切 token 會在哪裡惹麻煩",
           "terms": [
             "拼字",
-            "算術",
+            "數字母",
             "罕見字"
           ]
         }
@@ -62,7 +62,7 @@
     {
       "slug": "embeddings",
       "name": "嵌入（embedding）",
-      "summary": "把每個 token 變成一串數字，讓它們的幾何關係帶著意義。",
+      "summary": "把每個 token 變成一串數字，並且讓相關的 token 彼此靠近。",
       "landmarks": [
         {
           "slug": "a-token-becomes-a-vector",
@@ -75,17 +75,18 @@
           ]
         },
         {
-          "slug": "near-means-similar",
-          "name": "距離近，意思就相近",
+          "slug": "tokens-used-alike-sit-close-together",
+          "name": "用法相近的 token 會靠在一起",
           "terms": [
-            "相似度",
+            "餘弦相似度",
+            "cosine similarity",
             "距離",
-            "餘弦相似度"
+            "鄰近"
           ]
         },
         {
-          "slug": "directions-that-carry-meaning",
-          "name": "帶有意義的方向",
+          "slug": "some-directions-line-up-with-meaning",
+          "name": "有些方向對應到意義",
           "terms": [
             "方向",
             "類比",
@@ -93,20 +94,22 @@
           ]
         },
         {
-          "slug": "where-the-order-of-words-comes-from",
-          "name": "字的先後順序從哪裡來",
+          "slug": "word-order-has-to-be-added-in",
+          "name": "字的順序得另外加進去",
           "terms": [
-            "位置",
             "位置編碼",
-            "positional encoding"
+            "positional encoding",
+            "字序"
           ]
         },
         {
           "slug": "embeddings-are-learned-not-designed",
           "name": "嵌入是學出來的，不是設計出來的",
           "terms": [
-            "學習而來",
-            "參數"
+            "嵌入表",
+            "embedding table",
+            "學出來的",
+            "人工設計"
           ]
         }
       ]
@@ -117,18 +120,18 @@
       "summary": "每個 token 怎麼從前面的 token 取得它需要的資訊。",
       "landmarks": [
         {
-          "slug": "every-token-looks-at-the-others",
-          "name": "每個 token 都會看其他 token",
+          "slug": "a-tokens-meaning-depends-on-the-others",
+          "name": "一個 token 的意思取決於其他 token",
           "terms": [
             "注意力",
             "attention",
-            "上下文",
-            "權重"
+            "注意力權重",
+            "歧義"
           ]
         },
         {
-          "slug": "queries-keys-and-values",
-          "name": "Query、key 與 value",
+          "slug": "a-query-looks-for-matching-keys",
+          "name": "Query 去找相符的 key",
           "terms": [
             "query",
             "key",
@@ -136,8 +139,8 @@
           ]
         },
         {
-          "slug": "many-heads-many-kinds-of-relation",
-          "name": "多個 head，多種關係",
+          "slug": "many-heads-can-track-different-relations",
+          "name": "多個 head 可以追蹤不同的關係",
           "terms": [
             "注意力頭",
             "attention head",
@@ -146,20 +149,21 @@
           ]
         },
         {
-          "slug": "looking-only-backwards",
-          "name": "只能往回看",
+          "slug": "each-token-looks-only-backwards",
+          "name": "每個 token 只能往回看",
           "terms": [
             "因果遮罩",
             "causal mask",
-            "自迴歸"
+            "遮罩",
+            "未來的 token"
           ]
         },
         {
-          "slug": "why-attention-replaced-recurrence",
-          "name": "為什麼注意力取代了循環結構",
+          "slug": "why-attention-replaced-reading-one-word-at-a-time",
+          "name": "為什麼注意力取代了一次讀一個字的做法",
           "terms": [
             "平行運算",
-            "長距離依賴",
+            "長距離",
             "循環神經網路",
             "RNN"
           ]
@@ -169,61 +173,54 @@
     {
       "slug": "transformer",
       "name": "Transformer",
-      "summary": "一個區塊，重複疊上幾十層，就成了整個模型。",
+      "summary": "一個區塊，重複疊上許多層，就成了整個模型。",
       "landmarks": [
         {
-          "slug": "attention-then-a-feed-forward-layer",
-          "name": "先注意力，再前饋層",
+          "slug": "attention-gathers-then-a-feed-forward-layer-transforms",
+          "name": "注意力負責蒐集，前饋層負責轉換",
           "terms": [
-            "層",
+            "區塊",
             "前饋層",
             "feed-forward",
             "MLP"
           ]
         },
         {
-          "slug": "the-residual-stream",
-          "name": "殘差流（residual stream）",
+          "slug": "each-layer-adds-to-a-running-stream",
+          "name": "每一層都往一條持續流動的資料流裡加東西",
           "terms": [
+            "殘差流",
+            "residual stream",
             "殘差連接",
-            "residual connection",
             "skip connection"
           ]
         },
         {
-          "slug": "normalisation-keeps-it-trainable",
-          "name": "正規化讓模型訓練得起來",
+          "slug": "later-layers-tend-to-hold-more-abstract-features",
+          "name": "越後面的層，特徵往往越抽象",
           "terms": [
-            "層正規化",
-            "layer norm",
-            "穩定性"
-          ]
-        },
-        {
-          "slug": "depth-builds-up-abstraction",
-          "name": "層數越深，抽象程度越高",
-          "terms": [
-            "層",
             "深度",
-            "特徵"
+            "前面的層",
+            "後面的層",
+            "抽象"
           ]
         },
         {
-          "slug": "parameters-and-what-a-models-size-means",
-          "name": "參數，以及模型「大小」的意思",
-          "terms": [
-            "參數",
-            "權重",
-            "十億"
-          ]
-        },
-        {
-          "slug": "from-the-last-layer-to-a-next-token-guess",
-          "name": "從最後一層到猜下一個 token",
+          "slug": "the-output-is-a-probability-for-every-possible-next-token",
+          "name": "輸出是每個可能的下一個 token 的機率",
           "terms": [
             "logits",
             "softmax",
-            "機率"
+            "unembedding"
+          ]
+        },
+        {
+          "slug": "a-models-size-is-its-count-of-parameters",
+          "name": "模型的大小就是參數的數量",
+          "terms": [
+            "參數",
+            "權重",
+            "數十億"
           ]
         }
       ]
@@ -262,85 +259,101 @@
           ]
         },
         {
-          "slug": "why-predicting-text-teaches-about-the-world",
-          "name": "為什麼預測文字能學到世界的知識",
+          "slug": "predicting-text-well-takes-picking-up-facts-and-patterns",
+          "name": "要把文字預測好，就得學到事實和規律",
           "terms": [
-            "壓縮",
             "泛化",
-            "世界知識"
+            "世界知識",
+            "壓縮"
           ]
         },
         {
-          "slug": "data-compute-and-scale",
-          "name": "資料、算力與規模",
+          "slug": "not-a-database-though-some-text-is-memorised",
+          "name": "它不是資料庫，雖然有些文字被背了下來",
           "terms": [
-            "訓練資料",
-            "GPU",
-            "規模化"
+            "背下來",
+            "資料庫",
+            "逐字",
+            "查表"
           ]
         },
         {
-          "slug": "the-knowledge-cutoff",
-          "name": "知識截止日",
+          "slug": "more-data-compute-and-parameters-have-meant-better-models",
+          "name": "更多資料、算力和參數，一路帶來更好的模型",
+          "terms": [
+            "規模化",
+            "scaling",
+            "算力",
+            "GPU",
+            "訓練資料"
+          ]
+        },
+        {
+          "slug": "it-knows-nothing-after-its-training-data-ends",
+          "name": "訓練資料結束之後的事，它一概不知",
           "terms": [
             "知識截止日",
-            "cutoff",
-            "訓練日期"
+            "knowledge cutoff",
+            "截止日期",
+            "過時"
           ]
         }
       ]
     },
     {
       "slug": "fine-tuning",
-      "name": "微調與對齊",
+      "name": "從預測器到助理",
       "summary": "把一個文字預測器變成會回答、會拒絕、會聽從指示的助理。",
       "landmarks": [
         {
-          "slug": "from-completing-text-to-holding-a-chat",
-          "name": "從接續文字到進行對話",
+          "slug": "a-chat-is-a-transcript-the-model-continues",
+          "name": "對話是一份由模型接著寫下去的逐字稿",
           "terms": [
+            "基礎模型",
+            "base model",
             "對話格式",
-            "指令微調",
-            "instruction tuning"
+            "逐字稿"
           ]
         },
         {
-          "slug": "fine-tuning-on-examples",
-          "name": "用範例微調",
+          "slug": "fine-tuning-continues-training-on-chosen-examples",
+          "name": "微調是用挑選過的範例繼續訓練",
           "terms": [
             "微調",
             "fine-tuning",
-            "監督式學習",
-            "範例"
+            "指令微調",
+            "監督式學習"
           ]
         },
         {
           "slug": "learning-from-human-preferences",
           "name": "從人類的偏好中學習",
           "terms": [
+            "人類回饋",
+            "RLHF",
             "強化學習",
-            "回饋",
-            "RLHF"
+            "獎勵"
           ]
         },
         {
-          "slug": "the-system-prompt",
-          "name": "系統提示詞",
-          "terms": [
-            "系統提示詞",
-            "system prompt",
-            "指示",
-            "角色"
-          ]
-        },
-        {
-          "slug": "what-alignment-is-trying-to-achieve",
-          "name": "對齊想達成什麼",
+          "slug": "alignment-means-behaving-as-intended-not-just-capably",
+          "name": "對齊是指行為符合本意，不只是能力強",
           "terms": [
             "對齊",
             "alignment",
             "安全",
             "價值觀"
+          ]
+        },
+        {
+          "slug": "trained-habits-not-hard-rules",
+          "name": "是訓練出來的習慣，不是寫死的規則",
+          "terms": [
+            "拒絕",
+            "護欄",
+            "guardrail",
+            "越獄",
+            "jailbreak"
           ]
         }
       ]
@@ -351,51 +364,64 @@
       "summary": "回覆怎麼一次一個 token 寫出來，以及為什麼同樣的提示詞會得到不同的答案。",
       "landmarks": [
         {
-          "slug": "one-token-then-again",
-          "name": "一個 token，然後再一個",
+          "slug": "it-writes-one-token-then-runs-again",
+          "name": "它寫出一個 token，然後再跑一次",
           "terms": [
             "自迴歸",
             "autoregressive",
             "解碼",
-            "迴圈"
+            "一次一個 token"
           ]
         },
         {
-          "slug": "sampling-and-temperature",
-          "name": "取樣與溫度",
+          "slug": "sampling-not-always-the-likeliest-token",
+          "name": "取樣：不一定選機率最高的 token",
           "terms": [
             "取樣",
             "sampling",
-            "溫度",
-            "temperature",
-            "隨機性"
+            "隨機性",
+            "機率分布",
+            "greedy"
           ]
         },
         {
-          "slug": "top-k-and-top-p",
-          "name": "Top-k 與 top-p",
+          "slug": "temperature-and-top-p-control-the-randomness",
+          "name": "溫度和 top-p 控制隨機的程度",
           "terms": [
+            "溫度",
+            "temperature",
             "top-p",
-            "nucleus sampling",
             "top-k"
           ]
         },
         {
-          "slug": "why-it-cannot-go-back-and-revise",
-          "name": "為什麼它不能回頭修改",
+          "slug": "how-it-knows-when-to-stop",
+          "name": "它怎麼知道該停了",
           "terms": [
-            "由左到右",
-            "寫了就定"
+            "停止 token",
+            "stop token",
+            "序列結束",
+            "max tokens"
           ]
         },
         {
-          "slug": "thinking-before-answering",
-          "name": "先思考再回答",
+          "slug": "written-tokens-cannot-be-taken-back",
+          "name": "寫出去的 token 收不回來",
           "terms": [
-            "推理",
+            "由左到右",
+            "寫了就定",
+            "回頭修改"
+          ]
+        },
+        {
+          "slug": "writing-out-its-working-first-helps-it-answer",
+          "name": "先把推導過程寫出來，有助於它作答",
+          "terms": [
             "思維鏈",
             "chain of thought",
-            "草稿區"
+            "草稿區",
+            "一步一步",
+            "推理"
           ]
         }
       ]
@@ -415,27 +441,38 @@
           ]
         },
         {
-          "slug": "no-memory-between-conversations",
-          "name": "對話之間沒有記憶",
+          "slug": "the-model-itself-keeps-nothing-between-calls",
+          "name": "模型本身在每次呼叫之間什麼都不留",
           "terms": [
             "無狀態",
             "stateless",
+            "對話紀錄",
             "記憶"
           ]
         },
         {
-          "slug": "learning-from-examples-in-the-prompt",
-          "name": "從提示詞裡的範例學習",
+          "slug": "the-system-prompt-is-instructions-placed-before-the-chat",
+          "name": "系統提示詞是放在對話前面的指示",
+          "terms": [
+            "系統提示詞",
+            "system prompt",
+            "指示",
+            "角色設定"
+          ]
+        },
+        {
+          "slug": "examples-in-the-prompt-teach-without-retraining",
+          "name": "提示詞裡的範例不必重新訓練就能教會它",
           "terms": [
             "few-shot",
             "少樣本",
             "in-context learning",
-            "情境內學習"
+            "zero-shot"
           ]
         },
         {
-          "slug": "retrieval-brings-in-documents",
-          "name": "檢索把文件帶進來",
+          "slug": "retrieval-puts-found-documents-into-the-window",
+          "name": "檢索把找到的文件放進視窗",
           "terms": [
             "檢索",
             "RAG",
@@ -443,13 +480,13 @@
           ]
         },
         {
-          "slug": "tools-and-agents",
-          "name": "工具與 agent",
+          "slug": "the-model-asks-a-program-runs-the-tool",
+          "name": "模型提出要求，由程式去執行工具",
           "terms": [
             "工具使用",
+            "tool call",
             "function calling",
-            "agent",
-            "代理"
+            "agent"
           ]
         }
       ]
@@ -460,36 +497,39 @@
       "summary": "這些模型會在哪裡出錯，以及怎麼看出來。",
       "landmarks": [
         {
-          "slug": "hallucination",
-          "name": "幻覺（hallucination）",
+          "slug": "it-can-fill-a-gap-with-a-plausible-invention",
+          "name": "它會用聽起來合理的編造來填補空缺",
           "terms": [
             "幻覺",
             "hallucination",
             "虛構",
-            "流暢"
+            "看似合理",
+            "編造"
           ]
         },
         {
-          "slug": "fluent-is-not-the-same-as-true",
-          "name": "流暢不等於正確",
+          "slug": "sounding-sure-is-not-being-right",
+          "name": "說得篤定不等於說得對",
           "terms": [
+            "流暢",
             "信心",
             "校準",
             "calibration"
           ]
         },
         {
-          "slug": "bias-from-the-training-data",
-          "name": "訓練資料帶來的偏見",
+          "slug": "it-repeats-biases-in-its-training-data",
+          "name": "它會重複訓練資料裡的偏見",
           "terms": [
             "偏見",
             "bias",
-            "訓練資料"
+            "刻板印象",
+            "偏頗"
           ]
         },
         {
-          "slug": "prompt-injection",
-          "name": "提示詞注入（prompt injection）",
+          "slug": "text-it-reads-can-hijack-it",
+          "name": "它讀到的文字可能劫持它",
           "terms": [
             "提示詞注入",
             "prompt injection",
@@ -497,21 +537,24 @@
           ]
         },
         {
-          "slug": "how-models-are-evaluated",
-          "name": "模型是怎麼被評估的",
+          "slug": "a-high-benchmark-score-can-overstate-real-ability",
+          "name": "基準測試分數高，可能高估真實能力",
           "terms": [
             "基準測試",
             "benchmark",
-            "評估"
+            "評估",
+            "資料污染",
+            "排行榜"
           ]
         },
         {
-          "slug": "what-nobody-yet-understands-inside",
-          "name": "模型內部還沒有人弄懂的事",
+          "slug": "its-inner-workings-are-only-partly-understood",
+          "name": "它的內部運作只被弄懂了一部分",
           "terms": [
             "可解釋性",
             "interpretability",
-            "黑盒子"
+            "黑盒子",
+            "迴路"
           ]
         }
       ]
@@ -531,7 +574,7 @@
     {
       "from": "attention",
       "to": "transformer",
-      "name": "注意力占每個區塊的一半"
+      "name": "注意力是區塊兩個部分之一"
     },
     {
       "from": "transformer",
@@ -541,7 +584,7 @@
     {
       "from": "pretraining",
       "to": "fine-tuning",
-      "name": "同樣的學習方式，換成挑選過的資料"
+      "name": "同一組權重，用挑選過的資料繼續訓練"
     },
     {
       "from": "transformer",
@@ -561,17 +604,17 @@
     {
       "from": "pretraining",
       "to": "limits",
-      "name": "它學到的是什麼常見，不是什麼為真"
-    },
-    {
-      "from": "generation",
-      "to": "limits",
-      "name": "取樣可能走上錯的路就回不來"
+      "name": "它學到的是什麼常見，而常見不一定為真"
     },
     {
       "from": "fine-tuning",
       "to": "limits",
-      "name": "指示有可能被蓋過"
+      "name": "訓練出來的行為可以被話術繞過"
+    },
+    {
+      "from": "context",
+      "to": "limits",
+      "name": "進到視窗裡的東西都可能左右它"
     }
   ],
   "seas": [

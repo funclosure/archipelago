@@ -2,18 +2,18 @@
   "archipelago": 1,
   "name": "樂理",
   "slug": "music-theory",
-  "description": "為什麼有些音放在一起就是好聽：音階、和弦、節奏與曲式背後的幾個核心觀念，寫給會演奏或愛聽音樂、又想知道為什麼的人。",
+  "description": "為什麼有些音放在一起就是好聽：西方音樂裡音階、和弦、節奏與曲式背後的幾個核心觀念，寫給會演奏或愛聽音樂、又想知道為什麼的人。",
   "by": "Archipelago",
   "language": "zh-TW",
   "islands": [
     {
       "slug": "pitch",
       "name": "音高與音名",
-      "summary": "振動怎麼變成一個有名字的音，以及為什麼一共有十二個。",
+      "summary": "振動怎麼變成一個有名字的音，以及為什麼總是同樣的十二個音一再重複。",
       "landmarks": [
         {
-          "slug": "frequency-is-pitch",
-          "name": "頻率就是音高",
+          "slug": "faster-vibration-means-higher-pitch",
+          "name": "振動越快，音越高",
           "terms": [
             "頻率",
             "赫茲",
@@ -21,8 +21,8 @@
           ]
         },
         {
-          "slug": "the-octave",
-          "name": "八度",
+          "slug": "an-octave-doubles-the-frequency-and-keeps-the-notes-name",
+          "name": "高八度是頻率加倍，音名不變",
           "terms": [
             "八度",
             "頻率加倍",
@@ -30,8 +30,8 @@
           ]
         },
         {
-          "slug": "twelve-notes-and-their-names",
-          "name": "十二個音和它們的名字",
+          "slug": "an-octave-holds-twelve-notes-named-with-seven-letters",
+          "name": "一個八度有十二個音，用七個字母命名",
           "terms": [
             "半音",
             "半音階",
@@ -39,8 +39,8 @@
           ]
         },
         {
-          "slug": "sharps-and-flats",
-          "name": "升記號與降記號",
+          "slug": "sharps-and-flats-name-the-notes-between-the-letters",
+          "name": "升降記號替字母之間的音命名",
           "terms": [
             "升記號",
             "降記號",
@@ -48,8 +48,8 @@
           ]
         },
         {
-          "slug": "reading-notes-on-a-staff",
-          "name": "在五線譜上讀音",
+          "slug": "the-staff-shows-pitch-as-height",
+          "name": "五線譜用高低位置表示音高",
           "terms": [
             "五線譜",
             "譜號",
@@ -61,7 +61,7 @@
           "name": "泛音造就樂器的音色",
           "terms": [
             "泛音",
-            "諧音",
+            "泛音列",
             "音色"
           ]
         }
@@ -73,59 +73,60 @@
       "summary": "音樂怎麼在時間裡安排。",
       "landmarks": [
         {
-          "slug": "beat-and-tempo",
-          "name": "拍與速度",
+          "slug": "tempo-is-how-fast-the-beat-goes",
+          "name": "速度就是一拍一拍走得多快",
           "terms": [
-            "拍",
             "速度",
             "tempo",
             "BPM"
           ]
         },
         {
-          "slug": "note-lengths",
-          "name": "音符的長短",
+          "slug": "note-lengths-halve-and-double",
+          "name": "音符的長度以對半和加倍來分",
           "terms": [
             "全音符",
+            "二分音符",
             "四分音符",
-            "休止符"
+            "八分音符"
           ]
         },
         {
-          "slug": "bars-and-time-signatures",
-          "name": "小節與拍號",
+          "slug": "metre-is-a-pattern-of-strong-and-weak-beats",
+          "name": "拍子是強拍與弱拍的固定排列",
+          "terms": [
+            "拍子",
+            "強拍",
+            "弱拍",
+            "重音"
+          ]
+        },
+        {
+          "slug": "a-time-signature-tells-you-how-to-count-a-bar",
+          "name": "拍號告訴你一個小節怎麼數",
           "terms": [
             "小節",
             "拍號",
-            "拍子"
+            "每小節幾拍"
           ]
         },
         {
-          "slug": "strong-and-weak-beats",
-          "name": "強拍與弱拍",
+          "slug": "beats-divide-in-two-or-in-three",
+          "name": "一拍可以分成兩份或三份",
           "terms": [
-            "強拍",
-            "重音",
-            "脈動"
+            "單拍子",
+            "複拍子",
+            "三連音",
+            "swing"
           ]
         },
         {
-          "slug": "syncopation",
-          "name": "切分音",
+          "slug": "syncopation-puts-accents-where-the-metre-is-weak",
+          "name": "切分音把重音放在弱的位置",
           "terms": [
             "切分音",
             "syncopation",
-            "反拍",
-            "groove"
-          ]
-        },
-        {
-          "slug": "three-against-two",
-          "name": "三對二",
-          "terms": [
-            "三連音",
-            "swing",
-            "複節奏"
+            "反拍"
           ]
         }
       ]
@@ -136,17 +137,18 @@
       "summary": "兩個音之間的距離，其他一切都由這個單位搭起來。",
       "landmarks": [
         {
-          "slug": "counting-an-interval",
-          "name": "怎麼數音程",
+          "slug": "intervals-are-named-by-letter-count-and-sized-in-semitones",
+          "name": "音程用度數命名，用半音數量大小",
           "terms": [
             "音程",
+            "度數",
             "半音",
             "全音"
           ]
         },
         {
-          "slug": "major-minor-and-perfect",
-          "name": "大、小與完全音程",
+          "slug": "a-major-interval-is-a-semitone-wider-than-its-minor",
+          "name": "大音程比對應的小音程寬一個半音",
           "terms": [
             "大三度",
             "小三度",
@@ -154,29 +156,39 @@
           ]
         },
         {
-          "slug": "consonance-and-dissonance",
-          "name": "協和與不協和",
+          "slug": "an-interval-sounds-the-same-from-any-starting-note",
+          "name": "同一個音程從哪個音開始，聽起來都一樣",
+          "terms": [
+            "相對音感",
+            "移調",
+            "聽音訓練"
+          ]
+        },
+        {
+          "slug": "consonant-intervals-sound-at-rest-dissonant-ones-want-to-move",
+          "name": "協和音程聽來安定，不協和音程想要往前走",
           "terms": [
             "協和",
-            "不協和",
-            "張力"
+            "不協和"
           ]
         },
         {
-          "slug": "simple-ratios-sound-stable",
-          "name": "簡單的比例聽起來穩定",
+          "slug": "simple-frequency-ratios-sound-consonant",
+          "name": "簡單的頻率比聽起來協和",
           "terms": [
-            "比例",
             "頻率比",
-            "五度"
+            "整數比",
+            "純律"
           ]
         },
         {
-          "slug": "hearing-intervals-by-ear",
-          "name": "用耳朵聽出音程",
+          "slug": "equal-temperament-trades-pure-intervals-for-twelve-equal-semitones",
+          "name": "十二平均律犧牲純淨的音程，換來十二個等距的半音",
           "terms": [
-            "聽音訓練",
-            "相對音感"
+            "十二平均律",
+            "調音",
+            "音準",
+            "音分"
           ]
         }
       ]
@@ -187,12 +199,13 @@
       "summary": "從十二個音裡選出七個，以及是什麼讓其中一個成為「家」。",
       "landmarks": [
         {
-          "slug": "the-major-scale-pattern",
-          "name": "大調音階的排列規則",
+          "slug": "the-major-scale-is-one-fixed-pattern-of-whole-and-half-steps",
+          "name": "大調音階是一套固定的全音、半音排列",
           "terms": [
             "大調音階",
-            "全音與半音",
-            "全全半全全全半"
+            "全音",
+            "半音",
+            "音級"
           ]
         },
         {
@@ -200,13 +213,13 @@
           "name": "主音就是家",
           "terms": [
             "主音",
-            "調",
-            "解決"
+            "調性",
+            "tonic"
           ]
         },
         {
-          "slug": "the-minor-scales",
-          "name": "小調音階",
+          "slug": "a-minor-scale-lowers-the-third-sixth-and-seventh",
+          "name": "小調音階降低了第三、第六、第七音",
           "terms": [
             "自然小調",
             "和聲小調",
@@ -214,16 +227,16 @@
           ]
         },
         {
-          "slug": "key-signatures-and-the-circle-of-fifths",
-          "name": "調號與五度圈",
+          "slug": "the-circle-of-fifths-orders-keys-by-their-sharps-and-flats",
+          "name": "五度圈依升降記號的數量排列各個調",
           "terms": [
             "調號",
             "五度圈"
           ]
         },
         {
-          "slug": "modes",
-          "name": "調式",
+          "slug": "a-mode-is-a-scales-notes-with-a-different-home",
+          "name": "調式是同一組音階的音，換一個家",
           "terms": [
             "調式",
             "mode",
@@ -232,8 +245,8 @@
           ]
         },
         {
-          "slug": "pentatonic-and-blues-scales",
-          "name": "五聲音階與藍調音階",
+          "slug": "the-pentatonic-scale-leaves-out-the-two-notes-that-make-semitones",
+          "name": "五聲音階拿掉了形成半音的那兩個音",
           "terms": [
             "五聲音階",
             "藍調音階",
@@ -246,20 +259,21 @@
     {
       "slug": "chords",
       "name": "和弦",
-      "summary": "同時發出的幾個音，以三度疊起來。",
+      "summary": "三個以上的音同時發聲，最常見的是以三度疊起來。",
       "landmarks": [
         {
-          "slug": "triads",
-          "name": "三和弦",
+          "slug": "a-triad-is-a-root-a-third-and-a-fifth",
+          "name": "三和弦是根音、三音和五音",
           "terms": [
             "三和弦",
             "根音",
-            "三音與五音"
+            "三音",
+            "五音"
           ]
         },
         {
-          "slug": "major-minor-diminished-augmented",
-          "name": "大、小、減、增",
+          "slug": "the-third-and-fifth-set-a-chords-quality",
+          "name": "三音和五音決定和弦的性質",
           "terms": [
             "大三和弦",
             "小三和弦",
@@ -268,17 +282,17 @@
           ]
         },
         {
-          "slug": "inversions",
-          "name": "轉位",
+          "slug": "an-inversion-puts-a-chord-note-other-than-the-root-in-the-bass",
+          "name": "轉位是讓根音以外的和弦音當最低音",
           "terms": [
             "轉位",
-            "低音",
-            "voicing"
+            "最低音",
+            "原位"
           ]
         },
         {
-          "slug": "seventh-chords",
-          "name": "七和弦",
+          "slug": "seventh-chords-stack-one-more-third",
+          "name": "七和弦再多疊一個三度",
           "terms": [
             "七和弦",
             "屬七和弦",
@@ -286,8 +300,8 @@
           ]
         },
         {
-          "slug": "the-chords-that-belong-to-a-key",
-          "name": "屬於一個調的和弦",
+          "slug": "a-keys-chords-are-triads-built-on-each-scale-degree",
+          "name": "一個調的和弦，是在每個音級上疊出的三和弦",
           "terms": [
             "順階和弦",
             "調內和弦",
@@ -303,53 +317,65 @@
       "summary": "和弦怎麼一個接一個，製造張力，再把它放掉。",
       "landmarks": [
         {
-          "slug": "tonic-subdominant-dominant",
-          "name": "主、下屬、屬",
+          "slug": "each-chord-has-a-job-tonic-subdominant-or-dominant",
+          "name": "每個和弦各有任務：主、下屬或屬",
           "terms": [
             "主和弦",
             "下屬和弦",
             "屬和弦",
-            "功能"
+            "和聲功能"
           ]
         },
         {
-          "slug": "why-v-wants-to-go-to-i",
-          "name": "為什麼 V 想回到 I",
+          "slug": "the-leading-tone-in-v-pulls-up-a-semitone-to-the-tonic",
+          "name": "V 裡的導音會往上半音拉回主音",
           "terms": [
             "導音",
-            "解決",
-            "三全音"
+            "三全音",
+            "解決"
           ]
         },
         {
-          "slug": "cadences",
-          "name": "終止式",
+          "slug": "cadences-are-musical-punctuation",
+          "name": "終止式是音樂的標點符號",
           "terms": [
             "終止式",
             "正格終止",
+            "半終止",
             "假終止"
           ]
         },
         {
-          "slug": "progressions-everybody-knows",
-          "name": "人人都聽過的進行",
+          "slug": "good-voice-leading-moves-each-note-as-little-as-possible",
+          "name": "好的聲部進行讓每個音動得越少越好",
           "terms": [
-            "I-V-vi-IV",
-            "十二小節藍調",
-            "ii-V-I"
+            "聲部進行",
+            "voice leading",
+            "共同音",
+            "級進"
           ]
         },
         {
-          "slug": "borrowing-from-outside-the-key",
-          "name": "向調外借和弦",
+          "slug": "most-songs-reuse-a-few-stock-progressions",
+          "name": "大多數歌曲重複使用少數幾套現成的進行",
+          "terms": [
+            "和弦進行",
+            "I-V-vi-IV",
+            "ii-V-I",
+            "I-IV-V"
+          ]
+        },
+        {
+          "slug": "chords-from-outside-the-key-add-colour-without-changing-key",
+          "name": "調外的和弦不必轉調就能增添色彩",
           "terms": [
             "副屬和弦",
             "借用和弦"
           ]
         },
         {
-          "slug": "changing-key",
-          "name": "轉調",
+          "slug": "modulation-moves-home-to-a-new-tonic",
+          "name": "轉調是把家搬到新的主音",
           "terms": [
             "轉調",
             "樞紐和弦",
@@ -364,8 +390,8 @@
       "summary": "是什麼讓一條單音的線條被人記住。",
       "landmarks": [
         {
-          "slug": "steps-and-leaps",
-          "name": "級進與跳進",
+          "slug": "most-melodies-move-by-step-and-save-leaps-for-effect",
+          "name": "旋律多半級進，把跳進留給效果",
           "terms": [
             "級進",
             "跳進",
@@ -373,8 +399,8 @@
           ]
         },
         {
-          "slug": "chord-tones-and-passing-tones",
-          "name": "和弦音與經過音",
+          "slug": "chord-tones-sound-settled-passing-tones-connect-them",
+          "name": "和弦音聽來安定，經過音把它們連起來",
           "terms": [
             "和弦音",
             "經過音",
@@ -382,21 +408,23 @@
           ]
         },
         {
-          "slug": "motifs-and-repetition",
-          "name": "動機與重複",
+          "slug": "a-motif-is-a-short-idea-repeated-and-varied",
+          "name": "動機是一個短小的樂思，經過重複與變化",
           "terms": [
             "動機",
-            "重複",
-            "變化"
+            "motif",
+            "樂思",
+            "重複與變化"
           ]
         },
         {
-          "slug": "phrases-breathe",
-          "name": "樂句會呼吸",
+          "slug": "phrases-often-pair-as-question-and-answer",
+          "name": "樂句常常成對，一問一答",
           "terms": [
             "樂句",
-            "問與答",
-            "樂段"
+            "前樂句",
+            "後樂句",
+            "一問一答"
           ]
         },
         {
@@ -404,7 +432,8 @@
           "name": "旋律暗示了它的和聲",
           "terms": [
             "隱含和聲",
-            "勾勒和弦"
+            "分解和弦",
+            "琶音"
           ]
         }
       ]
@@ -415,8 +444,8 @@
       "summary": "一首曲子怎麼安排，讓聽的人知道自己在哪裡。",
       "landmarks": [
         {
-          "slug": "repetition-and-contrast",
-          "name": "重複與對比",
+          "slug": "form-is-built-from-repetition-and-contrast",
+          "name": "曲式由重複與對比構成",
           "terms": [
             "重複",
             "對比",
@@ -424,8 +453,8 @@
           ]
         },
         {
-          "slug": "verse-chorus-bridge",
-          "name": "主歌、副歌、橋段",
+          "slug": "verse-chorus-and-bridge-each-do-a-different-job",
+          "name": "主歌、副歌、橋段各有不同的任務",
           "terms": [
             "主歌",
             "副歌",
@@ -433,31 +462,42 @@
           ]
         },
         {
-          "slug": "twelve-bar-blues-and-aaba",
-          "name": "十二小節藍調與 AABA",
+          "slug": "stock-forms-such-as-twelve-bar-blues-and-aaba-are-reused-across-songs",
+          "name": "十二小節藍調、AABA 這類現成曲式，許多歌曲都在用",
           "terms": [
             "十二小節藍調",
-            "AABA",
-            "歌曲形式"
+            "12 小節藍調",
+            "AABA"
           ]
         },
         {
-          "slug": "theme-and-development",
-          "name": "主題與發展",
+          "slug": "longer-pieces-state-a-theme-develop-it-and-bring-it-back",
+          "name": "較長的樂曲會呈示主題、發展它，再把它帶回來",
           "terms": [
             "主題",
-            "發展",
-            "奏鳴曲式"
+            "發展部",
+            "奏鳴曲式",
+            "再現部"
           ]
         },
         {
-          "slug": "dynamics-and-texture-shape-a-piece",
-          "name": "力度與織度塑造一首曲子",
+          "slug": "texture-is-how-many-lines-and-how-they-relate",
+          "name": "織度是有幾條線條，以及它們彼此的關係",
+          "terms": [
+            "織度",
+            "對位",
+            "伴奏",
+            "複音音樂"
+          ]
+        },
+        {
+          "slug": "dynamics-and-arrangement-shape-a-piece",
+          "name": "力度與編曲塑造一首曲子",
           "terms": [
             "力度",
             "強弱",
-            "織度",
-            "編曲"
+            "編曲",
+            "漸強"
           ]
         }
       ]
@@ -467,7 +507,7 @@
     {
       "from": "pitch",
       "to": "intervals",
-      "name": "音程就是兩個音高的距離"
+      "name": "音程就是兩個音高之間的距離"
     },
     {
       "from": "intervals",
@@ -477,7 +517,7 @@
     {
       "from": "intervals",
       "to": "chords",
-      "name": "和弦是疊起來的三度"
+      "name": "大多數和弦是疊起來的三度"
     },
     {
       "from": "scales",
@@ -492,7 +532,7 @@
     {
       "from": "scales",
       "to": "melody",
-      "name": "旋律在音階裡移動"
+      "name": "旋律的音取自音階"
     },
     {
       "from": "harmony",
@@ -508,6 +548,11 @@
       "from": "harmony",
       "to": "form",
       "name": "終止式標出段落的結尾"
+    },
+    {
+      "from": "melody",
+      "to": "form",
+      "name": "樂句組成段落"
     },
     {
       "from": "rhythm",

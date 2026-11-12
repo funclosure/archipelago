@@ -1,8 +1,8 @@
 {
   "archipelago": 1,
-  "name": "Statistics for reading studies",
-  "slug": "reading-studies",
-  "description": "Enough statistics to read a study or a headline and judge it yourself: what the numbers claim, what they cannot show, and the usual ways they mislead.",
+  "name": "Statistics for judging studies",
+  "slug": "judging-studies",
+  "description": "Enough statistics to read a study or a headline and judge it yourself: what the numbers claim, what they cannot show, and the usual ways they mislead. For readers of news and research, not for people who run the analyses.",
   "by": "Archipelago",
   "language": "en",
   "islands": [
@@ -15,17 +15,17 @@
           "slug": "mean-median-and-when-they-differ",
           "name": "Mean, median and when they differ",
           "terms": [
-            "mean",
+            "the mean",
             "median",
-            "skew"
+            "skewed"
           ]
         },
         {
-          "slug": "spread",
-          "name": "Spread",
+          "slug": "why-an-average-needs-a-spread",
+          "name": "Why an average needs a spread",
           "terms": [
             "standard deviation",
-            "variance",
+            "spread",
             "range"
           ]
         },
@@ -48,12 +48,21 @@
           ]
         },
         {
+          "slug": "a-count-needs-a-denominator",
+          "name": "A count needs a denominator",
+          "terms": [
+            "rate",
+            "per capita",
+            "denominator"
+          ]
+        },
+        {
           "slug": "percentages-and-percentage-points",
           "name": "Percentages and percentage points",
           "terms": [
             "percentage point",
-            "base",
-            "relative change"
+            "relative change",
+            "baseline"
           ]
         }
       ]
@@ -73,11 +82,12 @@
           ]
         },
         {
-          "slug": "random-sampling",
-          "name": "Random sampling",
+          "slug": "why-random-sampling-works",
+          "name": "Why random sampling works",
           "terms": [
             "random sample",
-            "representative"
+            "representative",
+            "equal chance"
           ]
         },
         {
@@ -86,7 +96,7 @@
           "terms": [
             "selection bias",
             "self-selection",
-            "convenience sample"
+            "non-response"
           ]
         },
         {
@@ -94,16 +104,17 @@
           "name": "Survivorship bias",
           "terms": [
             "survivorship bias",
-            "missing data"
+            "survivors",
+            "failures"
           ]
         },
         {
-          "slug": "why-size-is-not-everything",
-          "name": "Why size is not everything",
+          "slug": "a-big-sample-does-not-fix-a-biased-one",
+          "name": "A big sample does not fix a biased one",
           "terms": [
             "sample size",
-            "bias",
-            "large but skewed"
+            "biased sample",
+            "convenience sample"
           ]
         }
       ]
@@ -114,44 +125,49 @@
       "summary": "How far an estimate from a sample might be from the truth.",
       "landmarks": [
         {
-          "slug": "sampling-variation",
-          "name": "Sampling variation",
+          "slug": "a-different-sample-would-give-a-different-answer",
+          "name": "A different sample would give a different answer",
           "terms": [
             "sampling variation",
-            "chance",
-            "repeat"
+            "sampling error",
+            "luck of the draw"
           ]
         },
         {
-          "slug": "standard-error",
-          "name": "Standard error",
+          "slug": "what-a-standard-error-measures",
+          "name": "What a standard error measures",
           "terms": [
             "standard error",
-            "precision"
+            "precision",
+            "precise"
           ]
         },
         {
-          "slug": "confidence-intervals",
-          "name": "Confidence intervals",
+          "slug": "what-a-confidence-interval-does-and-does-not-say",
+          "name": "What a confidence interval does and does not say",
           "terms": [
             "confidence interval",
             "95 percent",
-            "range"
+            "95%",
+            "plausible values",
+            "repeated samples"
           ]
         },
         {
-          "slug": "margin-of-error-in-polls",
-          "name": "Margin of error in polls",
+          "slug": "a-margin-of-error-covers-only-sampling-variation",
+          "name": "A margin of error covers only sampling variation",
           "terms": [
             "margin of error",
-            "poll"
+            "poll",
+            "plus or minus"
           ]
         },
         {
-          "slug": "why-a-bigger-sample-helps-only-so-much",
-          "name": "Why a bigger sample helps only so much",
+          "slug": "halving-the-error-takes-four-times-the-sample",
+          "name": "Halving the error takes four times the sample",
           "terms": [
             "square root",
+            "four times",
             "diminishing returns"
           ]
         }
@@ -175,22 +191,24 @@
           "name": "What a p-value is",
           "terms": [
             "p-value",
-            "probability",
-            "as extreme"
+            "as extreme",
+            "assuming the null"
           ]
         },
         {
-          "slug": "what-a-p-value-is-not",
-          "name": "What a p-value is not",
+          "slug": "a-p-value-is-not-the-chance-the-null-is-true",
+          "name": "A p-value is not the chance the null is true",
           "terms": [
-            "misinterpretation",
-            "probability of hypothesis"
+            "not the probability",
+            "due to chance",
+            "null is true"
           ]
         },
         {
-          "slug": "statistically-significant",
-          "name": "Statistically significant",
+          "slug": "what-statistically-significant-means",
+          "name": "What statistically significant means",
           "terms": [
+            "statistically significant",
             "significance",
             "threshold",
             "0.05"
@@ -201,16 +219,25 @@
           "name": "Two kinds of error",
           "terms": [
             "false positive",
-            "false negative",
-            "power"
+            "false negative"
           ]
         },
         {
-          "slug": "testing-many-things-at-once",
-          "name": "Testing many things at once",
+          "slug": "not-significant-does-not-mean-no-effect",
+          "name": "Not significant does not mean no effect",
+          "terms": [
+            "not significant",
+            "power",
+            "absence of evidence"
+          ]
+        },
+        {
+          "slug": "test-enough-things-and-some-will-pass-by-chance",
+          "name": "Test enough things and some will pass by chance",
           "terms": [
             "multiple comparisons",
-            "p-hacking"
+            "by chance",
+            "many tests"
           ]
         }
       ]
@@ -229,12 +256,12 @@
           ]
         },
         {
-          "slug": "relative-and-absolute-risk",
-          "name": "Relative and absolute risk",
+          "slug": "relative-risk-means-little-without-absolute-risk",
+          "name": "Relative risk means little without absolute risk",
           "terms": [
             "relative risk",
             "absolute risk",
-            "doubling"
+            "double"
           ]
         },
         {
@@ -246,21 +273,22 @@
           ]
         },
         {
-          "slug": "base-rates",
-          "name": "Base rates",
-          "terms": [
-            "base rate",
-            "prior",
-            "false alarm"
-          ]
-        },
-        {
-          "slug": "odds-ratios-in-plain-words",
-          "name": "Odds ratios in plain words",
+          "slug": "an-odds-ratio-exaggerates-relative-risk-unless-the-outcome-is-rare",
+          "name": "An odds ratio exaggerates relative risk unless the outcome is rare",
           "terms": [
             "odds ratio",
             "odds",
-            "risk"
+            "rare outcome"
+          ]
+        },
+        {
+          "slug": "why-a-positive-test-for-a-rare-condition-is-often-a-false-alarm",
+          "name": "Why a positive test for a rare condition is often a false alarm",
+          "terms": [
+            "base rate",
+            "screening",
+            "false alarm",
+            "false positive"
           ]
         }
       ]
@@ -274,9 +302,10 @@
           "slug": "what-a-correlation-measures",
           "name": "What a correlation measures",
           "terms": [
-            "correlation",
+            "correlation coefficient",
             "coefficient",
-            "scatter plot"
+            "scatter plot",
+            "straight line"
           ]
         },
         {
@@ -284,6 +313,7 @@
           "name": "Confounding",
           "terms": [
             "confounder",
+            "confounding",
             "third variable"
           ]
         },
@@ -292,16 +322,18 @@
           "name": "Reverse causation",
           "terms": [
             "reverse causation",
-            "direction"
+            "other way round",
+            "which came first"
           ]
         },
         {
-          "slug": "controlling-for-a-variable",
-          "name": "Controlling for a variable",
+          "slug": "controlling-for-a-variable-and-what-it-cannot-fix",
+          "name": "Controlling for a variable and what it cannot fix",
           "terms": [
-            "adjustment",
-            "regression",
-            "control"
+            "controlling for",
+            "adjusted",
+            "unmeasured",
+            "like with like"
           ]
         },
         {
@@ -325,16 +357,18 @@
       ]
     },
     {
-      "slug": "experiments",
-      "name": "Experiments",
-      "summary": "How a study is designed to show that one thing causes another.",
+      "slug": "study-design",
+      "name": "Study design",
+      "summary": "How a study is set up decides what it can show, above all whether one thing causes another.",
       "landmarks": [
         {
           "slug": "why-randomising-works",
           "name": "Why randomising works",
           "terms": [
             "randomisation",
-            "random assignment"
+            "randomised",
+            "random assignment",
+            "comparable groups"
           ]
         },
         {
@@ -350,13 +384,14 @@
           "name": "Blinding",
           "terms": [
             "blinding",
+            "blinded",
             "double-blind",
             "expectation"
           ]
         },
         {
-          "slug": "observational-studies",
-          "name": "Observational studies",
+          "slug": "what-an-observational-study-can-and-cannot-show",
+          "name": "What an observational study can and cannot show",
           "terms": [
             "observational",
             "cohort",
@@ -364,20 +399,31 @@
           ]
         },
         {
-          "slug": "what-a-studys-result-applies-to",
-          "name": "What a study's result applies to",
+          "slug": "what-was-measured-is-not-always-what-is-claimed",
+          "name": "What was measured is not always what is claimed",
           "terms": [
-            "generalisation",
-            "external validity"
+            "proxy",
+            "surrogate",
+            "self-reported"
           ]
         },
         {
-          "slug": "meta-analysis",
-          "name": "Meta-analysis",
+          "slug": "who-a-studys-results-apply-to",
+          "name": "Who a study's results apply to",
+          "terms": [
+            "generalise",
+            "external validity",
+            "who was studied"
+          ]
+        },
+        {
+          "slug": "why-one-study-is-rarely-enough",
+          "name": "Why one study is rarely enough",
           "terms": [
             "meta-analysis",
             "systematic review",
-            "pooling"
+            "pooling",
+            "single study"
           ]
         }
       ]
@@ -392,15 +438,27 @@
           "name": "Cherry-picked results",
           "terms": [
             "cherry-picking",
+            "cherry-picked",
             "selective reporting"
           ]
         },
         {
-          "slug": "publication-bias-and-replication",
-          "name": "Publication bias and replication",
+          "slug": "choosing-the-analysis-after-seeing-the-data",
+          "name": "Choosing the analysis after seeing the data",
+          "terms": [
+            "p-hacking",
+            "preregistration",
+            "preregistered",
+            "forking paths"
+          ]
+        },
+        {
+          "slug": "why-a-published-finding-may-not-replicate",
+          "name": "Why a published finding may not replicate",
           "terms": [
             "publication bias",
             "replication",
+            "replicate",
             "file drawer"
           ]
         },
@@ -409,17 +467,8 @@
           "name": "Misleading charts",
           "terms": [
             "truncated axis",
-            "scale",
-            "chart"
-          ]
-        },
-        {
-          "slug": "averages-that-hide-groups",
-          "name": "Averages that hide groups",
-          "terms": [
-            "aggregate",
-            "subgroup",
-            "ecological fallacy"
+            "y-axis",
+            "start at zero"
           ]
         },
         {
@@ -448,26 +497,26 @@
     {
       "from": "uncertainty",
       "to": "testing",
-      "name": "A test and an interval say the same thing"
+      "name": "An interval holds the values a test would not reject"
     },
     {
       "from": "testing",
       "to": "effect-size",
-      "name": "Significance says nothing of size"
+      "name": "A small p-value is not a big effect"
     },
     {
       "from": "uncertainty",
       "to": "effect-size",
-      "name": "An effect comes with its interval"
+      "name": "An estimated effect comes with an interval"
     },
     {
       "from": "correlation",
-      "to": "experiments",
-      "name": "Randomising removes confounders"
+      "to": "study-design",
+      "name": "Randomising balances confounders on average"
     },
     {
       "from": "sampling",
-      "to": "experiments",
+      "to": "study-design",
       "name": "Who was studied limits who it applies to"
     },
     {
@@ -488,7 +537,7 @@
   ],
   "seas": [
     {
-      "name": "Describing data",
+      "name": "The data and where it came from",
       "islands": [
         "describing",
         "sampling"
@@ -503,10 +552,10 @@
       ]
     },
     {
-      "name": "Why did it happen",
+      "name": "From claim to cause",
       "islands": [
         "correlation",
-        "experiments",
+        "study-design",
         "pitfalls"
       ]
     }

@@ -2,27 +2,27 @@
   "archipelago": 1,
   "name": "Git",
   "slug": "git",
-  "description": "Git from the inside out: what a commit really is, how branches and remotes move, and how to get out of trouble without fear.",
+  "description": "Git from the inside out, for anyone new to it or getting by on memorised commands: what a commit is, how branches and remotes move, and how to undo a mistake.",
   "by": "Archipelago",
   "language": "en",
   "islands": [
     {
       "slug": "snapshots",
       "name": "Commits as snapshots",
-      "summary": "What Git actually keeps: whole snapshots named by their content, linked into a history.",
+      "summary": "What Git actually keeps: whole snapshots named by a hash of their content, linked into a history.",
       "landmarks": [
         {
           "slug": "a-commit-is-a-snapshot-not-a-diff",
           "name": "A commit is a snapshot, not a diff",
           "terms": [
             "snapshot",
-            "commit",
-            "tree"
+            "diff",
+            "whole project"
           ]
         },
         {
-          "slug": "content-addressing-by-hash",
-          "name": "Content addressing by hash",
+          "slug": "an-object-is-named-by-the-hash-of-its-content",
+          "name": "An object is named by the hash of its content",
           "terms": [
             "hash",
             "SHA",
@@ -30,79 +30,99 @@
           ]
         },
         {
-          "slug": "blobs-trees-and-commits",
-          "name": "Blobs, trees and commits",
+          "slug": "blobs-hold-file-contents-trees-hold-names-a-commit-points-to-a-tree",
+          "name": "Blobs hold file contents, trees hold names, a commit points to a tree",
           "terms": [
             "blob",
-            "tree",
-            "object"
+            "tree object",
+            "commit object"
           ]
         },
         {
-          "slug": "parents-and-the-commit-graph",
-          "name": "Parents and the commit graph",
+          "slug": "unchanged-files-are-shared-between-snapshots",
+          "name": "Unchanged files are shared between snapshots",
+          "terms": [
+            "same hash",
+            "same blob",
+            "stored once"
+          ]
+        },
+        {
+          "slug": "each-commit-points-to-its-parents",
+          "name": "Each commit points to its parents",
           "terms": [
             "parent",
-            "graph",
-            "DAG"
+            "commit graph",
+            "ancestor"
           ]
         },
         {
-          "slug": "why-a-commit-can-never-change",
-          "name": "Why a commit can never change",
+          "slug": "changing-a-commit-makes-a-new-commit-with-a-new-hash",
+          "name": "Changing a commit makes a new commit with a new hash",
           "terms": [
             "immutable",
-            "new commit"
+            "new hash"
           ]
         }
       ]
     },
     {
       "slug": "staging",
-      "name": "The three trees",
+      "name": "Staging and the three trees",
       "summary": "The working directory, the index and HEAD, and how a change moves between them.",
       "landmarks": [
         {
-          "slug": "working-directory-index-head",
-          "name": "Working directory, index, HEAD",
+          "slug": "a-file-exists-in-three-places-working-directory-index-head",
+          "name": "A file exists in three places: working directory, index, HEAD",
           "terms": [
+            "working directory",
             "working tree",
-            "index",
-            "HEAD"
+            "index"
           ]
         },
         {
-          "slug": "what-staging-is-for",
-          "name": "What staging is for",
+          "slug": "staging-lets-you-choose-what-goes-into-the-next-commit",
+          "name": "Staging lets you choose what goes into the next commit",
           "terms": [
             "staging area",
             "git add",
-            "partial commit"
+            "git add -p"
           ]
         },
         {
-          "slug": "reading-git-status",
-          "name": "Reading git status",
+          "slug": "a-commit-records-the-index-not-the-working-directory",
+          "name": "A commit records the index, not the working directory",
           "terms": [
-            "untracked",
-            "modified",
-            "staged"
+            "git commit",
+            "staged",
+            "next snapshot"
           ]
         },
         {
-          "slug": "diff-between-each-pair-of-trees",
-          "name": "Diff between each pair of trees",
+          "slug": "status-and-diff-compare-the-trees-in-pairs",
+          "name": "Status and diff compare the trees in pairs",
           "terms": [
+            "git status",
             "git diff",
-            "--staged"
+            "--staged",
+            "modified"
           ]
         },
         {
-          "slug": "ignoring-files",
-          "name": "Ignoring files",
+          "slug": "a-file-is-untracked-until-it-is-first-added",
+          "name": "A file is untracked until it is first added",
+          "terms": [
+            "tracked",
+            "untracked"
+          ]
+        },
+        {
+          "slug": "ignoring-only-affects-untracked-files",
+          "name": "Ignoring only affects untracked files",
           "terms": [
             ".gitignore",
-            "untracked"
+            "ignored",
+            "git rm --cached"
           ]
         }
       ]
@@ -116,259 +136,53 @@
           "slug": "a-branch-is-a-pointer-to-a-commit",
           "name": "A branch is a pointer to a commit",
           "terms": [
-            "branch",
-            "ref",
-            "pointer"
+            "pointer",
+            "ref"
           ]
         },
         {
-          "slug": "head-and-the-current-branch",
-          "name": "HEAD and the current branch",
+          "slug": "head-names-the-current-branch",
+          "name": "HEAD names the current branch",
           "terms": [
             "HEAD",
-            "checkout",
-            "switch"
+            "current branch",
+            "git switch",
+            "git checkout"
           ]
         },
         {
-          "slug": "detached-head",
-          "name": "Detached HEAD",
+          "slug": "committing-moves-the-current-branch-forward",
+          "name": "Committing moves the current branch forward",
+          "terms": [
+            "branch tip",
+            "moves forward",
+            "new commit"
+          ]
+        },
+        {
+          "slug": "creating-a-branch-copies-nothing",
+          "name": "Creating a branch copies nothing",
+          "terms": [
+            "git branch",
+            "git switch -c",
+            "cheap"
+          ]
+        },
+        {
+          "slug": "a-detached-head-points-at-a-commit-not-a-branch",
+          "name": "A detached HEAD points at a commit, not a branch",
           "terms": [
             "detached HEAD",
-            "commit id"
+            "detached"
           ]
         },
         {
-          "slug": "creating-and-switching-cost-nothing",
-          "name": "Creating and switching cost nothing",
-          "terms": [
-            "git switch",
-            "lightweight"
-          ]
-        },
-        {
-          "slug": "tags-as-fixed-names",
-          "name": "Tags as fixed names",
+          "slug": "a-tag-is-a-name-that-does-not-move",
+          "name": "A tag is a name that does not move",
           "terms": [
             "tag",
             "annotated tag",
             "release"
-          ]
-        }
-      ]
-    },
-    {
-      "slug": "merging",
-      "name": "Merging",
-      "summary": "Bringing two lines of work together, and what Git does when they disagree.",
-      "landmarks": [
-        {
-          "slug": "fast-forward-and-three-way-merge",
-          "name": "Fast-forward and three-way merge",
-          "terms": [
-            "fast-forward",
-            "merge commit"
-          ]
-        },
-        {
-          "slug": "the-merge-base",
-          "name": "The merge base",
-          "terms": [
-            "merge base",
-            "common ancestor"
-          ]
-        },
-        {
-          "slug": "why-conflicts-happen",
-          "name": "Why conflicts happen",
-          "terms": [
-            "conflict",
-            "same lines",
-            "both sides"
-          ]
-        },
-        {
-          "slug": "resolving-a-conflict",
-          "name": "Resolving a conflict",
-          "terms": [
-            "conflict markers",
-            "resolve",
-            "git add"
-          ]
-        },
-        {
-          "slug": "a-merge-commit-has-two-parents",
-          "name": "A merge commit has two parents",
-          "terms": [
-            "merge commit",
-            "parents"
-          ]
-        }
-      ]
-    },
-    {
-      "slug": "remotes",
-      "name": "Remotes",
-      "summary": "Other copies of the repository, and how commits travel between them.",
-      "landmarks": [
-        {
-          "slug": "a-remote-is-another-copy",
-          "name": "A remote is another copy",
-          "terms": [
-            "remote",
-            "origin",
-            "clone"
-          ]
-        },
-        {
-          "slug": "remote-tracking-branches",
-          "name": "Remote-tracking branches",
-          "terms": [
-            "origin/main",
-            "tracking branch"
-          ]
-        },
-        {
-          "slug": "fetch-and-pull-are-different",
-          "name": "Fetch and pull are different",
-          "terms": [
-            "fetch",
-            "pull",
-            "merge"
-          ]
-        },
-        {
-          "slug": "push-and-why-it-gets-rejected",
-          "name": "Push and why it gets rejected",
-          "terms": [
-            "push",
-            "non-fast-forward",
-            "rejected"
-          ]
-        },
-        {
-          "slug": "upstream-and-ahead-or-behind",
-          "name": "Upstream and ahead or behind",
-          "terms": [
-            "upstream",
-            "ahead",
-            "behind"
-          ]
-        }
-      ]
-    },
-    {
-      "slug": "rebasing",
-      "name": "Rebasing and rewriting",
-      "summary": "Replaying commits somewhere else, and the one rule that keeps it safe.",
-      "landmarks": [
-        {
-          "slug": "rebase-replays-commits-as-new-ones",
-          "name": "Rebase replays commits as new ones",
-          "terms": [
-            "rebase",
-            "replay",
-            "new commits"
-          ]
-        },
-        {
-          "slug": "rebase-or-merge",
-          "name": "Rebase or merge",
-          "terms": [
-            "linear history",
-            "merge commit"
-          ]
-        },
-        {
-          "slug": "interactive-rebase",
-          "name": "Interactive rebase",
-          "terms": [
-            "squash",
-            "reword",
-            "fixup"
-          ]
-        },
-        {
-          "slug": "amend-makes-a-new-commit",
-          "name": "Amend makes a new commit",
-          "terms": [
-            "amend",
-            "--amend"
-          ]
-        },
-        {
-          "slug": "never-rewrite-shared-history",
-          "name": "Never rewrite shared history",
-          "terms": [
-            "force push",
-            "shared branch",
-            "--force-with-lease"
-          ]
-        },
-        {
-          "slug": "cherry-pick",
-          "name": "Cherry-pick",
-          "terms": [
-            "cherry-pick",
-            "copy a commit"
-          ]
-        }
-      ]
-    },
-    {
-      "slug": "undoing",
-      "name": "Undoing things",
-      "summary": "Choosing the right way back: restore, reset, revert, and the safety net under them all.",
-      "landmarks": [
-        {
-          "slug": "restore-a-file",
-          "name": "Restore a file",
-          "terms": [
-            "git restore",
-            "discard changes"
-          ]
-        },
-        {
-          "slug": "reset-soft-mixed-and-hard",
-          "name": "Reset soft, mixed and hard",
-          "terms": [
-            "reset",
-            "--soft",
-            "--hard"
-          ]
-        },
-        {
-          "slug": "revert-adds-an-opposite-commit",
-          "name": "Revert adds an opposite commit",
-          "terms": [
-            "revert",
-            "public history"
-          ]
-        },
-        {
-          "slug": "the-reflog-remembers-where-you-were",
-          "name": "The reflog remembers where you were",
-          "terms": [
-            "reflog",
-            "lost commits",
-            "recover"
-          ]
-        },
-        {
-          "slug": "stash-sets-work-aside",
-          "name": "Stash sets work aside",
-          "terms": [
-            "stash",
-            "pop"
-          ]
-        },
-        {
-          "slug": "what-can-truly-be-lost",
-          "name": "What can truly be lost",
-          "terms": [
-            "uncommitted",
-            "untracked",
-            "garbage collection"
           ]
         }
       ]
@@ -379,48 +193,288 @@
       "summary": "Finding out what changed, when, by whom, and which commit broke it.",
       "landmarks": [
         {
-          "slug": "log-and-its-filters",
-          "name": "Log and its filters",
+          "slug": "log-walks-back-from-a-commit-through-its-parents",
+          "name": "Log walks back from a commit through its parents",
           "terms": [
             "git log",
             "--oneline",
-            "--graph"
+            "--graph",
+            "reachable"
           ]
         },
         {
-          "slug": "naming-commits-relative-to-others",
-          "name": "Naming commits relative to others",
+          "slug": "head-1-names-a-commit-by-counting-back-through-parents",
+          "name": "HEAD~1 names a commit by counting back through parents",
           "terms": [
             "HEAD~1",
-            "caret",
-            "range"
+            "HEAD^",
+            "tilde",
+            "caret"
           ]
         },
         {
-          "slug": "blame-a-line",
-          "name": "Blame a line",
+          "slug": "blame-finds-the-commit-that-last-changed-a-line",
+          "name": "Blame finds the commit that last changed a line",
           "terms": [
             "blame",
-            "annotate",
-            "line history"
+            "last changed",
+            "line by line"
           ]
         },
         {
-          "slug": "bisect-to-find-the-breaking-commit",
-          "name": "Bisect to find the breaking commit",
+          "slug": "bisect-finds-the-breaking-commit-by-binary-search",
+          "name": "Bisect finds the breaking commit by binary search",
           "terms": [
             "bisect",
             "binary search",
-            "good and bad"
+            "good commit",
+            "bad commit"
           ]
         },
         {
-          "slug": "writing-a-commit-message-worth-reading",
-          "name": "Writing a commit message worth reading",
+          "slug": "a-commit-message-says-why-not-only-what",
+          "name": "A commit message says why, not only what",
           "terms": [
             "commit message",
-            "subject",
-            "why"
+            "subject line",
+            "body"
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "merging",
+      "name": "Merging",
+      "summary": "Bringing two lines of work together, and what Git does when they disagree.",
+      "landmarks": [
+        {
+          "slug": "the-merge-base-is-the-latest-common-ancestor",
+          "name": "The merge base is the latest common ancestor",
+          "terms": [
+            "merge base",
+            "common ancestor",
+            "diverged"
+          ]
+        },
+        {
+          "slug": "a-fast-forward-only-moves-the-pointer",
+          "name": "A fast-forward only moves the pointer",
+          "terms": [
+            "fast-forward",
+            "no merge commit"
+          ]
+        },
+        {
+          "slug": "a-three-way-merge-makes-a-commit-with-two-parents",
+          "name": "A three-way merge makes a commit with two parents",
+          "terms": [
+            "three-way merge",
+            "merge commit",
+            "two parents"
+          ]
+        },
+        {
+          "slug": "a-conflict-is-both-sides-changing-the-same-part-of-a-file",
+          "name": "A conflict is both sides changing the same part of a file",
+          "terms": [
+            "conflict",
+            "both sides",
+            "same lines"
+          ]
+        },
+        {
+          "slug": "to-resolve-a-conflict-edit-the-file-stage-it-commit",
+          "name": "To resolve a conflict: edit the file, stage it, commit",
+          "terms": [
+            "conflict markers",
+            "resolve",
+            "git add",
+            "--abort"
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "remotes",
+      "name": "Remotes",
+      "summary": "Other copies of the repository, and how commits travel between them.",
+      "landmarks": [
+        {
+          "slug": "a-remote-is-a-name-for-another-copy-of-the-repository",
+          "name": "A remote is a name for another copy of the repository",
+          "terms": [
+            "remote",
+            "origin",
+            "clone",
+            "URL"
+          ]
+        },
+        {
+          "slug": "fetch-downloads-commits-without-touching-your-branches",
+          "name": "Fetch downloads commits without touching your branches",
+          "terms": [
+            "git fetch",
+            "download"
+          ]
+        },
+        {
+          "slug": "origin-main-is-where-the-remotes-main-was-at-your-last-fetch",
+          "name": "origin/main is where the remote's main was at your last fetch",
+          "terms": [
+            "origin/main",
+            "remote-tracking branch",
+            "out of date"
+          ]
+        },
+        {
+          "slug": "pull-is-fetch-followed-by-a-merge-or-a-rebase",
+          "name": "Pull is fetch followed by a merge or a rebase",
+          "terms": [
+            "git pull",
+            "pull --rebase"
+          ]
+        },
+        {
+          "slug": "push-is-rejected-when-the-remote-has-commits-you-lack",
+          "name": "Push is rejected when the remote has commits you lack",
+          "terms": [
+            "push",
+            "non-fast-forward",
+            "rejected"
+          ]
+        },
+        {
+          "slug": "the-upstream-is-the-remote-branch-a-local-branch-follows",
+          "name": "The upstream is the remote branch a local branch follows",
+          "terms": [
+            "upstream",
+            "ahead",
+            "behind",
+            "tracking"
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "undoing",
+      "name": "Undoing things",
+      "summary": "Choosing the right way back: restore, reset or revert, and the reflog that lets you recover commits.",
+      "landmarks": [
+        {
+          "slug": "restore-copies-a-file-back-from-the-index-or-a-commit",
+          "name": "Restore copies a file back from the index or a commit",
+          "terms": [
+            "git restore",
+            "discard changes",
+            "unstage"
+          ]
+        },
+        {
+          "slug": "reset-moves-the-branch-soft-mixed-and-hard-decide-what-else-changes",
+          "name": "Reset moves the branch; soft, mixed and hard decide what else changes",
+          "terms": [
+            "git reset",
+            "--soft",
+            "--mixed",
+            "--hard"
+          ]
+        },
+        {
+          "slug": "revert-adds-a-new-commit-that-undoes-an-earlier-one",
+          "name": "Revert adds a new commit that undoes an earlier one",
+          "terms": [
+            "revert",
+            "new commit",
+            "shared history"
+          ]
+        },
+        {
+          "slug": "the-reflog-records-every-place-head-has-been",
+          "name": "The reflog records every place HEAD has been",
+          "terms": [
+            "reflog",
+            "HEAD@{1}",
+            "recover"
+          ]
+        },
+        {
+          "slug": "stash-sets-uncommitted-work-aside-to-bring-back-later",
+          "name": "Stash sets uncommitted work aside to bring back later",
+          "terms": [
+            "stash",
+            "pop",
+            "set aside"
+          ]
+        },
+        {
+          "slug": "committed-work-is-hard-to-lose-uncommitted-work-is-easy-to-lose",
+          "name": "Committed work is hard to lose; uncommitted work is easy to lose",
+          "terms": [
+            "uncommitted",
+            "untracked",
+            "garbage collection",
+            "git clean"
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "rebasing",
+      "name": "Rebasing and rewriting",
+      "summary": "Replaying commits as new ones, and why to rewrite only commits nobody else has.",
+      "landmarks": [
+        {
+          "slug": "amend-replaces-the-last-commit-with-a-new-one",
+          "name": "Amend replaces the last commit with a new one",
+          "terms": [
+            "amend",
+            "--amend",
+            "last commit"
+          ]
+        },
+        {
+          "slug": "rebase-replays-commits-as-new-ones",
+          "name": "Rebase replays commits as new ones",
+          "terms": [
+            "rebase",
+            "replay",
+            "new base"
+          ]
+        },
+        {
+          "slug": "merge-keeps-the-branching-rebase-makes-history-linear",
+          "name": "Merge keeps the branching; rebase makes history linear",
+          "terms": [
+            "linear history",
+            "merge commit"
+          ]
+        },
+        {
+          "slug": "interactive-rebase-edits-a-series-of-commits",
+          "name": "Interactive rebase edits a series of commits",
+          "terms": [
+            "interactive rebase",
+            "rebase -i",
+            "squash",
+            "reword",
+            "fixup"
+          ]
+        },
+        {
+          "slug": "cherry-pick-applies-one-commits-change-as-a-new-commit",
+          "name": "Cherry-pick applies one commit's change as a new commit",
+          "terms": [
+            "cherry-pick",
+            "same change"
+          ]
+        },
+        {
+          "slug": "rewrite-only-commits-that-nobody-else-has-yet",
+          "name": "Rewrite only commits that nobody else has yet",
+          "terms": [
+            "force push",
+            "shared branch",
+            "--force-with-lease"
           ]
         }
       ]
@@ -429,13 +483,18 @@
   "straits": [
     {
       "from": "snapshots",
+      "to": "staging",
+      "name": "The index becomes the next snapshot"
+    },
+    {
+      "from": "snapshots",
       "to": "branches",
       "name": "A branch only names a commit"
     },
     {
       "from": "snapshots",
-      "to": "staging",
-      "name": "The index is the next snapshot"
+      "to": "history",
+      "name": "History is the graph of parents"
     },
     {
       "from": "branches",
@@ -445,7 +504,17 @@
     {
       "from": "branches",
       "to": "remotes",
-      "name": "Remote branches are pointers too"
+      "name": "Remote-tracking branches are pointers too"
+    },
+    {
+      "from": "history",
+      "to": "undoing",
+      "name": "Naming the commit to go back to"
+    },
+    {
+      "from": "staging",
+      "to": "undoing",
+      "name": "Reset and restore act on the three trees"
     },
     {
       "from": "merging",
@@ -458,19 +527,9 @@
       "name": "Rewriting what others already have"
     },
     {
-      "from": "rebasing",
-      "to": "undoing",
-      "name": "The reflog undoes a bad rebase"
-    },
-    {
-      "from": "snapshots",
-      "to": "history",
-      "name": "History is the graph of parents"
-    },
-    {
-      "from": "staging",
-      "to": "undoing",
-      "name": "Reset moves between the three trees"
+      "from": "undoing",
+      "to": "rebasing",
+      "name": "The reflog still has the commits from before a rebase"
     }
   ],
   "seas": [
@@ -483,7 +542,7 @@
       ]
     },
     {
-      "name": "Working with others",
+      "name": "Combining and sharing work",
       "islands": [
         "merging",
         "remotes",
@@ -491,7 +550,7 @@
       ]
     },
     {
-      "name": "Looking back",
+      "name": "Looking back and undoing",
       "islands": [
         "history",
         "undoing"
