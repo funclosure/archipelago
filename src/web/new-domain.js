@@ -12,6 +12,9 @@ import { GALLERY_INDEX, GALLERY_PATH, galleryFor } from "./gallery-model.js";
 /** Descriptions to start from: a click puts one in the field, to send or to edit. */
 export const EXAMPLES = [1, 2, 3, 4, 5, 6].map((n) => t(`newDomain.example${n}`));
 
+/** Ready-made maps shown as tiles under New domain; the rest are behind "See all". */
+const TILES_MAX = 6;
+
 /** Mirrors DESCRIPTION_MAX in src/core/validators.ts. */
 export const DESCRIPTION_MAX = 500;
 
@@ -19,7 +22,7 @@ export const DESCRIPTION_MAX = 500;
 /** `deleting`: the edit dialog is asking whether to delete the domain. */
 /** `importing`: the new-domain dialog is on its other way in, a map file (pasted, picked, or written by another AI from our prompt). */
 /** `gallery`: it is on the shared maps (`maps`: null until the index is read; `pick`: the slug a link asked for; `adding`: the one being added). */
-const state = { open: false, name: "", description: "", editing: null, first: false, saving: false, error: null, deleting: false, importing: false, mapText: "", copied: false, gallery: false, maps: null, pick: null, adding: null };
+const state = { open: false, name: "", description: "", editing: null, first: false, saving: false, error: null, deleting: false, importing: false, mapText: "", copied: false, gallery: false, maps: null, pick: null, adding: null, galleryFailed: false };
 let root = null;
 
 function el(tag, className, text) {
@@ -38,9 +41,44 @@ export function installNewDomain() {
 export function openNewDomain({ first = false, map = null } = {}) {
   if (!root) return;
   Object.assign(state, { open: true, name: "", description: "", editing: null, first, saving: false, error: null, deleting: false, importing: false, mapText: "", copied: false, gallery: false, pick: map, adding: null });
+  loadGallery();
   if (map) return void showGallery(true);
   render();
   root.querySelector("#new-domain-description")?.focus();
+}
+
+let galleryRead = null;
+/** The shared maps' index, read once; the dialog draws again when it arrives. `maps` stays null when it cannot be read. */
+function loadGallery() {
+  galleryRead ??= fetch(GALLERY_INDEX)
+    .then((res) => (res.ok ? res.json() : Promise.reject(new Error(String(res.status)))))
+    .then((index) => {
+      state.maps = galleryFor(index, language());
+    })
+    .catch(() => {
+      galleryRead = null; // asked again the next time the dialog opens
+      state.galleryFailed = true;
+    })
+    .finally(() => {
+      if (!state.open || state.editing || state.saving) return;
+      if (state.gallery) {
+        if (state.galleryFailed && !state.maps) state.error = t("newDomain.galleryFailed");
+        render();
+        focusGallery();
+      } else if (!state.importing && state.maps) renderKeepingFocus();
+    });
+  return galleryRead;
+}
+
+/** Draws the dialog again without taking the caret out of the description. */
+function renderKeepingFocus() {
+  const field = root.querySelector("#new-domain-description");
+  const had = document.activeElement === field ? [field.selectionStart, field.selectionEnd] : null;
+  render();
+  if (!had) return;
+  const again = root.querySelector("#new-domain-description");
+  again?.focus();
+  again?.setSelectionRange(had[0], had[1]);
 }
 
 /** An existing domain's name and description, read fresh so a change made in the terminal shows. */
@@ -93,25 +131,14 @@ function openDomain(slug) {
 }
 
 /** The shared maps: the index is read once, the first time they are shown. */
-function showGallery(on) {
+function showGallery(on, pick = null) {
   Object.assign(state, { gallery: on, error: null });
-  if (!on) state.pick = null;
+  state.pick = on ? (pick ?? state.pick) : null;
   render();
   if (!on) return void root.querySelector("#new-domain-description")?.focus();
   if (state.maps) return focusGallery();
-  fetch(GALLERY_INDEX)
-    .then((res) => (res.ok ? res.json() : Promise.reject(new Error(String(res.status)))))
-    .then((index) => {
-      state.maps = galleryFor(index, language());
-      if (state.open && state.gallery) {
-        render();
-        focusGallery();
-      }
-    })
-    .catch(() => {
-      state.error = t("newDomain.galleryFailed");
-      if (state.open && state.gallery) render();
-    });
+  state.galleryFailed = false;
+  void loadGallery();
 }
 
 function focusGallery() {
@@ -394,7 +421,7 @@ function render() {
     card.append(islandsArt(), el("div", "lbl", "Archipelago"), el("h1", "title", t("newDomain.firstTitle")));
     card.append(el("p", "help", t("newDomain.firstHelp")));
   } else {
-    card.append(el("div", "lbl", t("newDomain.newTitle")), el("p", "help", t("newDomain.newHelp")));
+    card.append(el("div", "lbl", t("newDomain.newTitle")), el("h2", "title", t("newDomain.newQuestion")), el("p", "help", t("newDomain.newHelp")));
   }
   const description = el("textarea");
   description.id = "new-domain-description";
@@ -409,7 +436,7 @@ function render() {
   card.append(description);
   if (!state.editing) {
     const examples = el("div", "examples");
-    examples.append(el("span", "ex-lbl", t("newDomain.startFrom")));
+    card.append(el("div", "sub-lbl", t("newDomain.startFrom")));
     for (const text of EXAMPLES) {
       const chip = el("button", "ex", text);
       chip.type = "button";
@@ -449,18 +476,36 @@ function render() {
   card.append(row);
   if (!state.editing) {
     // The other way in: a map that already exists, or one another AI writes from our prompt. No model turn of ours.
-    const shared = el("button", "as-link", t("newDomain.sharedMaps"));
+    const other = el("div", "other-ways");
+    if (state.maps?.length) {
+      // Ready-made maps, a tile each: a click shows that one in the shared maps, where one more adds it.
+      other.append(el("div", "sub-lbl", t("newDomain.readyMade")));
+      const tiles = el("div", "map-tiles");
+      for (const entry of state.maps.slice(0, TILES_MAX)) {
+        const tile = el("button", "map-tile");
+        tile.type = "button";
+        tile.dataset.slug = entry.slug;
+        tile.disabled = state.saving;
+        tile.append(el("span", "nm", entry.name), el("span", "mt", t("newDomain.tileMeta", { islands: entry.islands.length })));
+        tile.addEventListener("click", () => showGallery(true, entry.slug));
+        tiles.append(tile);
+      }
+      other.append(tiles);
+    }
+    const links = el("div", "links");
+    const shared = el("button", "as-link", t(state.maps?.length ? "newDomain.sharedMapsAll" : "newDomain.sharedMaps"));
     shared.type = "button";
     shared.id = "shared-maps";
     shared.disabled = state.saving;
     shared.addEventListener("click", () => showGallery(true));
-    card.append(shared);
     const have = el("button", "as-link", t("newDomain.importMap"));
     have.type = "button";
     have.id = "import-map";
     have.disabled = state.saving;
     have.addEventListener("click", () => showImport(true));
-    card.append(have);
+    links.append(shared, have);
+    other.append(links);
+    card.append(other);
   }
   card.addEventListener("submit", (e) => {
     e.preventDefault();
