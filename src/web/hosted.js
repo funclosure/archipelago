@@ -202,6 +202,17 @@ async function saveKey({ stub = false } = {}) {
   }
 }
 
+/** In the credit view a model is saved as it is picked: there is nothing else there to save. */
+async function saveModel() {
+  state.error = null;
+  try {
+    state.view = await post("/hosted/settings", { provider: state.provider, model: state.model, remember: state.remember });
+  } catch (error) {
+    state.error = error.message;
+    render();
+  }
+}
+
 async function forgetKey() {
   try {
     state.view = await post("/hosted/settings", { provider: state.provider, apiKey: null, stub: true });
@@ -352,6 +363,7 @@ function renderKey(card) {
     radio.addEventListener("change", () => {
       state.model = m.id;
       if (other) other.value = "";
+      if (simple) void saveModel();
     });
     radios.push(radio);
     label.append(radio, el("span", "name", m.name), el("span", "note", t(`hosted.${m.note}`)));
@@ -374,6 +386,7 @@ function renderKey(card) {
     });
     models.append(other);
   }
+  if (simple) form.append(el("div", "sect", t("hosted.modelLabel")));
   form.append(models);
 
   const remember = el("label", "remember");
@@ -384,11 +397,12 @@ function renderKey(card) {
   remember.append(box, ` ${t("hosted.remember")}`);
   if (showKey) form.append(remember);
 
-  const actions = row(button(state.saving ? t("hosted.saving") : welcome ? t("hosted.start") : t("hosted.save"), () => void saveKey()));
+  // In the credit view nothing waits to be saved (a model is saved as it is picked), so the one button closes.
+  const actions = row(simple ? button(t("hosted.done"), close) : button(state.saving ? t("hosted.saving") : welcome ? t("hosted.start") : t("hosted.save"), () => void saveKey()));
   actions.firstChild.type = "submit";
   actions.firstChild.disabled = state.saving;
   if (welcome) actions.append(button(t("hosted.tryWithout"), () => void saveKey({ stub: true }), "btn ghost"));
-  else {
+  else if (!simple) {
     // The token is the only handle on credit that was paid for: no button here throws it away.
     const holdsCredit = provider?.proxy && state.credit?.purchased;
     if (keyHint && !holdsCredit && !simple) actions.append(button(t("hosted.forgetKey"), () => void forgetKey(), "btn ghost"));
@@ -397,7 +411,8 @@ function renderKey(card) {
   form.append(actions);
   form.addEventListener("submit", (e) => {
     e.preventDefault();
-    void saveKey();
+    if (simple) close();
+    else void saveKey();
   });
   card.append(form);
   if (welcome && provider) {
@@ -425,6 +440,7 @@ function renderKey(card) {
   }
   if (welcome) {
     if (provider) card.append(noticeEl(provider));
+    card.append(legalEl());
     return;
   }
   // One step further in, one line each: the way to a key from the credit view, the way to a token from our own tab.
@@ -443,11 +459,47 @@ function renderKey(card) {
   // The long explanations are there for whoever wants them, folded.
   const more = el("details", "more");
   more.append(el("summary", null, t("hosted.howItWorks")));
-  if (provider?.proxy && state.credit?.packs?.length) more.append(el("p", "help", t("hosted.creditHelp")));
-  if (provider) more.append(noticeEl(provider));
+  if (provider?.proxy) more.append(howEl());
+  else if (provider) more.append(noticeEl(provider));
   // On our own server there is no stub to fall back to: forgetting its token starts a new free account.
   if (!provider?.proxy) more.append(el("p", "help", t("hosted.stubHelp")));
-  card.append(more);
+  card.append(more, legalEl());
+}
+
+const SUPPORT = "support@archipelago.school";
+
+/** How our own server's credit works, a short line per question: paying, what a reply costs, where it lives, what is kept, refunds. */
+function howEl() {
+  const { purchased = false, packs = [] } = state.credit ?? {};
+  const list = el("ul", "points");
+  const point = (key) => list.append(el("li", null, t(key)));
+  if (!purchased) point("hosted.howFree");
+  if (packs.length) point("hosted.howPay");
+  point("hosted.howCost");
+  point("hosted.howPlace");
+  point("hosted.howServer");
+  if (packs.length) {
+    const refund = el("li");
+    const mail = el("a", null, SUPPORT);
+    mail.href = `mailto:${SUPPORT}`;
+    const [before, after = ""] = t("hosted.howRefund", { email: "{email}" }).split("{email}");
+    refund.append(before, mail, after);
+    list.append(refund);
+  }
+  return list;
+}
+
+/** The terms and the privacy page, each in its own tab so the map stays where it is. */
+function legalEl() {
+  const links = el("p", "legal-links");
+  for (const [key, href] of [["hosted.termsLink", "/terms"], ["hosted.privacyLink", "/privacy"]]) {
+    const link = el("a", null, t(key));
+    link.href = href;
+    link.target = "_blank";
+    link.rel = "noopener";
+    links.append(link);
+  }
+  return links;
 }
 
 /** Where a provider's turns go and what is kept, in one paragraph. */
@@ -470,6 +522,7 @@ function creditEl() {
   else if (left <= 0) credit.append(el("p", "left", t(packs.length ? "hosted.creditOut" : "hosted.creditOutKey")));
   else credit.append(el("p", "left", t(purchased ? "hosted.creditLeft" : "hosted.creditFree", { amount: amountOf(left) })));
   if (packs.length) {
+    credit.append(el("div", "sect", t("hosted.addCreditLabel")));
     const buttons = row(...packs.map((usd) => button(t("hosted.addCredit", { amount: usd }), () => void buy(usd), "btn ghost")));
     for (const b of buttons.children) b.disabled = state.buying;
     credit.append(buttons, el("p", "help", t(state.buying ? "hosted.openingCheckout" : "hosted.creditShort")));

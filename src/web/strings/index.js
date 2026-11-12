@@ -9,6 +9,8 @@ import markdown from "./markdown.js";
 import newDomain from "./new-domain.js";
 import plot from "./plot.js";
 import about from "./about.js";
+import terms from "./terms.js";
+import privacy from "./privacy.js";
 import demo from "./demo.js";
 import voice from "./voice.js";
 import pin from "./pin.js";
@@ -36,6 +38,8 @@ import places from "./places.js";
 export const TABLES = {
   places,
   about,
+  terms,
+  privacy,
   demo,
   voice,
   pin,
