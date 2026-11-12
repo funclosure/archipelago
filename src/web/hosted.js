@@ -108,13 +108,21 @@ function balanceBefore() {
 /** Whether `credit` holds more than when the reader left to pay. */
 const hasGrown = (credit) => typeof credit?.balanceUsd === "number" && balanceBefore() !== null && credit.balanceUsd > balanceBefore();
 
+/** The parameter Polar appends to the checkout's way back. */
+const CHECKOUT_TOKEN_PARAM = "customer_session_token";
+
 /** True once, when the page was opened by the checkout's way back (`?credit=added`); the mark is taken off the address. */
 function backFromCheckout() {
   const url = new URL(location.href);
-  if (url.searchParams.get("credit") !== "added") return false;
+  const back = url.searchParams.get("credit") === "added";
+  // Polar adds a session token for its customer portal to the way back. The page has no use for it, and it is a
+  // credential for the buyer's Polar account, so it never stays in the address bar, the history, or a copied link.
+  const token = url.searchParams.has(CHECKOUT_TOKEN_PARAM);
+  if (!back && !token) return false;
   url.searchParams.delete("credit");
+  url.searchParams.delete(CHECKOUT_TOKEN_PARAM);
   history.replaceState(null, "", url);
-  return true;
+  return back;
 }
 
 /** Back from paying: Your key opens with a thank-you, and the balance is read again until the payment has reached us. */
