@@ -15,7 +15,7 @@ bun run src/cli/index.ts serve --stub # judge without a Claude login
 bun run src/cli/index.ts serve --judge api   # judge on the Messages API (needs ANTHROPIC_API_KEY)
 bun run src/cli/index.ts serve --no-open --allow-host mini.tail63b482.ts.net   # also answer to a tailnet name (behind `tailscale serve --https=4443 4480`); still listens on 127.0.0.1
 bun run build:web                     # the hosted build: a static site in dist/web/ (serve it on localhost to try it)
-bun run deploy:web                    # build, then `wrangler pages deploy` to the Cloudflare Pages project archipelago (https://archipelago-c24.pages.dev)
+bun run deploy:web                    # build, then `wrangler pages deploy` to the Cloudflare Pages project archipelago (https://archipelago.school; also still https://archipelago-c24.pages.dev, where earlier readers' charts live, since a browser keeps them per address). Build with `ARCHIPELAGO_PROXY_URL=https://api.archipelago.school` for the free start
 bun run src/cli/index.ts export [--out f]   # the whole database as one file (VACUUM INTO); the hosted app imports it
 bun run conformance [--judge api|openai|stub] [--models a,b] [--verbose] [--json f]   # thirteen scripted turns per model (judge, mentor, cartographer, loose ends, pointing, zh-TW page) on a throwaway database, checked against the protocols' hard rules; spends real money on a real model
 claude plugin validate .              # the plugin and marketplace manifests
