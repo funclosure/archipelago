@@ -15,7 +15,7 @@ import { getLearner } from "../../core/repositories/learnerRepository.ts";
 import { listSeas } from "../../core/repositories/seaRepository.ts";
 import { seaMembers } from "../../core/seas.ts";
 import { NOTE_MAX } from "../../core/validators.ts";
-import { indent, renderDescription, renderReplay, renderReplyLanguage, stateOf } from "./context.ts";
+import { indent, languageName, renderDescription, renderReplay, renderReplyLanguage, stateOf } from "./context.ts";
 import { threadWithImages, type PromptImage, type ThreadMessage } from "./prompt-images.ts";
 
 /** Where a cartographer turn reads and writes: a domain, and the island whose islets it sketches (absent: the top scale). */
@@ -173,6 +173,11 @@ export function renderChartContext(ctx: ChartContext): string {
   lines.push(`The next sketch here adds ${min === max ? min : `${min}–${max}`} new islands.`);
   if (ctx.pending) {
     lines.push(``, `Pending sketch #${ctx.pending.id} (the reader has not approved it; a new proposal replaces it):`, `  ${JSON.stringify(ctx.pending.body)}`);
+  }
+  // An opening (a new domain, a sail closer) has no reader message to follow: the page's language once more, last, as
+  // every other persona's opening has it. Without it a model follows a description written in another language.
+  if (ctx.domain.language && !ctx.thread.some((m) => m.role === "you" && m.kind === "text")) {
+    lines.push(``, `No reader message yet: write this reply in ${languageName(ctx.domain.language)}, the language of the reader's page, even when the description is in another language. Names in the sketch follow it too.`);
   }
   lines.push(...renderReplyLanguage(ctx.domain.language, ctx.thread));
   return lines.join("\n");

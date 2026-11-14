@@ -25,3 +25,16 @@ test("renderReplyLanguage speaks only when the message and the page differ", () 
   expect(renderReplyLanguage("zh-TW", [said("")])).toEqual([]);
   expect(renderReplyLanguage(null, english)).toEqual([]);
 });
+
+test("the cartographer's opening restates the page's language, as every other persona's does", async () => {
+  const { openDatabase } = await import("../../src/core/db.ts");
+  const { createDomain } = await import("../../src/core/repositories/domainRepository.ts");
+  const { setLearnerLanguage } = await import("../../src/core/repositories/learnerRepository.ts");
+  const { buildChartContext, renderChartContext } = await import("../../src/server/judge/chart.ts");
+  const db = openDatabase(":memory:");
+  setLearnerLanguage(db, "zh-TW");
+  const domain = createDomain(db, { description: "I want to understand how a compiler turns source code into machine code." });
+  const text = renderChartContext(buildChartContext(db, domain.slug));
+  db.close();
+  expect(text.trimEnd().split("\n").at(-1)).toContain("No reader message yet: write this reply in Traditional Chinese (zh-TW, as written in Taiwan), the language of the reader's page, even when the description is in another language.");
+});

@@ -185,6 +185,7 @@ export function renderOpeningLanguage(ctx: JudgeContext): string[] {
 
 /** How the context names each page language. */
 const LANGUAGE_NAMES: Record<string, string> = { en: "English", "zh-TW": "Traditional Chinese (zh-TW, as written in Taiwan)" };
+export const languageName = (language: string) => LANGUAGE_NAMES[language] ?? language;
 
 /**
  * The script of a reader's message, when it gives a clear sign: "cjk" for Chinese (at least four CJK characters,
