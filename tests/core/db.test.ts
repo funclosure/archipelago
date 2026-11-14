@@ -58,7 +58,7 @@ test("0002 adds nullable island positions", () => {
   expect(cols).toContain("x");
   expect(cols).toContain("y");
   const versions = db.query<{ version: string }, []>("select version from schema_migrations order by version").all().map((r) => r.version);
-  expect(versions).toEqual(["0001_initial", "0002_positions", "0003_threads", "0004_landmarks", "0005_harbour", "0006_asks", "0007_board", "0008_mentor", "0009_cartographer", "0010_angle", "0011_description", "0012_seas", "0013_suggested_seas", "0014_language", "0015_landmark_terms", "0016_message_model", "0017_loose_ends", "0018_pointers", "0019_board_demo_pins", "0020_board_order", "0021_guide"]);
+  expect(versions).toEqual(["0001_initial", "0002_positions", "0003_threads", "0004_landmarks", "0005_harbour", "0006_asks", "0007_board", "0008_mentor", "0009_cartographer", "0010_angle", "0011_description", "0012_seas", "0013_suggested_seas", "0014_language", "0015_landmark_terms", "0016_message_model", "0017_loose_ends", "0018_pointers", "0019_board_demo_pins", "0020_board_order", "0021_guide", "0022_images"]);
 });
 
 test("0002 upgrades a database created with 0001 only", () => {
@@ -78,7 +78,7 @@ test("0002 upgrades a database created with 0001 only", () => {
     .get(domainId)!.version;
 
   const ran = migrateDatabase(db);
-  expect(ran).toEqual(["0002_positions", "0003_threads", "0004_landmarks", "0005_harbour", "0006_asks", "0007_board", "0008_mentor", "0009_cartographer", "0010_angle", "0011_description", "0012_seas", "0013_suggested_seas", "0014_language", "0015_landmark_terms", "0016_message_model", "0017_loose_ends", "0018_pointers", "0019_board_demo_pins", "0020_board_order", "0021_guide"]);
+  expect(ran).toEqual(["0002_positions", "0003_threads", "0004_landmarks", "0005_harbour", "0006_asks", "0007_board", "0008_mentor", "0009_cartographer", "0010_angle", "0011_description", "0012_seas", "0013_suggested_seas", "0014_language", "0015_landmark_terms", "0016_message_model", "0017_loose_ends", "0018_pointers", "0019_board_demo_pins", "0020_board_order", "0021_guide", "0022_images"]);
 
   const island = db.query<{ x: number | null; y: number | null }, []>("select x, y from islands where slug = 'caching'").get();
   expect(island).toEqual({ x: null, y: null });
@@ -198,7 +198,7 @@ test("0008 rebuilds messages and board cards in place: ids, links, and authors s
   const version = () => db.query<{ version: number }, []>("select version from view_state").get()!.version;
   const before = version();
 
-  expect(migrateDatabase(db)).toEqual(["0008_mentor", "0009_cartographer", "0010_angle", "0011_description", "0012_seas", "0013_suggested_seas", "0014_language", "0015_landmark_terms", "0016_message_model", "0017_loose_ends", "0018_pointers", "0019_board_demo_pins", "0020_board_order", "0021_guide"]);
+  expect(migrateDatabase(db)).toEqual(["0008_mentor", "0009_cartographer", "0010_angle", "0011_description", "0012_seas", "0013_suggested_seas", "0014_language", "0015_landmark_terms", "0016_message_model", "0017_loose_ends", "0018_pointers", "0019_board_demo_pins", "0020_board_order", "0021_guide", "0022_images"]);
 
   expect(db.query("select id, role, mode from messages order by id").all()).toEqual([
     { id: 1, role: "judge", mode: "judge" }, { id: 2, role: "judge", mode: "judge" }, { id: 3, role: "judge", mode: "judge" },
@@ -256,7 +256,7 @@ test("0009 rebuilds messages in place: ids, islands, and modes survive; only the
   db.run("insert into messages (domain_id, island_id, role, kind, body, mode) values (1, 1, 'mentor', 'text', 'm', 'mentor')");
   db.run("insert into asks (domain_id, island_id, message_id, question, options) values (1, 1, 2, 'which?', '[\"a\",\"b\"]')");
 
-  expect(migrateDatabase(db)).toEqual(["0009_cartographer", "0010_angle", "0011_description", "0012_seas", "0013_suggested_seas", "0014_language", "0015_landmark_terms", "0016_message_model", "0017_loose_ends", "0018_pointers", "0019_board_demo_pins", "0020_board_order", "0021_guide"]);
+  expect(migrateDatabase(db)).toEqual(["0009_cartographer", "0010_angle", "0011_description", "0012_seas", "0013_suggested_seas", "0014_language", "0015_landmark_terms", "0016_message_model", "0017_loose_ends", "0018_pointers", "0019_board_demo_pins", "0020_board_order", "0021_guide", "0022_images"]);
 
   expect(db.query("select id, island_id as islandId, role, mode from messages order by id").all()).toEqual([
     { id: 1, islandId: 1, role: "judge", mode: "judge" }, { id: 2, islandId: 1, role: "mentor", mode: "mentor" },
@@ -294,7 +294,7 @@ test("0021 rebuilds messages and pointers in place: ids and links survive; the g
   db.run("insert into pointers (domain_id, island_id, message_id, target_island_id, why, question) values (1, 1, 1, 2, 'there', 'q?')");
   db.run("insert into asks (domain_id, island_id, message_id, question, options) values (1, 1, 1, 'which?', '[\"a\",\"b\"]')");
 
-  expect(migrateDatabase(db)).toEqual(["0021_guide"]);
+  expect(migrateDatabase(db)).toEqual(["0021_guide", "0022_images"]);
   expect(db.query("select id, island_id as islandId, mode, model from messages").all()).toEqual([{ id: 1, islandId: 1, mode: "mentor", model: "opus" }]);
   expect(db.query("select id, island_id as islandId, message_id as messageId, question, lens from pointers").all()).toEqual([{ id: 1, islandId: 1, messageId: 1, question: "q?", lens: null }]);
   expect(db.query<{ message_id: number }, []>("select message_id from asks").get()!.message_id).toBe(1);

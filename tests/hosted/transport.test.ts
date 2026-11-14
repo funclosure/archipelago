@@ -144,3 +144,14 @@ test("an error with a code reaches the page with it, so it can offer to take ove
   expect(error.message).toBe("Archipelago is open in another tab or window.");
   expect(error.code).toBe("another-tab");
 });
+
+test("an image goes up as base64 and comes back through the worker as bytes, with its type", async () => {
+  const { readFileSync } = await import("node:fs");
+  const png = new Uint8Array(readFileSync(new URL("../core/fixtures/images/px.png", import.meta.url)));
+  const up = await request("/api/images", json({ domain: "sd", data: Buffer.from(png).toString("base64") }));
+  const { image } = (await up.json()) as { image: { id: number } };
+  const res = await request(`/api/image?domain=sd&id=${image.id}`);
+  expect(res.status).toBe(200);
+  expect(res.headers.get("content-type")).toBe("image/png");
+  expect(new Uint8Array(await res.arrayBuffer())).toEqual(png);
+});

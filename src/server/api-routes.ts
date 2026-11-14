@@ -9,9 +9,12 @@ import { openDatabase } from "../core/db.ts";
 import { ArchipelagoError, ConflictError, NotFoundError } from "../core/errors.ts";
 import {
   boardPostInputSchema, looseEndDismissSchema, commentInputSchema, domainCreateSchema, domainUpdateSchema, domainRemoveSchema, seaWriteSchema, focusInputSchema, learnerInputSchema, modeSchema, positionsInputSchema, probeInputSchema,
+  imagePruneSchema, imageRemoveSchema, imageUploadSchema,
   reefAnswerInputSchema, sketchDecisionSchema, slugSchema,
 } from "../core/validators.ts";
 import { attachAsks, listAsks, pickAsk, requireAsk } from "../core/repositories/askRepository.ts";
+import { addImage, attachImages, compactDatabase, imageUsage, pruneImages, readImage, removeImages, withImages } from "../core/repositories/imageRepository.ts";
+import { fromBase64 } from "../core/images.ts";
 import { listCards, moveCard } from "../core/repositories/boardRepository.ts";
 import { closeLooseEnd } from "../core/repositories/looseEndRepository.ts";
 import { attachGuidePointers, attachPointers, listGuidePointers, listPointers, pointerFloor } from "../core/repositories/pointerRepository.ts";
@@ -238,7 +241,7 @@ async function handleApi(req: Request, url: URL, ctx: ApiContext): Promise<Respo
           const messages = listGuideMessages(db, d.id);
           const inThread = new Set(messages.map((m) => m.id));
           const pointers = listGuidePointers(db, d.id).filter((p) => p.messageId !== null && inThread.has(p.messageId));
-          return { island: null, mode, messages, asks: [], pointers };
+          return { island: null, mode, messages: withImages(db, d.id, messages), asks: [], pointers };
         }),
       );
     }
@@ -249,7 +252,7 @@ async function handleApi(req: Request, url: URL, ctx: ApiContext): Promise<Respo
           const d = requireDomain(db, slug);
           const scale = scaleSlug === null ? null : requireIsland(db, d.id, scaleSlug);
           const parentId = scale ? scale.id : null;
-          return { island: scale ? scale.slug : null, mode, messages: listScaleMessages(db, d.id, parentId), asks: [], sketch: pendingSketch(db, d.id, parentId) };
+          return { island: scale ? scale.slug : null, mode, messages: withImages(db, d.id, listScaleMessages(db, d.id, parentId)), asks: [], sketch: pendingSketch(db, d.id, parentId) };
         }),
       );
     }
@@ -264,7 +267,63 @@ async function handleApi(req: Request, url: URL, ctx: ApiContext): Promise<Respo
         const asks = listAsks(db, i.id).filter((a) => a.messageId === null || inThread.has(a.messageId));
         // A pointer shows under the reply it rode on; one never attached (a turn that stored no reply) shows nowhere.
         const pointers = listPointers(db, i.id).filter((p) => p.messageId !== null && inThread.has(p.messageId));
-        return { island: i.slug, mode, messages, asks, pointers };
+        return { island: i.slug, mode, messages: withImages(db, d.id, messages), asks, pointers };
+      }),
+    );
+  }
+
+  // ---- the reader's images ----
+
+  if (route === "POST /api/images") {
+    const input = imageUploadSchema.parse(await req.json());
+    let bytes: Uint8Array;
+    try {
+      bytes = fromBase64(input.data);
+    } catch {
+      throw new ArchipelagoError("data is not base64");
+    }
+    return json({ image: withDb(ctx, (db) => addImage(db, requireDomain(db, input.domain).id, bytes)) });
+  }
+
+  if (route === "GET /api/image") {
+    // The page reads images with fetch (same-origin); an <img> on another site pointed here is refused.
+    const site = req.headers.get("sec-fetch-site");
+    if (site !== null && site !== "same-origin" && site !== "none") return json({ error: "cross-site reads are not allowed" }, 403);
+    const slug = slugSchema.parse(q("domain"));
+    const id = Number(q("id"));
+    if (!Number.isInteger(id) || id <= 0) throw new ArchipelagoError("id must be an image id");
+    const image = withDb(ctx, (db) => readImage(db, requireDomain(db, slug).id, id));
+    return new Response(image.bytes, {
+      headers: {
+        "content-type": image.mediaType,
+        "x-content-type-options": "nosniff",
+        // Ids restart with another database file, so nothing is kept by the browser; the page keeps its own copy.
+        "cache-control": "no-store",
+        "content-security-policy": "default-src 'none'",
+      },
+    });
+  }
+
+  if (route === "GET /api/images/usage") {
+    const slug = slugSchema.parse(q("domain"));
+    return json(withDb(ctx, (db) => imageUsage(db, requireDomain(db, slug).id)));
+  }
+
+  if (route === "POST /api/images/remove") {
+    const input = imageRemoveSchema.parse(await req.json());
+    return json({ removed: withDb(ctx, (db) => removeImages(db, requireDomain(db, input.domain).id, input.ids)) });
+  }
+
+  if (route === "POST /api/images/prune") {
+    const input = imagePruneSchema.parse(await req.json());
+    // Compacting rewrites the whole file: not while a persona is writing in this domain.
+    if ([...inFlight.keys()].some((key) => key.startsWith(`${input.domain}/`))) throw new ConflictError("a turn is running in this domain; remove images when it ends");
+    return json(
+      withDb(ctx, (db) => {
+        const d = requireDomain(db, input.domain);
+        const pruned = pruneImages(db, d.id, input.olderThanDays);
+        if (pruned.removed > 0) compactDatabase(db);
+        return { ...pruned, usage: imageUsage(db, d.id) };
       }),
     );
   }
@@ -362,12 +421,12 @@ async function handleApi(req: Request, url: URL, ctx: ApiContext): Promise<Respo
           if (!inThread) throw new NotFoundError(`no ask ${input.askId} in the ${mode} thread of island:${i.slug}`);
           pickAsk(db, d.id, input.askId, input.message!);
         }
-        if (input.message) addMessage(db, { domainId: d.id, islandId: i.id, role: "you", kind: "text", body: input.message, mode });
+        addReaderMessage(db, input, { domainId: d.id, islandId: i.id, mode });
         return { askFloor: listAsks(db, i.id).at(-1)?.id ?? 0, pointFloor: pointerFloor(db, i.id) };
       })();
     });
     // The demo's lines go to the mentor only: the Keeper tests what the reader says, never what a demo printed.
-    const demoSteps = mode === "mentor" && input.message ? input.demoSteps : undefined;
+    const demoSteps = mode === "mentor" && (input.message || input.images?.length) ? input.demoSteps : undefined;
     return streamTurn(ctx, key, mode, { domain: input.domain, island, demoSteps }, (reply, model) =>
       withDb(ctx, (db) => {
         const d = requireDomain(db, input.domain);
@@ -523,7 +582,7 @@ function chartTurn(ctx: ApiContext, input: z.infer<typeof probeInputSchema>): Re
   const { floor, scaleId } = withDb(ctx, (db) => {
     const d = requireDomain(db, input.domain);
     const scale = input.island === undefined ? null : requireIsland(db, d.id, input.island);
-    if (input.message) addMessage(db, { domainId: d.id, islandId: scale ? scale.id : null, role: "you", kind: "text", body: input.message, mode: "cartographer" });
+    db.transaction(() => addReaderMessage(db, input, { domainId: d.id, islandId: scale ? scale.id : null, mode: "cartographer" }))();
     return { floor: sketchFloor(db, d.id), scaleId: scale ? scale.id : null };
   });
   return streamTurn(ctx, key, "cartographer", { domain: input.domain, island: input.island }, (reply, model) =>
@@ -547,7 +606,7 @@ function guideTurn(ctx: ApiContext, input: z.infer<typeof probeInputSchema>): Re
   if (input.askId !== undefined) throw new ArchipelagoError("the guide does not ask with options");
   const floor = withDb(ctx, (db) => {
     const d = requireDomain(db, input.domain);
-    if (input.message) addMessage(db, { domainId: d.id, islandId: null, role: "you", kind: "text", body: input.message, mode: "guide" });
+    db.transaction(() => addReaderMessage(db, input, { domainId: d.id, islandId: null, mode: "guide" }))();
     return pointerFloor(db, null, d.id);
   });
   return streamTurn(ctx, key, "guide", { domain: input.domain }, (reply, model) =>
@@ -561,6 +620,16 @@ function guideTurn(ctx: ApiContext, input: z.infer<typeof probeInputSchema>): Re
       attachGuidePointers(db, d.id, stored.id, floor);
     }),
   );
+}
+
+/**
+ * The reader's message in a thread: words, images, or both (a message may be images alone, with an empty body). The
+ * images were uploaded first; they attach in the caller's transaction, so a bad id stores no message either.
+ */
+function addReaderMessage(db: Database, input: { message?: string; images?: number[] }, at: { domainId: number; islandId: number | null; mode: MessageMode }): void {
+  if (!input.message && !input.images?.length) return;
+  const stored = addMessage(db, { domainId: at.domainId, islandId: at.islandId, role: "you", kind: "text", body: input.message ?? "", mode: at.mode });
+  if (input.images?.length) attachImages(db, at.domainId, stored.id, input.images);
 }
 
 function sseResponse(run: (emit: (event: JudgeEvent) => void) => Promise<void>, onCancel?: () => void): Response {
