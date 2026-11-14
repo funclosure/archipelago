@@ -3,7 +3,7 @@
 import { app, api, setScale, frameSelection } from "./app.js";
 import { select } from "./interactions.js";
 import { RAIL_W, outlineWidth, visibleRows, collapsible, dashClass, summaryLine, rowMarks, rowTip, cursorStart, menuGroups, menuStep } from "./outline-model.js";
-import { registerRegion } from "./keys.js";
+import { registerRegion, setRegion } from "./keys.js";
 import { moveCursor } from "./keys-model.js";
 import { keyedChildren } from "./keep.js";
 import { THEMES } from "./theme-model.js";
@@ -125,6 +125,12 @@ function button(label, onClick, className) {
   return b;
 }
 
+/** A tip on something in a column of rows goes above it: below, it would lie over the row the pointer moves to next. */
+function tipAbove(node, text) {
+  tip(node, text);
+  node.dataset.tipSide = "top";
+}
+
 /** Selects an island; if it lives at another scale, the map changes scale first. */
 async function go(node) {
   if (node.scale !== app.scale) await setScale(node.scale);
@@ -160,10 +166,7 @@ function rowEl(row, marks, on, ids) {
   r.setAttribute("role", "option");
   r.setAttribute("aria-selected", String(on));
   r.style.setProperty("--depth", String(row.depth));
-  const tw = button("", (e) => {
-    e.stopPropagation();
-    toggleExpanded(node.slug);
-  }, `tw${row.hasChildren ? "" : " none"}`);
+  const tw = button("", () => toggleExpanded(node.slug), `tw${row.hasChildren ? "" : " none"}`);
   if (row.hasChildren) {
     if (ids) tw.dataset.f = `tw:${node.slug}`;
     tw.append(icon(row.open ? "chevron-down" : "chevron-right", { size: 12 }));
@@ -174,11 +177,14 @@ function rowEl(row, marks, on, ids) {
   if (node.harbour) {
     const anchor = el("span", "anchor");
     anchor.append(icon("anchor", { size: 12 }));
-    tip(anchor, t("outline.harbour"));
+    tipAbove(anchor, t("outline.harbour"));
     r.append(anchor);
   }
   if (marks.count) r.append(el("span", "n", marks.count)); // an untouched island shows no count: open water is not a score
-  r.addEventListener("click", () => void go(node));
+  r.addEventListener("click", (e) => {
+    if (e.target instanceof Element && e.target.closest(".tw")) return; // the twisty folds and unfolds; it sails nowhere
+    void go(node);
+  });
   li.append(r);
   return li;
 }
@@ -208,7 +214,7 @@ function drawList(ul, outline, ids) {
   });
   [...ul.children].forEach((li, i) => {
     const text = rowTip(rows[i].node, app.mode, cut[i]);
-    if (li.firstChild.dataset.tip !== text) tip(li.firstChild, text);
+    if (li.firstChild.dataset.tip !== text) tipAbove(li.firstChild, text);
   });
 }
 
@@ -244,6 +250,10 @@ function showPeek(by) {
     ul.setAttribute("role", "presentation");
     peek.append(ul);
     peek.addEventListener("mouseenter", () => markHot(null)); // its own rows answer the pointer from here
+    peek.addEventListener("mousedown", (e) => {
+      e.preventDefault(); // the peek is the outline's, though it stands outside it: a press here keeps the keyboard with the outline
+      setRegion("outline");
+    });
     peek.addEventListener("mouseleave", (e) => { if (peekBy === "pointer" && !(e.relatedTarget && root.contains(e.relatedTarget))) hidePeek(); });
     document.body.append(peek);
   }
@@ -336,6 +346,7 @@ function openMenu() {
   state.menuOpen = true;
   state.sub = null;
   state.menuFocus = `domain:${app.domain}`;
+  hidePeek(); // in the rail the menu opens where the peek stands
   document.addEventListener("pointerdown", onOutside, true);
   render(); // at once, with the domains already known
   void loadDomains();
@@ -419,7 +430,7 @@ function miEl(k, { cls, iconName, label, desc, value, radio = false, on = false,
     b.append(caps);
   }
   if (opens) b.append(icon(open ? "chevron-down" : "chevron-right", { size: 12 }));
-  if (hint) tip(b, hint);
+  if (hint) tipAbove(b, hint);
   return b;
 }
 
@@ -432,7 +443,7 @@ function domainEl(row) {
   edit.tabIndex = -1;
   edit.setAttribute("aria-label", t("outline.editNamed", { name: row.name }));
   edit.append(icon("pencil", { size: 14 }));
-  tip(edit, t("outline.editDomain"));
+  tipAbove(edit, t("outline.editDomain"));
   wrap.append(item, edit);
   return wrap;
 }
@@ -504,7 +515,7 @@ function drawMenu(menu) {
       for (const item of list.querySelectorAll(".mi")) { // a name the row cuts short is whole in its tip
         const words = item.querySelector(".grow:not(.two)");
         if (!words) continue;
-        if (words.scrollWidth > words.clientWidth) tip(item, words.textContent);
+        if (words.scrollWidth > words.clientWidth) tipAbove(item, words.textContent);
         else delete item.dataset.tip;
       }
       continue;
@@ -779,6 +790,7 @@ const MOVES = new Set(["ArrowDown", "ArrowUp", "j", "k", "Home", "End", "ArrowRi
 
 const outlineHandler = {
   onKey(e) {
+    if ((e.key === "Enter" || e.key === " ") && e.target instanceof HTMLButtonElement) return false; // a focused control's own key, not the list's
     if (e.key === "n") {
       openNewDomain();
       return true;
@@ -845,9 +857,18 @@ export function installOutline() {
   applyWidth();
   // The width glides when the rail folds or the grip is double-clicked; once it has settled the rows know which names they cut.
   root.addEventListener("transitionend", (e) => { if (e.target === root && e.propertyName === "width") render(); });
+  // A pointer's click on a control here does its work and leaves the keyboard with the outline itself: a key pressed
+  // afterwards drives the list, and no focus ring appears on the control last clicked. Enter or Space on a focused
+  // control (a click with no pointer) keeps its focus, and the open menu keeps its own.
+  root.addEventListener("click", (e) => {
+    if (e.detail === 0 || state.menuOpen) return;
+    const a = document.activeElement;
+    if (a !== root && (a === document.body || root.contains(a))) root.focus({ preventScroll: true });
+  });
   root.addEventListener("mouseover", onRailPointer);
   root.addEventListener("mouseleave", (e) => {
     if (peek && e.relatedTarget && peek.contains(e.relatedTarget)) return; // on to the peek itself
+    markHot(null);
     if (peekBy !== "keys") hidePeek();
   });
   app.listeners.add(() => {

@@ -518,7 +518,7 @@ button.msg.system.board-line:hover { color: var(--text); }
   max-height: calc(100dvh - 40px - var(--sp-2) - var(--places-h, 0px)); overflow-y: auto; overscroll-behavior: contain; }
 .outline:has(.menu) { z-index: var(--z-popover); } /* the menu is the outline's child: its own z-index orders it only inside the outline's layer, where the board would cover it */
 .outline:has(.menu) :is(.list, .dashes, .ft) { pointer-events: none; } /* nothing behind the open menu answers the pointer; a press there only closes it */
-.outline .menu .domains { display: grid; gap: 1px; max-height: calc(8 * var(--h-md) + 7px); overflow-y: auto; overscroll-behavior: contain; } /* eight domains, then they scroll */
+.outline .menu .domains { display: grid; gap: 1px; max-height: calc(8.5 * var(--h-md) + 8px); overflow-y: auto; overscroll-behavior: contain; } /* eight domains and half of the ninth, so it shows there are more; then they scroll */
 .outline .menu .themes { display: grid; gap: 1px; }
 .outline .mi.mi-sub { padding-left: calc(2 * var(--sp-2) + 16px); } /* under its row's words, past the icon */
 /* The current domain's row carries a pencil beside its check, shown on hover or keyboard focus (always on a touch screen). */
@@ -1038,7 +1038,7 @@ body.empty .outline, body.empty .chrome, body.empty #map-focus, body.empty #boar
   .outline .menu { left: 8px; right: 8px; width: auto; max-width: none; }
   .outline .menu .mi { min-height: var(--h-xl); font-size: var(--fs-read); } /* a thumb's row */
   .outline .menu .mi > .keys { display: none; } /* no keyboard to press them on */
-  .outline .menu .domains { max-height: calc(5 * var(--h-xl) + 4px); }
+  .outline .menu .domains { max-height: calc(5.5 * var(--h-xl) + 5px); }
   .outline .mi-row .edit { width: var(--h-lg); height: var(--h-lg); }
   .outline .mi-row .mi > .ic-check { margin-left: calc(var(--h-lg) + var(--sp-05)); }
   /* Map: the header is the breadcrumb and one line of cells that scrolls sideways. */
