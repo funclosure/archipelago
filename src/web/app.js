@@ -13,6 +13,7 @@ import { installInteractions } from "./interactions.js";
 import { installCard } from "./card.js";
 import { installOutline } from "./outline.js";
 import { installAbout } from "./learner.js";
+import { installImages } from "./images.js";
 import { installKeys } from "./keys.js";
 import { installBoard } from "./board.js";
 import { installTheme } from "./theme.js";
@@ -655,6 +656,7 @@ async function boot() {
   installBoard();
   installOutline();
   installAbout();
+  installImages();
   installKeys();
   installLaunch();
   installPlaces(); // after the pane and the board: it reads what they show

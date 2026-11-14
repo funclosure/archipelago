@@ -36,8 +36,10 @@ import board from "./board.js";
 import boardModel from "./board-model.js";
 import outlineModel from "./outline-model.js";
 import places from "./places.js";
+import images from "./images.js";
 export const TABLES = {
   places,
+  images,
   about,
   terms,
   privacy,

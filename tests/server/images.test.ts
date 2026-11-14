@@ -104,6 +104,8 @@ test("removing one leaves a mark in the thread; usage and prune report and free 
   const [a, b] = [await upload(png), await upload(webp)];
   await post("/api/probe", { domain: "vim", island: "modes", mode: "mentor", message: "two", images: [a.id, b.id] });
   expect(await (await get("/api/images/usage?domain=vim")).json()).toEqual({ count: 2, bytes: png.length + webp.length, removed: 0 });
+  expect((await (await get("/api/images/usage?domain=vim&older=30,90")).json()).older).toEqual({ "30": { count: 0, bytes: 0 }, "90": { count: 0, bytes: 0 } });
+  expect((await get("/api/images/usage?domain=vim&older=x")).status).toBe(400);
   expect((await post("/api/images/remove", { domain: "vim", ids: [a.id] })).json).toEqual({ removed: 1 });
   const mine = (await (await get("/api/thread?domain=vim&island=modes&mode=mentor")).json()).messages.find((m: any) => m.role === "you");
   expect(mine.images.map((i: any) => i.removed)).toEqual([true, false]);

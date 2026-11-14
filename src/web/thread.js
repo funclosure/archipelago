@@ -47,7 +47,8 @@ export function threadItems(messages) {
       if (proposal) return { id: m.id, role: m.role, kind: "reef_proposal", text: "", proposal };
       return { id: m.id, role: m.role, kind: "text", text: m.body, proposal: null };
     }
-    return { id: m.id, role: m.role, kind: m.kind, text: m.body, proposal: null };
+    // A reader's message carries its images (none on a persona's): the log draws them above the words.
+    return { id: m.id, role: m.role, kind: m.kind, text: m.body, proposal: null, ...(m.images?.length ? { images: m.images } : {}) };
   });
 }
 
