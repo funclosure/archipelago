@@ -569,7 +569,6 @@ button.msg.system.board-line:hover { color: var(--text); }
 .outline.rail { width: 44px; }
 .outline.rail .oh { padding: 0; justify-content: center; }
 .outline.rail .ws, .outline.rail .sp, .outline.rail .sum, .outline.rail .list, .outline.rail .ft { display: none; }
-.outline.rail .menu { left: var(--sp-2); }
 /* The rail: a dash an island, its length and colour the island's state. A dash is drawn 3px tall in a 10px row the
    width of the rail, so the target is the row and the mark stays a hairline. */
 .outline .dashes { display: none; flex: 1; flex-direction: column; justify-content: center; }

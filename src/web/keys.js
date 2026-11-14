@@ -177,9 +177,10 @@ function onKeydown(e) {
     } else if (act === "block") e.stopPropagation();
     return;
   }
-  // The outline's domain menu owns the keys while it is open (outline.js: menuKey): nothing reaches the list behind
-  // it, Tab changes no region, no page key fires under it. Escape still runs the ladder, whose menu rung closes it.
-  if (handlers.outline?.menuOpen?.()) {
+  // The outline's domain menu owns the plain keys while it is open (outline.js: menuKey): nothing reaches the list
+  // behind it, Tab changes no region, no page key fires under it. Escape still runs the ladder, whose menu rung
+  // closes it. A key with ⌘, ⌃ or ⌥ goes on down this function, as a page-wide shortcut should.
+  if (handlers.outline?.menuOpen?.() && !(e.metaKey || e.ctrlKey || e.altKey)) {
     if (e.key === "Escape") escape(e);
     else handlers.outline.menuKey?.(e);
     return;
