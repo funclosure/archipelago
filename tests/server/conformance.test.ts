@@ -3,7 +3,7 @@ import { test, expect } from "bun:test";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { checkTurn, cjkShare, hasTex, leakedSlugs, questionMarks, runScript, SCRIPT, simplified, worst, type Observed, type Turn } from "../../scripts/conformance.ts";
+import { checkTurn, cjkShare, hasTex, leakedSlugs, questionMarks, runScript, SCRIPT, simplified, wordCount, worst, type Observed, type Turn } from "../../scripts/conformance.ts";
 
 test("questions are counted in prose only, half- and full-width, never in code or URLs", () => {
   expect(questionMarks("Why? 為什麼？")).toBe(2);
@@ -71,6 +71,36 @@ test("an image turn fails when it lit a landmark or decided anything from the im
   expect(fails).toEqual(["lit b-tree from an image", "decided from an image"]);
 });
 
+test("words are counted as Latin words and Chinese at two characters each, outside code", () => {
+  expect(wordCount("Start at the harbour, it's where the map begins.")).toBe(9);
+  expect(wordCount("從網址到網頁開始")).toBe(4);
+  expect(wordCount("先去 DNS 解析看看\n```\ndig example.com\n```")).toBe(4);
+});
+
+test("a guide turn fails a card in the wrong lens or with the wrong carry, and warns when it runs long", () => {
+  const turn: Turn = { id: "t", mode: "guide", domain: "web", lang: "en", require: ["suggest_island"], point: "dns-resolution", lens: "mentor", carry: true, short: true };
+  const clean: Observed = {
+    reply: "Mostly because one question fits in one packet. DNS Resolution is where that lives; the mentor will take your question from there, and you can switch to the Keeper any time.",
+    tools: ["suggest_island"], error: null, slugs: ["dns-resolution", "url-to-page"], quotes: [], refused: [], decided: false,
+    pointers: [{ island: "dns-resolution", lens: "mentor", carried: true }],
+  };
+  // A pointing turn needs no question.
+  expect(checkTurn(turn, clean).filter((c) => c.level !== "pass")).toEqual([]);
+  const fails = (seen: Partial<Observed>) => checkTurn(turn, { ...clean, ...seen }).filter((c) => c.level === "fail").map((c) => c.say);
+  expect(fails({ pointers: [{ island: "url-to-page", lens: "mentor", carried: true }] })).toEqual(["pointed at url-to-page, not dns-resolution"]);
+  expect(fails({ pointers: [{ island: "dns-resolution", lens: "judge", carried: false }] })).toEqual(["sailed with the Keeper, not the mentor", "did not carry the reader's question"]);
+  expect(fails({ pointers: [{ island: "dns-resolution", lens: "mentor", carried: true }], reply: "Head to dns-resolution." })).toEqual(["slugs in the reply: dns-resolution"]);
+  const warns = checkTurn(turn, { ...clean, reply: `${"word ".repeat(120)}\n\n- one\n- two\n\n## Next` }).filter((c) => c.level === "warn").map((c) => c.say);
+  expect(warns).toEqual(["123 words (about 80 at most)", "a heading in the reply", "a list in the reply"]);
+  // In Chinese the lenses are 守塔人 and 領航員, as on the page.
+  const zh = { ...turn, lang: "zh" as const };
+  const said = (reply: string) => checkTurn(zh, { ...clean, reply }).filter((c) => c.level === "fail").map((c) => c.say);
+  expect(said("先去「DNS 解析」，我用領航員模式陪你，之後隨時可以換守塔人。")).toEqual([]);
+  expect(said("先去「DNS 解析」，我選導師模式，之後可以換 Keeper。")).toEqual(["lenses not named as the page names them: 導師, Keeper"]);
+  // An opening that neither asks nor points is warned about.
+  expect(checkTurn({ ...turn, require: [], point: undefined }, { ...clean, pointers: [], reply: "Welcome to the map." }).map((c) => c.say)).toContain("no question");
+});
+
 test("the whole script runs on the stub, and its English, slug-naming replies fail", async () => {
   const dir = mkdtempSync(join(tmpdir(), "archipelago-conformance-test-"));
   try {
@@ -85,6 +115,12 @@ test("the whole script runs on the stub, and its English, slug-naming replies fa
     const image = result.turns.find((t) => t.id === "judge: an answer as an image alone")!;
     expect(image.reply.startsWith("I see 1 image.")).toBe(true);
     expect(image.checks.some((c) => c.say.endsWith("from an image"))).toBe(false);
+    // The guide's card was read back: the stub sends a newcomer to the harbour with the mentor, carrying nothing.
+    const newcomer = result.turns.find((t) => t.id === "guide: a newcomer")!;
+    expect(newcomer.tools).toContain("suggest_island");
+    const failed = newcomer.checks.filter((c) => c.level === "fail").map((c) => c.say);
+    expect(failed.some((s) => s.startsWith("expected Chinese"))).toBe(true);
+    expect(failed.some((s) => /^(pointed at|sailed with|did not carry|carried)/.test(s))).toBe(false);
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
