@@ -19,6 +19,7 @@ import { icon } from "./icons.js";
 import { tip } from "./tip.js";
 import { failureKind } from "./toast-model.js";
 import { statusKey, failureKey, hintPlace, dockLane, roveTo, keyName, chromeTarget, HINT_DELAY_MS } from "./chrome-model.js";
+import { NARROW } from "./places-model.js";
 import { t } from "./i18n.js";
 
 const el = (tag, className, text) => {
@@ -109,7 +110,9 @@ function renderLens() {
   }
   for (const b of box.children) b.setAttribute("aria-pressed", String(b.dataset.mode === app.mode));
   // Away while an island's pane shows its own, and on a scale with no islands, where there is nothing to look at through a lens.
-  const away = app.snapshot.islands.length === 0 || app.snapshot.islands.some((i) => i.slug === app.selected);
+  // (A phone shows the map or the pane, never both: there the map keeps its lens whatever is selected.)
+  const beside = !matchMedia(NARROW).matches && app.snapshot.islands.some((i) => i.slug === app.selected);
+  const away = app.snapshot.islands.length === 0 || beside;
   if (box.hidden !== away) {
     if (away && box.contains(document.activeElement)) document.getElementById("map")?.focus({ preventScroll: true });
     box.hidden = away;
@@ -335,6 +338,7 @@ function dockItem({ action, label, pending, key }) {
   b.type = "button";
   b.dataset.at = `dock:${action}`;
   b.dataset.key = key;
+  b.dataset.short = t(action === "guide" ? "places.guide" : "places.cartographer"); // a phone shows this word beside the icon (no pointer to rest on it for the label); it is the name the bar gives the pane it opens
   b.setAttribute("aria-label", label);
   b.setAttribute("aria-keyshortcuts", key);
   const line = el("span", "dock-label");

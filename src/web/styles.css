@@ -637,7 +637,11 @@ button.event:hover { color: var(--text); }
 .pane > .foot .meta .when-typing { display: none; }
 .pane > .foot:has(#answer:focus) .meta .when-idle { display: none; }
 .pane > .foot:has(#answer:focus) .meta .when-typing { display: inline; }
-@media (hover: none) { .pane > .foot .meta .when-idle { display: none; } } /* a key to press means nothing under a thumb */
+/* A key to press means nothing under a thumb: a hint that only names keys goes, and the line with it when that was all it held. */
+@media (hover: none) {
+  .pane > .foot .meta .keys-hint { display: none; }
+  .pane > .foot .meta:has(.keys-hint):not(:has(.meta-r)) { display: none; }
+}
 .pane > .foot .meta .model.buy { cursor: pointer; text-decoration: underline dotted; text-underline-offset: 3px; }
 .pane > .foot .meta .model.buy:hover, .pane > .foot .meta .model.buy:focus-visible { color: var(--text); }
 .pane > .foot .meta .model { font-family: var(--font-mono); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
@@ -714,7 +718,6 @@ body.pane-open .now-playing { --np-room: calc(100vw - var(--outline-w) - var(--p
 .now-playing .np-fill { height: 2px; width: 0; background: var(--accent); }
 @container (max-width: 380px) { .now-playing .np-time { display: none; } }
 @container (max-width: 300px) { .now-playing :is(.np-back, .np-fwd, .np-rate) { display: none; } }
-@media (max-width: 720px) { .now-playing, body.pane-open .now-playing { left: 50%; transform: translateX(-50%); top: var(--sp-2); bottom: auto; --np-room: calc(100vw - 2 * var(--sp-4)); } }
 
 /* ---- the outline: Linear rows, Shuttle rail ---- */
 .outline { position: fixed; top: 0; left: 0; bottom: 0; width: var(--outline-w); background: var(--panel); border-right: 1px solid var(--line);
@@ -1377,77 +1380,161 @@ body.empty .outline, body.empty .chrome, body.empty #map-focus, body.empty #boar
    them: the islands' list (the outline, full screen), the map, the island's pane, its board ---- */
 .places { display: none; }
 @media (max-width: 720px) {
-  :root { --pane-w: 100vw !important; --outline-w: 0px !important; --places-h: calc(56px + env(safe-area-inset-bottom)); }
-  .places { display: grid; grid-template-columns: repeat(4, 1fr); position: fixed; left: 0; right: 0; bottom: 0; height: var(--places-h); padding-bottom: env(safe-area-inset-bottom); box-sizing: border-box; background: var(--panel); border-top: 1px solid var(--line); z-index: 6; }
-  .places button { display: grid; justify-items: center; align-content: center; gap: 2px; min-width: 0; padding: 0 4px; background: none; border: 0; color: var(--muted); font: 11px system-ui, sans-serif; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+  /* The foot of the screen: the bar of places (--bar-h) and, over it while something is read aloud, the now-reading
+     strip (--np-h). --places-h is the two together: what every place, card and toast ends above. With the keyboard
+     up (body.keyboard, places.js) both step aside, and --vvt and --vvh (places.js) are the part of the window the
+     keyboard leaves. --h-touch is a thumb's row: a menu's, a choice's, the domain's button. The two smallest steps
+     of the type scale are 12px here: nothing on a phone is set smaller. These are the phone's own, like --pane-w. */
+  :root { --pane-w: 100vw !important; --outline-w: 0px !important; --bar-h: calc(56px + env(safe-area-inset-bottom)); --np-h: 0px; --places-h: calc(var(--bar-h) + var(--np-h));
+    --h-touch: calc(var(--h-xl) + var(--sp-1)); --fs-micro: var(--fs-sm); --fs-xs: var(--fs-sm); }
+  :root:has(.now-playing:not([hidden])) { --np-h: calc(var(--h-xl) + var(--sp-3)); }
+  :root:has(body.keyboard) { --bar-h: 0px; --np-h: 0px; }
+  /* The family's small buttons are a size up (32), and the one a place or a dialog turns on is a thumb's (40). */
+  .btn:is(.sm, .md) { min-height: var(--h-lg); }
+  .btn.icon:is(.sm, .md) { width: var(--h-lg); }
+  /* The bar. The place that is showing is marked by more than its colour: its icon stands on a filled pill and its
+     word is firmer (neutral, as every selection is; the lamp stays for what is lit). A press fills the pill under
+     the thumb. Every place swaps at once, the board too: one bar, one behaviour. */
+  .places { display: grid; grid-template-columns: repeat(4, 1fr); position: fixed; left: 0; right: 0; bottom: 0; height: var(--bar-h); box-sizing: border-box;
+    padding: 0 env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); background: var(--panel); border-top: 1px solid var(--line); z-index: var(--z-dialog); }
+  body.keyboard .places { display: none; }
+  .places button { display: grid; justify-items: center; align-content: center; gap: var(--sp-05); min-width: 0; padding: 0 var(--sp-1); background: none; border: 0; color: var(--muted); font: var(--fs-sm)/var(--lh-ui) var(--font-ui); cursor: pointer; }
   .places button .lbl { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .places button[aria-current="true"] { color: var(--lamp); }
-  .places button:disabled { opacity: .35; cursor: default; }
+  .places button svg { box-sizing: content-box; padding: 3px var(--sp-4); border-radius: var(--r-full); transition: background-color var(--t-fast) var(--ease); }
+  .places button[aria-current="page"] { color: var(--text); font-weight: var(--fw-semibold); }
+  .places button[aria-current="page"] svg { background: var(--selected); }
+  .places button:active:not(:disabled) svg { background: var(--pressed); }
+  .places button:disabled { color: var(--open); cursor: default; }
+  .places button:focus-visible { outline-offset: -4px; border-radius: var(--r-md); } /* inside the tab: the screen's edge would cut a ring outside it */
   /* Islands: the outline is the whole screen or not there. */
-  .outline { display: none; width: 100vw; bottom: var(--places-h); border-right: 0; z-index: 5; font-size: 15px; transition: none; }
+  .outline { display: none; width: 100vw; bottom: var(--places-h); border-right: 0; z-index: 5; font-size: var(--fs-read); transition: none; }
   body[data-place="islands"] .outline { display: flex; }
-  .outline .oh { height: 52px; }
+  .outline .oh { height: 52px; padding: 0 var(--sp-1); }
   .outline .oh > .ib:not(.find), .outline .ft, .outline .grip { display: none; } /* no rail to fold to and no keys to hint at; the pencil in the menu is not .oh's child, so it stays; Find stays: it is a phone's only way to the palette */
-  .outline .oh > .find { width: var(--h-xl); min-height: var(--h-xl); }
-  .outline .ws { height: var(--h-lg); }
+  .outline .oh > .find { width: var(--h-touch); min-height: var(--h-touch); }
+  .outline .ws { height: var(--h-touch); padding: 0 var(--sp-3); font-size: var(--fs-lg); }
   .outline .sum { font-size: var(--fs-md); }
   .outline .list .row { height: 46px; gap: 12px; }
-  .outline .list .row.islet { height: 40px; font-size: 14px; }
+  .outline .list .row.islet { height: var(--h-xl); font-size: var(--fs-base); }
   .outline .list .row .tw { width: 32px; height: 32px; margin: 0 calc(-1 * var(--sp-1)); }
-  .outline .list .row .n { font-size: 13px; }
-  .outline .menu { left: 8px; right: 8px; width: auto; max-width: none; }
-  .outline .menu .mi { min-height: var(--h-xl); font-size: var(--fs-read); } /* a thumb's row */
-  .outline .menu .mi > .keys { display: none; } /* no keyboard to press them on */
-  .outline .menu .domains { max-height: calc(5.5 * var(--h-xl) + 5px); }
-  .outline .mi-row .edit { width: var(--h-lg); height: var(--h-lg); }
-  .outline .mi-row .mi > .ic-check { margin-left: calc(var(--h-lg) + var(--sp-05)); }
-  /* Map: the header is the breadcrumb and one line of cells that scrolls sideways. */
-  .chrome, body.pane-open .chrome { right: 0; padding: 10px 12px; }
+  .outline .list .row .n { font-size: var(--fs-md); }
+  .outline .menu { top: 48px; left: var(--sp-2); right: var(--sp-2); width: auto; max-width: none; max-height: calc(100dvh - 48px - var(--sp-2) - var(--places-h)); }
+  .mi { min-height: var(--h-touch); font-size: var(--fs-read); } /* a thumb's row, in every menu */
+  .mi > .keys { display: none; } /* no keyboard to press them on */
+  .outline .menu .domains { max-height: calc(5.5 * var(--h-touch) + 5px); }
+  .outline .mi-row .edit { width: var(--h-xl); height: var(--h-xl); }
+  .outline .mi-row .mi > .ic-check { margin-left: calc(var(--h-xl) + var(--sp-05)); }
+  /* Map: the header is the breadcrumb beside the lens, and one line of cells that scrolls sideways. The name of
+     where the reader is may take two lines; the scales above it are cut. */
+  .chrome, body.pane-open .chrome { right: 0; padding: var(--sp-3) var(--sp-3) var(--sp-4); }
   .chrome-stack { width: 100%; min-width: 0; pointer-events: none; }
   .chrome-stack > * { pointer-events: auto; max-width: 100%; }
-  .title-row { min-height: 0; }
-  .breadcrumb { flex-wrap: wrap; font-size: 16px; row-gap: 2px; }
-  .lens { display: none; } /* a phone's header keeps to the name and the strip */
-  .strip { width: 100%; flex-wrap: nowrap; gap: 14px; max-width: calc(100vw - 24px); overflow-x: auto; scrollbar-width: none; }
+  .title-row { min-height: var(--h-lg); gap: var(--sp-2); }
+  .breadcrumb { flex-wrap: wrap; font-size: var(--fs-lg); line-height: var(--lh-ui); row-gap: var(--sp-05); }
+  .crumb.here { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; white-space: normal; text-wrap: balance; }
+  .lens { top: 0; align-self: flex-start; }
+  .lens > * { min-height: var(--h-md); }
+  /* (the strip's box and a value's are taller than their words by what a thumb needs under an island's name, and
+     pulled back by as much: a box that scrolls or cuts its words would cut that room off) */
+  .strip { width: 100%; flex-wrap: nowrap; gap: var(--sp-4); max-width: calc(100vw - 2 * var(--sp-3)); overflow-x: auto; scrollbar-width: none; font-size: var(--fs-md); margin-bottom: calc(-1 * var(--sp-5)); padding-bottom: var(--sp-5); }
   .strip::-webkit-scrollbar { display: none; }
   .strip-item, .strip-item.list { flex: none; max-width: none; }
-  .strip-value { max-width: 42ch; }
-  .strip-hint { width: calc(100vw - 24px); }
+  .strip-value { max-width: 42ch; margin-bottom: calc(-1 * var(--sp-5)); padding-bottom: var(--sp-5); }
+  .strip-hint { width: calc(100vw - 2 * var(--sp-2)); font-size: var(--fs-md); }
   /* The card always spans the screen above the bar, with or without an island selected under the pane's place. */
-  .cta, body.pane-open .cta { left: 0; right: 0; bottom: calc(var(--places-h) + 12px); padding: 0 12px; }
+  .cta, body.pane-open .cta { left: 0; right: 0; bottom: calc(var(--places-h) + var(--sp-3)); padding: 0 var(--sp-3); }
   body .cta-card, body:not(.pane-open) .cta-card, body.pane-open .cta-card, body:has(.now-playing:not([hidden])) .cta-card, body.pane-open:has(.board-hint) .cta-card { margin: 0; }
   .cta-card { max-width: 100%; }
   .cta-card .row .btn { flex: 1 1 auto; min-height: var(--h-xl); } /* a thumb's size; two that do not fit side by side each take the row */
   body:not([data-place="map"]) .cta { display: none; }
-  .dock { right: 12px; bottom: calc(var(--places-h) + 12px); }
-  .dock-item { height: var(--h-xl); padding: 0 9px; } /* a thumb's size */
-  body:has(#cta:not([hidden])) .dock { display: none; }
+  /* The dock stands over the card's right end when there is one (--cta-h is the card's height, from places.js), and
+     says in a word what each button opens: there is no pointer to rest on it for its label. */
+  .dock { right: var(--sp-3); bottom: calc(var(--places-h) + var(--sp-3) + var(--cta-h, 0px)); }
+  .dock-item { height: var(--h-xl); padding: 0 var(--sp-2) 0 var(--sp-3); gap: var(--sp-15); color: var(--text-2); font-size: var(--fs-md); }
+  .dock-item::before { content: attr(data-short); }
+  .dock-label { display: none; }
   body:not([data-place="map"]) .dock { display: none; }
-  /* Island: the pane, above the bar. */
-  .pane { height: calc(100dvh - var(--places-h)); bottom: auto; border-left: 0; z-index: 4; --gutter: var(--sp-4); }
+  body .sea-remove { min-height: var(--h-xl); padding: 0 var(--sp-4); font-size: var(--fs-md); }
+  /* Island: the pane, above the bar; with the keyboard up, in what the keyboard leaves of the window. */
+  .pane { top: var(--vvt, 0px); height: calc(var(--vvh, 100dvh) - var(--places-h)); bottom: auto; border-left: 0; box-shadow: none; z-index: 4; --gutter: var(--sp-4); }
   body:not([data-place="island"]) .pane { display: none; }
   .pane .grip, .pane-width { display: none; }
   /* The head stays short so the conversation has the screen: no summary, and the landmarks are one line that scrolls. */
   .pane > .head { padding-top: var(--sp-3); padding-bottom: var(--sp-2); gap: var(--sp-15); }
   .pane > .head h2 { font-size: var(--fs-xl); }
   .pane > .head .summary { display: none; }
-  .pane > .head .chips { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin-right: calc(-1 * var(--gutter)); padding-right: var(--gutter); }
+  .lens-switch { margin-top: 0; }
+  .lens-switch .seg { min-height: var(--h-md); }
+  .pane > .head .chips { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin: calc(-1 * var(--sp-3)) calc(-1 * var(--gutter)) calc(-1 * var(--sp-3)) 0; padding: var(--sp-3) var(--gutter) var(--sp-3) 0; }
   .pane > .head .chips::-webkit-scrollbar { display: none; }
   .pane > .head .chips .chip { flex: none; }
-  /* The answer box at 16px: under that, iOS zooms the page when the box takes the keyboard. */
-  .composer textarea { font-size: var(--fs-lg); }
+  .loose-mark { min-width: var(--sp-5); height: var(--sp-5); font-size: var(--fs-sm); }
+  /* While the answer is being typed the head keeps to the name and the landmarks. */
+  body.keyboard .pane:has(.foot :focus) > .head > :is(.sub, .muted, .earlier) { display: none; }
+  /* The answer box: a thumb's size, its words at 16px (under that, iOS zooms the page when the box takes the keyboard). */
+  .pane > .foot { padding: var(--sp-2) var(--sp-3) var(--sp-3); }
+  .composer textarea { min-height: var(--h-xl); padding: 9px var(--sp-2); font-size: var(--fs-lg); }
+  .composer .btn { min-height: var(--h-xl); }
+  .composer .btn.icon { width: var(--h-xl); }
+  /* Under the box, only what the pane adds (the model, Read aloud), as one row a thumb can press; gone while typing. */
+  .pane > .foot:has(.meta-r) { row-gap: 0; padding-bottom: 0; }
+  .pane > .foot .meta:has(.meta-r) { min-height: var(--h-xl); }
+  .pane > .foot .meta :is(.read-aloud, .model.buy) { line-height: var(--h-xl); }
+  body.keyboard .pane > .foot .meta { display: none; }
+  .tray-x { top: 0; right: 0; width: var(--h-lg); height: var(--h-lg); background: radial-gradient(circle, var(--panel) 9px, transparent 9.5px); }
   .log { padding-top: var(--sp-4); padding-bottom: var(--sp-5); }
   .msg.you { max-width: 88%; }
+  .choice { min-height: var(--h-touch); font-size: var(--fs-read); }
+  .note :is(.field, .btn) { min-height: var(--h-xl); }
+  .sail .btn, .briefing .btn, .pane-state .btn, .sketch-card .actions .btn { min-height: var(--h-xl); }
   /* The lamp lines that show which region the keyboard is in mean nothing under a thumb. */
   body[data-focus] #outline, body[data-focus] #pane { box-shadow: none; }
   .map-focus { display: none !important; }
-  /* Board: the sheet takes the screen above the bar; the bar's tab stands in for the toggle and its hint. */
-  .board, body.pane-open .board { top: 0; left: 0; right: 0; bottom: var(--places-h); border-radius: 0; z-index: 4; }
-  .board-scrim, body.pane-open .board-scrim { left: 0; right: 0; }
-  .board-toggle, .board-hint { display: none; }
+  /* Board: the sheet takes the screen above the bar, at once like every other place; the bar's tabs stand in for the
+     toggle, its hint, and the sheet's own way back. */
+  .board, body.pane-open .board { top: var(--vvt, 0px); left: 0; right: 0; bottom: auto; height: calc(var(--vvh, 100dvh) - var(--places-h)); border-radius: 0; border-top: 0; box-shadow: none; z-index: 4; transform: none; opacity: 1; transition: none; }
+  body:not([data-place="board"]) :is(.board, .board-scrim) { display: none; }
+  .board-scrim, body.pane-open .board-scrim { left: 0; right: 0; transition: none; }
+  .board-toggle, .board-hint, .board .head .close { display: none; }
+  .board .head { padding: var(--sp-3) var(--sp-3) var(--sp-3) var(--sp-4); }
+  .board .head .adds .btn { flex: 1 1 auto; min-height: var(--h-xl); }
   .board .column { padding: var(--sp-3) var(--sp-3) var(--sp-10); } /* a card's caption takes two rows here by the board's own width (its container rule) */
+  .board .card > .cap { row-gap: var(--sp-2); }
+  .board .editor .tabs > .tab { min-height: var(--h-md); }
+  .board .editor :is(.efoot, .confirm) .btn, .board .undo .btn { min-height: var(--h-xl); padding-left: var(--sp-4); padding-right: var(--sp-4); }
+  .demo.full { padding: calc(var(--sp-2) + env(safe-area-inset-top)) var(--sp-3) calc(var(--sp-3) + env(safe-area-inset-bottom)); }
+  /* Now reading: a strip across the screen directly over the bar, on every place (the pane, the list and the board
+     end above it: --np-h), so what is read can be paused or stopped wherever the reader is. Never over the header. */
+  .now-playing, body.pane-open .now-playing { left: 0; right: 0; top: auto; bottom: var(--bar-h); transform: none; width: auto; height: var(--np-h); padding: 0 var(--sp-1); z-index: var(--z-dialog);
+    border: 0; border-top: 1px solid var(--line); border-radius: 0; box-shadow: none; }
+  body.keyboard .now-playing { display: none; }
+  .now-playing { align-items: flex-start; padding-top: var(--sp-1); }
+  .now-playing .np-go { height: var(--h-xl); }
+  .now-playing .np-controls button { min-width: var(--h-xl); height: var(--h-xl); font-size: var(--fs-md); }
+  .now-playing .np-time { display: none; }
+  .now-playing .np-track { left: 0; right: 0; }
+  /* A toast stands just over the bar (over the keyboard while it is up: --kb-h, places.js). */
+  .toasts { bottom: calc(var(--kb-h, 0px) + var(--places-h) + var(--sp-2)); }
   .peek { display: none; }
   .new-domain.first .title { font-size: 28px; }
+  /* Chinese small labels: 12px here too. */
+  :root:lang(zh) :is(.strip-label, .pill, .outline .sec, .pane-width, .cta-card .lbl, .keys-card .lbl, .keys-card .sec, .about-card .lbl, .sketch-card .lbl, .sketch-card .sec, .new-domain-card .lbl, .hosted-card .lbl) { font-size: var(--fs-sm); }
+}
+/* Under a finger. Text fields are 16px (under that, iOS zooms the page when one takes the keyboard). And whatever
+   is pressed is at least 40px tall to the thumb: a control shorter than that keeps its looks and its place and
+   takes presses a little above and below itself (its ::after), so nothing moves. That ::after is measured from the
+   control, so the control must be positioned: the :where() rule sees to it (any other position but static wins),
+   and a control that some rule sets static is named again under it. A box that scrolls or cuts what is inside it
+   would cut that reach off too, so the few such boxes give it room in their own padding (the strip, the chips). */
+@media (hover: none) {
+  :is(.field, .note input, .composer textarea, .board .editor .write, .board .editor.diagram .write, .board .live pre, .board .live textarea, .board .editor .ehead select, .new-domain-card textarea.map-text, .hosted-card input.field) { font-size: var(--fs-lg); }
+  :where(.btn, .segs > *, .lens-switch .seg, .choice, button.event, .speak, .loose-mark, .strip-link, .new-domain-card .ex, .sea-remove) { position: relative; }
+  .speak[data-state="idle"] { position: relative; }
+  :is(.btn, .segs > *, .lens-switch .seg, .choice, button.event, .speak, .loose-mark, .strip-link, .new-domain-card .ex, .sea-remove)::after { content: ""; position: absolute; left: 0; right: 0; top: min(0px, calc((100% - var(--h-xl)) / 2)); bottom: min(0px, calc((100% - var(--h-xl)) / 2)); }
+  :is(.btn.icon, .loose-mark)::after { left: min(0px, calc((100% - var(--h-xl)) / 2)); right: min(0px, calc((100% - var(--h-xl)) / 2)); }
+  .strip .strip-value .strip-link::after { top: calc(-1 * var(--sp-1)); bottom: calc(-1 * var(--sp-5)); } /* downward: the cell's own label is just above (outbids the :is() above, whose weight is its heaviest selector's) */
+  .crumb:not(.here) { padding-block: 9px; margin-block: -9px; } /* a crumb cuts its own name, and would cut an ::after */
+  .choice > kbd { display: none; } /* no keys to answer with */
 }
 /* The other ways in, under the description: ready-made maps as tiles, then the two ways further (quiet buttons, their words on the card's edge). */
 .new-domain-card .other-ways { display: grid; gap: var(--sp-3); margin-top: var(--sp-2); padding-top: var(--sp-4); border-top: 1px solid var(--line); }
@@ -1468,7 +1555,16 @@ body.empty .outline, body.empty .chrome, body.empty #map-focus, body.empty #boar
    it must not look live), and a tall card ends clear of it; the cheat sheet is one column. */
 @media (max-width: 720px) {
   .dialog-shell { z-index: var(--z-dialog-top); padding: var(--sp-4) var(--sp-3) calc(var(--places-h, 0px) + var(--sp-6)); }
+  body.keyboard .dialog-shell { top: var(--vvt, 0px); bottom: auto; height: var(--vvh, 100dvh); padding-bottom: var(--sp-4); } /* what the keyboard leaves: the field being written in scrolls into it */
   .dialog-card { padding: var(--sp-4) var(--sp-4) var(--sp-5); }
+  .dialog-head > .dialog-close { width: var(--h-xl); min-height: var(--h-xl); margin: calc(-1 * var(--sp-15)) calc(-1 * var(--sp-2)) calc(-1 * var(--sp-15)) auto; }
+  .dialog-foot .btn { min-height: var(--h-xl); padding-left: var(--sp-4); padding-right: var(--sp-4); font-size: var(--fs-base); }
+  .hosted-card .model { min-height: var(--h-touch); }
+  .new-domain-card .ex { min-height: var(--h-lg); }
+  .new-domain-card .other-ways .links .btn { min-height: var(--h-xl); }
+  .hosted-card .remember { min-height: var(--h-xl); }
+  .hosted-card .more summary { padding: var(--sp-3) 0; }
+  .hosted-card .legal-links a { padding: var(--sp-3) 0; }
   .viewer { z-index: var(--z-viewer); padding: var(--sp-3) var(--sp-3) calc(var(--places-h, 0px) + var(--sp-3)); }
   .new-domain-card .map-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .keys-card .cols { columns: 1; }
