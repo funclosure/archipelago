@@ -399,19 +399,40 @@ function stripItem({ label, value, hint, action }) {
   return el;
 }
 
-/** One of the dock's buttons: who, and what to ask them; the hint is its tooltip. */
-function dockItem({ action, label, value, hint, pending }) {
+/** A dock icon, as SVG nodes (never markup): the mentor's compass needle, or the cartographer's dashed coast and pen. */
+function dockIcon(action) {
+  const ns = "http://www.w3.org/2000/svg";
+  const svg = document.createElementNS(ns, "svg");
+  svg.setAttribute("viewBox", "0 0 24 24");
+  svg.setAttribute("class", "dock-icon");
+  svg.setAttribute("aria-hidden", "true");
+  const add = (tag, attrs) => {
+    const node = document.createElementNS(ns, tag);
+    for (const [k, v] of Object.entries(attrs)) node.setAttribute(k, String(v));
+    svg.append(node);
+  };
+  if (action === "guide") {
+    add("circle", { cx: 12, cy: 12, r: 9.5, class: "line" });
+    add("path", { d: "M12 4.5 L14.4 12 L12 19.5 L9.6 12 Z", class: "line" });
+    add("path", { d: "M12 4.5 L14.4 12 L9.6 12 Z", class: "solid" });
+  } else {
+    add("path", { d: "M5 15.5c-1.6-3.2.2-8 4.6-9 3.2-.7 5.6.6 6.4 2.7", class: "line dash" });
+    add("path", { d: "M5 15.5c1.4 2.6 4.6 3.7 7.6 2.8", class: "line dash" });
+    add("path", { d: "M13.5 18.5 L20 12 L21.5 13.5 L15 20 L13 20.5 Z", class: "line" });
+  }
+  return svg;
+}
+
+/** One of the dock's buttons: an icon, and on hover or focus what it opens, in a line that slides out to its left. */
+function dockItem({ action, label, pending }) {
   const b = document.createElement("button");
   b.type = "button";
   b.className = `dock-item ${action}${pending ? " pending" : ""}`;
-  b.title = hint;
+  b.setAttribute("aria-label", label);
   const l = document.createElement("span");
   l.className = "dock-label";
   l.textContent = label;
-  const v = document.createElement("span");
-  v.className = "dock-value";
-  v.textContent = value;
-  b.append(l, v);
+  b.append(l, dockIcon(action));
   b.addEventListener("click", () => (action === "guide" ? openGuide() : openChart()));
   return b;
 }
