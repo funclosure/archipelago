@@ -1,4 +1,4 @@
-import { buildNodes, buildLinks, WORLD, stripItems, dockItems } from "./view-model.js";
+import { buildNodes, buildLinks, WORLD } from "./view-model.js";
 import { createSimulation } from "./layout.js";
 import { createCamera } from "./camera.js";
 import {
@@ -21,7 +21,7 @@ import { installImages } from "./images.js";
 import { installKeys } from "./keys.js";
 import { installBoard } from "./board.js";
 import { installTheme } from "./theme.js";
-import { openChart, openGuide, chartWorkingHere } from "./chart.js";
+import { openChart, chartWorkingHere } from "./chart.js";
 import { thinkingLine } from "./progress-model.js";
 import { language, t } from "./i18n.js";
 import { request } from "./transport.js";
@@ -30,6 +30,7 @@ import { anotherTab, installHosted, welcomeGate } from "./hosted.js";
 import { modeKey, storedMode, nextMode } from "./mode-model.js";
 import { installLaunch } from "./launch.js";
 import { installPlaces } from "./places.js";
+import { installChrome, renderChrome, renderStatus, showReading, showFailure, clearNote } from "./chrome.js";
 import "./tip.js"; // tooltips listen at the document; a control only carries data-tip
 import "./palette.js"; // the command palette (⌘K): keys.js hands it the opening key and, while it is open, every key
 
@@ -421,103 +422,6 @@ async function persistPlacement() {
   }
 }
 
-function renderChrome() {
-  renderBreadcrumb();
-  renderStrip();
-  renderStatus();
-}
-
-function renderBreadcrumb() {
-  const nav = document.getElementById("breadcrumb");
-  const s = app.snapshot;
-  if (!s) return;
-  const parts = [{ slug: null, name: s.domain.name }, ...s.scale.path];
-  nav.replaceChildren();
-  parts.forEach((p, i) => {
-    if (i > 0) {
-      const sep = document.createElement("span");
-      sep.className = "sep";
-      sep.textContent = "›";
-      nav.append(sep);
-    }
-    const b = document.createElement("button");
-    b.className = "crumb";
-    b.textContent = p.name;
-    b.disabled = i === parts.length - 1;
-    b.addEventListener("click", () => setScale(p.slug));
-    nav.append(b);
-  });
-}
-
-function stripItem({ label, value, hint, action }) {
-  const el = document.createElement("div");
-  el.className = "strip-item";
-  const l = document.createElement("span");
-  l.className = "strip-label";
-  l.textContent = label;
-  const v = document.createElement("span");
-  v.className = "strip-value";
-  v.textContent = value;
-  v.title = value; // a long value is cut to one line; the full text is here
-  const h = document.createElement("div");
-  h.className = "hint";
-  h.textContent = hint;
-  el.append(l, v, h);
-  el.addEventListener("click", () => el.classList.toggle("open")); // hover shows the hint; a click (or a tap) pins it
-  return el;
-}
-
-/** A dock icon, as SVG nodes (never markup): the mentor's compass needle, or the cartographer's dashed coast and pen. */
-function dockIcon(action) {
-  const ns = "http://www.w3.org/2000/svg";
-  const svg = document.createElementNS(ns, "svg");
-  svg.setAttribute("viewBox", "0 0 24 24");
-  svg.setAttribute("class", "dock-icon");
-  svg.setAttribute("aria-hidden", "true");
-  const add = (tag, attrs) => {
-    const node = document.createElementNS(ns, tag);
-    for (const [k, v] of Object.entries(attrs)) node.setAttribute(k, String(v));
-    svg.append(node);
-  };
-  if (action === "guide") {
-    add("circle", { cx: 12, cy: 12, r: 9.5, class: "line" });
-    add("path", { d: "M12 4.5 L14.4 12 L12 19.5 L9.6 12 Z", class: "line" });
-    add("path", { d: "M12 4.5 L14.4 12 L9.6 12 Z", class: "solid" });
-  } else {
-    add("path", { d: "M5 15.5c-1.6-3.2.2-8 4.6-9 3.2-.7 5.6.6 6.4 2.7", class: "line dash" });
-    add("path", { d: "M5 15.5c1.4 2.6 4.6 3.7 7.6 2.8", class: "line dash" });
-    add("path", { d: "M13.5 18.5 L20 12 L21.5 13.5 L15 20 L13 20.5 Z", class: "line" });
-  }
-  return svg;
-}
-
-/** One of the dock's buttons: an icon, and on hover or focus what it opens, in a line that slides out to its left. */
-function dockItem({ action, label, pending }) {
-  const b = document.createElement("button");
-  b.type = "button";
-  b.className = `dock-item ${action}${pending ? " pending" : ""}`;
-  b.setAttribute("aria-label", label);
-  const l = document.createElement("span");
-  l.className = "dock-label";
-  l.textContent = label;
-  b.append(l, dockIcon(action));
-  b.addEventListener("click", () => (action === "guide" ? openGuide() : openChart()));
-  return b;
-}
-
-function renderStrip() {
-  const strip = document.getElementById("strip");
-  if (!app.snapshot) return;
-  strip.replaceChildren(...stripItems(app.snapshot, app.mode).map(stripItem));
-  document.getElementById("dock")?.replaceChildren(...dockItems(app.snapshot).map(dockItem));
-}
-
-function renderStatus() {
-  const el = document.getElementById("status");
-  el.textContent = app.connected ? "" : t("app.disconnected");
-  el.classList.toggle("off", !app.connected);
-}
-
 const measureCtx = document.createElement("canvas").getContext("2d");
 const seaCharWidths = new Map();
 /** A character's width in a sea's lettering at `font` world units; cached. */
@@ -788,18 +692,64 @@ function drawSketchingHere(now, tool) {
   drawSketching(ctx, at, now, { title: t("app.sketching", { name }), step: thinkingLine("cartographer", tool || null), still: Boolean(stillMotion?.matches) });
 }
 
-/** Nothing to draw without the server (or, hosted, without the browser's storage): say why instead of a blank sea. */
-function failedToStart(error) {
-  const nav = document.getElementById("breadcrumb");
-  if (error.code === "another-tab") return anotherTab(nav);
-  nav.replaceChildren(error.message);
+const RETRY_MS = 3000;
+
+/** Hosted: another tab holds the database. Not a failure to explain: the header offers to move it here (hosted.js). */
+function elsewhere(error) {
+  if (error?.code !== "another-tab") return false;
+  clearNote();
+  anotherTab(document.getElementById("breadcrumb"));
+  return true;
+}
+
+/**
+ * Nothing to draw without the server (or, hosted, without the browser's storage): say why where the map would be.
+ * This is before the page is set up, so trying again is loading it again; `probe`, when the caller has one, is the
+ * read that failed, asked again every few seconds so the page comes back by itself.
+ */
+function failedToStart(error, probe = null) {
+  if (elsewhere(error)) return;
   console.error(error);
+  app.connected = false;
+  renderStatus();
+  showFailure(error, () => location.reload(), { retrying: Boolean(probe) });
+  if (!probe) return;
+  const again = setInterval(async () => {
+    try {
+      await probe();
+    } catch {
+      return;
+    }
+    clearInterval(again);
+    location.reload();
+  }, RETRY_MS);
+}
+
+/**
+ * The first chart did not come, though the page is set up: the same words, a button that reads again, and the
+ * poll, which keeps asking and draws the chart the moment it comes.
+ */
+function firstReadFailed(error) {
+  if (elsewhere(error)) return;
+  console.error(error);
+  app.connected = false;
+  renderStatus();
+  showFailure(error, async () => {
+    try {
+      await refresh();
+      app.connected = true;
+      void syncLanguage();
+    } catch (again) {
+      if (!app.snapshot) firstReadFailed(again);
+    }
+    renderStatus();
+  }, { retrying: true });
 }
 
 /** index.html is static: its labels take the page's language here. The head script already stamped `lang`. */
 function labelStatics() {
   document.documentElement.lang = language();
-  const labels = { map: "app.mapLabel", outline: "app.outlineLabel", breadcrumb: "app.scaleLabel", board: "app.boardLabel", about: "app.aboutLabel", "new-domain": "app.newDomainLabel" };
+  const labels = { map: "app.mapLabel", outline: "app.outlineLabel", breadcrumb: "app.scaleLabel", lens: "app.lensLabel", strip: "app.stripLabel", dock: "app.dockLabel", board: "app.boardLabel", about: "app.aboutLabel", "new-domain": "app.newDomainLabel" };
   for (const [id, key] of Object.entries(labels)) document.getElementById(id)?.setAttribute("aria-label", t(key));
 }
 
@@ -828,6 +778,7 @@ async function boot() {
   labelStatics();
   installNewDomain();
   installHosted();
+  showReading(); // where the map will be, until its first chart is here
   try {
     await welcomeGate(); // hosted only: a key, or Try without a key, before the map
   } catch (error) {
@@ -838,10 +789,11 @@ async function boot() {
     try {
       ({ domains } = await api("/api/domains"));
     } catch (error) {
-      return failedToStart(error);
+      return failedToStart(error, () => api("/api/domains"));
     }
     if (domains.length === 0) {
       // Nothing to show but the start: the page is the New domain field, with no outline and no chrome around it.
+      clearNote();
       document.body.classList.add("empty");
       openNewDomain({ first: true, map: sharedMap() });
       return;
@@ -856,6 +808,7 @@ async function boot() {
   app.sim.setCenter(WORLD / 2, WORLD / 2);
   resize();
   window.addEventListener("resize", resize);
+  installChrome(); // before the keys: its listener sees a key ahead of the page's
   installInteractions(canvas);
   installTheme(); // first: the canvas palette and mermaid read the stamped theme's tokens
   // What a frame cannot see has changed: the palette, a font arriving, a canvas the browser emptied while the tab was away.
@@ -882,11 +835,13 @@ async function boot() {
       location.replace(location.pathname);
       return;
     }
-    app.connected = false;
-    renderStatus();
     // No chart yet to fall back on: say why, as the domain list does above.
-    if (!app.snapshot) failedToStart(error);
-    else console.error(error);
+    if (!app.snapshot) firstReadFailed(error);
+    else {
+      app.connected = false;
+      renderStatus();
+      console.error(error);
+    }
   }
   if (app.snapshot) void syncLanguage();
   // A domain made on the page arrives with ?chart=start: open the cartographer and let it sketch.

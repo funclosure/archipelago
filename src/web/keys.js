@@ -208,7 +208,7 @@ function onKeydown(e) {
     return;
   }
   if (e.key === "Enter" && e.metaKey) {
-    const sent = current === "pane" ? handlers.pane?.send?.() : current === "map" ? handlers.board?.save?.() : false;
+    const sent = (current === "pane" ? handlers.pane?.send?.() : current === "map" ? handlers.board?.save?.() : false) || handlers.chrome?.onKey?.(e); // else the bottom card's (approve a sketch from the map)
     if (sent) {
       e.preventDefault();
       e.stopPropagation(); // the textarea's own Enter handler must not submit as well
@@ -252,6 +252,7 @@ function onKeydown(e) {
   if (sheetOpen) return; // the sheet is modal for region keys
   const target = current === "map" && handlers.board?.isOpen?.() ? handlers.board : handlers[current];
   if (target?.onKey?.(e)) e.preventDefault();
+  else if (handlers.chrome?.onKey?.(e)) e.preventDefault(); // a key the region passed on: the dock's, the bottom card's, the header's (chrome.js)
 }
 
 export function installKeys() {

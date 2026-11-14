@@ -264,31 +264,82 @@ kbd { display: inline-block; box-sizing: border-box; min-width: 18px; padding: 0
 #map.dragging { cursor: grabbing; }
 #map.hover { cursor: pointer; }
 
-.chrome { position: fixed; left: var(--outline-w); right: 0; display: flex; padding: 16px 20px; pointer-events: none; transition: left .18s ease, right .18s ease; }
+/* ---- the header over the map (chrome.js): bare words on the water, never a bar ---- */
+/* Its left edge eases with the outline's width. Its right edge does not ease: the pane arrives and leaves at its
+   own edge at once, and the lens at the header's right end must be in its corner at once, never slide to it. */
+.chrome { position: fixed; left: var(--outline-w); right: 0; display: flex; padding: 18px var(--sp-5) var(--sp-4); pointer-events: none; transition: left var(--t-med) var(--ease); }
 body.pane-open .chrome { right: var(--pane-w); }
-.chrome > * { pointer-events: auto; }
 .top { top: 0; }
-.chrome-stack { display: flex; flex-direction: column; gap: 10px; align-items: flex-start; min-width: 0; max-width: 100%; }
-/* the title row: the domain (and scale) on the left, the mode switch beside it */
-.title-row { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; min-width: 0; }
+/* The wash: the sea's own colour behind the header, thinning out below it. Whatever the reader pans up under the
+   words (a sea's name, a coast, stipple) dims into the water instead of running through them. It has no edge, so
+   it never reads as a bar; it is under the words and over the canvas, and the map still drags through it. */
+.chrome.top::before { content: ""; position: absolute; inset: 0 0 calc(-1 * var(--sp-12)) 0; z-index: -1; pointer-events: none;
+  /* measured from its foot, so the words are backed whole however many rows the strip takes: clear at the foot,
+     the sea itself by the last line of words (the header's padding above the foot), eased in between */
+  background: linear-gradient(to top, transparent 0, color-mix(in oklab, var(--sea) 10%, transparent) 10px, color-mix(in oklab, var(--sea) 34%, transparent) 24px, color-mix(in oklab, var(--sea) 66%, transparent) 40px, color-mix(in oklab, var(--sea) 90%, transparent) 54px, var(--sea) calc(var(--sp-12) + var(--sp-4))); }
+/* The rows let the map through; only the controls in them take the pointer. */
+.chrome-stack { display: flex; flex: 1; flex-direction: column; gap: var(--sp-2); min-width: 0; pointer-events: none; }
+.breadcrumb, .status, .lens, .strip-item { pointer-events: auto; }
+/* the title row: where the reader is on the left, the connection beside it when it is down, the lens at the right
+   end. It is as tall as its tallest piece whether or not that piece is there, so the header never changes height. */
+.title-row { display: flex; align-items: center; gap: var(--sp-3); min-width: 0; min-height: var(--h-md); }
 
-.breadcrumb { display: flex; align-items: center; gap: 8px; font-family: Georgia, serif; font-size: 18px; }
-.crumb { background: none; border: 0; color: var(--muted); font: inherit; cursor: pointer; padding: 0; }
+.breadcrumb { display: flex; align-items: center; gap: var(--sp-15); min-width: 0; font-family: var(--font-serif); font-size: var(--fs-xl); white-space: nowrap; }
+.breadcrumb:empty { display: none; }
+/* A path wider than the map gives way name by name, the scales above first, and never wraps. */
+.crumb { flex: 0 4 auto; min-width: 3ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; background: none; border: 0; border-radius: var(--r-xs); color: var(--muted); font: inherit; cursor: pointer; padding: 0; }
 .crumb:hover { color: var(--text); }
-.crumb:disabled { color: var(--text); cursor: default; }
-.sep { color: var(--line); }
-.status { font-size: 12px; color: var(--muted); }
-.status.off { color: var(--reef); }
+.crumb:active { color: var(--text-2); }
+.crumb.here { flex-shrink: 1; min-width: 8ch; color: var(--text); cursor: default; }
+.breadcrumb .sep { flex: none; display: flex; color: var(--muted); }
+/* the connection, only while it is down: a quiet pill beside the name, so the header's height never changes */
+.status { display: inline-flex; align-items: center; gap: var(--sp-15); flex: none; box-sizing: border-box; height: var(--h-sm); padding: 0 var(--sp-2); border: 1px solid var(--line); border-radius: var(--r-full); font-size: var(--fs-xs); color: var(--text-2); white-space: nowrap; }
+.status::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--reef); }
+.status:empty { display: none; }
+/* the lens on the bare map: Keeper (what you have demonstrated) or Mentor (where you have explored). It stands in
+   the corner where an island's pane has its own, and steps aside while that pane is open. */
+.lens { position: relative; top: 2px; margin-left: auto; --seg-fill: var(--lamp); } /* 2px down: exactly where the pane's own switch stands */
+.lens[hidden] { display: none; }
+body[data-mode="mentor"] .lens { --seg-fill: var(--explore); }
 
-.strip { display: flex; flex-wrap: wrap; gap: 8px 28px; font-size: 12px; max-width: 100%; }
-.strip-value { max-width: 42ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.strip-item { display: flex; flex-direction: column; gap: 2px; position: relative; cursor: help; }
-.strip-item .hint { display: none; position: absolute; top: calc(100% + 8px); left: 0; width: 260px; background: var(--panel); border: 1px solid var(--line); border-radius: var(--r-md);
-  padding: 8px 10px; box-shadow: var(--e-2); font-size: 12px; line-height: 1.45; color: var(--text); text-transform: none; letter-spacing: 0; z-index: 4; }
-.strip-item:last-child .hint { left: auto; right: 0; }
-.strip-item:hover .hint, .strip-item.open .hint { display: block; }
-.strip-label { color: var(--muted); text-transform: uppercase; letter-spacing: var(--track-caps); font-size: var(--fs-micro); }
-/* the lens switch: Keeper (what you have demonstrated) or Mentor (where you have explored) */
+/* The strip: what this scale holds, a label over a value. It keeps to one row: a cell that lists several islands
+   starts small and takes the room the others leave, so its value is cut where the map area ends (the pane's edge,
+   never under it) and the header is the same height with a pane open as without. Only a map area too narrow for
+   even that wraps. */
+.strip { display: flex; flex-wrap: wrap; gap: var(--sp-2) var(--sp-6); min-width: 0; font-size: var(--fs-sm); pointer-events: none; }
+.strip-item { display: flex; flex-direction: column; align-items: flex-start; gap: var(--sp-05); flex: 0 1 auto; min-width: 0; max-width: 100%; cursor: default; }
+.strip-item.list { flex: 1 1 max(14ch, var(--label-w, 0px)); max-width: max-content; } /* --label-w: its label's own width (chrome.js), the least it can be */
+/* the label is the cell's button: it opens the card that explains the cell */
+.strip-label { background: none; border: 0; border-radius: var(--r-xs); padding: 0; color: var(--muted); font: inherit; font-size: var(--fs-micro); font-weight: var(--fw-medium); text-transform: uppercase; letter-spacing: var(--track-caps); white-space: nowrap; cursor: pointer; }
+.strip-item:hover .strip-label, .strip-label[aria-expanded="true"] { color: var(--text); }
+.strip-label:active { color: var(--text-2); }
+/* The value is one line. Its box is a little larger than its words (and pulled back by as much), so the focus ring
+   of a name inside it is not cut off by the clipping that makes the ellipsis. */
+.strip-value { align-self: stretch; box-sizing: content-box; max-width: 72ch; margin: calc(-1 * var(--sp-1)); padding: var(--sp-1); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.strip-item.none .strip-value { color: var(--muted); }
+/* an island's name in a cell: the way to that island */
+.strip-link { color: inherit; border-radius: var(--r-xs); cursor: pointer; }
+.strip-link:hover { background: var(--hover); box-shadow: 0 0 0 2px var(--hover); }
+.strip-link:active { background: var(--pressed); box-shadow: 0 0 0 2px var(--pressed); }
+/* The hint card: one for the strip, under the cell it explains, inside the map area (chrome.js places it). It
+   follows the pointer's rest like a tooltip; pressed, it stays until it is let go. */
+.strip-hint { position: fixed; z-index: var(--z-popover); box-sizing: border-box; width: 280px; padding: var(--sp-2) var(--sp-3); font: var(--fs-sm)/1.45 var(--font-ui); color: var(--text-2); pointer-events: none; }
+.strip-hint.pinned { pointer-events: auto; }
+.strip-hint[hidden] { display: none; }
+.strip-hint .full { margin-bottom: var(--sp-15); color: var(--text); }
+/* Dragging the pane's grip moves the header's right edge with it: nothing that follows the pane may ease behind. */
+body:has(.pane.resizing) :is(.chrome, .map-focus, .cta, .board-scrim, .board, .board-toggle, .board-hint, .keys) { transition: none; }
+/* Before the first chart (chrome.js): a quiet line where the map will be, after a beat so a quick read shows
+   nothing; or, when the read failed, why, and a way to try again. */
+.map-note { position: fixed; top: 0; bottom: var(--places-h, 0px); left: var(--outline-w); right: 0; z-index: var(--z-map); display: grid; place-content: center; justify-items: center; gap: var(--sp-3); padding: var(--sp-6); text-align: center; pointer-events: none; }
+.map-note[hidden] { display: none; }
+.map-note p { margin: 0; max-width: 46ch; font-size: var(--fs-base); line-height: var(--lh-body); color: var(--text-2); }
+.map-note.reading p { font-family: var(--font-serif); font-size: var(--fs-lg); font-style: italic; color: var(--muted); animation: note-in var(--t-med) var(--ease) 350ms both; }
+.map-note h2 { margin: 0; font: 400 var(--fs-2xl)/var(--lh-tight) var(--font-serif); color: var(--text); }
+.map-note p.quiet { margin-top: calc(-1 * var(--sp-2)); font-size: var(--fs-sm); color: var(--muted); }
+.map-note .btn { margin-top: var(--sp-2); pointer-events: auto; }
+@keyframes note-in { from { opacity: 0; } }
+:lang(zh) .map-note.reading p { font-style: normal; }
 
 /* ---- the pane: head, log, foot ---- */
 .pane { position: fixed; top: 0; right: 0; bottom: 0; width: var(--pane-w); background: var(--panel);
@@ -539,31 +590,36 @@ button.msg.system.board-line:hover { color: var(--text); }
 .speak .ic i:nth-child(3), .now-playing .ic i:nth-child(3) { animation-delay: -.6s; }
 @keyframes speak-bar { 0%, 100% { transform: scaleY(.35); } 50% { transform: scaleY(1); } }
 @media (prefers-reduced-motion: reduce) { .speak .ic i, .now-playing .ic i { animation: none !important; transform: scaleY(.8); } }
-/* Now reading: one bar at the map's bottom left, whatever is open: who, on which island (a click goes back to the
-   reply), pause, stop. */
-.now-playing { position: fixed; left: calc(var(--outline-w) + 16px); bottom: 16px; z-index: 3; display: grid; gap: 2px; width: min(440px, calc(100vw - 32px));
-  padding: 4px 6px 6px; background: var(--panel); border: 1px solid var(--accent, var(--lamp)); border-radius: 16px; box-shadow: 0 8px 24px var(--shadow-soft); --accent: var(--lamp); }
+/* Now reading: one row at the map's bottom left, whatever is open: who, on which island (a click goes back to the
+   reply), the clock, back and forward, pause, speed, stop, and the progress line along its foot. A floating card
+   like the others on the water (the line's edge, no accent border); its accent is inside it, in the bars and the
+   progress. It keeps to the map area: narrower beside a pane, where it also leaves the board's button its corner,
+   and as it narrows it drops the clock, then the skips and the speed. The bottom card steps over it. */
+.now-playing { --accent: var(--lamp); --np-room: calc(100vw - var(--outline-w) - 2 * var(--sp-4)); position: fixed; left: calc(var(--outline-w) + var(--sp-4)); bottom: var(--sp-4); z-index: var(--z-float); container-type: inline-size;
+  display: flex; align-items: center; gap: var(--sp-1); box-sizing: border-box; width: min(440px, var(--np-room)); height: var(--h-xl); padding: 0 var(--sp-15) 0 var(--sp-1);
+  background: var(--panel); border: 1px solid var(--line); border-radius: var(--r-md); box-shadow: var(--e-2); overflow: hidden; }
+body.pane-open .now-playing { --np-room: calc(100vw - var(--outline-w) - var(--pane-w) - 2 * var(--sp-4) - 120px); }
 .now-playing[hidden] { display: none; }
-.now-playing button { background: none; border: 0; color: var(--text-2); cursor: pointer; font: inherit; }
-.now-playing .np-row { display: flex; align-items: center; gap: 4px; min-width: 0; }
-.now-playing .np-go { flex: 1; display: flex; align-items: center; gap: 10px; min-width: 0; padding: 4px 8px; border-radius: 10px; text-align: left; color: var(--accent); }
-.now-playing .np-go:hover { background: var(--panel-2); }
+.now-playing button { display: inline-flex; align-items: center; justify-content: center; box-sizing: border-box; background: none; border: 0; border-radius: var(--r-sm); color: var(--text-2); cursor: pointer; font: inherit; }
+.now-playing button:hover { background: var(--hover); color: var(--text); }
+.now-playing button:active { background: var(--pressed); }
+.now-playing .np-go { flex: 1; justify-content: flex-start; gap: var(--sp-2); min-width: 0; height: var(--h-lg); padding: 0 var(--sp-2); text-align: left; }
+.now-playing .np-go .ic { color: var(--accent); }
 .now-playing .np-text { display: grid; min-width: 0; }
-.now-playing .np-who { font: 600 12px/1.3 var(--font-text); color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.now-playing .np-where { font: 12px/1.3 var(--font-text); color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.now-playing .np-text > * { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.now-playing .np-who { font: var(--fw-semibold) var(--fs-sm)/1.25 var(--font-ui); color: var(--text); }
+.now-playing .np-where { font: var(--fs-xs)/1.25 var(--font-ui); color: var(--muted); }
+.now-playing .np-time { flex: none; padding: 0 var(--sp-1); font: var(--fs-xs) var(--font-mono); color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .now-playing .np-controls { flex: none; display: flex; align-items: center; }
-.now-playing .np-controls button { min-width: 30px; height: 30px; padding: 0 5px; border-radius: 8px; font: 12px var(--font-text); font-variant-numeric: tabular-nums; }
-.now-playing .np-rate { font-weight: 600 !important; }
-.now-playing .np-back, .now-playing .np-fwd { display: inline-flex; align-items: center; justify-content: center; }
-.now-playing svg text { font-family: var(--font-text); }
-.now-playing .np-stop { font-size: 18px !important; line-height: 1; }
-.now-playing .np-controls button:hover { background: var(--panel-2); color: var(--text); }
-.now-playing .np-progress { display: flex; align-items: center; gap: 10px; padding: 0 8px; }
-.now-playing .np-track { flex: 1; height: 14px; display: flex; align-items: center; cursor: pointer; }
-.now-playing .np-track { background: linear-gradient(var(--line), var(--line)) center / 100% 3px no-repeat; border-radius: 2px; }
-.now-playing .np-fill { height: 3px; width: 0; background: var(--accent); border-radius: 2px; }
-.now-playing .np-time { flex: none; font: 11px var(--font-mono); color: var(--muted); font-variant-numeric: tabular-nums; }
-@media (max-width: 720px) { .now-playing { left: 50%; transform: translateX(-50%); top: 8px; bottom: auto; } }
+.now-playing .np-controls button { min-width: var(--h-md); height: var(--h-md); padding: 0 var(--sp-1); font: var(--fw-semibold) var(--fs-sm) var(--font-ui); font-variant-numeric: tabular-nums; }
+.now-playing svg text { font-family: var(--font-ui); }
+.now-playing .np-controls svg.ic { display: block; width: 14px; height: 14px; }
+/* the progress line: the bar's own foot, a taller strip of it taking the click that seeks */
+.now-playing .np-track { position: absolute; left: var(--r-md); right: var(--r-md); bottom: 0; height: var(--sp-15); display: flex; align-items: flex-end; cursor: pointer; background: linear-gradient(var(--line), var(--line)) bottom / 100% 2px no-repeat; }
+.now-playing .np-fill { height: 2px; width: 0; background: var(--accent); }
+@container (max-width: 380px) { .now-playing .np-time { display: none; } }
+@container (max-width: 300px) { .now-playing :is(.np-back, .np-fwd, .np-rate) { display: none; } }
+@media (max-width: 720px) { .now-playing, body.pane-open .now-playing { left: 50%; transform: translateX(-50%); top: var(--sp-2); bottom: auto; --np-room: calc(100vw - 2 * var(--sp-4)); } }
 .model-line { display: flex; align-items: center; gap: 8px; font-size: 11px; font-family: var(--font-mono); color: var(--muted); }
 .model-line::before, .model-line::after { content: ""; flex: 1; border-top: 1px dashed var(--line); }
 
@@ -773,25 +829,36 @@ body.outline-resizing :is(.outline, .chrome, .map-focus, .board-scrim, .board, .
 .choice.picked { background: var(--lamp); color: var(--on-accent); opacity: 1; }
 
 /* ---- the call to action over the map ---- */
-.cta { position: fixed; bottom: 56px; left: var(--outline-w); right: 0; display: flex; justify-content: center; pointer-events: none; z-index: 1; }
+/* One card, one thing asked. On the bare map it shares the dock's bottom line; beside a pane it stands over the
+   board's button, and over the board's first-card callout while that shows; it steps over the now-playing bar.
+   It is centred in the map area while that leaves the dock's sliding labels their room, and stands at the header's
+   left edge when it does not (the .cta is a size container: the map area's own width decides, not the window's). */
+.cta { position: fixed; bottom: var(--sp-4); left: var(--outline-w); right: 0; display: flex; justify-content: center; pointer-events: none; z-index: var(--z-map); container: cta / inline-size; }
 body.pane-open .cta { right: var(--pane-w); }
 .cta[hidden] { display: none; }
-.cta-card { pointer-events: auto; background: var(--panel); border: 1px solid var(--line); border-radius: var(--r-md); padding: 12px 14px; box-shadow: var(--e-2); max-width: min(560px, 90%); display: grid; gap: 8px; }
-.cta-card .lbl { font-size: var(--fs-micro); text-transform: uppercase; letter-spacing: var(--track-caps); color: var(--lamp); }
-.cta-card .q { font-family: Georgia, serif; font-size: 14px; }
-.cta-card .row { display: flex; flex-wrap: wrap; gap: 6px; }
-.cta-card .row button { background: transparent; border: 1px solid var(--lamp); color: var(--lamp); border-radius: 999px; padding: 6px 12px; font: 12px system-ui, sans-serif; cursor: pointer; }
-.cta-card .row button:hover { background: var(--lamp); color: var(--on-accent); }
-.cta-card .row button.primary { background: var(--lamp); color: var(--on-accent); }
-.cta-card .row button.reefy { border-color: var(--reef); color: var(--reef); }
-.cta-card .row button.reefy:hover { background: var(--reef); color: var(--on-accent); }
-.cta-card .row button:disabled { opacity: .5; cursor: default; }
+.cta-card { pointer-events: auto; box-sizing: border-box; background: var(--panel); border: 1px solid var(--line); border-radius: var(--r-md); padding: var(--sp-3) var(--sp-4) var(--sp-4); box-shadow: var(--e-2); max-width: min(560px, calc(100% - 2 * var(--sp-5))); display: grid; gap: var(--sp-2); }
+/* what the card stands over is its foot's margin: the board's button; the now-playing bar (not on a bare map wide
+   enough for both on the bottom line); the board's callout, which stands 60px up and is two or three lines tall */
+body.pane-open .cta-card { margin-bottom: calc(var(--h-lg) + var(--sp-2)); }
+body:has(.now-playing:not([hidden])) .cta-card { margin-bottom: calc(var(--h-xl) + var(--sp-3)); }
+@container cta (min-width: 1500px) { body:not(.pane-open):has(.now-playing:not([hidden])) .cta-card { margin-bottom: 0; } }
+body.pane-open:has(.board-hint) .cta-card { margin-bottom: 132px; }
+.cta-card.arrive { animation: cta-in var(--t-med) var(--ease); }
+@keyframes cta-in { from { opacity: 0; transform: translateY(6px); } }
+@media (prefers-reduced-motion: reduce) { .cta-card.arrive { animation: none; } }
+@container cta (max-width: 1200px) { body:not(.pane-open) .cta-card { margin-left: var(--sp-5); margin-right: auto; } }
+/* the label is the chart's voice and stays quiet: the card's one accent is its main button (or, for a reef, the reef) */
+.cta-card .lbl { font-size: var(--fs-micro); font-weight: var(--fw-medium); text-transform: uppercase; letter-spacing: var(--track-caps); color: var(--muted); }
+.cta-card.reef .lbl { color: var(--reef); }
+.cta-card .q { font-family: var(--font-serif); font-size: var(--fs-base); line-height: var(--lh-body); text-wrap: pretty; }
+.cta-card .row { display: flex; flex-wrap: wrap; gap: var(--sp-2); margin-top: var(--sp-1); }
+.cta-card .btn.mentor { --btn-bg: var(--explore); }
 
 /* ---- keyboard focus ---- */
 #map:focus, #pane:focus, #outline:focus { outline: none; }
 body[data-focus="outline"] #outline { box-shadow: inset -1px 0 var(--lamp); }
 body[data-focus="pane"] #pane { box-shadow: inset 1px 0 var(--lamp), -12px 0 32px var(--shadow-soft); }
-.map-focus { position: fixed; top: 0; left: var(--outline-w); right: 0; height: 1px; background: var(--lamp); pointer-events: none; z-index: 3; transition: left .18s ease; }
+.map-focus { position: fixed; top: 0; left: var(--outline-w); right: 0; height: 1px; background: var(--lamp); pointer-events: none; z-index: var(--z-sheet); transition: left var(--t-med) var(--ease); }
 body[data-focus="map"] .map-focus { display: block; }
 body:not([data-focus="map"]) .map-focus { display: none; }
 body[data-focus="map"].pane-open .map-focus { right: var(--pane-w); }
@@ -1063,12 +1130,19 @@ body.empty .board-hint { display: none; }
 .btn.send.cartographer { --btn-bg: var(--lamp); }
 /* the dock: the map's bottom right, an icon each for the conversations that are not about one island (only on the
    bare map); hover or focus slides its label out to the left */
-.dock { position: fixed; right: 16px; bottom: 16px; z-index: 2; display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
+.dock { position: fixed; right: var(--sp-4); bottom: var(--sp-4); z-index: var(--z-panel); display: flex; flex-direction: column; align-items: flex-end; gap: var(--sp-2); pointer-events: none; }
 body.pane-open .dock { display: none; }
-.dock-item { position: relative; display: flex; align-items: center; height: 40px; padding: 0 9px; border-radius: 20px; background: var(--panel); border: 1px solid var(--line); color: var(--muted); font: inherit; cursor: pointer; transition: color .15s ease, border-color .15s ease; }
-.dock-item:hover, .dock-item:focus-visible { color: var(--text); border-color: var(--line-03); }
-.dock-label { max-width: 0; overflow: hidden; white-space: nowrap; opacity: 0; font-size: 13px; transition: max-width .22s ease, opacity .15s ease, margin .22s ease; }
-.dock-item:hover .dock-label, .dock-item:focus-visible .dock-label { max-width: 320px; opacity: 1; margin: 0 8px 0 6px; }
+/* a control on the water: a round icon, raised a little, quiet until the pointer or the keyboard is on it */
+.dock-item { position: relative; display: flex; align-items: center; box-sizing: border-box; height: var(--h-lg); padding: 0 5px; border-radius: var(--r-full); background: var(--panel); border: 1px solid var(--line); box-shadow: var(--e-1); color: var(--muted); font: inherit; cursor: pointer; pointer-events: auto; }
+.dock-item:hover, .dock-item:focus-visible { color: var(--text); border-color: var(--line-strong); }
+.dock-item:active { background: linear-gradient(var(--pressed), var(--pressed)), var(--panel); }
+/* its label, and the key that opens it: a line that slides out to the left and moves nothing. The line never
+   reaches the bottom card: --dock-lane is the room the card leaves beside the dock (chrome.js measures it). */
+.dock-label { display: flex; align-items: center; gap: var(--sp-2); min-width: 0; max-width: 0; overflow: hidden; white-space: nowrap; opacity: 0; font-size: var(--fs-md);
+  transition: max-width var(--t-med) var(--ease), opacity var(--t-fast) var(--ease), margin var(--t-med) var(--ease); }
+.dock-label .words { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.dock-label kbd { flex: none; }
+.dock-item:hover .dock-label, .dock-item:focus-visible .dock-label { max-width: var(--dock-lane, 340px); opacity: 1; margin: 0 var(--sp-15) 0 var(--sp-2); }
 .dock-icon { width: 20px; height: 20px; flex: none; }
 .dock-icon .line { fill: none; stroke: currentColor; stroke-width: 1.4; stroke-linejoin: round; stroke-linecap: round; }
 .dock-icon .dash { stroke-dasharray: 2 2.4; }
@@ -1076,9 +1150,7 @@ body.pane-open .dock { display: none; }
 .dock-item.guide:hover .dock-icon, .dock-item.guide:focus-visible .dock-icon { color: var(--explore); }
 .dock-item.chart:hover .dock-icon, .dock-item.chart:focus-visible .dock-icon { color: var(--lamp); }
 /* a pending sketch: a lamp dot on the cartographer's icon */
-.dock-item.pending::after { content: ""; position: absolute; top: 6px; right: 7px; width: 7px; height: 7px; border-radius: 50%; background: var(--lamp); }
-@media (prefers-reduced-motion: reduce) { .dock-label { transition: none; } }
-.strip-item.action:hover > span:nth-child(2) { color: var(--lamp); }
+.dock-item.pending::after { content: ""; position: absolute; top: 2px; right: 2px; width: 7px; height: 7px; border-radius: 50%; background: var(--lamp); box-shadow: 0 0 0 2px var(--panel); }
 .sketch-card { border: 1px dashed var(--lamp); border-radius: 8px; padding: 10px 12px; display: grid; gap: 6px; }
 .sketch-card .lbl { font-size: var(--fs-micro); text-transform: uppercase; letter-spacing: var(--track-caps); color: var(--lamp); }
 .sketch-card .sum { font-size: 12px; color: var(--muted); }
@@ -1090,6 +1162,7 @@ body.pane-open .dock { display: none; }
 .sketch-card .straits, .sketch-card .update { font-size: 12px; color: var(--text-2); }
 .sketch-card .actions { display: flex; gap: 6px; margin-top: 4px; }
 .crumb.start { color: var(--lamp); text-decoration: underline; }
+.breadcrumb:has(.crumb.start) { flex-wrap: wrap; white-space: normal; } /* a sentence with its one way forward (hosted.js): it may take two lines */
 
 /* New domain: one field, over a scrim on the map; with no domains yet (.first) it is the whole page. */
 .new-domain { position: fixed; inset: 0; z-index: 6; display: flex; justify-content: center; align-items: flex-start; padding: 8vh 16px 24px; background: var(--scrim); overflow-y: auto; }
@@ -1219,19 +1292,25 @@ body.empty .outline, body.empty .chrome, body.empty #map-focus, body.empty #boar
   .outline .mi-row .edit { width: var(--h-lg); height: var(--h-lg); }
   .outline .mi-row .mi > .ic-check { margin-left: calc(var(--h-lg) + var(--sp-05)); }
   /* Map: the header is the breadcrumb and one line of cells that scrolls sideways. */
-  .chrome { right: 0; padding: 10px 12px; }
+  .chrome, body.pane-open .chrome { right: 0; padding: 10px 12px; }
   .chrome-stack { width: 100%; min-width: 0; pointer-events: none; }
   .chrome-stack > * { pointer-events: auto; max-width: 100%; }
+  .title-row { min-height: 0; }
   .breadcrumb { flex-wrap: wrap; font-size: 16px; row-gap: 2px; }
+  .lens { display: none; } /* a phone's header keeps to the name and the strip */
   .strip { width: 100%; flex-wrap: nowrap; gap: 14px; max-width: calc(100vw - 24px); overflow-x: auto; scrollbar-width: none; }
   .strip::-webkit-scrollbar { display: none; }
-  .strip-item { flex: none; }
-  .strip-item .hint { position: fixed; top: auto; left: 12px; right: 12px; width: auto; margin-top: 8px; }
-  .strip-item:last-child .hint { left: 12px; right: 12px; }
-  .cta { left: 0; bottom: calc(var(--places-h) + 12px); padding: 0 12px; }
+  .strip-item, .strip-item.list { flex: none; max-width: none; }
+  .strip-value { max-width: 42ch; }
+  .strip-hint { width: calc(100vw - 24px); }
+  /* The card always spans the screen above the bar, with or without an island selected under the pane's place. */
+  .cta, body.pane-open .cta { left: 0; right: 0; bottom: calc(var(--places-h) + 12px); padding: 0 12px; }
+  body .cta-card, body:not(.pane-open) .cta-card, body.pane-open .cta-card, body:has(.now-playing:not([hidden])) .cta-card, body.pane-open:has(.board-hint) .cta-card { margin: 0; }
+  .cta-card { max-width: 100%; }
+  .cta-card .row .btn { flex: 1 1 auto; min-height: var(--h-xl); } /* a thumb's size; two that do not fit side by side each take the row */
   body:not([data-place="map"]) .cta { display: none; }
-  body:not(.pane-open) .cta { right: 0; }
   .dock { right: 12px; bottom: calc(var(--places-h) + 12px); }
+  .dock-item { height: var(--h-xl); padding: 0 9px; } /* a thumb's size */
   body:has(#cta:not([hidden])) .dock { display: none; }
   body:not([data-place="map"]) .dock { display: none; }
   /* Island: the pane, above the bar. */
