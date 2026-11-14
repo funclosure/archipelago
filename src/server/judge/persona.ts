@@ -3,7 +3,7 @@
 // turn. One runner serves all three.
 import type { Ask, Message, MessageMode } from "../../core/types.ts";
 import {
-  indent, renderBoard, renderDemoSteps, renderElsewhere, renderIslandHead, renderLearner, renderLooseEnds, renderOpeningLanguage, renderPendingAsk, renderPendingReefs, renderReplay, renderSurroundings, type JudgeContext,
+  indent, renderBoard, renderDemoSteps, renderElsewhere, renderIslandHead, renderLearner, renderLooseEnds, renderOpeningLanguage, renderPendingAsk, renderPendingReefs, renderReplay, renderReplyLanguage, renderSurroundings, type JudgeContext,
 } from "./context.ts";
 import type { JudgeRunner } from "./runner.ts";
 import { cartographerStubTurn, guideStubTurn, judgeStubTurn, mentorStubTurn } from "./stub.ts";
@@ -43,6 +43,7 @@ function judgeLandmarks(ctx: JudgeContext): string[] {
     ``,
     `Landmarks (${lit} of ${ctx.landmarks.length} lit):`,
     ...ctx.landmarks.map((l) => `- ${l.name} (${l.slug}): ${l.unlockedAt ? `lit — "${indent(l.evidence ?? "")}"` : "dark"}`),
+    `These are set: set_landmarks is only for an island with none. The slugs in parentheses are for tools; never write one in the reply.`,
   ];
 }
 
@@ -72,13 +73,14 @@ export function renderJudgeContext(ctx: JudgeContext): string {
     ...renderBoard(ctx, "judge", "pin with board_write when a diagram or a claim will be referred to again."),
     ...renderElsewhere(ctx),
     ...renderOpeningLanguage(ctx),
+    ...renderReplyLanguage(ctx.domain.language, ctx.thread),
   ].join("\n");
 }
 
 /** The judge's thread as the turn's prompt. */
 export function renderJudgeThreadPrompt(thread: ThreadMessage[], asks: Ask[] = []): string {
   if (thread.length === 0) return "Open the probe on this island.";
-  return [...renderReplay(thread, asks), "", "Continue as the judge."].join("\n");
+  return [...renderReplay(thread, asks), "", "Continue as the judge: every tool call first, then the reply, which asks at most one question (one sentence, one question mark)."].join("\n");
 }
 
 // ---- the mentor ----
@@ -90,6 +92,7 @@ function mentorLandmarks(ctx: JudgeContext): string[] {
   for (const l of ctx.landmarks) {
     lines.push(`- ${l.name} (${l.slug}): ${l.exploredAt ? `explored — "${indent(l.exploredEvidence ?? "")}"` : "unexplored"}`);
   }
+  lines.push(`These are set: set_landmarks is only for an island with none. The slugs in parentheses are for tools; never write one in the reply.`);
   const next = ctx.landmarks.filter((l) => l.exploredAt === null).map((l) => l.slug);
   lines.push(next.length ? `Nearest unexplored, in order: ${next.join(", ")}` : `Every landmark is explored: hand off to the judge in one line (§7).`);
   return lines;
@@ -108,13 +111,14 @@ export function renderMentorContext(ctx: JudgeContext): string {
     ...renderDemoSteps(ctx),
     ...renderElsewhere(ctx),
     ...renderOpeningLanguage(ctx),
+    ...renderReplyLanguage(ctx.domain.language, ctx.thread),
   ].join("\n");
 }
 
 /** The mentor's thread as the turn's prompt. */
 export function renderMentorThreadPrompt(thread: ThreadMessage[], asks: Ask[] = []): string {
   if (thread.length === 0) return "Open the session on this island: the coastline, one analogy, and where to start.";
-  return [...renderReplay(thread, asks), "", "Continue as the mentor."].join("\n");
+  return [...renderReplay(thread, asks), "", "Continue as the mentor: every tool call first, then the reply, with at most two questions (§2)."].join("\n");
 }
 
 export const judge: Persona<JudgeContext> = {

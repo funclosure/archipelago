@@ -16,7 +16,7 @@ import { confirmedReefClaims, getLearner, learnerGround } from "../../core/repos
 import { seaMembers } from "../../core/seas.ts";
 import { islandModes, type Ask, type Island, type Message, type VerdictState } from "../../core/types.ts";
 import { pointToInputSchema } from "../../core/validators.ts";
-import { indent, renderDescription, renderLearner, renderReplay, stateOf, type LearnerView } from "./context.ts";
+import { indent, renderDescription, renderLearner, renderReplay, renderReplyLanguage, stateOf, type LearnerView } from "./context.ts";
 import { threadWithImages, type PromptImage, type ThreadMessage } from "./prompt-images.ts";
 
 export type GuideDeps = { dbPath?: string; domain: string };
@@ -170,6 +170,7 @@ export function renderGuideContext(ctx: GuideContext): string {
   if (ctx.domain.language && !ctx.thread.some((m) => m.role === "you" && m.kind === "text")) {
     lines.push(``, `No reader message yet: write this opening in the language of the reader's page (see above).`);
   }
+  lines.push(...renderReplyLanguage(ctx.domain.language, ctx.thread));
   return lines.join("\n");
 }
 
