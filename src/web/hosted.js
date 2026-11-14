@@ -1,15 +1,19 @@
 // What only the hosted build shows: the welcome screen (a key, Try without a key, or an import), Your key, export
 // and import of the database, and the hand-over when another tab holds the database. The worker keeps the keys,
 // one per provider (`src/hosted/settings.ts`); this page sends a key once and reads back only its last four characters.
+// Its dialogs are of the family (dialog.js): the shared shell, head, fields and foot. The welcome gate and the
+// take-over notice are whole pages with no way out but their own buttons; Your key and the import question close on
+// Escape, the close button and a press on the veil.
 import { request, release } from "./transport.js";
-import { registerRegion } from "./keys.js";
 import { t } from "./i18n.js";
 import { amountOf, PAID_CHECKS_MS } from "./credit-model.js";
+import { toast, toastError } from "./toast.js";
+import { showDialog, redraw, focusFirst, dialogHead, dialogFoot, labelled } from "./dialog.js";
 
 export const isHosted = () => globalThis.ARCHIPELAGO_HOSTED === true;
 
 /** `open`: null, "welcome" (no way out but a choice), "key" (Your key), "import" (the replace warning), "elsewhere". */
-const state = { open: null, view: null, provider: null, key: "", model: null, remember: true, saving: false, error: null, file: null, credit: null, buying: false, thanks: null, switching: false, tokenField: false };
+const state = { open: null, view: null, provider: null, key: "", model: null, remember: true, saving: false, error: null, file: null, credit: null, buying: false, thanks: null, switching: false, tokenField: false, moreOpen: false, buyError: null };
 let root = null;
 let started = null; // resolves the welcome gate
 
@@ -20,10 +24,12 @@ function el(tag, className, text) {
   return e;
 }
 
-function button(label, onClick, className = "btn") {
+/** A button of the family. `key` names it across redraws, so focus on it survives one (dialog.js). */
+function button(label, onClick, className = "btn", key = null) {
   const b = el("button", className, label);
   b.type = "button";
-  b.addEventListener("click", onClick);
+  if (key) b.dataset.key = key;
+  if (onClick) b.addEventListener("click", onClick);
   return b;
 }
 
@@ -47,7 +53,6 @@ function persist() {
 
 export function installHosted() {
   root = document.getElementById("hosted");
-  registerRegion("hosted", { isOpen: () => state.open !== null, close: () => state.open !== "welcome" && state.open !== "elsewhere" && close() });
   // A tab that asks to take over gets the database: this one lets its worker go and says where Archipelago went.
   if (isHosted() && typeof BroadcastChannel === "function") {
     new BroadcastChannel("archipelago").addEventListener("message", (event) => {
@@ -84,7 +89,7 @@ export function openYourKey() {
         render();
       }
     })
-    .catch((error) => alert(error.message));
+    .catch((error) => toastError(error));
 }
 
 /** This browser's credit on our own server; null where there is none to show. */
@@ -147,6 +152,7 @@ async function buy(pack) {
   if (state.buying) return;
   state.buying = true;
   state.error = null;
+  state.buyError = null;
   render();
   try {
     const { url } = await (await call("/hosted/checkout", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ pack }) })).json();
@@ -156,16 +162,17 @@ async function buy(pack) {
     location.href = url;
   } catch (error) {
     state.buying = false;
-    state.error = error.message;
+    state.buyError = error.message; // said under the packs it concerns, not over the form's foot
     render();
   }
 }
 
 function open(kind) {
-  Object.assign(state, { open: kind, key: "", provider: state.view?.provider ?? null, model: state.view?.model ?? null, remember: state.view?.remember ?? true, saving: false, error: null, switching: false, tokenField: false });
+  Object.assign(state, { open: kind, key: "", provider: state.view?.provider ?? null, model: state.view?.model ?? null, remember: state.view?.remember ?? true, saving: false, error: null, buyError: null, switching: false, tokenField: false, moreOpen: false });
   render();
-  // Focus goes to the provider that is chosen: on the first one it reads as if that were the choice.
-  (root.querySelector(".providers input:checked") ?? root.querySelector(".models input:checked") ?? root.querySelector("input"))?.focus();
+  // Focus goes to what is chosen (the provider, else the model), never the first field: on the first one it reads
+  // as if that were the choice. The import question starts on Cancel, the take-over notice on Reload.
+  focusFirst(root);
 }
 
 function close() {
@@ -174,15 +181,25 @@ function close() {
   render();
 }
 
+/** A request to leave (Escape, the close button, a press on the veil). The welcome gate and the take-over notice have no way out but their own buttons. */
+function leave() {
+  if (state.saving || state.open === "welcome" || state.open === "elsewhere") return;
+  if (state.open === "import" && state.from === "welcome") return open("welcome"); // back to the gate it came from
+  close();
+}
+
 /** The provider the form shows: the one picked there, else the saved one. */
 const providerNow = () => state.view?.providers?.find((p) => p.id === state.provider) ?? state.view?.providers?.[0];
 
-/** Picking a provider shows its own key hint and the model last picked for it. */
-function pickProvider(id) {
+/**
+ * Picking a provider shows its own key hint and the model last picked for it. Picked with the pointer (`toField`),
+ * the keyboard moves on to the key field; picked with the arrow keys it stays on the switch, so they keep working.
+ */
+function pickProvider(id, { toField = true } = {}) {
   const p = state.view.providers.find((x) => x.id === id);
   Object.assign(state, { provider: id, key: "", model: state.view.models?.[id] ?? p.models[0]?.id ?? "", error: null });
   render();
-  root.querySelector('input[type="password"]')?.focus();
+  if (toField) (root.querySelector("#hosted-key") ?? root.querySelector(".providers input:checked"))?.focus();
 }
 
 async function saveKey({ stub = false } = {}) {
@@ -192,7 +209,8 @@ async function saveKey({ stub = false } = {}) {
   else if (state.key.trim()) patch.apiKey = state.key.trim();
   else if (!state.view?.keyHints?.[state.provider] && !providerNow()?.proxy) {
     state.error = t("hosted.pasteKey");
-    return render();
+    render();
+    return void root.querySelector("#hosted-key")?.focus(); // the field that needs something
   }
   state.saving = true;
   state.error = null;
@@ -243,7 +261,7 @@ export async function exportDatabase() {
     a.click();
     setTimeout(() => URL.revokeObjectURL(url), 10_000);
   } catch (error) {
-    alert(t("hosted.exportFailed", { message: error.message }));
+    toast(t("hosted.exportFailed", { message: error.message }), { kind: "error" });
   }
 }
 
@@ -258,6 +276,7 @@ export function importDatabase() {
     const from = state.open === "welcome" ? "welcome" : null;
     Object.assign(state, { open: "import", file, from, saving: false, error: null });
     render();
+    focusFirst(root); // Cancel: the safe answer has the keyboard
   });
   input.click();
 }
@@ -293,25 +312,40 @@ export function anotherTab(nav) {
 
 function render() {
   if (!root) return;
+  redraw(root, draw);
+}
+
+function draw() {
   root.hidden = state.open === null;
   root.classList.toggle("welcome", state.open === "welcome" || state.open === "elsewhere"); // nothing behind it yet, or nothing to use
+  // ⌘↵ is the key form's main action; the import question, which replaces everything, is never on a shortcut.
+  showDialog(root, state.open !== null, { close: leave, submit: state.open === "welcome" || state.open === "key" ? () => root.querySelector("form.fields")?.requestSubmit() : null });
   root.replaceChildren();
   if (state.open === null) return;
-  const card = el("div", "hosted-card");
+  const card = el("div", "dialog-card hosted-card");
+  root.setAttribute("aria-labelledby", "hosted-title");
   if (state.open === "welcome" || state.open === "key") renderKey(card);
   else if (state.open === "import") renderImport(card);
   else if (state.open === "elsewhere") {
-    card.append(el("div", "lbl", "Archipelago"), el("p", "help", t("hosted.movedHelp")));
-    card.append(row(button(t("hosted.reload"), () => location.reload())));
+    card.append(dialogHead("Archipelago", null, { id: "hosted-title" }), el("p", "help", t("hosted.movedHelp")));
+    card.append(dialogFoot([], [button(t("hosted.reload"), () => location.reload(), "btn", "reload")]));
   }
-  if (state.error) card.append(el("p", "error", state.error));
   root.append(card);
 }
 
+/** A row of quiet buttons: the ways further in, under the form. */
 function row(...children) {
   const r = el("div", "row");
   r.append(...children);
   return r;
+}
+
+/** A group's visible label (a switch, a list of radios), tied to the group by `aria-labelledby`. */
+function groupLabel(group, id, text) {
+  const label = el("div", "field-label", text);
+  label.id = id;
+  group.setAttribute("aria-labelledby", id);
+  return label;
 }
 
 function renderKey(card) {
@@ -322,31 +356,35 @@ function renderKey(card) {
   const simple = !welcome && Boolean(provider?.proxy) && !state.switching;
   // Our own server needs nothing pasted: its field shows only to someone who says they were given a token.
   const showKey = !simple && (!provider?.proxy || state.tokenField);
-  card.append(el("div", "lbl", welcome ? "Archipelago" : simple ? t("hosted.yourCredit") : t("hosted.yourKey")));
+  card.append(dialogHead(welcome ? "Archipelago" : simple ? t("hosted.yourCredit") : t("hosted.yourKey"), welcome ? null : leave, { id: "hosted-title" }));
   if (welcome) card.append(el("p", "lede", t("hosted.lede")));
   if (simple) card.append(creditEl());
   const form = el("form", "fields");
 
-  const providers = el("div", "providers");
+  // The provider switch: a segmented control of the family over a radio group, so the arrow keys move along it.
+  const providers = el("div", "providers segs");
   providers.setAttribute("role", "radiogroup");
-  providers.setAttribute("aria-label", t("hosted.providerLabel"));
+  let byPointer = false; // a pick made with the pointer moves on to the key field; one made with the arrow keys stays
   for (const p of state.view?.providers ?? []) {
-    const label = el("label", "provider");
+    const label = el("label", `provider${p.id === provider?.id ? " on" : ""}`);
     const radio = el("input");
     radio.type = "radio";
     radio.name = "provider";
+    radio.dataset.key = `provider:${p.id}`;
     radio.checked = p.id === provider?.id;
     radio.disabled = state.saving;
-    radio.addEventListener("change", () => pickProvider(p.id));
+    label.addEventListener("pointerdown", () => (byPointer = true));
+    radio.addEventListener("change", () => pickProvider(p.id, { toField: byPointer }));
     label.append(radio, p.name);
     if (state.view.keyHints?.[p.id]) label.append(el("span", "has-key", "•"));
     providers.append(label);
   }
-  if (!simple) form.append(providers);
+  if (!simple) form.append(groupLabel(providers, "hosted-provider-label", t("hosted.providerLabel")), providers);
   // Among the providers, our own server's tab shows its credit where another's shows a key field.
   if (!simple && !welcome && provider?.proxy) form.append(creditEl());
 
-  const field = el("input");
+  const field = el("input", "field");
+  field.id = "hosted-key";
   field.type = "password";
   field.autocomplete = "off";
   field.spellcheck = false;
@@ -354,11 +392,24 @@ function renderKey(card) {
   field.placeholder = keyHint ? t("hosted.keySet", { hint: keyHint }) : provider?.proxy ? t("hosted.tokenOptional") : provider?.placeholder ?? "";
   field.value = state.key;
   field.disabled = state.saving;
-  field.setAttribute("aria-label", t("hosted.keyLabel", { provider: provider?.name ?? "" }));
   field.addEventListener("input", () => (state.key = field.value));
-  if (showKey) form.append(field);
+  const remember = el("label", "remember");
+  const box = el("input");
+  box.type = "checkbox";
+  box.dataset.key = "remember";
+  box.checked = state.remember;
+  box.addEventListener("change", () => (state.remember = box.checked));
+  remember.append(box, ` ${t("hosted.remember")}`);
+  // What went wrong is said under the key it concerns, when the key is showing; else over the foot.
+  const problem = state.error ? el("p", "error", state.error) : null;
+  if (showKey) {
+    const keyed = labelled(provider?.proxy ? t("hosted.tokenLabel") : t("hosted.keyLabel", { provider: provider?.name ?? "" }), field);
+    if (problem) keyed.append(problem);
+    form.append(keyed, remember);
+  }
 
   const models = el("div", "models");
+  models.setAttribute("role", "radiogroup");
   const radios = [];
   let other = null;
   const preset = (provider?.models ?? []).some((m) => m.id === state.model);
@@ -367,6 +418,7 @@ function renderKey(card) {
     const radio = el("input");
     radio.type = "radio";
     radio.name = "model";
+    radio.dataset.key = `model:${m.id}`;
     radio.checked = state.model === m.id;
     radio.addEventListener("change", () => {
       state.model = m.id;
@@ -377,14 +429,14 @@ function renderKey(card) {
     label.append(radio, el("span", "name", m.name), el("span", "note", t(`hosted.${m.note}`)));
     models.append(label);
   }
+  form.append(groupLabel(models, "hosted-model-label", t("hosted.modelLabel")), models);
   // A provider that serves any model takes its id here; typing one unpicks the listed ones.
   if (provider?.custom) {
-    other = el("input", "model-id");
+    other = el("input", "field model-id");
+    other.id = "hosted-model-id";
     other.type = "text";
     other.autocomplete = "off";
     other.spellcheck = false;
-    other.placeholder = t("hosted.modelOther", { provider: provider.name });
-    other.setAttribute("aria-label", other.placeholder);
     other.value = preset ? "" : state.model ?? "";
     other.disabled = state.saving;
     other.addEventListener("input", () => {
@@ -392,31 +444,24 @@ function renderKey(card) {
       state.model = id || provider.models[0].id;
       for (const radio of radios) radio.checked = !id && radio === radios[0];
     });
-    models.append(other);
+    form.append(labelled(t("hosted.modelOther", { provider: provider.name }), other));
   }
-  if (simple) form.append(el("div", "sect", t("hosted.modelLabel")));
-  form.append(models);
-
-  const remember = el("label", "remember");
-  const box = el("input");
-  box.type = "checkbox";
-  box.checked = state.remember;
-  box.addEventListener("change", () => (state.remember = box.checked));
-  remember.append(box, ` ${t("hosted.remember")}`);
-  if (showKey) form.append(remember);
+  if (problem && !showKey) form.append(problem);
 
   // In the credit view nothing waits to be saved (a model is saved as it is picked), so the one button closes.
-  const actions = row(simple ? button(t("hosted.done"), close) : button(state.saving ? t("hosted.saving") : welcome ? t("hosted.start") : t("hosted.save"), () => void saveKey()));
-  actions.firstChild.type = "submit";
-  actions.firstChild.disabled = state.saving;
-  if (welcome) actions.append(button(t("hosted.tryWithout"), () => void saveKey({ stub: true }), "btn ghost"));
+  const main = button(simple ? t("hosted.done") : state.saving ? t("hosted.saving") : welcome ? t("hosted.start") : t("hosted.save"), null, "btn", "submit");
+  main.type = "submit";
+  main.disabled = state.saving;
+  const lead = [];
+  const actions = [];
+  if (welcome) actions.push(button(t("hosted.tryWithout"), () => void saveKey({ stub: true }), "btn ghost", "try-without"));
   else if (!simple) {
     // The token is the only handle on credit that was paid for: no button here throws it away.
     const holdsCredit = provider?.proxy && state.credit?.purchased;
-    if (keyHint && !holdsCredit && !simple) actions.append(button(t("hosted.forgetKey"), () => void forgetKey(), "btn ghost"));
-    actions.append(button(t("hosted.cancel"), close, "btn ghost"));
+    if (keyHint && !holdsCredit) lead.push(button(t("hosted.forgetKey"), () => void forgetKey(), "btn ghost danger", "forget"));
+    actions.push(button(t("hosted.cancel"), leave, "btn ghost", "cancel"));
   }
-  form.append(actions);
+  form.append(dialogFoot(lead, [...actions, main]));
   form.addEventListener("submit", (e) => {
     e.preventDefault();
     if (simple) close();
@@ -435,7 +480,7 @@ function renderKey(card) {
       get.append(before, link, after);
       card.append(get);
     }
-    card.append(row(button(t("hosted.importDatabase"), importDatabase, "btn link")));
+    card.append(row(button(t("hosted.importDatabase"), importDatabase, "btn quiet md", "import")));
   }
   if (welcome) {
     // The landing page names every way to use Archipelago; Claude Code is the one this card cannot offer.
@@ -445,8 +490,6 @@ function renderKey(card) {
     const [before, after = ""] = t("hosted.claudeCode").split("{link}");
     other.append(before, link, after);
     card.append(other);
-  }
-  if (welcome) {
     if (provider) card.append(noticeEl(provider));
     card.append(legalEl());
     return;
@@ -456,16 +499,18 @@ function renderKey(card) {
     button(t(key), () => {
       Object.assign(state, change);
       render();
-      root.querySelector('.providers input:checked, input[type="password"]')?.focus();
-    }, "btn link");
+      (root.querySelector("#hosted-key") ?? root.querySelector(".providers input:checked"))?.focus();
+    }, "btn quiet md", "reveal");
   if (simple) {
     // Straight to the first provider that takes a key, with the others beside it.
     const own = state.view?.providers?.find((p) => !p.proxy);
-    card.append(row(button(t("hosted.ownKey"), () => ((state.switching = true), own ? pickProvider(own.id) : render()), "btn link")));
+    card.append(row(button(t("hosted.ownKey"), () => ((state.switching = true), own ? pickProvider(own.id) : render()), "btn quiet md", "own-key")));
   }
   else if (provider?.proxy && !state.tokenField) card.append(row(reveal("hosted.haveToken", { tokenField: true })));
   // The long explanations are there for whoever wants them, folded.
   const more = el("details", "more");
+  more.open = state.moreOpen; // kept in the state: a redraw builds the element again
+  more.addEventListener("toggle", () => (state.moreOpen = more.open));
   more.append(el("summary", null, t("hosted.howItWorks")));
   if (provider?.proxy) more.append(howEl());
   else if (provider) more.append(noticeEl(provider));
@@ -530,20 +575,27 @@ function creditEl() {
   else if (left <= 0) credit.append(el("p", "left", t(packs.length ? "hosted.creditOut" : "hosted.creditOutKey")));
   else credit.append(el("p", "left", t(purchased ? "hosted.creditLeft" : "hosted.creditFree", { amount: amountOf(left) })));
   if (packs.length) {
-    credit.append(el("div", "sect", t("hosted.addCreditLabel")));
-    const buttons = row(...packs.map((usd) => button(t("hosted.addCredit", { amount: usd }), () => void buy(usd), "btn ghost")));
+    credit.append(el("div", "field-label", t("hosted.addCreditLabel")));
+    const buttons = row(...packs.map((usd) => button(t("hosted.addCredit", { amount: usd }), () => void buy(usd), "btn ghost", `pack:${usd}`)));
     for (const b of buttons.children) b.disabled = state.buying;
-    credit.append(buttons, el("p", "help", t(state.buying ? "hosted.openingCheckout" : "hosted.creditShort")));
+    credit.append(buttons);
+    if (state.buyError) credit.append(el("p", "error", state.buyError));
+    credit.append(el("p", "help", t(state.buying ? "hosted.openingCheckout" : "hosted.creditShort")));
   }
   return credit;
 }
 
+/** The question before a backup replaces everything in this browser: a destructive confirm like the others, the safe answer focused. */
 function renderImport(card) {
-  card.append(el("div", "lbl", t("hosted.importTitle")));
-  card.append(el("p", "help", t("hosted.importHelp", { file: state.file.name })));
-  const actions = row(button(state.saving ? t("hosted.importing") : t("hosted.replace"), () => void replaceWith(state.file)));
-  actions.firstChild.disabled = state.saving;
-  if (state.from !== "welcome") actions.append(button(t("hosted.exportFirst"), () => void exportDatabase(), "btn ghost"));
-  actions.append(button(t("hosted.cancel"), () => (state.from === "welcome" ? open("welcome") : close()), "btn ghost"));
-  card.append(actions);
+  card.append(dialogHead(t("hosted.importTitle"), leave, { id: "hosted-title" }));
+  card.append(el("p", "confirm", t("hosted.importHelp", { file: state.file.name })));
+  if (state.error) card.append(el("p", "error", state.error));
+  const replace = button(state.saving ? t("hosted.importing") : t("hosted.replace"), () => void replaceWith(state.file), "btn danger", "replace");
+  replace.disabled = state.saving;
+  const cancel = button(t("hosted.cancel"), leave, "btn ghost", "cancel");
+  cancel.dataset.autofocus = "";
+  cancel.disabled = state.saving;
+  // Beside the decision, at the left: a copy of what is here, before it goes.
+  const lead = state.from === "welcome" ? [] : [button(t("hosted.exportFirst"), () => void exportDatabase(), "btn ghost", "export-first")];
+  card.append(dialogFoot(lead, [cancel, replace]));
 }

@@ -14,9 +14,17 @@ import { listSeas } from "./repositories/seaRepository.ts";
 
 export type VerdictView = { state: VerdictState; confidence: number; evidence: string; rationale: string | null; at: string };
 export type RollupState = Record<VerdictState | "open", number>;
-export type LandmarkView = { slug: string; name: string; lit: boolean; evidence: string | null; exploredAt: string | null; terms: string[] };
-/** An open loose end as the page shows it: `landmark` is the slug it hangs on, null for the island as a whole. */
-export type LooseEndView = { id: number; kind: LooseEndKind; landmark: string | null; note: string; evidence: string; author: "judge" | "mentor" };
+/**
+ * A landmark as the page shows it. `evidence` is the reader's words the Keeper lit it from and `messageId` the message
+ * they are in (null when it was lit from the terminal); `exploredEvidence` and `exploredMessageId` are the mentor's, so
+ * the pane can mark the quote in the reader's own message in either lens.
+ */
+export type LandmarkView = {
+  slug: string; name: string; lit: boolean; evidence: string | null; messageId: number | null;
+  exploredAt: string | null; exploredEvidence: string | null; exploredMessageId: number | null; terms: string[];
+};
+/** An open loose end as the page shows it: `landmark` is the slug it hangs on, null for the island as a whole; `messageId` is the reader's message its `evidence` quotes. */
+export type LooseEndView = { id: number; kind: LooseEndKind; landmark: string | null; note: string; evidence: string; messageId: number | null; author: "judge" | "mentor" };
 export type IslandView = {
   slug: string;
   name: string;
@@ -85,12 +93,15 @@ function emptyRollup(): RollupState {
 function looseEndView(list: LooseEnd[], landmarks: Landmark[]): LooseEndView[] {
   const slugs = new Map(landmarks.map((l) => [l.id, l.slug]));
   return list.map((e) => ({
-    id: e.id, kind: e.kind, landmark: e.landmarkId === null ? null : (slugs.get(e.landmarkId) ?? null), note: e.note, evidence: e.evidence, author: e.author,
+    id: e.id, kind: e.kind, landmark: e.landmarkId === null ? null : (slugs.get(e.landmarkId) ?? null), note: e.note, evidence: e.evidence, messageId: e.messageId, author: e.author,
   }));
 }
 
 function landmarkView(list: Landmark[]): { total: number; unlocked: number; explored: number; items: LandmarkView[] } {
-  const items = list.map((l) => ({ slug: l.slug, name: l.name, lit: l.unlockedAt !== null, evidence: l.evidence, exploredAt: l.exploredAt, terms: l.terms ?? [] }));
+  const items = list.map((l) => ({
+    slug: l.slug, name: l.name, lit: l.unlockedAt !== null, evidence: l.evidence, messageId: l.messageId,
+    exploredAt: l.exploredAt, exploredEvidence: l.exploredEvidence, exploredMessageId: l.exploredMessageId, terms: l.terms ?? [],
+  }));
   return {
     total: items.length,
     unlocked: items.filter((i) => i.lit).length,

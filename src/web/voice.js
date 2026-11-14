@@ -2,9 +2,11 @@
 // an <audio> that streams /api/speak, so it starts within a second and outlives the pane's rebuilds. Each reply's
 // Listen pill follows it by message id (idle, starting, reading, paused), and the now-playing bar at the map's
 // bottom left names who is reading on which island from anywhere: 15 s back and forward, pause, speed (1×, 1.5×,
-// 2×, kept per browser), stop, a progress line to seek on, or tap it to go back to the reply. Read aloud (per
-// browser) plays each new reply when its turn ends.
+// 2×, kept per browser), stop, a progress line along its foot to seek on, or tap it to go back to the reply. Read
+// aloud (per browser) plays each new reply when its turn ends.
 import { t } from "./i18n.js";
+import { icon } from "./icons.js";
+import { tip } from "./tip.js";
 
 const AUTO = "voice:auto";
 const RATE = "voice:rate";
@@ -92,7 +94,7 @@ function sync() {
     const name = b.dataset.name;
     const key = { idle: "listen", starting: "starting", reading: "pause", paused: "resume" }[state];
     b.querySelector(".lbl").textContent = name ? t(`voice.${key}As`, { name }) : t(`voice.${key}`);
-    b.title = t(state === "idle" ? "voice.playTitle" : state === "paused" ? "voice.resumeTitle" : "voice.pauseTitle");
+    tip(b, t(state === "idle" ? "voice.playTitle" : state === "paused" ? "voice.resumeTitle" : "voice.pauseTitle"));
   }
   drawBar();
 }
@@ -155,6 +157,7 @@ export function speakButton(id, role, meta = {}) {
   const b = document.createElement("button");
   b.type = "button";
   b.className = "speak";
+  b.dataset.fk = `speak-${id}`; // the keyboard finds it again when its reply is drawn anew
   b.dataset.id = String(id);
   const name = nameOf(role);
   if (name) b.dataset.name = name;
@@ -207,12 +210,17 @@ function button(cls, onClick) {
   return b;
 }
 
-/** The now-playing bar: built once, drawn from the reading's state, hidden when nothing reads. */
+/**
+ * The now-playing bar: built once, drawn from the reading's state, hidden when nothing reads. One row at the map's
+ * bottom left (who reads, on which island, the clock, the controls) with the progress line along its foot. When it
+ * comes or goes it says so with a `voice` event, since the bottom card steps over it.
+ */
 function drawBar() {
   if (!bar) {
     bar = document.createElement("div");
     bar.className = "now-playing";
     bar.setAttribute("role", "region");
+    bar.hidden = true;
     const go = button("np-go", () => playing?.go?.(playing.id));
     const text = document.createElement("span");
     text.className = "np-text";
@@ -222,19 +230,20 @@ function drawBar() {
       text.append(span);
     }
     go.append(barsEl(), text);
+    const time = document.createElement("span");
+    time.className = "np-time";
     const controls = document.createElement("span");
     controls.className = "np-controls";
     controls.append(
       button("np-back", () => audio && seekTo(audio.currentTime - SKIP)),
       button("np-pause", togglePause),
       button("np-fwd", () => audio && seekTo(audio.currentTime + SKIP)),
-    );
-    controls.querySelector(".np-back").append(skipIcon(SKIP, true));
-    controls.querySelector(".np-fwd").append(skipIcon(SKIP, false));
-    controls.append(
       button("np-rate", cycleRate),
       button("np-stop", stopSpeaking),
     );
+    controls.querySelector(".np-back").append(skipIcon(SKIP, true));
+    controls.querySelector(".np-fwd").append(skipIcon(SKIP, false));
+    controls.querySelector(".np-stop").append(icon("close", { size: 14 }));
     const track = document.createElement("div");
     track.className = "np-track";
     const fill = document.createElement("div");
@@ -246,18 +255,13 @@ function drawBar() {
       const r = track.getBoundingClientRect();
       seekTo(((e.clientX - r.left) / r.width) * lengthOf(audio));
     });
-    const time = document.createElement("span");
-    time.className = "np-time";
-    const row = document.createElement("div");
-    row.className = "np-row";
-    row.append(go, controls);
-    const progress = document.createElement("div");
-    progress.className = "np-progress";
-    progress.append(track, time);
-    bar.append(row, progress);
+    bar.append(go, time, controls, track);
     document.body.append(bar);
   }
-  bar.hidden = !playing;
+  if (bar.hidden !== !playing) {
+    bar.hidden = !playing;
+    document.dispatchEvent(new CustomEvent("voice", { detail: { reading: Boolean(playing) } }));
+  }
   if (!playing) return;
   bar.dataset.state = stateOf(playing.id);
   bar.dataset.role = playing.role ?? "";
@@ -266,18 +270,23 @@ function drawBar() {
   const name = nameOf(playing.role);
   bar.querySelector(".np-who").textContent = name ? t("voice.whoAs", { name, persona }) : persona;
   bar.querySelector(".np-where").textContent = playing.island;
-  bar.querySelector(".np-go").title = t("voice.goTitle");
-  const label = (cls, text, title) => {
+  // Each control says what it does when the pointer rests on it; none has words of its own, so the same line names it.
+  const label = (cls, words) => {
     const b = bar.querySelector(cls);
-    if (text !== null) b.textContent = text;
-    b.title = title;
-    b.setAttribute("aria-label", title);
+    tip(b, words);
+    b.setAttribute("aria-label", words);
+    return b;
   };
-  label(".np-back", null, t("voice.backTitle", { n: SKIP }));
-  label(".np-pause", paused ? "▶" : "❚❚", t(paused ? "voice.resumeTitle" : "voice.pauseTitle"));
-  label(".np-fwd", null, t("voice.forwardTitle", { n: SKIP }));
-  label(".np-rate", `${rate()}×`, t("voice.rateTitle"));
-  label(".np-stop", "×", t("voice.stopTitle"));
+  label(".np-go", t("voice.goTitle"));
+  label(".np-back", t("voice.backTitle", { n: SKIP }));
+  const pause = label(".np-pause", t(paused ? "voice.resumeTitle" : "voice.pauseTitle"));
+  if (pause.dataset.shows !== String(paused)) {
+    pause.dataset.shows = String(paused);
+    pause.replaceChildren(icon(paused ? "play" : "pause", { size: 14 }));
+  }
+  label(".np-fwd", t("voice.forwardTitle", { n: SKIP }));
+  label(".np-rate", t("voice.rateTitle")).textContent = `${rate()}×`;
+  label(".np-stop", t("voice.stopTitle"));
   drawProgress();
 }
 
@@ -296,11 +305,12 @@ export function autoReadEl() {
   const b = document.createElement("button");
   b.type = "button";
   b.className = "read-aloud";
+  b.dataset.fk = "read-aloud";
   const draw = () => {
     const on = autoRead();
     b.textContent = t(on ? "voice.autoOn" : "voice.autoOff");
     b.setAttribute("aria-pressed", String(on));
-    b.title = t("voice.autoTitle");
+    tip(b, t("voice.autoTitle"));
   };
   b.addEventListener("click", () => {
     setAutoRead(!autoRead());

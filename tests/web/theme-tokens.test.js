@@ -48,3 +48,13 @@ test("every registered theme defines --explore, the mentor lens's lamp, as six-d
     expect(b["--explore"]).toMatch(/^#[0-9A-Fa-f]{6}$/);
   }
 });
+
+test("the scale block holds no literal colour, and braces balance", () => {
+  const start = css.indexOf(":root {", css.indexOf(`:root[data-theme="${THEMES.at(-1).id}"]`));
+  expect(start).toBeGreaterThan(0);
+  const scale = css.slice(start, css.indexOf("}", start));
+  expect(scale).toContain("--sp-1");
+  expect(scale.match(/rgba?\(|#[0-9A-Fa-f]{3,8}\b/g) ?? []).toEqual([]);
+  // a stray brace silently drops the rule after it
+  expect(css.split("{").length).toBe(css.split("}").length);
+});

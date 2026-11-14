@@ -85,8 +85,11 @@ export function removeSeaById(id) {
   return write({ op: "remove", id }).catch((error) => console.error(error));
 }
 
-/** The "Remove sea" button under a selected sea's name; placed every frame by app.js. */
+let removeAt = ""; // where the button was last put: a frame that moves nothing writes nothing to the page
+
+/** The "Remove sea" button under a selected sea's name; app.js places it on every frame it draws. */
 export function placeRemoveButton(box) {
+  if (!box && !removeButton) return; // no sea has been selected yet: nothing to make, nothing to hide
   if (!removeButton) {
     removeButton = document.createElement("button");
     removeButton.type = "button";
@@ -95,9 +98,15 @@ export function placeRemoveButton(box) {
     removeButton.addEventListener("click", () => app.selectedSea !== null && void removeSeaById(app.selectedSea));
     document.body.append(removeButton);
   }
-  removeButton.hidden = !box || editor !== null;
-  if (!box) return;
   const c = app.camera.state;
-  removeButton.style.left = `${((box.x0 + box.x1) / 2) * c.scale + c.x}px`;
-  removeButton.style.top = `${box.y1 * c.scale + c.y + 8}px`;
+  const hidden = !box || editor !== null;
+  const left = hidden ? 0 : ((box.x0 + box.x1) / 2) * c.scale + c.x;
+  const top = hidden ? 0 : box.y1 * c.scale + c.y + 8;
+  const at = hidden ? "" : `${left}|${top}`;
+  if (at === removeAt && removeButton.hidden === hidden) return;
+  removeAt = at;
+  removeButton.hidden = hidden;
+  if (hidden) return;
+  removeButton.style.left = `${left}px`;
+  removeButton.style.top = `${top}px`;
 }

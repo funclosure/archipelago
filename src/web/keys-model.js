@@ -1,5 +1,6 @@
 // Pure, DOM-free: which region is next, what Escape does, where the outline cursor goes, what the cheat sheet says.
 import { t } from "./i18n.js";
+import { tipKeys } from "./tip-model.js";
 
 export const REGIONS = ["outline", "map", "pane"];
 
@@ -15,34 +16,28 @@ export function isTyping(target) {
   return tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || Boolean(target.isContentEditable);
 }
 
-/** The one thing Escape does this press, top rung first. `about` is the learner note editor, `editor` the board's editor, `board` the board itself, `chart` the cartographer's pane, `group` islands gathered with shift. */
-export function escapeRung({ sheetOpen, about = false, menuOpen, turn = false, typing, editor = false, board = false, cursor, chart = false, group = false, sea = false, selected }) {
-  if (sheetOpen) return "sheet";
-  if (about) return "about";
+/**
+ * The one thing Escape does this press, top rung first: the innermost thing always goes first. `dialog` is any modal
+ * dialog (dialog.js: New domain, About you, Images…, the viewer, the cheat sheet, the hosted build's), which steps
+ * back or closes by its own rule; `hint` a strip hint pinned open by a click; `editor` the board's editor, `board`
+ * the board itself; `loose` a landmark's loose ends unfolded in the pane; `chart` the cartographer's pane; `group`
+ * islands gathered with shift. To add a rung, add its flag here in its place and its act in keys.js's `escape`.
+ */
+export function escapeRung({ dialog = false, menuOpen = false, hint = false, turn = false, typing = false, editor = false, board = false, loose = false, cursor = false, chart = false, group = false, sea = false, selected = false }) {
+  if (dialog) return "dialog";
   if (menuOpen) return "menu";
+  if (hint) return "hint"; // a pinned hint card folds before anything under it changes
   if (turn) return "stop"; // a reply is streaming: Escape stops it, wherever focus is
   if (typing) return "blur";
   if (editor) return "editor";
   if (board) return "board";
+  if (loose) return "loose"; // the unfolded loose ends fold before the pane closes
   if (cursor) return "cursor";
   if (chart) return "chart"; // the cartographer's pane closes as an island's does
   if (group) return "group"; // a gathered group lets go first
   if (sea) return "sea"; // a selected sea's name lets go before the island does
   if (selected) return "deselect";
   return null;
-}
-
-/**
- * What a key does while the About you editor is open (it is modal for page keys):
- * "escape" runs the Escape ladder, "save" is Cmd-Enter, "native" leaves Tab to the browser inside the editor,
- * "enter" pulls focus into the editor, "ignore" leaves browser shortcuts alone, "block" stops region keys.
- */
-export function aboutKey({ key, meta = false, ctrl = false, alt = false, inAbout = false }) {
-  if (key === "Escape") return "escape";
-  if (key === "Enter" && meta) return "save";
-  if (key === "Tab" && !meta && !ctrl && !alt) return inAbout ? "native" : "enter";
-  if (key === "Tab" || meta || alt) return "ignore";
-  return "block";
 }
 
 /**
@@ -83,21 +78,73 @@ export function moveCursor(rows, cursorSlug, key) {
 }
 
 const k = (key) => t(`keysModel.${key}`);
-const EVERYWHERE = [["Tab", k("nextRegion")], ["⇧Tab", k("previousRegion")], ["[", k("outlineKey")], ["/", k("answer")], ["b", k("boardKey")], ["m", k("mode")], ["t", k("theme")], ["?", k("keys")], ["Esc", k("back")]];
-const CHART_KEYS = { title: k("cartographer"), keys: [["↵ /", k("answer")], ["l", k("startSketch")], ["⌘↵", k("approveSketch")], ["↑ ↓", k("scroll")], ["Esc", k("close")]] };
-const REGION_KEYS = {
-  outline: { title: k("outline"), keys: [["↓ j", k("move")], ["↑ k", k("move")], ["↵", k("select")], ["→ ←", k("expandCollapse")], ["Home End", k("firstLast")], ["n", k("newDomain")]] },
-  map: { title: k("map"), keys: [["↵", k("select")], ["← → ↑ ↓", k("pan")], ["+ −", k("zoom")], ["0", k("home")], ["Esc", k("deselect")], [k("doubleClickWater"), k("nameSea")], ["Del", k("removeSea")], [k("shiftClick"), k("gather")], [k("shiftDragWater"), k("gatherBox")], [k("dragGathered"), k("moveTogether")]] },
-  pane: { title: k("pane"), keys: [["↵ /", k("answer")], ["l", k("landfall")], ["n", k("note")], ["1–4", k("pickOption")], ["c", k("confirmReef")], ["d", k("dispute")], ["↑ ↓", k("scroll")], ["⌘↵", k("send")]] },
-  board: { title: k("board"), keys: [["↓ j", k("move")], ["↑ k", k("move")], ["↵", k("edit")], ["⇧J ⇧K", k("moveCard")], ["d n c p", k("addCard")], ["x", k("remove")], ["⌘↵", k("save")], ["b", k("mapKey")]] },
-};
-const EVERYWHERE_SECTION = { title: k("everywhere"), keys: EVERYWHERE };
 
-/** The cheat sheet's sections for a region. With `board`, the map's slot shows the board's keys; with `chart`, the pane's shows the cartographer's. */
+/**
+ * The cheat sheet's data: the page's map of keys. One entry per section; a row is [keys, what they do]. `keys` is a
+ * string of caps separated by spaces ("↑ ↓ j k" is four caps, "⇧Tab" one). A row with "gesture" as its third element
+ * is something done with the pointer, shown as words instead of caps. To list a new key, add a row to its section
+ * here and its words to strings/keys-model.js (both languages); the sheet draws whatever is here.
+ */
+export const KEY_SECTIONS = {
+  everywhere: {
+    title: k("everywhere"),
+    rows: [["Tab ⇧Tab", k("nextRegion")], ["[", k("outlineKey")], ["/", k("answer")], ["b", k("boardKey")], ["m", k("mode")], ["t", k("theme")], ["?", k("keys")], ["Esc", k("back")]],
+  },
+  outline: {
+    title: k("outline"),
+    rows: [["↑ ↓ j k", k("move")], ["↵", k("select")], ["→ ←", k("expandCollapse")], ["Home End", k("firstLast")], ["n", k("newDomain")], ["d", k("domainMenu")]],
+  },
+  map: {
+    title: k("map"),
+    rows: [
+      ["↵", k("selectNearest")],
+      ["← → ↑ ↓", k("pan")],
+      ["+ −", k("zoom")],
+      ["0", k("home")],
+      ["g", k("guideKey")],
+      ["c", k("cartographerKey")],
+      ["1 2", k("beginWith")],
+      ["s", k("sailNext")],
+      ["h ← →", k("headerKey")],
+      ["Esc", k("deselect")],
+      ["Del", k("removeSea")],
+      [k("doubleClickWater"), k("nameSea"), "gesture"],
+      [k("shiftClick"), k("gather"), "gesture"],
+      [k("shiftDragWater"), k("gatherBox"), "gesture"],
+      [k("dragGathered"), k("moveTogether"), "gesture"],
+    ],
+  },
+  board: {
+    title: k("board"),
+    rows: [["↑ ↓ j k", k("move")], ["↵", k("edit")], ["⇧J ⇧K", k("moveCard")], ["d n c p", k("addCard")], ["x", k("remove")], ["u", k("undo")], ["⌘↵", k("save")], ["b", k("mapKey")]],
+  },
+  pane: {
+    title: k("pane"),
+    rows: [["↵ /", k("answer")], ["l", k("landfall")], ["n", k("note")], ["1–4", k("pickOption")], ["c", k("confirmReef")], ["d", k("dispute")], ["s", k("sailCloser")], ["g", k("followPointer")], ["r", k("retry")], ["↑ ↓", k("scroll")], ["← →", k("controls")], ["⌘↵", k("send")]],
+  },
+  chart: {
+    title: k("cartographer"),
+    rows: [["↵ /", k("answer")], ["l", k("startSketch")], ["⌘↵", k("approveSketch")], ["g", k("followPointer")], ["↑ ↓", k("scroll")], ["← →", k("controls")], ["Esc", k("close")]],
+  },
+};
+
+/** The key the command palette opens with. The sheet names it at its foot; the palette itself wires the key. */
+export const PALETTE_KEY = "⌘K";
+
+const section = (id, here) => {
+  const { title, rows } = KEY_SECTIONS[id];
+  return { id, title, here, rows: rows.map(([keys, label, kind]) => (kind === "gesture" ? { keys: [], gesture: keys, label } : { keys: keys.split(" ").map((key) => tipKeys(key)), gesture: null, label })) };
+};
+
+/**
+ * The cheat sheet: every section of where the page is now, in the order of the regions. With `board`, the map's
+ * slot holds the board's keys; with `chart`, the pane's holds the cartographer's. `here` marks the section of the
+ * region that has the keyboard. Each row is { keys, gesture, label }: `keys` is one entry per alternative, each the
+ * caps pressed together as a tooltip splits them ("⇧J ⇧K" → [["⇧", "J"], ["⇧", "K"]]); `gesture` is words or null.
+ */
 export function cheatSheet(region, { board = false, chart = false } = {}) {
-  if (region === "pane" && chart) return [EVERYWHERE_SECTION, CHART_KEYS];
-  const key = region === "map" && board ? "board" : region;
-  return [EVERYWHERE_SECTION, REGION_KEYS[key] ?? REGION_KEYS.outline];
+  const at = REGIONS.includes(region) ? region : "outline";
+  return [section("everywhere", false), section("outline", at === "outline"), section(board ? "board" : "map", at === "map"), section(chart ? "chart" : "pane", at === "pane")];
 }
 
 /**

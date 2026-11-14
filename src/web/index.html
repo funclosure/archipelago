@@ -30,9 +30,10 @@
   <div class="chrome-stack">
     <div class="title-row">
       <nav id="breadcrumb" class="breadcrumb" aria-label="Scale"></nav>
+      <div id="status" class="status" role="status"></div>
+      <div id="lens" class="segs lens" role="group" aria-label="What the map shows" hidden></div>
     </div>
-    <div id="strip" class="strip"></div>
-    <div id="status" class="status"></div>
+    <div id="strip" class="strip" role="group" aria-label="This scale"></div>
   </div>
 </header>
 
@@ -42,12 +43,12 @@
 <div id="board-scrim" class="board-scrim" hidden></div>
 <section id="board" class="board" tabindex="0" aria-label="Board" hidden></section>
 <button id="board-toggle" class="board-toggle" type="button" hidden></button>
-<div id="about" class="about" role="dialog" aria-label="About you" hidden></div>
-<div id="new-domain" class="new-domain" role="dialog" aria-label="New domain" hidden></div>
-<div id="hosted" class="hosted" role="dialog" aria-label="Archipelago" hidden></div>
-<div id="viewer" class="viewer" role="dialog" aria-label="Image" hidden></div>
-<div id="images-sheet" class="images-sheet" role="dialog" aria-label="Images" hidden></div>
-<div id="keys" class="keys" hidden></div>
+<div id="about" class="dialog-shell about" role="dialog" hidden></div>
+<div id="new-domain" class="dialog-shell new-domain" role="dialog" hidden></div>
+<div id="hosted" class="dialog-shell hosted" role="dialog" hidden></div>
+<div id="viewer" class="dialog-shell viewer" role="dialog" hidden></div>
+<div id="images-sheet" class="dialog-shell images-sheet" role="dialog" hidden></div>
+<div id="keys" class="dialog-shell keys" role="dialog" hidden></div>
 
 <script src="/vendor/mermaid.js"></script>
 <script type="module" src="/app.js"></script>

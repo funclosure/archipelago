@@ -156,6 +156,119 @@ export function mdBlocks(text) {
   return blocks;
 }
 
+const FOLDED = { "，": ",", "：": ":", "；": ";", "（": "(", "）": ")", "？": "?", "！": "!" };
+
+/**
+ * A string without what the page's drawing changes in it: whitespace, markdown's own marks, capitals, and the
+ * full-width punctuation `cjkPunctuation` writes. `at[i]` is where character `i` of `text` stood.
+ */
+function folded(value) {
+  const source = String(value);
+  const at = [];
+  let text = "";
+  for (let i = 0; i < source.length; i++) {
+    const ch = source[i];
+    if (/\s/.test(ch) || ch === "*" || ch === "`" || ch === "_") continue;
+    const low = ch.toLowerCase(); // a quote lifted from mid-sentence often gains or loses a capital
+    text += FOLDED[ch] ?? (low.length === 1 ? low : ch);
+    at.push(i);
+  }
+  return { text, at };
+}
+
+/**
+ * Where `quote` sits in `text`, as `[start, end)`, or null when it is not there. Forgiving of what differs between
+ * the words as stored and as drawn (spacing, a line break, **bold** marks, a capital, full-width punctuation), since the quote
+ * is a persona's copy of the reader's words and the page looks for it in what it drew.
+ */
+export function quoteRange(text, quote) {
+  const q = folded(quote).text;
+  if (!q) return null;
+  const whole = folded(text);
+  const i = whole.text.indexOf(q);
+  return i < 0 ? null : [whole.at[i], whole.at[i + q.length - 1] + 1];
+}
+
+/**
+ * The parts of a message's text nodes (`chunks`, in reading order) that `quote` covers, as `[{ chunk, start, end }]`:
+ * a quote may run across a line break or through bold words, so it can take part of several nodes. Empty when the
+ * quote is not in them.
+ */
+export function quoteSpans(chunks, quote) {
+  const range = quoteRange(chunks.join("\n"), quote);
+  if (!range) return [];
+  const out = [];
+  let offset = 0;
+  chunks.forEach((chunk, i) => {
+    const start = Math.max(range[0], offset);
+    const end = Math.min(range[1], offset + chunk.length);
+    if (end > start && chunk.slice(start - offset, end - offset).trim()) out.push({ chunk: i, start: start - offset, end: end - offset });
+    offset += chunk.length + 1;
+  });
+  return out;
+}
+
+const LOOSE_PREFIX = "loose end: ";
+const MARK_ORDER = { lit: 0, explored: 0, reef: 1, loose: 2 };
+
+/**
+ * What the thread's lines rest on, found in the reader's own messages. A lit (or explored) landmark, a reef and a
+ * loose end each quote the reader; this ties each quote to the message it was said in, so the page can underline
+ * the words there and name them on the line.
+ *
+ * Returns `{ byMessage, byLine }`: `byMessage` maps a reader message's id to its marks `[{ quote, kind, key }]`
+ * (`kind`: lit, explored, reef, loose; `key` links the mark, the line and the landmark's chip on hover), and
+ * `byLine` maps a system line's or a proposal's id to `{ key, quote, slug }`. A quote the page cannot find in the
+ * message gets no mark (the tools that light a landmark and propose a reef do not check it is verbatim), and its
+ * line still carries the quote. A message of images alone has no words, so it is never marked.
+ */
+export function evidenceMarks(messages, island) {
+  const byMessage = new Map();
+  const byLine = new Map();
+  if (!island) return { byMessage, byLine };
+  const said = (m) => Boolean(m) && m.role === "you" && m.kind === "text" && Boolean(m.body);
+  const byId = new Map(messages.map((m) => [m.id, m]));
+  const before = (i) => {
+    for (let j = i - 1; j >= 0; j--) if (said(messages[j])) return messages[j];
+    return null;
+  };
+  const mark = (m, quote, kind, key) => {
+    if (!said(m) || !quote || !quoteRange(m.body, quote)) return;
+    byMessage.set(m.id, [...(byMessage.get(m.id) ?? []), { quote, kind, key }]);
+  };
+  const landmarks = island.landmarks?.items ?? [];
+  const loose = island.looseEnds ?? [];
+  messages.forEach((m, i) => {
+    if (m.kind === "system") {
+      const lit = landmarkFromSystem(m.body);
+      const explored = lit ? null : exploredFromSystem(m.body);
+      if (lit || explored) {
+        const l = landmarks.find((x) => x.name === (lit ?? explored));
+        if (!l) return;
+        const quote = (lit ? l.evidence : l.exploredEvidence) ?? null;
+        byLine.set(m.id, { key: l.slug, slug: l.slug, quote });
+        const id = lit ? l.messageId : l.exploredMessageId;
+        mark(id != null && byId.has(id) ? byId.get(id) : before(i), quote, lit ? "lit" : "explored", l.slug);
+        return;
+      }
+      if (typeof m.body === "string" && m.body.startsWith(LOOSE_PREFIX)) {
+        const end = loose.find((e) => e.note === m.body.slice(LOOSE_PREFIX.length));
+        if (end) byLine.set(m.id, { key: `loose:${end.id}`, slug: end.landmark ?? null, quote: end.evidence });
+      }
+      return;
+    }
+    if (m.kind === "reef_proposal") {
+      const p = proposalFromBody(m.body);
+      if (!p || typeof p.evidence !== "string" || !p.evidence) return;
+      byLine.set(m.id, { key: `reef:${m.id}`, slug: null, quote: p.evidence });
+      if (p.status !== "disputed") mark(before(i), p.evidence, "reef", `reef:${m.id}`); // a disputed reef no longer stands against those words
+    }
+  });
+  for (const end of loose) mark(byId.get(end.messageId), end.evidence, "loose", `loose:${end.id}`);
+  for (const list of byMessage.values()) list.sort((a, b) => MARK_ORDER[a.kind] - MARK_ORDER[b.kind]);
+  return { byMessage, byLine };
+}
+
 const CHARTED_PREFIX = "charted as "; // the server keeps its own copy: CHARTED_PREFIX in src/server/judge/tools.ts
 
 /** Reader text messages after the last own-island "charted as" line: the judge's round, as the server counts it. */
@@ -168,9 +281,18 @@ export function roundOf(messages) {
  * What the log renders: threadItems, with consecutive landmark items, and consecutive explored items, merged into one line, the
  * last "charted as" system line turned into a verdict card when the island has a verdict to show, and a model line before a
  * persona reply written by another model than the reply before it, above the lines its turn wrote first.
+ *
+ * With the island's landmarks and loose ends (`evidenceMarks`), each line also says what it rests on: a landmark item
+ * carries `lit` (`[{ name, slug, quote }]`, one per name), a reader's message `marks` (the quotes to underline in
+ * it), a reef proposal and a loose end's line `evidence` (`{ key, quote, slug }`).
  */
 export function logItems(messages, island) {
-  const items = threadItems(messages);
+  const { byMessage, byLine } = evidenceMarks(messages, island);
+  const items = threadItems(messages).map((it) => {
+    if (it.role === "you" && byMessage.has(it.id)) return { ...it, marks: byMessage.get(it.id) };
+    if ((it.kind === "reef_proposal" || it.kind === "system") && byLine.has(it.id)) return { ...it, evidence: byLine.get(it.id) };
+    return it;
+  });
   const modelOf = new Map(messages.map((m) => [m.id, m.model ?? null]));
   let lastModel; // undefined until the first persona reply: the thread's first model needs no line
   let lastCharted = -1;
@@ -181,8 +303,12 @@ export function logItems(messages, island) {
   items.forEach((it, i) => {
     if (it.kind === "landmark" || it.kind === "explored") {
       const prev = out[out.length - 1];
-      if (prev && prev.kind === it.kind) prev.names.push(it.text);
-      else out.push({ id: it.id, role: it.role, kind: it.kind, names: [it.text], text: it.text, proposal: null });
+      const line = byLine.get(it.id);
+      const lit = { name: it.text, slug: line?.slug ?? null, quote: line?.quote ?? null };
+      if (prev && prev.kind === it.kind) {
+        prev.names.push(it.text);
+        prev.lit.push(lit);
+      } else out.push({ id: it.id, role: it.role, kind: it.kind, names: [it.text], lit: [lit], text: it.text, proposal: null });
       return;
     }
     if (it.kind === "text" && it.role !== "you") {

@@ -1,6 +1,6 @@
 // mdBlocks → DOM. Built with createElement and textContent only; never innerHTML.
 import { THEMES, TOKEN_NAMES, storedTheme, mermaidVariables } from "./theme-model.js";
-import { mdBlocks, inlineSegments, questionRuns, leadSplit } from "./thread.js";
+import { mdBlocks, inlineSegments, questionRuns, leadSplit, quoteSpans } from "./thread.js";
 import { termRuns } from "./term-model.js";
 import { codeElement } from "./code.js";
 import { plotElement } from "./plot.js";
@@ -8,8 +8,10 @@ import { PLOT_LANGS } from "./plot-model.js";
 import { demoElement } from "./demo.js";
 import { DEMO_LANG } from "./demo-model.js";
 import { pinButton } from "./pin.js";
+import { watchWide } from "./wide.js";
 import { resolveLang } from "./code-model.js";
 import { t } from "./i18n.js";
+import { tip } from "./tip.js";
 
 const nodeCache = new Map(); // diagram source → parsed SVG node, cloned on repeat appends
 const pending = new Map(); // diagram source → in-flight render promise, shared across frames
@@ -83,6 +85,7 @@ export function diagramElement(source, { cache = true, pin = null } = {}) {
   box.append(cap);
   const holder = document.createElement("div");
   box.append(holder);
+  watchWide(box, holder); // a drawing wider than its box is drawn smaller, or scrolls and says so
   if (cache && nodeCache.has(source)) {
     holder.append(nodeCache.get(source).cloneNode(true));
     return box;
@@ -129,8 +132,8 @@ function appendTermed(parent, text, terms) {
     const span = document.createElement("span");
     span.className = "term";
     span.dataset.lm = run.slug;
-    span.title = run.name;
     span.textContent = run.text;
+    tip(span, run.name);
     parent.append(span);
   }
 }
@@ -154,8 +157,8 @@ function askSpan(run, onQuestion, terms) {
   span.className = "ask";
   span.setAttribute("role", "button");
   span.tabIndex = 0;
-  span.title = t("markdown.answerThis");
   appendInline(span, inlineSegments(run.text), terms);
+  tip(span, t("markdown.answerThis"));
   const fire = () => onQuestion(run.text.trim());
   span.addEventListener("click", fire);
   span.addEventListener("keydown", (e) => {
@@ -263,11 +266,42 @@ export function markdownBlocks(text, options = {}) {
   return mdBlocks(text).map((b) => ({ sig: JSON.stringify(b), build: () => blockEl(b, options) ?? document.createComment("") }));
 }
 
+/** A message's text nodes that are its writer's own words: never a quoted line (the persona's question), a code block, or words already marked. */
+function ownTextNodes(root) {
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+  const out = [];
+  for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+    if (n.data && !n.parentElement?.closest("blockquote, pre, mark.evidence")) out.push(n);
+  }
+  return out;
+}
+
+/**
+ * Marks each quote where it stands in a reader's message: `mark.evidence` with its kind as a class (lit, explored,
+ * reef, loose) and `data-lm` its key, so hovering the words lights the line and the landmark's chip. A quote may run
+ * through bold words or over a line break, so it can take several marks; one the page cannot find draws nothing.
+ */
+function markQuotes(root, marks) {
+  for (const m of marks) {
+    const nodes = ownTextNodes(root);
+    for (const span of quoteSpans(nodes.map((n) => n.data), m.quote)) {
+      const part = span.start ? nodes[span.chunk].splitText(span.start) : nodes[span.chunk];
+      if (span.end - span.start < part.data.length) part.splitText(span.end - span.start);
+      const mark = document.createElement("mark");
+      mark.className = `evidence ${m.kind}`;
+      mark.dataset.lm = m.key;
+      part.replaceWith(mark);
+      mark.append(part);
+    }
+  }
+}
+
 /**
  * The rendered blocks of a markdown string, as a fragment ready to append. `onQuestion(text)` makes question
  * sentences clickable; `lead` marks each paragraph's first sentence so the line of thought can be skimmed; `terms`
  * (from `landmarkTerms`) marks the island's landmark words in prose, never in code. `pin` (from card.js, for a persona's
- * reply) puts "pin to board" on each closed diagram, code, and demo fence.
+ * reply) puts "pin to board" on each closed diagram, code, and demo fence. `marks` (from `evidenceMarks`, for a
+ * reader's message) underlines the words a lit landmark, a reef or a loose end quotes.
  */
 export function renderMarkdown(text, options = {}) {
   const frag = document.createDocumentFragment();
@@ -275,5 +309,6 @@ export function renderMarkdown(text, options = {}) {
     const node = blockEl(b, options);
     if (node) frag.append(node);
   }
+  if (options.marks?.length) markQuotes(frag, options.marks);
   return frag;
 }

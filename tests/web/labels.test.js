@@ -1,6 +1,6 @@
 import { test, expect } from "bun:test";
-import { layoutLabels, wrapName, LINE_H, DRAFT_H, WRAP } from "../../src/web/labels.js";
-import { CENTRE, LAMP_R, NAME_Y } from "../../src/web/contour.js";
+import { layoutLabels, labelRect, wrapName, LINE_H, DRAFT_H, WRAP, ABOVE_GAP } from "../../src/web/labels.js";
+import { CENTRE, LAMP_R, LAMP_OFF, COAST, STAR, NAME_Y } from "../../src/web/contour.js";
 
 /** Ten box units a character: easy to reason about. */
 const measure = (t) => t.length * 10;
@@ -17,7 +17,7 @@ test("wrapName breaks at spaces within the width, and ends the last allowed line
 
 test("islands far apart keep their names below, one line each", () => {
   const out = layoutLabels([node("a", 0, 0), node("b", 1000, 0)], { measure, scale });
-  expect(out.get("a")).toEqual({ lines: ["a"], place: "below", cx: CENTRE, top: NAME_Y, hidden: false });
+  expect(out.get("a")).toEqual({ lines: ["a"], place: "below", cx: CENTRE, top: NAME_Y, width: 10, height: LINE_H, hidden: false });
   expect(out.get("b").place).toBe("below");
 });
 
@@ -25,7 +25,9 @@ test("a name that would run into the island below it goes above its own coast", 
   // b sits right under a: a's name below would cross b's lamps, so it moves above a
   const out = layoutLabels([node("a", 0, 0, "Networking, Data & Storage"), node("b", 0, 200)], { measure, scale });
   expect(out.get("a").place).toBe("above");
-  expect(out.get("a").top).toBe(CENTRE - LAMP_R - 10 - 2 * LINE_H);
+  expect(out.get("a").top).toBe(CENTRE - LAMP_R - ABOVE_GAP - 2 * LINE_H);
+  // a name above ends clear of a lit lamp's rays, wherever the coast puts the lamp
+  expect(LAMP_R + ABOVE_GAP).toBeGreaterThan(COAST * 1.1 + LAMP_OFF + STAR.long);
   expect(out.get("b").place).toBe("below");
 });
 
@@ -64,6 +66,28 @@ test("a draft's label counts its draft line, so the space under it stays clear",
   // c sits just below where a draft's name and "draft" line would end
   const draft = node("a", 0, 0, "Tools", { draft: true });
   const below = NAME_Y - CENTRE + LINE_H + DRAFT_H;
-  const out = layoutLabels([draft, node("c", 0, below + LAMP_R + 4)], { measure, scale });
+  const out = layoutLabels([draft, node("c", 0, below + LAMP_R + 2)], { measure, scale });
   expect(out.get("a").place).toBe("above");
+});
+
+test("a name keeps off what the caller says to avoid (a sea's lettering), and labelRect is where it landed", () => {
+  const a = node("a", 0, 0, "Tools");
+  const below = layoutLabels([a], { measure, scale });
+  const rect = labelRect(a, 1, below.get("a"));
+  expect(rect).toEqual({ x0: -25, x1: 25, y0: NAME_Y - CENTRE, y1: NAME_Y - CENTRE + LINE_H });
+  // lettering lies across where the name would sit: it goes above instead
+  const out = layoutLabels([a], { measure, scale, avoid: [{ x0: -200, x1: 200, y0: rect.y0 + 5, y1: rect.y1 + 30 }] });
+  expect(out.get("a").place).toBe("above");
+  // lettering everywhere: the name does not hide for it (an island's name matters more than a sea's); it sits where it would have
+  const sea = [{ x0: -500, x1: 500, y0: -500, y1: 500 }];
+  expect(layoutLabels([a], { measure, scale, avoid: sea }).get("a")).toMatchObject({ hidden: false, place: "below" });
+  // and lettering never makes a crowded name hide that would otherwise have had a spot beside its coast
+  const crowd = [node("a", 0, 0, "Tools"), node("up", 0, -160), node("down", 0, 160)];
+  const side = [{ x0: 80, x1: 400, y0: -20, y1: 20 }]; // across the spot to the right
+  expect(layoutLabels(crowd, { measure, scale, focus: "up" }).get("a").place).toBe("right");
+  expect(layoutLabels(crowd, { measure, scale, focus: "up", avoid: side }).get("a")).toMatchObject({ hidden: false, place: "left" });
+  expect(layoutLabels(crowd, { measure, scale, focus: "up", avoid: [...side, { x0: -400, x1: -80, y0: -20, y1: 20 }] }).get("a")).toMatchObject({ hidden: false, place: "right" });
+  // labelRect follows the island's scale
+  const big = labelRect({ ...a, x: 100, y: 50 }, 2, below.get("a"));
+  expect(big).toEqual({ x0: 50, x1: 150, y0: 50 + (NAME_Y - CENTRE) * 2, y1: 50 + (NAME_Y - CENTRE + LINE_H) * 2 });
 });
