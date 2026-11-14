@@ -163,7 +163,7 @@ kbd { display: inline-block; box-sizing: border-box; min-width: 18px; padding: 0
 @keyframes pop-in { from { opacity: 0; transform: translateY(-4px) scale(.98); } }
 @property --enter { syntax: "<number>"; inherits: true; initial-value: 1; }
 @keyframes enter { from { --enter: 0; opacity: 0; } }
-:is(.new-domain, .hosted, .images-sheet, .viewer, .about, .keys):not(.first) { animation: enter var(--t-med) var(--ease); }
+:is(.new-domain, .hosted, .images-sheet, .viewer, .about, #keys):not(.first) { animation: enter var(--t-med) var(--ease); } /* the cheat sheet by its id: `.keys` is also a menu row's key caps */
 .dialog-card, .keys-card, .viewer-card, .images-card, .about-card, .new-domain-card, .hosted-card { transform: translateY(calc((1 - var(--enter)) * 8px)) scale(calc(.985 + .015 * var(--enter))); }
 /* A dialog (dialog.js). The shell is its root in index.html: fixed over the page as a veil mixed from the theme's
    own panel, so the page behind steps back in every theme. The card is top-anchored and centred across: it grows
@@ -177,7 +177,7 @@ kbd { display: inline-block; box-sizing: border-box; min-width: 18px; padding: 0
 .dialog-card.md { --dialog-w: 580px; }
 .dialog-card.lg { --dialog-w: 720px; }
 .dialog-card:focus { outline: none; } /* focus rests on the card of a dialog that is only read; it is never a tab stop */
-@media (prefers-reduced-motion: reduce) { .pop, .menu, .new-domain, .hosted, .images-sheet, .viewer, .about, .keys { animation: none !important; } }
+@media (prefers-reduced-motion: reduce) { .pop, .menu, .new-domain, .hosted, .images-sheet, .viewer, .about, #keys { animation: none !important; } }
 /* A menu: rows of one height, a label over a group (.grp > .ml), a rule between groups, the row's key at its right.
    It stands one step above the panel it opens over (the panel's colour, a little toward white, and a firmer edge),
    so it reads as raised in the dark themes, where a shadow alone does not show. A row under the pointer is filled;
@@ -198,7 +198,6 @@ kbd { display: inline-block; box-sizing: border-box; min-width: 18px; padding: 0
 .mi > .grow.two > * { overflow: hidden; text-overflow: ellipsis; }
 .mi > .grow.two > .desc { font-size: var(--fs-xs); font-weight: 400; color: var(--muted); }
 .mi > .keys, .mi > .cur { margin-left: auto; flex: none; color: var(--muted); font-size: var(--fs-sm); display: inline-flex; gap: 3px; align-items: center; }
-.mi > .keys { position: static; z-index: auto; animation: none; pointer-events: inherit; } /* the cheat sheet's overlay is also .keys: a row's key caps take none of it */
 .mi > .ic { color: var(--muted); }
 .mi > .ic-check { color: var(--text); }
 .mi:disabled { color: var(--muted); cursor: default; background: transparent; }
@@ -238,7 +237,7 @@ kbd { display: inline-block; box-sizing: border-box; min-width: 18px; padding: 0
 .palette .mi > .detail { flex: 0 1 auto; min-width: 0; max-width: 55%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); font-size: var(--fs-sm); }
 .palette .mi > .cur { margin-left: 0; color: var(--text-2); }
 /* A row's key. `.keys` is also the cheat sheet's root (a fixed layer with an entrance), and none of that is a row's. */
-.palette .mi > .keys { position: static; z-index: auto; margin-left: var(--sp-1); pointer-events: auto; animation: none; }
+.palette .mi > .keys { margin-left: var(--sp-1); }
 /* What the typed words matched: a touch heavier, on the lamp's line. */
 .palette mark { background: none; color: inherit; font-weight: var(--fw-semibold); text-decoration: underline; text-decoration-color: var(--lamp); text-decoration-thickness: 1px; text-underline-offset: 3px; }
 /* In the quiet detail a match only steps up to the text's own colour. */
@@ -339,7 +338,7 @@ body[data-mode="mentor"] .lens { --seg-fill: var(--explore); }
 .strip-hint[hidden] { display: none; }
 .strip-hint .full { margin-bottom: var(--sp-15); color: var(--text); }
 /* Dragging the pane's grip moves the header's right edge with it: nothing that follows the pane may ease behind. */
-body:has(.pane.resizing) :is(.chrome, .map-focus, .cta, .board-scrim, .board, .board-toggle, .board-hint, .keys) { transition: none; }
+body:has(.pane.resizing) :is(.chrome, .map-focus, .cta, .board-scrim, .board, .board-toggle, .board-hint) { transition: none; }
 /* Before the first chart (chrome.js): a quiet line where the map will be, after a beat so a quick read shows
    nothing; or, when the read failed, why, and a way to try again. */
 .map-note { position: fixed; top: 0; bottom: var(--places-h, 0px); left: var(--outline-w); right: 0; z-index: var(--z-map); display: grid; place-content: center; justify-items: center; gap: var(--sp-3); padding: var(--sp-6); text-align: center; pointer-events: none; }
@@ -786,7 +785,7 @@ body.pane-open .now-playing { --np-room: calc(100vw - var(--outline-w) - var(--p
 .outline .ft .btn { padding: 0 var(--sp-2) 0 var(--sp-15); color: var(--muted); font-weight: 400; font-size: var(--fs-xs); }
 .outline.rail { width: 44px; }
 .outline.rail .oh { padding: 0; justify-content: center; }
-.outline.rail .ws, .outline.rail .sp, .outline.rail .sum, .outline.rail .list, .outline.rail .ft { display: none; }
+.outline.rail .ws, .outline.rail .sp, .outline.rail .find, .outline.rail .sum, .outline.rail .list, .outline.rail .ft { display: none; }
 /* The rail: a dash an island, its length and colour the island's state. A dash is drawn 3px tall in a 10px row the
    width of the rail, so the target is the row and the mark stays a hairline. */
 .outline .dashes { display: none; flex: 1; flex-direction: column; justify-content: center; }
@@ -799,7 +798,7 @@ body.pane-open .now-playing { --np-room: calc(100vw - var(--outline-w) - var(--p
 body.outline-resizing .outline .grip::after { background: var(--lamp); transition-delay: 0s; }
 .outline.rail .grip { display: none; }
 body.outline-resizing { user-select: none; cursor: col-resize; }
-body.outline-resizing :is(.outline, .chrome, .map-focus, .board-scrim, .board, .cta, .keys) { transition: none; }
+body.outline-resizing :is(.outline, .chrome, .map-focus, .board-scrim, .board, .cta) { transition: none; }
 .outline .dash { position: relative; height: 10px; cursor: pointer; }
 .outline .dash::before { content: ""; position: absolute; left: 14px; top: 0; bottom: 0; margin: auto 0; height: 3px; width: 14px; border-radius: 2px; background: var(--muted); opacity: .35;
   transition: width var(--t-fast) var(--ease), opacity var(--t-fast) var(--ease); }
@@ -1388,7 +1387,8 @@ body.empty .outline, body.empty .chrome, body.empty #map-focus, body.empty #boar
   .outline { display: none; width: 100vw; bottom: var(--places-h); border-right: 0; z-index: 5; font-size: 15px; transition: none; }
   body[data-place="islands"] .outline { display: flex; }
   .outline .oh { height: 52px; }
-  .outline .oh > .ib, .outline .ft, .outline .grip { display: none; } /* no rail to fold to and no keys to hint at; the pencil in the menu is not .oh's child, so it stays */
+  .outline .oh > .ib:not(.find), .outline .ft, .outline .grip { display: none; } /* no rail to fold to and no keys to hint at; the pencil in the menu is not .oh's child, so it stays; Find stays: it is a phone's only way to the palette */
+  .outline .oh > .find { width: var(--h-xl); min-height: var(--h-xl); }
   .outline .ws { height: var(--h-lg); }
   .outline .sum { font-size: var(--fs-md); }
   .outline .list .row { height: 46px; gap: 12px; }

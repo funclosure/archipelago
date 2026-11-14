@@ -18,6 +18,8 @@ import { LANGUAGES, language, setLanguage, t } from "./i18n.js";
 import { icon } from "./icons.js";
 import { tip } from "./tip.js";
 import { toastError } from "./toast.js";
+import { openPalette } from "./palette.js"; // a cycle (the palette imports actions from here): each side uses the other only inside handlers
+import { paletteKeys } from "./palette-model.js";
 
 // app.js imports installOutline from here and this file imports app: fine, because nothing below reads app or select at module evaluation.
 
@@ -607,6 +609,15 @@ function drawHead(outline) {
       return ws;
     } },
     { key: "sp", sig: "", build: () => el("span", "sp") },
+    // The command palette's way in for a pointer or a finger; its key opens it from anywhere.
+    { key: "find", sig: "", build: () => {
+      const find = button("", () => openPalette(), "ib find btn quiet icon md");
+      find.dataset.f = "find";
+      find.setAttribute("aria-keyshortcuts", paletteKeys() === "⌘K" ? "Meta+K" : "Control+K");
+      find.append(icon("search"));
+      tip(find, t("outline.find"), paletteKeys());
+      return find;
+    } },
     { key: "tog", sig: String(state.rail), build: () => {
       const tog = button("", toggleRail, "ib btn quiet icon md");
       tog.dataset.f = "tog";

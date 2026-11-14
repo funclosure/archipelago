@@ -3,6 +3,7 @@
 export default {
   en: {
     menu: "Domains and settings",
+    find: "Find an island or a command",
     expand: "Expand the outline",
     collapse: "Collapse to a rail",
     resize: "Drag to resize · double-click to reset",
@@ -37,6 +38,7 @@ export default {
   },
   "zh-TW": {
     menu: "領域與設定",
+    find: "尋找島嶼或指令",
     expand: "展開大綱",
     collapse: "收合成側欄",
     resize: "拖曳以調整寬度 · 按兩下還原",

@@ -92,7 +92,7 @@ export const KEY_SECTIONS = {
   },
   outline: {
     title: k("outline"),
-    rows: [["↑ ↓ j k", k("move")], ["↵", k("select")], ["→ ←", k("expandCollapse")], ["Home End", k("firstLast")], ["n", k("newDomain")]],
+    rows: [["↑ ↓ j k", k("move")], ["↵", k("select")], ["→ ←", k("expandCollapse")], ["Home End", k("firstLast")], ["n", k("newDomain")], ["d", k("domainMenu")]],
   },
   map: {
     title: k("map"),
@@ -101,6 +101,11 @@ export const KEY_SECTIONS = {
       ["← → ↑ ↓", k("pan")],
       ["+ −", k("zoom")],
       ["0", k("home")],
+      ["g", k("guideKey")],
+      ["c", k("cartographerKey")],
+      ["1 2", k("beginWith")],
+      ["s", k("sailNext")],
+      ["h ← →", k("headerKey")],
       ["Esc", k("deselect")],
       ["Del", k("removeSea")],
       [k("doubleClickWater"), k("nameSea"), "gesture"],
@@ -111,15 +116,15 @@ export const KEY_SECTIONS = {
   },
   board: {
     title: k("board"),
-    rows: [["↑ ↓ j k", k("move")], ["↵", k("edit")], ["⇧J ⇧K", k("moveCard")], ["d n c p", k("addCard")], ["x", k("remove")], ["⌘↵", k("save")], ["b", k("mapKey")]],
+    rows: [["↑ ↓ j k", k("move")], ["↵", k("edit")], ["⇧J ⇧K", k("moveCard")], ["d n c p", k("addCard")], ["x", k("remove")], ["u", k("undo")], ["⌘↵", k("save")], ["b", k("mapKey")]],
   },
   pane: {
     title: k("pane"),
-    rows: [["↵ /", k("answer")], ["l", k("landfall")], ["n", k("note")], ["1–4", k("pickOption")], ["c", k("confirmReef")], ["d", k("dispute")], ["↑ ↓", k("scroll")], ["⌘↵", k("send")]],
+    rows: [["↵ /", k("answer")], ["l", k("landfall")], ["n", k("note")], ["1–4", k("pickOption")], ["c", k("confirmReef")], ["d", k("dispute")], ["s", k("sailCloser")], ["g", k("followPointer")], ["r", k("retry")], ["↑ ↓", k("scroll")], ["← →", k("controls")], ["⌘↵", k("send")]],
   },
   chart: {
     title: k("cartographer"),
-    rows: [["↵ /", k("answer")], ["l", k("startSketch")], ["⌘↵", k("approveSketch")], ["↑ ↓", k("scroll")], ["Esc", k("close")]],
+    rows: [["↵ /", k("answer")], ["l", k("startSketch")], ["⌘↵", k("approveSketch")], ["g", k("followPointer")], ["↑ ↓", k("scroll")], ["← →", k("controls")], ["Esc", k("close")]],
   },
 };
 
