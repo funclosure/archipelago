@@ -22,6 +22,7 @@ import { listMessages, listScaleMessages } from "../core/repositories/messageRep
 import { listSketches } from "../core/repositories/sketchRepository.ts";
 import { listCards } from "../core/repositories/boardRepository.ts";
 import { listLooseEnds } from "../core/repositories/looseEndRepository.ts";
+import { compactDatabase, imageUsage, pruneImages } from "../core/repositories/imageRepository.ts";
 import { getLearner, setLearnerLanguage, setLearnerNote } from "../core/repositories/learnerRepository.ts";
 import { listLandmarks, upsertLandmark } from "../core/repositories/landmarkRepository.ts";
 import { getViewState, setFocus } from "../core/repositories/viewStateRepository.ts";
@@ -439,6 +440,28 @@ common(loose.command("list").option("--domain <slug>").option("--island <slug>")
       const d = requireDomain(db, slugSchema.parse(o.domain));
       const i = requireIsland(db, d.id, slugSchema.parse(o.island));
       return { island: i.slug, looseEnds: listLooseEnds(db, i.id, Boolean(o.all)) };
+    }),
+  ),
+);
+
+// ---- images ----
+const image = program.command("image").description("The reader's images in a domain's conversations: what they take, and removing old ones (only when the user asks)");
+common(image.command("usage").option("--domain <slug>")).action(
+  run((o) => withDb((db) => imageUsage(db, requireDomain(db, slugSchema.parse(o.domain)).id))),
+);
+common(
+  image.command("prune").description("Removes images (a thread keeps an \"image removed\" mark where each was), then compacts the database")
+    .option("--domain <slug>").option("--older-than <days>", "e.g. 30 or 30d").option("--all", "every image in the domain"),
+).action(
+  run((o) =>
+    withDb((db) => {
+      const d = requireDomain(db, slugSchema.parse(o.domain));
+      if (Boolean(o.all) === (o.olderThan !== undefined)) throw new ArchipelagoError("say --older-than <days> or --all");
+      const days = o.all ? null : Number(String(o.olderThan).replace(/d$/, ""));
+      if (days !== null && !(Number.isInteger(days) && days >= 0)) throw new ArchipelagoError("--older-than is a whole number of days, e.g. 30 or 30d");
+      const pruned = pruneImages(db, d.id, days);
+      if (pruned.removed > 0) compactDatabase(db);
+      return { ...pruned, usage: imageUsage(db, d.id) };
     }),
   ),
 );

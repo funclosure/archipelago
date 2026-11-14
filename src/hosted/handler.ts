@@ -40,7 +40,8 @@ export function createHandler(
       const ctx = await context(); // first, so a database that would not open answers every path with why
       const res = hosted && new URL(req.url).pathname.startsWith("/hosted/") ? await hosted(req) : await handleApiRequest(req, ctx);
       const headers = Object.fromEntries(res.headers);
-      if (headers["content-type"] === DATABASE_TYPE) {
+      // A database file and a reader's image cross as bytes; everything else as text.
+      if (headers["content-type"] === DATABASE_TYPE || (headers["content-type"] ?? "").startsWith("image/")) {
         const bytes = await res.arrayBuffer();
         post({ id, kind: "response", status: res.status, headers, bytes }, [bytes]);
         return;

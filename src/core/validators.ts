@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { ArchipelagoError } from "./errors.ts";
 import { boardKinds, codeLangs, commentKinds, commentTargetTypes, looseEndKinds, messageModes, verdictStates } from "./types.ts";
+import { IMAGE_BYTES_MAX, IMAGES_PER_MESSAGE } from "./images.ts";
 
 export const slugSchema = z
   .string()
@@ -47,6 +48,20 @@ export const seaWriteSchema = z.discriminatedUnion("op", [
 ]);
 
 export const domainRemoveSchema = z.object({ domain: slugSchema });
+
+/** POST /api/images: one image as base64 (JSON, like every write, so the cross-site guard holds). Its bytes decide its type. */
+export const imageUploadSchema = z.object({
+  domain: slugSchema,
+  data: z
+    .string()
+    .min(1)
+    .max(Math.ceil(IMAGE_BYTES_MAX / 3) * 4 + 4, `the image is over ${IMAGE_BYTES_MAX / 1024} KB`)
+    .regex(/^[A-Za-z0-9+/]+={0,2}$/, "data is base64"),
+});
+/** POST /api/images/remove: the reader removes images (Remove image on a thumbnail). */
+export const imageRemoveSchema = z.object({ domain: slugSchema, ids: z.array(z.number().int().positive()).min(1).max(200) });
+/** POST /api/images/prune: every image older than so many days, or every one (null). */
+export const imagePruneSchema = z.object({ domain: slugSchema, olderThanDays: z.number().int().min(0).max(36500).nullable() });
 
 export const domainUpdateSchema = z
   .object({ domain: slugSchema, name: domainName.optional(), description: z.union([descriptionSchema, z.null()]).optional() })
@@ -163,6 +178,12 @@ export const probeInputSchema = z
     /** Whose turn: the judge's (default), the mentor's, the cartographer's, or the guide's. */
     mode: z.enum(messageModes).default("judge"),
     message: z.string().trim().min(1).optional(),
+    /** The reader's images on this message, uploaded first through POST /api/images, in order. */
+    images: z
+      .array(z.number().int().positive())
+      .max(IMAGES_PER_MESSAGE, `at most ${IMAGES_PER_MESSAGE} images on a message`)
+      .refine((ids) => new Set(ids).size === ids.length, { message: "an image is attached once" })
+      .optional(),
     askId: numberInput.pipe(z.number().int().positive()).optional(),
     /** What the demos printed as the reader used them since their last message: kept to the newest few, cut short. */
     demoSteps: z
@@ -172,6 +193,7 @@ export const probeInputSchema = z
       .transform((steps) => steps?.map((s) => s.trim().slice(0, DEMO_STEP_MAX)).filter(Boolean).slice(-DEMO_STEPS_MAX)),
   })
   .refine((v) => v.mode === "cartographer" || v.mode === "guide" || v.island !== undefined, { message: "island is required", path: ["island"] })
+  .refine((v) => v.askId === undefined || !v.images?.length, { message: "a pick from the options carries no images", path: ["images"] })
   .refine((v) => v.mode !== "guide" || v.island === undefined, { message: "the guide speaks for the whole domain, never one island", path: ["island"] });
 
 export const askInputSchema = z.object({
