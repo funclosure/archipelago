@@ -13,7 +13,7 @@ import { showDialog, redraw, focusFirst, dialogHead, dialogFoot, labelled } from
 export const isHosted = () => globalThis.ARCHIPELAGO_HOSTED === true;
 
 /** `open`: null, "welcome" (no way out but a choice), "key" (Your key), "import" (the replace warning), "elsewhere". */
-const state = { open: null, view: null, provider: null, key: "", model: null, remember: true, saving: false, error: null, file: null, credit: null, buying: false, thanks: null, switching: false, tokenField: false, moreOpen: false };
+const state = { open: null, view: null, provider: null, key: "", model: null, remember: true, saving: false, error: null, file: null, credit: null, buying: false, thanks: null, switching: false, tokenField: false, moreOpen: false, buyError: null };
 let root = null;
 let started = null; // resolves the welcome gate
 
@@ -152,6 +152,7 @@ async function buy(pack) {
   if (state.buying) return;
   state.buying = true;
   state.error = null;
+  state.buyError = null;
   render();
   try {
     const { url } = await (await call("/hosted/checkout", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ pack }) })).json();
@@ -161,13 +162,13 @@ async function buy(pack) {
     location.href = url;
   } catch (error) {
     state.buying = false;
-    state.error = error.message;
+    state.buyError = error.message; // said under the packs it concerns, not over the form's foot
     render();
   }
 }
 
 function open(kind) {
-  Object.assign(state, { open: kind, key: "", provider: state.view?.provider ?? null, model: state.view?.model ?? null, remember: state.view?.remember ?? true, saving: false, error: null, switching: false, tokenField: false, moreOpen: false });
+  Object.assign(state, { open: kind, key: "", provider: state.view?.provider ?? null, model: state.view?.model ?? null, remember: state.view?.remember ?? true, saving: false, error: null, buyError: null, switching: false, tokenField: false, moreOpen: false });
   render();
   // Focus goes to what is chosen (the provider, else the model), never the first field: on the first one it reads
   // as if that were the choice. The import question starts on Cancel, the take-over notice on Reload.
@@ -577,7 +578,9 @@ function creditEl() {
     credit.append(el("div", "field-label", t("hosted.addCreditLabel")));
     const buttons = row(...packs.map((usd) => button(t("hosted.addCredit", { amount: usd }), () => void buy(usd), "btn ghost", `pack:${usd}`)));
     for (const b of buttons.children) b.disabled = state.buying;
-    credit.append(buttons, el("p", "help", t(state.buying ? "hosted.openingCheckout" : "hosted.creditShort")));
+    credit.append(buttons);
+    if (state.buyError) credit.append(el("p", "error", state.buyError));
+    credit.append(el("p", "help", t(state.buying ? "hosted.openingCheckout" : "hosted.creditShort")));
   }
   return credit;
 }
