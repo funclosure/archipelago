@@ -543,6 +543,7 @@ function drawSheet() {
   if (!u && !sheet.error) card.append(el("p", "help muted", t("images.reading")));
   if (u) {
     card.append(el("p", "help", u.count ? t("images.usage", { count: u.count, size: formatBytes(u.bytes), name }) : t("images.none", { name })));
+    if (!u.count) card.append(el("p", "help muted", t("images.noneHint"))); // nothing to do here yet: say what the place is for
     if (u.removed) card.append(el("p", "help muted", t("images.removedEarlier", { count: u.removed })));
     if (u.count) {
       const options = [...PRUNE_AGES.map((days) => ({ days, label: t("images.olderThan", { n: days }), ...u.older[String(days)] })), { days: null, label: t("images.all"), count: u.count, bytes: u.bytes }];
