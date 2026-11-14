@@ -2,29 +2,32 @@ import { app, api, setScale, frameSelection, setMode } from "./app.js";
 import { streamPost } from "./stream.js";
 import { logItems, askFor, roundOf, systemText } from "./thread.js";
 import { landmarkLit, allExplored, startIsland } from "./view-model.js";
-import { MODES, MODE_LABELS, MODE_ROLES, MODE_HINTS, PERSONA_NAMES, headPill, stateLabel } from "./mode-model.js";
+import { MODES, MODE_LABELS, MODE_HINTS, PERSONA_NAMES, headPill, stateLabel } from "./mode-model.js";
 import { t } from "./i18n.js";
 import { thinkingLine } from "./progress-model.js";
 import { thinkingEl } from "./thinking.js";
 import { renderMarkdown, markdownBlocks } from "./markdown.js";
 import { pinFromReply, isPinned, openBoard } from "./board.js";
-import { keyedChildren, patchChildren } from "./keep.js";
+import { keyedChildren } from "./keep.js";
 import { takeDemoSteps } from "./demo.js";
 import { landmarkTerms } from "./term-model.js";
-import { modelEl, refreshJudgeModel } from "./model-label.js";
+import { modelEl, modelSig, refreshJudgeModel } from "./model-label.js";
 import { autoRead, autoReadEl, canSpeak, speak, speakButton } from "./voice.js";
 import { loadHighlighter } from "./code.js";
 import { renderCta } from "./cta.js";
-import { acceptDrops, attachButton, createTray, messageImagesEl, pastedImages, trayEl } from "./images.js";
+import { acceptDrops, createTray, messageImagesEl } from "./images.js";
 import { select } from "./interactions.js";
 import { registerRegion, region } from "./keys.js";
-import { isImeKey } from "./keys-model.js";
+import { icon } from "./icons.js";
+import { tip } from "./tip.js";
+import { toastError } from "./toast.js";
+import { canSend, withRestored, withoutStored } from "./pane-model.js";
+import { button, composerEl, el, eventEl, failedEl, failureWords, footMetaEl, fromWordsEl, keepFocus, logFollower, noticeEl, personaGlyph, roveFocus, skeletonEl, syncAnswer } from "./pane-parts.js";
 import { chartKey, chartSend, chartTray, chartTurning, closeChart, decideSketch, dropChart, focusChartAnswer, installChart, isChartOpen, openChart, renderChart, stopChartTurn } from "./chart.js";
 import { toastError } from "./toast.js";
 import { tip } from "./tip.js";
 
 const pane = document.getElementById("pane");
-const STICK_PX = 40;            // within this of the bottom, the log follows new content
 const LOG_STEP = 80;            // one arrow's worth of the log
 // How far each scroll key moves the log. Arrows step; Page keys take nearly a screen.
 const SCROLL_BY = {
@@ -44,16 +47,9 @@ let loadGen = 0;          // monotonic across islands, so a slow load can never 
 /** Bumped whenever the thread is reset or a turn starts: a stream only writes into the turn that started it. */
 let turnGen = 0;
 let turnAbort = null;    // the running turn's AbortController: Stop and Escape abort it
-// Whether the log follows its end. Only a scroll changes it, so content that grows on its own (a demo's frame
-// finding its height, a reply arriving) never reads as the reader having scrolled away.
-let following = true;
-let ownTop = -1;         // where toEnd last put the log, so its own scroll event is not read as the reader's
-
-/** Puts the log at its end. */
-function toEnd(log) {
-  log.scrollTop = log.scrollHeight;
-  ownTop = log.scrollTop;
-}
+// The log follows its end by intent: only the reader's scroll changes that, so content that grows on its own (a
+// diagram drawn late, a demo's frame finding its height, a reply arriving) never reads as having scrolled away.
+const follow = logFollower();
 
 let logGen = 0;          // bumped when every log item must be drawn again (a theme change)
 let termsSig = "";       // the selected island's landmark terms, as a string, for itemSig
@@ -141,8 +137,7 @@ export function installCard() {
   pane.addEventListener("mouseout", (e) => lightLandmark(e, false));
   // A demo that grows (its frame finds its height, a console line lands) keeps a followed log at its end.
   pane.addEventListener("demo-resize", () => {
-    const log = pane.querySelector(":scope > .log");
-    if (log && following) toEnd(log);
+    if (follow.following) follow.toEnd();
   });
   document.addEventListener("theme", () => {
     if (!thread.slug) return;
@@ -167,7 +162,7 @@ export function installCard() {
     if (!attach || attach.disabled) return null;
     return isChartOpen() && !app.selected ? chartTray() : tray;
   });
-  installChart({ render: () => render(), sail: (pointer, lens) => void sailFromGuide(pointer, lens) });
+  installChart({ render: () => render(), sail: (pointer, lens) => void sailFromGuide(pointer, lens), grip: gripEl });
   registerRegion("pane", {
     focusAnswer: () => (isChartOpen() ? focusChartAnswer() : focusAnswer()),
     turning: () => (isChartOpen() ? chartTurning() : thread.inFlight && turnAbort !== null),
@@ -184,7 +179,9 @@ export function installCard() {
       if (isChartOpen()) return chartSend();
       const form = pane.querySelector("#answer-form");
       const ta = pane.querySelector("#answer");
-      if (!form || !ta || ta.disabled || !ta.value.trim()) return false;
+      if (!form || !ta || thread.inFlight) return false;
+      // ⌘↵ sends what Send would: words, or images alone. A dispute may go without words.
+      if (!ta.dataset.reef && !canSend({ text: ta.value, images: tray.ready().length, busy: tray.busy(), disabled: ta.disabled })) return false;
       form.requestSubmit();
       return true;
     },
@@ -195,17 +192,25 @@ export function installCard() {
         log.scrollBy(0, SCROLL_BY[e.key](log));
         return true;
       }
+      // ← and → walk the pane's controls (Tab is the regions'), mid-turn too: Stop is one of them.
+      if (e.key === "ArrowRight" || e.key === "ArrowLeft") return roveFocus(pane, e.key === "ArrowRight" ? 1 : -1);
       const island = app.nodes.find((n) => n.slug === app.selected) ?? null;
-      if (!island || thread.inFlight) return false;
+      if (!island) return false;
       const click = (sel) => {
-        const b = pane.querySelector(sel);
+        const found = [...pane.querySelectorAll(sel)];
+        const b = found[found.length - 1]; // the latest, where a thread holds several
         if (!b || b.disabled) return false;
         b.click();
         return true;
       };
+      if (e.key === "s") return click(".head [data-fk='sail']"); // sail closer, or in
+      if (e.key === "g") return click(".log .sail-go"); // follow the persona's pointer
+      if (thread.inFlight) return false;
       switch (e.key) {
         case "Enter":
           return focusAnswer();
+        case "r":
+          return click("[data-fk='retry']");
         case "l":
           return click("#landfall");
         case "n": {
@@ -237,22 +242,7 @@ export function installCard() {
   render();
 }
 
-function el(tag, className, text) {
-  const e = document.createElement(tag);
-  if (className) e.className = className;
-  if (text !== undefined) e.textContent = text;
-  return e;
-}
-
-function button(label, onClick, className = "btn") {
-  const b = el("button", className, label);
-  b.type = "button";
-  if (onClick) b.addEventListener("click", onClick);
-  return b;
-}
-
 const pct = (v) => `${Math.round(v * 100)}%`;
-const atBottom = (log) => log.scrollHeight - log.scrollTop - log.clientHeight < STICK_PX;
 
 // Requests go to the cartographer, never to the Keeper: they open its pane at this scale.
 const NOTE_HELP = t("card.noteHelp");
@@ -315,7 +305,7 @@ async function loadThread(slug) {
     }
     if (thread.stoppedDraft !== null) {
       // An early stop gave the words back; if the server stored them after all, they are in the thread, not the box.
-      if (thread.draft === thread.stoppedDraft && messages.some((m) => m.role === "you" && m.body === thread.stoppedDraft)) thread.draft = "";
+      thread.draft = withoutStored(thread.draft, thread.stoppedDraft, messages.filter((m) => m.role === "you").map((m) => m.body));
       thread.stoppedDraft = null;
     }
     if (thread.stoppedImages !== null) {
@@ -330,8 +320,15 @@ async function loadThread(slug) {
   } catch (error) {
     if (stale()) return;
     thread.answering = false; // do not wedge the buttons if the refetch fails
-    thread.loadError = error.message; // version stays set: the next version change retries, a re-render does not
+    thread.loadError = failureWords(error); // version stays set: the next version change retries, a re-render does not
   }
+  render();
+}
+
+/** Reads the thread again after a load that failed. */
+function retryLoad() {
+  thread.version = null; // the render below refetches
+  thread.loadError = null;
   render();
 }
 
@@ -364,9 +361,8 @@ async function runTurn(slug, message, askId, sent = []) {
   if (said) thread.messages = [...thread.messages, { id: `local-${Date.now()}`, role: "you", kind: "text", body: message ?? "", images: images.map((i) => ({ ...i, removed: false })) }];
   render();
   if (said) {
-    const log = pane.querySelector(".log");
-    following = true; // sending is a request to watch the reply arrive
-    if (log) toEnd(log);
+    follow.follow(); // sending is a request to watch the reply arrive
+    follow.toEnd();
   }
   try {
     // What the reader did in a demo goes along with their words, so the mentor answers what actually happened.
@@ -393,7 +389,7 @@ async function runTurn(slug, message, askId, sent = []) {
       // in the box, and the refetch takes them out again if the server did store them.
       thread.stopped = true;
       if (message && !error.midStream) {
-        thread.draft = message;
+        thread.draft = withRestored(thread.draft, message); // above anything typed while the turn ran
         thread.stoppedDraft = message;
       }
       if (sent.length && !error.midStream) {
@@ -401,10 +397,12 @@ async function runTurn(slug, message, askId, sent = []) {
         thread.stoppedImages = images.map((i) => i.id);
       }
     } else {
-      thread.error = error.message;
       // Refused or never sent: the server stored nothing, so the words (and images) go back in the box.
       // Broken mid-stream: the server may have stored them, and the refetch will show it.
-      if (message && !error.midStream) thread.draft = message;
+      const back = Boolean(message) && !error.midStream;
+      const words = failureWords(error);
+      thread.error = back && words === t("paneParts.offline") ? t("paneParts.offlineKept") : words;
+      if (back) thread.draft = withRestored(thread.draft, message);
       if (sent.length && !error.midStream) tray.restore(sent);
     }
   }
@@ -424,12 +422,21 @@ async function runTurn(slug, message, askId, sent = []) {
   if (!focusAnswer()) thread.focusPending = true;
 }
 
+/** Runs a failed turn again: the words given back to the box if there are any, else the thread as it stands. */
+function retryTurn(slug) {
+  if (thread.inFlight || thread.slug !== slug) return;
+  const form = pane.querySelector("#answer-form");
+  const ta = pane.querySelector("#answer");
+  if (form && ta && !ta.dataset.reef && canSend({ text: ta.value, images: tray.ready().length, busy: tray.busy(), disabled: ta.disabled })) form.requestSubmit();
+  else void runTurn(slug, null); // the reader's last message is stored; the persona answers it
+}
+
 /** The reader answers one of the Keeper's questions directly: it goes to the top of the draft as a quote. */
 function quoteIntoAnswer(question) {
   const ta = pane.querySelector("#answer");
   if (!ta || ta.disabled) return;
   const line = `> ${question}`;
-  const reef = ta.placeholder === t("card.disputePlaceholder");
+  const reef = Boolean(ta.dataset.reef);
   const current = reef ? thread.disputeDraft : thread.draft;
   if (!current.split("\n").includes(line)) {
     const next = current.trim() ? `${line}\n${current}` : `${line}\n`;
@@ -463,7 +470,8 @@ async function answerReef(slug, id, answer, note) {
     ok = true;
   } catch (error) {
     if (thread.slug !== slug) return; // the reader moved on; this failure is not theirs to see
-    thread.error = error.message;
+    // Not a line in the conversation: the answer was pressed on the map's card or in the box, and both are still there.
+    toastError(error, t(answer === "confirm" ? "card.confirmWhat" : "card.disputeWhat"));
     thread.answering = false;
   }
   render();
@@ -491,7 +499,7 @@ function renderLive() {
   const progress = pane.querySelector("#progress");
   const log = pane.querySelector(".log");
   if (!live || !progress || !log) return; // no list on screen yet; the full render at the end of the turn shows everything
-  const stuck = following;
+  const stuck = follow.following;
   if (thread.inFlight && !thread.live) {
     // Nothing has arrived yet: the reply's own line says so, where the words will land.
     live.replaceChildren(thinkingEl(thinkingLine(PERSONA_NAMES[thread.mode], thread.progress)));
@@ -513,7 +521,7 @@ function renderLive() {
   // Before any words, the waiting line itself names the step; once words stream, the step goes under them.
   progress.textContent = thread.progress && thread.live ? `${thinkingLine(PERSONA_NAMES[thread.mode], thread.progress)}…` : "";
   progress.hidden = !progress.textContent;
-  if (stuck) toEnd(log);
+  if (stuck) follow.toEnd();
 }
 
 /** Focuses the answer box if it can take input; returns whether it did. */
@@ -532,15 +540,6 @@ function focusAnswer() {
   return true;
 }
 
-function growAnswer(ta) {
-  if (!ta) return;
-  const log = pane.querySelector(".log");
-  const stuck = log && following;
-  ta.style.height = "auto";
-  ta.style.height = `${ta.scrollHeight}px`;
-  if (stuck) toEnd(log); // a taller answer box shrinks the log; keep it at the bottom
-}
-
 // ---- head ----
 
 /** Who answers here, beside the island's name: the Keeper or the mentor. It is the map's lens too (`m` switches it). */
@@ -551,7 +550,8 @@ function lensSwitchEl() {
   for (const m of MODES) {
     const b = button(MODE_LABELS[m], () => setMode(m), `seg ${m}${m === thread.mode ? " on" : ""}`);
     b.setAttribute("aria-pressed", String(m === thread.mode));
-    b.title = `${MODE_ROLES[m]}\n${MODE_HINTS[m]}  [m]`;
+    b.dataset.fk = `lens-${m}`;
+    tip(b, MODE_HINTS[m], "m");
     wrap.append(b);
   }
   return wrap;
@@ -567,7 +567,8 @@ function looseMarkEl(key, label, count) {
   }, `loose-mark${looseShown === key ? " on" : ""}`);
   mark.setAttribute("aria-label", label);
   mark.setAttribute("aria-expanded", String(looseShown === key));
-  mark.title = label;
+  mark.dataset.fk = `loose-${key}`;
+  tip(mark, label);
   return mark;
 }
 
@@ -590,9 +591,10 @@ function looseListEl(island, ends) {
         });
       } catch (error) {
         dismiss.disabled = false;
-        toastError(error, t("card.looseDismiss")); // a failed dismiss says so
+        toastError(error, t("card.looseDismissWhat"));
       }
-    }, "btn ghost sm");
+    }, "btn quiet sm loose-dismiss");
+    dismiss.dataset.fk = `dismiss-${e.id}`;
     tip(dismiss, t("card.looseDismissTitle"));
     item.append(text, dismiss);
     list.append(item);
@@ -611,7 +613,9 @@ function chipsEl(island) {
     const lit = landmarkLit(l, thread.mode);
     const chip = el("span", `chip${lit ? ` ${on}` : ""}`, l.name);
     chip.dataset.lm = l.slug;
-    if (lit && thread.mode === "judge" && l.evidence) chip.title = t("card.evidence", { evidence: l.evidence });
+    // The words it was lit from (the Keeper's lens) or explored with (the mentor's), under the pointer.
+    const quote = lit ? (thread.mode === "mentor" ? l.exploredEvidence : l.evidence) : null;
+    if (quote) tip(chip, t("paneParts.fromWords", { quote }));
     if (lit && thread.litSeen && !thread.litSeen.has(l.slug)) chip.classList.add("just-lit");
     const here = ends.filter((e) => e.landmark === l.slug);
     if (here.length) {
@@ -630,13 +634,15 @@ function chipsEl(island) {
 
 function noteForm(island) {
   const form = el("form", "note");
-  const input = el("input");
+  const input = el("input", "field");
   input.id = "note";
   input.placeholder = t("card.notePlaceholder");
+  input.setAttribute("aria-label", t("card.notePlaceholder"));
   input.value = noteDraft;
   input.addEventListener("input", () => (noteDraft = input.value));
-  const send = button(t("card.send"), null);
+  const send = button(t("paneParts.send"), null, "btn md");
   send.type = "submit";
+  send.dataset.fk = "note-send";
   form.append(input, send);
   form.addEventListener("submit", (e) => {
     e.preventDefault();
@@ -649,21 +655,35 @@ function noteForm(island) {
   return form;
 }
 
+/** The judge's round on this island, 0 before the first answer; the mentor has no rounds. */
+const roundNow = () => (thread.mode === "judge" ? roundOf(thread.messages) : 0);
+
+/** Everything the head is drawn from, as a string: it is drawn again only when this changes, so a snapshot that changed nothing here keeps its buttons (and the keyboard on them). */
+function headSig(island) {
+  return JSON.stringify([
+    island.slug, island.name, island.summary, island.harbour, island.verdict, island.hasChildren, island.children, island.landmarks, island.looseEnds,
+    thread.mode, roundNow(), noteOpen, looseFor === island.slug ? looseShown ?? null : null,
+  ]);
+}
+
+/**
+ * The head, top to bottom: the island's name beside who answers; its summary; its landmarks; then one row with
+ * where it stands (the status, how many are lit, the round) on the left and where to go from here on the right.
+ */
 function headEl(island) {
   const head = el("div", "head");
   const titlebar = el("div", "titlebar");
   titlebar.append(el("h2", null, island.name), lensSwitchEl());
   head.append(titlebar);
-  const pill = headPill(island, thread.mode);
-  const pills = el("span", "pills");
-  pills.append(el("span", pill.cls, pill.text));
-  if (island.harbour) pills.append(el("span", "pill harbour", t("card.harbour")));
-  head.append(pills);
   if (island.summary) head.append(el("p", "summary", island.summary));
   const hasLandmarks = island.landmarks && island.landmarks.total > 0;
   if (hasLandmarks || island.looseEnds?.length) head.append(chipsEl(island));
 
   const sub = el("div", "sub");
+  const standing = el("span", "standing");
+  const pill = headPill(island, thread.mode);
+  standing.append(el("span", pill.cls, pill.text));
+  if (island.harbour) standing.append(el("span", "pill harbour", t("card.harbour")));
   const parts = [];
   if (hasLandmarks) {
     parts.push(
@@ -672,19 +692,24 @@ function headEl(island) {
         : t("card.chartedOf", { n: island.landmarks.unlocked, total: island.landmarks.total }),
     );
   }
-  const round = thread.mode === "judge" ? roundOf(thread.messages) : 0; // the mentor has no rounds
+  const round = roundNow();
   if (round > 0) parts.push(t("card.round", { n: Math.min(round, ROUNDS), total: ROUNDS })); // the opening turn is not a round yet
-  sub.append(el("span", null, parts.join(t("card.partsJoin"))));
+  if (parts.length) standing.append(el("span", "count", parts.join(t("card.partsJoin"))));
+  sub.append(standing);
   const links = el("span", "links");
-  if (island.hasChildren) links.append(button(t("card.sailIn"), () => setScale(island.slug), "link"));
-  else links.append(button(t("card.sailCloser"), () => void sailCloser(island), "link"));
+  const sail = island.hasChildren
+    ? tip(button(t("card.sailIn"), () => setScale(island.slug), "btn quiet md"), t("card.sailInTip"), "s")
+    : tip(button(t("card.sailCloser"), () => void sailCloser(island), "btn quiet md"), t("card.sailCloserTip"), "s");
+  sail.dataset.fk = "sail";
   const noteToggle = button(t("card.noteToggle"), () => {
     noteOpen = !noteOpen;
     render();
     if (noteOpen) pane.querySelector("#note")?.focus();
-  }, "link");
+  }, "btn quiet md");
   noteToggle.id = "note-toggle";
-  links.append(noteToggle);
+  noteToggle.setAttribute("aria-expanded", String(noteOpen));
+  if (!noteOpen) tip(noteToggle, t("card.noteTip"), "n"); // open, the field under it says the same, and a tip would cover its Send
+  links.append(sail, noteToggle);
   sub.append(links);
   head.append(sub);
 
@@ -704,21 +729,11 @@ function headEl(island) {
 
 // ---- log ----
 
-function retryButton() {
-  const actions = el("div", "actions");
-  actions.append(
-    button(t("card.retry"), () => {
-      thread.version = null; // the render below refetches
-      render();
-    }),
-  );
-  return actions;
-}
-
+/** The island's verdict, where the thread recorded it: the state with its own mark (the outline's), the words it rests on, and why. */
 function verdictEl(v) {
   const card = el("div", "verdict-card");
   const row = el("div", "row");
-  row.append(el("span", `pill${v.state === "reef" ? " reef" : ""}`, t("card.chartedAs", { state: stateLabel(v.state) })));
+  row.append(el("span", `pill ${v.state}`, t("card.chartedAs", { state: stateLabel(v.state) })));
   row.append(el("span", "conf", t("card.confidence", { pct: pct(v.confidence), date: v.at.slice(0, 10) })));
   card.append(row);
   card.append(el("q", null, v.evidence));
@@ -726,40 +741,96 @@ function verdictEl(v) {
   return card;
 }
 
-/** The reef the judge proposed. The reader answers it in the foot, not here. */
+/**
+ * A lit landmark (or, with the mentor, an explored one), one row each: the lamp, what happened, the landmark's
+ * name, and the reader's own words it was lit from. Those words are underlined in their message above, and the
+ * row, the words and the landmark's chip light together under the pointer.
+ */
+function litEl(item) {
+  const explored = item.kind === "explored";
+  const rows = el("div", "events");
+  for (const l of item.lit) {
+    const { row, body } = eventEl(explored ? "explored" : "lit", icon(explored ? "compass" : "lamp"), l.slug);
+    body.append(el("span", "event-label", t(explored ? "card.exploredTitle" : "card.litTitle")), el("span", "event-name", l.name));
+    if (l.quote) body.append(fromWordsEl(l.quote));
+    rows.append(row);
+  }
+  return rows;
+}
+
+/** The reef the judge proposed, in the same row: the claim, what would follow from it, and the words it rests on. The reader answers it in the foot, not here. */
 function reefEl(item) {
   const p = item.proposal;
-  const box = el("div", "reef-block");
-  box.append(el("div", "reef-title", t("card.reefTitle")));
-  box.append(el("p", null, p.claim));
-  box.append(el("p", "muted", t("card.ifSo", { consequence: p.consequence })));
-  const status = t(p.status === "pending" ? "card.reefPending" : p.status === "confirmed" ? "card.reefConfirmed" : "card.reefDisputed");
-  box.append(el("div", "muted", status));
-  return box;
+  const { row, body } = eventEl(`reef reef-block ${p.status}`, icon("reef"), item.evidence?.key ?? null);
+  const title = p.status === "pending" ? "card.reefTitle" : p.status === "confirmed" ? "card.reefMarked" : "card.reefDisputed";
+  body.append(el("span", "event-label", t(title)), el("span", "event-name", p.claim));
+  body.append(el("span", "event-note", t("card.ifSo", { consequence: p.consequence })));
+  if (item.evidence?.quote) body.append(fromWordsEl(item.evidence.quote));
+  if (p.status === "pending") body.append(el("span", "event-note todo", t("card.reefPending")));
+  return row;
 }
 
-function choicesEl(ask, reefPending) {
-  const box = el("div", "choices");
-  box.append(el("div", "q", t(ask.picked !== null ? "card.youChose" : "card.chooseOne")));
-  for (const option of ask.options) {
-    const b = button(option, () => answerAsk(thread.slug, ask, option), "choice");
-    if (ask.picked !== null) {
-      b.disabled = true;
-      if (ask.picked === option) b.classList.add("picked");
-    } else if (thread.inFlight || reefPending) {
-      b.disabled = true;
-    }
-    box.append(b);
+/** A quiet row for the rest of the trail: a board write (a button that opens the board at that card), a loose end, a model change, any other line. */
+function trailEl(item) {
+  if (item.kind === "model") {
+    const { row, body } = eventEl("model model-line");
+    body.append(el("span", "event-text", t("card.modelFrom", { model: item.text })));
+    return row;
   }
+  if (/^board: (pinned|updated) /.test(item.text)) {
+    // A persona's board write happens out of sight when the board is closed: its line opens the board at that card.
+    const { row, body } = eventEl("board board-line", icon("board", { size: 14 }), null, "button");
+    row.addEventListener("click", () => openBoard({ latest: true }));
+    row.dataset.fk = `board-line-${item.id}`;
+    body.append(el("span", "event-text", systemText(item.text)));
+    tip(row, t("card.openBoard"));
+    return row;
+  }
+  if (item.text.startsWith("loose end")) {
+    const closed = item.text.startsWith("loose end closed");
+    const { row, body } = eventEl("loose", icon(closed ? "check" : "question", { size: 14 }), item.evidence?.key ?? null);
+    body.append(el("span", "event-text", systemText(item.text)));
+    if (item.evidence?.quote) body.append(fromWordsEl(item.evidence.quote));
+    return row;
+  }
+  const { row, body } = eventEl("note");
+  body.append(el("span", "event-text", systemText(item.text)));
+  return row;
+}
+
+/** The options under a persona's question. While it waits for an answer each shows its key; once answered, the pick stays marked and the rest step back, still readable. */
+function choicesEl(ask, reefPending) {
+  const waiting = ask.picked === null && pendingAskOf()?.id === ask.id; // only the latest unanswered question still takes a pick
+  const done = !waiting;
+  const own = done && !ask.options.includes(ask.picked);
+  const live = waiting && !thread.inFlight && !reefPending;
+  const box = el("div", `choices${done ? " done" : ""}`);
+  box.append(el("div", "q", t(own ? "card.youAnswered" : done ? "card.youChose" : "card.chooseOne")));
+  ask.options.forEach((option, i) => {
+    const b = button(null, () => answerAsk(thread.slug, ask, option), "choice");
+    b.dataset.fk = `choice-${ask.id}-${i}`;
+    if (live) b.append(el("kbd", null, String(i + 1)));
+    if (ask.picked === option) {
+      b.classList.add("picked");
+      b.append(icon("check", { size: 14 }));
+    }
+    b.append(el("span", null, option));
+    b.disabled = !live;
+    box.append(b);
+  });
   return box;
 }
 
-/** A persona's "sail to": the island, why it holds what the reader asked, and in the mentor's lens, that the question goes along. */
-function sailEl(pointer) {
+/** A persona's "sail to": the island, why it holds what the reader asked, and in the mentor's lens, that the question goes along. `latest` is the one `g` follows. */
+function sailEl(pointer, latest) {
   const box = el("div", "sail");
-  const go = button(t("card.sailTo", { name: pointer.island.name }), () => void sailTo(pointer), "sail-go");
-  box.append(go, el("div", "sail-why", pointer.why));
+  const go = button(null, () => void sailTo(pointer), "btn ghost md sail-go");
+  go.append(icon("arrow-right", { size: 14 }), el("span", null, t("card.sailTo", { name: pointer.island.name })));
+  go.dataset.fk = `sail-${pointer.id}`;
+  tip(go, t("card.sailTip"), latest ? "g" : undefined);
+  box.append(el("div", "sail-why", pointer.why));
   if (thread.mode === "mentor" && pointer.question) box.append(el("div", "sail-carry", t("card.sailCarries")));
+  box.append(go);
   return box;
 }
 
@@ -785,80 +856,85 @@ function pinFor(role) {
 }
 
 function itemEl(item, reefPending) {
-  if (item.kind === "landmark") return el("div", "lit-line", `◆ ${item.names.join(" · ")}`);
-  if (item.kind === "explored") return el("div", "explored-line", `◇ ${item.names.join(" · ")}`);
+  if (item.kind === "landmark" || item.kind === "explored") return litEl(item);
   if (item.kind === "verdict") return verdictEl(item.verdict);
-  // A loose end's line carries the persona's own sentence, so it keeps its case.
-  if (item.kind === "system" && /^board: (pinned|updated) /.test(item.text)) {
-    // A persona's board write happens out of sight when the board is closed: its line opens the board at that card.
-    const line = button(systemText(item.text), () => openBoard({ latest: true }), "msg system board-line");
-    line.title = t("card.openBoard");
-    return line;
-  }
-  if (item.kind === "system") return el("div", `msg system${item.text.startsWith("loose end") ? " loose-line" : ""}`, systemText(item.text));
-  if (item.kind === "model") return el("div", "model-line", t("card.modelFrom", { model: item.text }));
   if (item.kind === "reef_proposal") return reefEl(item);
+  if (item.kind === "system" || item.kind === "model") return trailEl(item);
   const m = el("div", `msg ${item.role}`);
   const persona = item.role === "judge" || item.role === "mentor";
   if (persona && Number.isInteger(item.id) && canSpeak(item.role)) m.append(speakButton(item.id, item.role, readingOf(thread.slug, thread.mode)));
   if (item.images?.length) m.append(messageImagesEl(item.images));
-  if (item.text || !item.images?.length) m.append(renderMarkdown(item.text, persona ? { onQuestion: quoteIntoAnswer, lead: true, terms, pin: pinFor(item.role) } : {}));
+  // The reader's own words carry the marks: what a lit landmark, a reef or a loose end quoted from them.
+  if (item.text || !item.images?.length) m.append(renderMarkdown(item.text, persona ? { onQuestion: quoteIntoAnswer, lead: true, terms, pin: pinFor(item.role) } : { marks: item.marks }));
   const ask = persona ? askFor(thread.asks, item.id) : null;
   if (ask) m.append(choicesEl(ask, reefPending));
-  if (persona) for (const p of thread.pointers.filter((x) => x.messageId === item.id)) m.append(sailEl(p));
+  if (persona) for (const p of thread.pointers.filter((x) => x.messageId === item.id)) m.append(sailEl(p, p.id === thread.pointers.at(-1)?.id));
   return m;
 }
 
-/** Everything one log item's element is drawn from, as a string: the element is kept while this stays the same. */
+/** Everything one log item's element is drawn from, as a string: the element is kept while this stays the same. The item carries its own evidence (`logItems`), so a quote that arrives with a later snapshot draws it again. */
 function itemSig(item, reefPending) {
   const persona = item.role === "judge" || item.role === "mentor";
   if (item.kind !== "text" || !persona) return JSON.stringify([logGen, item]);
   const ask = askFor(thread.asks, item.id);
-  return JSON.stringify([logGen, item, termsSig, canSpeak(item.role), ask, ask ? [thread.inFlight, reefPending] : 0, thread.pointers.filter((x) => x.messageId === item.id)]);
+  return JSON.stringify([logGen, item, termsSig, canSpeak(item.role), ask, ask ? [thread.inFlight, reefPending, pendingAskOf()?.id ?? null] : 0, thread.pointers.filter((x) => x.messageId === item.id), thread.pointers.at(-1)?.id ?? null]);
 }
 
-/** The log's children, in order. A keyed entry (a thread item) keeps its element until its content changes. */
+/** Whether there is a thread to draw: it has loaded, or it has words in hand, or the island has none to load (the snapshot counts both lenses' messages). */
+const threadReady = (island) => thread.loaded || thread.inFlight || thread.messages.length > 0 || island.messages === 0;
+
+let itemsFor = { messages: null, island: null, items: [] };
+/** The thread's log items on this island: worked out once per thread and snapshot, since one redraw asks several times (the log, the foot, the map's card). */
+function itemsNow(island) {
+  if (itemsFor.messages !== thread.messages || itemsFor.island !== island) itemsFor = { messages: thread.messages, island, items: logItems(thread.messages, island) };
+  return itemsFor.items;
+}
+
+/** The log's children, in order. A keyed entry (a thread item, a notice) keeps its element until its content changes. */
 function logEntries(island) {
   const out = [];
-  const add = (build) => out.push({ build });
-  if (!thread.loaded) {
-    if (!thread.loadError) add(() => el("p", "muted", t("card.loading")));
-    else {
-      add(() => el("p", "error", thread.loadError));
-      add(retryButton);
-    }
+  if (!threadReady(island)) {
+    // Nothing to show yet: bars where the words will be (only after a moment), or why they did not come.
+    if (thread.loadError) out.push({ key: "failed", sig: thread.loadError, build: () => failedEl(t("paneParts.loadFailed"), thread.loadError, retryLoad) });
+    else out.push({ key: "skeleton", sig: "", build: skeletonEl });
     return out;
   }
-  if (thread.loadError) {
-    // the messages below are the last good ones; only the refetch failed
-    add(() => el("p", "muted", t("card.refreshFailed", { error: thread.loadError })));
-    add(retryButton);
-  }
-  const items = logItems(thread.messages, island);
+  const items = itemsNow(island);
+  const turnError = () => out.push({
+    key: "turn-error", sig: thread.error,
+    build: () => noticeEl(thread.error, items.length ? { action: { label: t("paneParts.tryAgain"), run: () => retryTurn(island.slug), keys: "r" } } : {}),
+  });
+  const verdictFirst = () => out.push({ key: "verdict-first", sig: JSON.stringify(island.verdict), build: () => verdictEl(island.verdict) });
   if (items.length === 0 && !thread.inFlight) {
-    if (thread.mode === "judge" && island.verdict) add(() => verdictEl(island.verdict));
-    add(() => briefingEl(island));
-    if (thread.error) add(() => el("div", "error", thread.error));
+    if (thread.mode === "judge" && island.verdict) verdictFirst();
+    out.push({ key: "briefing", sig: JSON.stringify([thread.mode, Boolean(island.verdict), carry]), build: () => briefingEl(island) });
+    if (thread.error) turnError(); // the start button above is the way to try again
     return out;
   }
   // a verdict written from the terminal has no system line; show it at the top of the judge's log
-  if (thread.mode === "judge" && island.verdict && !items.some((i) => i.kind === "verdict")) add(() => verdictEl(island.verdict));
+  if (thread.mode === "judge" && island.verdict && !items.some((i) => i.kind === "verdict")) verdictFirst();
   const reefPending = Boolean(items.find((i) => i.kind === "reef_proposal" && i.proposal.status === "pending"));
   for (const item of items) out.push({ key: `${item.kind}:${item.id}`, sig: itemSig(item, reefPending), build: () => itemEl(item, reefPending) });
-  add(() => {
+  // The reply as it streams: kept across redraws, so a diagram or demo in it is not drawn again mid-reply.
+  out.push({ key: "live", sig: "", build: () => {
     const live = el("div", `msg ${thread.mode}`);
     live.id = "live";
     live.hidden = true;
     return live;
-  });
-  add(() => {
+  } });
+  out.push({ key: "progress", sig: "", build: () => {
     const progress = el("div", "progress");
     progress.id = "progress";
     progress.hidden = true;
     return progress;
+  } });
+  if (thread.stopped) out.push({ key: "stopped", sig: "", build: () => noticeEl(t("paneParts.stopped"), { alert: false }) });
+  if (thread.error) turnError();
+  // The words above are the last good ones; only reading them again failed. Said at the end, where the reader is.
+  if (thread.loadError) out.push({
+    key: "stale", sig: thread.loadError,
+    build: () => noticeEl(t("paneParts.refreshFailed", { why: thread.loadError }), { action: { label: t("paneParts.retry"), run: retryLoad, keys: "r" } }),
   });
-  if (thread.stopped) add(() => el("div", "stopped", t("card.stopped")));
-  if (thread.error) add(() => el("div", "error", thread.error));
   return out;
 }
 
@@ -869,41 +945,11 @@ function logEntries(island) {
 function logEl(island, prev = null) {
   const of = `${island.slug}/${thread.mode}`;
   const log = prev && prev.dataset.thread === of ? prev : el("div", "log");
-  if (log !== prev) {
-    following = true; // a thread opens at its latest words
-    log.addEventListener("scroll", () => {
-      // A scroll the page made itself (toEnd) says nothing about the reader: by the time its event arrives the
-      // content may have grown again, and reading that as "scrolled away" would stop the log following.
-      if (Math.abs(log.scrollTop - ownTop) < 2) return;
-      following = atBottom(log);
-    });
-  }
+  follow.adopt(log); // a thread it has not seen opens at its latest words
   log.dataset.thread = of;
   keyedChildren(log, logEntries(island));
+  follow.watch(); // a diagram drawn late or an image arriving keeps a followed log at its end
   return log;
-}
-
-/** The persona's mark: the Keeper's lamp, the mentor's compass needle. Built as SVG nodes, never markup. */
-function lensGlyph(mode) {
-  const ns = "http://www.w3.org/2000/svg";
-  const svg = document.createElementNS(ns, "svg");
-  svg.setAttribute("viewBox", "0 0 56 56");
-  svg.setAttribute("class", "glyph");
-  svg.setAttribute("aria-hidden", "true");
-  const add = (tag, attrs) => {
-    const node = document.createElementNS(ns, tag);
-    for (const [k, v] of Object.entries(attrs)) node.setAttribute(k, String(v));
-    svg.append(node);
-  };
-  add("circle", { cx: 28, cy: 28, r: 26, class: "ring" });
-  if (mode === "mentor") {
-    add("path", { d: "M28 9 L33 28 L28 47 L23 28 Z", class: "needle" });
-    add("path", { d: "M28 9 L33 28 L23 28 Z", class: "fill" });
-  } else {
-    add("circle", { cx: 28, cy: 28, r: 17, class: "beam" });
-    add("circle", { cx: 28, cy: 28, r: 6, class: "fill" });
-  }
-  return svg;
 }
 
 /**
@@ -914,7 +960,7 @@ function briefingEl(island) {
   const mentor = thread.mode === "mentor";
   const kind = mentor ? "Mentor" : "Keeper";
   const box = el("div", `briefing ${thread.mode}`);
-  box.append(lensGlyph(thread.mode), el("h3", null, t(`card.brief${kind}Title`)));
+  box.append(personaGlyph(thread.mode), el("h3", null, t(`card.brief${kind}Title`)));
   const steps = el("ol", "steps");
   [1, 2, 3].forEach((n) => {
     const li = el("li");
@@ -933,14 +979,17 @@ function briefingEl(island) {
   const start = button(label, () => {
     carry = null;
     void runTurn(island.slug, carried ? carried.question : null);
-  }, `btn primary ${thread.mode}`);
+  }, "btn xl start");
   start.id = "landfall";
+  tip(start, t("card.startTip"), "l");
   box.append(start);
   if (carried) {
-    box.append(button(t("card.carryDrop"), () => {
+    const drop = button(t("card.carryDrop"), () => {
       carry = null;
       render();
-    }, "link carry-drop"));
+    }, "btn quiet sm carry-drop");
+    drop.dataset.fk = "carry-drop";
+    box.append(drop);
   }
   box.append(el("p", "sub", t("card.briefSwitch")));
   return box;
@@ -948,85 +997,58 @@ function briefingEl(island) {
 
 // ---- foot ----
 
+/** The reef waiting for the reader's answer in this thread, or null. */
+const pendingReef = (island) => (threadReady(island) ? itemsNow(island).find((i) => i.kind === "reef_proposal" && i.proposal.status === "pending") ?? null : null);
+
+/** What the answer box holds right now: the objection while a reef waits, else the draft. */
+const draftOf = (reef) => (reef ? thread.disputeDraft : thread.draft);
+
+/** Everything the foot is drawn from but the draft's words (those live in the box; `syncAnswer` puts back what the page itself changed). */
+function footSig(island) {
+  const reef = pendingReef(island);
+  return JSON.stringify([
+    island.slug, thread.mode, thread.messages.length === 0, thread.inFlight, turnAbort !== null, thread.answering, reef?.id ?? null, reef ? null : pendingAskOf()?.id ?? null,
+    tray.items.map((i) => [i.key, i.status]), tray.notice, canSpeak(personaRole(thread.mode)), modelSig(),
+  ]);
+}
+
+/**
+ * The foot: the answer box as one composer, and under it what the keys do and the model answering. While a reef
+ * waits the box takes the objection and its action is Dispute; while a reply streams the action is Stop, and the
+ * box stays open so the next thought can be typed (Enter waits for the reply to end).
+ */
 function footEl(island) {
   const foot = el("div", "foot");
-  const form = el("form");
-  form.id = "answer-form";
-  const ta = el("textarea");
-  ta.id = "answer";
-  ta.rows = 1;
-  const pending = thread.loaded ? logItems(thread.messages, island).find((i) => i.kind === "reef_proposal" && i.proposal.status === "pending") : null;
-  const ask = thread.loaded && !pending ? pendingAskOf() : null;
-  const empty = thread.messages.length === 0;
+  const pending = pendingReef(island);
+  const ask = pending ? null : pendingAskOf();
+  const empty = thread.messages.length === 0; // the opening turn is on its way: nothing to answer yet
   const busy = thread.inFlight || thread.answering;
-  ta.disabled = !thread.loaded || busy || empty;
-  ta.placeholder = pending
-      ? t("card.disputePlaceholder")
-      : empty
-        ? thread.mode === "mentor"
-          ? t("card.beginMentor")
-          : t(island.verdict ? "card.beginExplore" : "card.beginLandfall")
-        : ask
-          ? t("card.ownWords")
-          : t(thread.mode === "mentor" ? "card.mentorPlaceholder" : "card.answerPlaceholder");
-  ta.value = pending ? thread.disputeDraft : thread.draft;
-  ta.addEventListener("input", () => {
-    if (pending) thread.disputeDraft = ta.value;
-    else thread.draft = ta.value;
-    growAnswer(ta);
-  });
-  ta.addEventListener("compositionstart", () => {
-    composing = true;
-  });
-  ta.addEventListener("compositionend", () => {
-    composing = false;
-    if (pending) thread.disputeDraft = ta.value;
-    else thread.draft = ta.value;
-    // A rebuild held back while the word was composed runs now, after the key that committed it has finished.
-    if (renderHeld) setTimeout(() => {
-      if (!composing && renderHeld) render();
-    }, 0);
-  });
-  ta.addEventListener("keydown", (e) => {
-    if (isImeKey(e)) return; // Enter picking a Zhuyin candidate is the input method's, never a send
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      form.requestSubmit();
-    }
-  });
-  // A pasted screenshot joins the draft's images; a dispute is words only.
-  if (!pending) ta.addEventListener("paste", (e) => {
-    const files = pastedImages(e);
-    if (files.length) tray.add(files);
-  });
-  form.append(ta);
-  if (pending) {
-    const dispute = button(t("card.dispute"), null, "btn ghost");
-    dispute.type = "submit";
-    dispute.disabled = busy;
-    form.append(dispute);
-    form.addEventListener("submit", (e) => {
-      e.preventDefault();
-      if (busy) return;
-      void answerReef(island.slug, pending.id, "dispute", ta.value.trim() || undefined);
-    });
-  } else {
-    form.append(attachButton(tray, ta.disabled));
-    if (thread.inFlight && turnAbort) {
-      // While a reply streams, Send is Stop (Escape does the same).
-      const stop = button(t("card.stop"), () => stopTurn(), "btn ghost");
-      stop.type = "button";
-      stop.id = "stop";
-      form.append(stop);
-    } else {
-      const send = button(t("card.send"), null, `btn send ${thread.mode}`); // tinted by who it goes to, like the head's mode pill
-      send.type = "submit";
-      send.disabled = ta.disabled || tray.busy(); // an image still being shrunk or sent goes with the message, so wait
-      form.append(send);
-    }
-    form.addEventListener("submit", (e) => {
-      e.preventDefault();
-      const body = ta.value.trim();
+  const streaming = thread.inFlight && turnAbort !== null;
+  const form = composerEl({
+    value: draftOf(pending),
+    placeholder: pending ? t("card.disputePlaceholder") : ask ? t("card.ownWords") : t(thread.mode === "mentor" ? "card.mentorPlaceholder" : "card.answerPlaceholder"),
+    disabled: thread.answering || empty,
+    tray: pending ? null : tray, // a dispute is words only
+    action: pending ? "dispute" : streaming ? "stop" : "send",
+    actionLabel: pending ? t("card.dispute") : undefined,
+    actionDisabled: busy,
+    onInput(value) {
+      if (pending) thread.disputeDraft = value;
+      else thread.draft = value;
+    },
+    onCompose(on) {
+      composing = on;
+      // A rebuild held back while the word was composed runs now, after the key that committed it has finished.
+      if (!on && renderHeld) setTimeout(() => {
+        if (!composing && renderHeld) render();
+      }, 0);
+    },
+    onStop: () => stopTurn(),
+    onSubmit(body) {
+      if (pending) {
+        if (!busy) void answerReef(island.slug, pending.id, "dispute", body || undefined);
+        return;
+      }
       const withImages = tray.ready().length > 0;
       if ((!body && !withImages) || thread.inFlight || tray.busy()) return;
       // A pick from the options carries no images: words with images go as a message of their own.
@@ -1035,21 +1057,13 @@ function footEl(island) {
         thread.draft = "";
         void runTurn(island.slug, body, undefined, tray.take());
       }
-    });
-  }
-  const shelf = pending ? null : trayEl(tray);
-  if (shelf) foot.append(shelf);
+    },
+  });
+  if (pending) form.querySelector("#answer").dataset.reef = "1";
   foot.append(form);
-  const meta = el("div", "meta");
-  meta.append(el("span", null, t(pending ? "card.metaReef" : thread.inFlight ? "card.metaStop" : "card.metaSend")));
-  const model = modelEl();
-  if (canSpeak(personaRole(thread.mode)) || model) {
-    const right = el("span", "meta-r");
-    if (canSpeak(personaRole(thread.mode))) right.append(autoReadEl());
-    if (model) right.append(model);
-    meta.append(right);
-  }
-  foot.append(meta);
+  const role = personaRole(thread.mode);
+  const hint = pending ? { typing: t("card.metaReef") } : streaming ? { typing: t("paneParts.hintStop") } : { typing: t("paneParts.hintSend"), idle: t("paneParts.hintWrite") };
+  foot.append(footMetaEl(hint, [canSpeak(role) ? autoReadEl() : null, modelEl()]));
   return foot;
 }
 
@@ -1060,7 +1074,7 @@ function ctaModel(island) {
   const judging = thread.mode === "judge";
   return {
     island,
-    pendingReef: judging && island && thread.loaded ? logItems(thread.messages, island).find((i) => i.kind === "reef_proposal" && i.proposal.status === "pending") ?? null : null,
+    pendingReef: judging && island && thread.loaded ? itemsNow(island).find((i) => i.kind === "reef_proposal" && i.proposal.status === "pending") ?? null : null,
     verdict: judging && island ? island.verdict : null,
     handoff: !judging && Boolean(island) && allExplored(island),
     inFlight: thread.inFlight,
@@ -1074,7 +1088,7 @@ function ctaModel(island) {
       void select(slug);
     },
     onConfirm: () => {
-      const p = logItems(thread.messages, island).find((i) => i.kind === "reef_proposal" && i.proposal.status === "pending");
+      const p = itemsNow(island).find((i) => i.kind === "reef_proposal" && i.proposal.status === "pending");
       if (p) void answerReef(island.slug, p.id, "confirm");
     },
     onDispute: () => focusAnswer(),
@@ -1123,34 +1137,36 @@ function render() {
     void loadThread(island.slug); // also mid-turn: a verdict's system line shows in the same beat as the map
   }
 
-  const hadFocus = document.activeElement && document.activeElement.id === "answer";
-  // Where the caret was: a repaint while the reader edits mid-sentence (an image finishing upload) must not move it.
-  const caret = hadFocus ? [document.activeElement.selectionStart, document.activeElement.selectionEnd] : null;
-  const hadNoteFocus = document.activeElement && document.activeElement.id === "note";
   const prevLog = pane.querySelector(":scope > .log");
   const prevTop = prevLog ? prevLog.scrollTop : 0;
 
   pane.hidden = false;
+  pane.dataset.lens = thread.mode; // the pane's accent is its persona's: the lamp, or the mentor's teal
   terms = landmarkTerms(island.landmarks.items);
-  // Before the first turn the briefing holds the start button; the answer box comes with the first reply.
-  const briefing = thread.loaded && thread.messages.length === 0 && !thread.inFlight;
   termsSig = JSON.stringify(island.landmarks.items.map((l) => [l.slug, l.name, l.terms ?? null]));
-  // The log stays in the pane when it is this thread's (patchChildren never detaches it); the rest is made again.
-  patchChildren(pane, [gripEl(), headEl(island), logEl(island, prevLog), ...(briefing ? [] : [footEl(island)])]);
-  growAnswer(pane.querySelector("#answer"));
+  // The answer box comes once there is something to answer: not before the first turn (the briefing holds the
+  // start button), and not while the thread is still being read.
+  const answering = threadReady(island) && (thread.messages.length > 0 || thread.inFlight);
+  // Each part is drawn again only when what it is drawn from changed (its sig): a snapshot that changed nothing
+  // keeps every button where it is, with the keyboard and a press in flight on it. The log stays in the pane when
+  // it is this thread's. Where a part is drawn anew, the keyboard goes back to the same control, and the caret to
+  // where it stood (a repaint while the reader edits mid-sentence must not move it).
+  keepFocus(pane, () => {
+    keyedChildren(pane, [
+      { key: "grip", sig: "", build: gripEl },
+      { key: "head", sig: headSig(island), build: () => headEl(island) },
+      { build: () => logEl(island, prevLog) },
+      ...(answering ? [{ key: "foot", sig: footSig(island), build: () => footEl(island) }] : []),
+    ]);
+  });
+  // The page changed the draft itself (a quoted question, words given back by a failed send): the box follows.
+  const form = pane.querySelector("#answer-form");
+  if (form) syncAnswer(form, draftOf(form.querySelector("#answer").dataset.reef), form.querySelector(".dispute") ? null : tray);
   renderLive();
-  const log = pane.querySelector(".log");
-  if (log !== prevLog || following) toEnd(log);
+  const log = pane.querySelector(":scope > .log");
+  if (log !== prevLog || follow.following) follow.toEnd();
   else log.scrollTop = prevTop;
-  if (hadNoteFocus) {
-    const note = pane.querySelector("#note");
-    if (note) {
-      note.focus();
-      note.setSelectionRange(note.value.length, note.value.length);
-    }
-  }
-  if (hadFocus || thread.focusPending) focusAnswer();
-  if (caret) pane.querySelector("#answer")?.setSelectionRange(caret[0], caret[1]);
+  if (thread.focusPending) focusAnswer();
   // Remember which chips are lit so the next render can pulse only the newly lit ones.
   thread.litSeen = new Set((island.landmarks?.items ?? []).filter((l) => landmarkLit(l, thread.mode)).map((l) => l.slug));
   void renderHistory(island, ++renderId);
@@ -1168,7 +1184,7 @@ function nearestOpen() {
 
 function gripEl() {
   const grip = el("div", "grip");
-  grip.title = t("card.resize");
+  tip(grip, t("card.resize"));
   grip.addEventListener("pointerdown", (e) => {
     e.preventDefault();
     pane.classList.add("resizing");

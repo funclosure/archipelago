@@ -353,159 +353,227 @@ body:has(.pane.resizing) :is(.chrome, .map-focus, .cta, .board-scrim, .board, .b
 :lang(zh) .map-note.reading p { font-style: normal; }
 
 /* ---- the pane: head, log, foot ---- */
+/* Head, log and foot share one reading column: --col wide, centred once the pane is wider than it (--gutter). The
+   blocks set smaller than the persona's words (rows of the trail, cards, options) stop at --measure, the width its
+   64ch come to, so they end where its lines do. --accent is the colour of whoever answers here, from the pane's
+   data-lens: the lamp, or the mentor's teal. These three are the pane's own, not steps of the scale. */
 .pane { position: fixed; top: 0; right: 0; bottom: 0; width: var(--pane-w); background: var(--panel);
-  border-left: 1px solid var(--line); display: flex; flex-direction: column; box-shadow: -12px 0 32px var(--shadow-soft); z-index: 2; }
+  border-left: 1px solid var(--line); display: flex; flex-direction: column; box-shadow: -12px 0 32px var(--shadow-soft); z-index: 2;
+  --col: 720px; --gutter: max(var(--sp-5), calc((var(--pane-w) - var(--col)) / 2)); --measure: calc(35.5 * var(--fs-lg)); --accent: var(--lamp); }
+.pane[data-lens="mentor"] { --accent: var(--explore); }
 .pane[hidden] { display: none; }
 /* The pane arrives in one short step from its own edge (its root stays in the page, so a redraw never replays it). */
 @media (min-width: 721px) and (prefers-reduced-motion: no-preference) { .pane { animation: pane-in var(--t-med) var(--ease); } }
 @keyframes pane-in { from { transform: translateX(14px); opacity: 0; } }
 @media (max-width: 720px) { .pane { width: 100%; } }
 
-.head { padding: 18px 20px 12px; border-bottom: 1px solid var(--line); display: grid; gap: 8px; }
-.head .row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-.head h2 { margin: 0; font: 22px Georgia, serif; }
-.pill { font-size: var(--fs-micro); text-transform: uppercase; letter-spacing: var(--track-caps); padding: 4px 8px; border-radius: 4px;
-  background: var(--grass); color: var(--on-land); white-space: nowrap; }
-.pill.open { background: transparent; border: 1px dashed var(--open); color: var(--muted); }
-.pill.reef { background: var(--reef); color: var(--on-accent); }
-.pills { display: flex; gap: 6px; }
-.pill.harbour { background: transparent; border: 1px dashed var(--sand); color: var(--sand); }
-.head .summary { margin: 0; color: var(--muted); font-size: 12px; }
-.chips { display: flex; flex-wrap: wrap; gap: 6px; }
-.chip { font-size: 11px; padding: 2px 8px; border-radius: 999px; border: 1px dashed var(--muted); color: var(--muted); }
-.chip.lit { background: var(--sand); border: 1px solid var(--sand); color: var(--on-accent); }
+/* The head, top to bottom: the name beside who answers, the summary, the landmarks, then one row with where the
+   island stands on the left and where to go from here on the right. */
+.pane > .head { padding: var(--sp-4) var(--gutter) var(--sp-3); border-bottom: 1px solid var(--line); display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--sp-2); }
+.pane > .head h2 { margin: 0; min-width: 0; font: var(--fs-2xl)/var(--lh-tight) var(--font-serif); text-wrap: balance; }
+.pane > .head > p { margin: 0; }
+.pane > .head .summary { max-width: var(--measure); color: var(--text-2); font-size: var(--fs-md); line-height: var(--lh-body); }
+/* A status label: small capitals in a quiet outline. A verdict wears its state's own mark, the dot the outline
+   draws for it, so a sandbar is never the settled green. */
+.pill { display: inline-flex; align-items: center; gap: var(--sp-15); box-sizing: border-box; min-height: var(--sp-5); padding: 0 var(--sp-2); border: 1px solid var(--line-strong); border-radius: var(--r-full);
+  font-size: var(--fs-micro); font-weight: var(--fw-medium); line-height: var(--lh-ui); text-transform: uppercase; letter-spacing: var(--track-caps); color: var(--text-2); white-space: nowrap; }
+.pill:is(.sandbar, .settled, .mountainous, .reef, .explore)::before { content: ""; flex: none; box-sizing: border-box; width: var(--sp-2); height: var(--sp-2); border-radius: 50%; }
+.pill.sandbar::before { background: var(--sand-fill); }
+.pill.settled::before { background: var(--grass); }
+.pill.mountainous::before { background: var(--ridge); border: 1px solid var(--line-07); }
+.pill.reef::before { background: var(--sand-fill); box-shadow: inset 0 -2px 0 var(--reef); }
+.pill.explore::before { background: var(--explore); }
+.pill.open { border-style: dashed; border-color: var(--open); color: var(--muted); }
+.pill.harbour { border-style: dashed; border-color: var(--lamp-ring); color: var(--lamp); }
+.chips { display: flex; flex-wrap: wrap; gap: var(--sp-15); }
+.chip { font-size: var(--fs-xs); line-height: var(--lh-ui); padding: var(--sp-05) var(--sp-2); border-radius: var(--r-full); border: 1px dashed var(--open); color: var(--muted);
+  transition: border-color var(--t-fast) var(--ease), color var(--t-fast) var(--ease), box-shadow var(--t-fast) var(--ease); }
+.chip.lit { background: var(--lamp); border: 1px solid var(--lamp); color: var(--on-accent); }
 .chip.just-lit { animation: lit-pulse .8s ease-out 1; }
 .chip.explored { background: var(--explore); border: 1px solid var(--explore); color: var(--on-accent); }
-.chip.loose { display: inline-flex; align-items: center; gap: 4px; padding-right: 3px; }
-.loose-mark { font: 600 10px/1 var(--font-mono); min-width: 16px; height: 16px; padding: 0 4px; border-radius: 999px; border: 1px solid var(--lamp);
-  background: var(--panel); color: var(--lamp); cursor: pointer; }
-.loose-mark:hover, .loose-mark.on { background: var(--lamp); color: var(--on-accent); }
+.chip.loose { display: inline-flex; align-items: center; gap: var(--sp-1); padding-right: 3px; }
+.loose-mark { box-sizing: border-box; min-width: var(--sp-4); height: var(--sp-4); padding: 0 var(--sp-1); border-radius: var(--r-full); border: 1px solid var(--lamp);
+  background: var(--panel); color: var(--lamp); font: var(--fw-semibold) 10px/1 var(--font-mono); cursor: pointer; }
+.loose-mark:hover { background: color-mix(in oklab, var(--panel) 86%, var(--text)); }
+.loose-mark.on { background: var(--lamp); color: var(--on-accent); }
 .chips > .loose-mark { align-self: center; }
-.loose-list { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; padding: 8px 10px; border: 1px solid var(--line); background: var(--panel-2); border-radius: 6px; }
-.sail { margin-top: 10px; padding: 8px 10px; border: 1px solid var(--lamp); border-radius: 8px; max-width: 64ch; }
-.sail-go { background: none; border: 0; padding: 0; color: var(--lamp); font: 600 13px/1.4 var(--font-text); cursor: pointer; }
-.sail-go::before { content: "→ "; }
-.sail-go:hover { text-decoration: underline; }
-.sail-why { color: var(--text); font-size: 12px; line-height: 1.45; margin-top: 2px; }
-.sail-carry { color: var(--muted); font-size: 11px; margin-top: 2px; }
-.sail.mentor { border-color: var(--explore); }
-.sail.mentor .sail-go { color: var(--explore); }
-.sail .sail-alt { display: block; margin-top: 6px; color: var(--muted); font-size: 11px; }
-.briefing .carried { margin: 4px 0 12px; padding: 8px 12px; border: 1px solid var(--line); background: var(--panel-2); border-radius: 6px; text-align: left; max-width: 46ch; }
-.briefing .carried .lbl { color: var(--muted); font-size: 11px; }
-.briefing .carried p { margin: 2px 0 0; color: var(--text); font-size: 13px; line-height: 1.5; }
-.briefing .carry-drop { display: block; margin: 8px auto 0; }
-.msg.system.loose-line { text-transform: none; letter-spacing: normal; }
-.loose-item { display: flex; align-items: flex-start; gap: 10px; }
-.loose-text { flex: 1; min-width: 0; font-size: 12px; line-height: 1.45; color: var(--text); }
-.loose-kind { color: var(--lamp); margin-right: 6px; font-size: 11px; }
-.loose-meta { color: var(--muted); font-size: 11px; margin-top: 2px; }
-.loose-dismiss { background: none; border: 1px solid var(--line-03); border-radius: 999px; color: var(--muted); font-size: 11px; padding: 1px 8px; cursor: pointer; white-space: nowrap; }
-.loose-dismiss:hover { color: var(--text); border-color: var(--muted); }
+.loose-list { display: grid; gap: var(--sp-2); margin-top: var(--sp-2); padding: var(--sp-2) var(--sp-2) var(--sp-2) var(--sp-3); border: 1px solid var(--line); background: var(--panel-2); border-radius: var(--r-sm); }
+.loose-item { display: flex; align-items: flex-start; gap: var(--sp-2); }
+.loose-text { flex: 1; min-width: 0; font-size: var(--fs-sm); line-height: var(--lh-body); color: var(--text); }
+.loose-kind { color: var(--lamp); margin-right: var(--sp-15); font-size: var(--fs-xs); }
+.loose-meta { color: var(--muted); font-size: var(--fs-xs); margin-top: var(--sp-05); }
+.loose-dismiss { flex: none; }
+/* A persona's "Sail to" under its reply (and the guide's, which names the lens): why that island, then the way there. */
+.sail { display: grid; justify-items: start; gap: var(--sp-1); box-sizing: border-box; max-width: var(--measure); margin-top: var(--sp-3); padding: var(--sp-3); border: 1px solid var(--line); border-radius: var(--r-md); font-family: var(--font-ui); }
+.log > .sail { margin-top: 0; }
+.sail.judge { --accent: var(--lamp); }
+.sail.mentor { --accent: var(--explore); }
+.sail-why { color: var(--text); font-size: var(--fs-md); line-height: var(--lh-body); }
+.sail-carry { color: var(--muted); font-size: var(--fs-sm); line-height: var(--lh-body); }
+.sail-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-15); margin-top: var(--sp-15); }
+.sail .sail-go { margin-top: var(--sp-15); text-align: left; }
+.sail-row .sail-go { --btn-bg: var(--accent); margin-top: 0; }
+.sail .btn.ghost .ic { color: var(--accent); }
+.briefing .carried { margin: var(--sp-1) 0 var(--sp-3); padding: var(--sp-2) var(--sp-3); border: 1px solid var(--line); background: var(--panel-2); border-radius: var(--r-sm); text-align: left; max-width: 46ch; }
+.briefing .carried .lbl { color: var(--muted); font-size: var(--fs-xs); }
+.briefing .carried p { margin: var(--sp-05) 0 0; color: var(--text); font-size: var(--fs-md); line-height: var(--lh-body); }
+.briefing .carry-drop { margin-top: calc(-1 * var(--sp-2)); }
 /* Landmark words in the persona's replies (`renderMarkdown(…, { terms })`): a dotted underline in the lens's colour;
    hovering a word or its chip lights both (`lightLandmark` in card.js). */
-.msg .term { text-decoration: underline dotted var(--lamp); text-decoration-thickness: 1.5px; text-underline-offset: 4px; border-radius: 2px; transition: background .15s; }
-body[data-mode="mentor"] .msg .term { text-decoration-color: var(--explore); }
-.msg .term.hot { background: var(--lamp-tint); }
-body[data-mode="mentor"] .msg .term.hot { background: var(--panel-2); }
-.chip { transition: border-color .15s, color .15s; }
-.chip.hot:not(.lit):not(.explored) { border-style: solid; border-color: var(--lamp); color: var(--text); }
-body[data-mode="mentor"] .chip.hot:not(.lit):not(.explored) { border-color: var(--explore); }
-.chip.hot:is(.lit, .explored) { box-shadow: 0 0 0 2px var(--lamp-ring); }
-.pill.explore { background: transparent; border: 1px solid var(--explore); color: var(--explore); }
+.msg .term { text-decoration: underline dotted var(--accent); text-decoration-thickness: 1.5px; text-underline-offset: 4px; border-radius: 2px; transition: background-color var(--t-fast) var(--ease); }
+.msg .term.hot { background: color-mix(in oklab, var(--accent) 18%, transparent); }
+.chip.hot:not(.lit):not(.explored) { border-style: solid; border-color: var(--accent); color: var(--text); }
+.chip.hot:is(.lit, .explored) { box-shadow: 0 0 0 2px color-mix(in oklab, var(--accent) 55%, transparent); }
 /* Who answers here, beside the island's name (`lensSwitchEl`): the lens of the pane and the map. */
-.titlebar { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
-.titlebar h2 { min-width: 0; }
+.titlebar { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--sp-3); }
 .lens-switch { display: inline-flex; flex: none; gap: var(--sp-05); padding: var(--sp-05); margin-top: 2px; border: 1px solid var(--line); border-radius: var(--r-full); }
 .lens-switch .seg { box-sizing: border-box; min-height: calc(var(--h-sm) - 2px); padding: 0 var(--sp-3); background: transparent; border: 0; border-radius: var(--r-full); font: var(--fw-medium) var(--fs-sm)/1 var(--font-ui); color: var(--muted); cursor: pointer; white-space: nowrap; }
 .lens-switch .seg:hover { color: var(--text); }
 .lens-switch .seg.on { color: var(--on-accent); }
 .lens-switch .seg.judge.on { background: var(--lamp); }
 .lens-switch .seg.mentor.on { background: var(--explore); }
-/* Before the first turn (`briefingEl`): the persona's mark, what happens, and the one button that starts it. */
-.briefing { margin: auto; max-width: 400px; display: flex; flex-direction: column; align-items: center; gap: 14px; padding: 16px 0; text-align: center; font-family: var(--font-text); --accent: var(--lamp); }
-.briefing.mentor { --accent: var(--explore); }
+/* Before the first turn (`briefingEl`, and the cartographer's opening): the persona's mark, what happens, and the one
+   button that starts it, in the persona's colour. */
+.briefing { margin: auto; max-width: 400px; display: flex; flex-direction: column; align-items: center; gap: var(--sp-4); padding: var(--sp-4) 0; text-align: center; font-family: var(--font-text); }
 .briefing .glyph { width: 56px; height: 56px; }
 .briefing .glyph .ring { fill: none; stroke: var(--accent); stroke-opacity: .25; }
 .briefing .glyph .beam { fill: none; stroke: var(--accent); stroke-opacity: .5; stroke-dasharray: 2 4; }
 .briefing .glyph .needle { fill: none; stroke: var(--accent); stroke-width: 1.5; }
 .briefing .glyph .fill { fill: var(--accent); }
-.briefing h3 { margin: 0; font-size: 18px; font-weight: 500; line-height: 1.45; text-wrap: balance; }
-.briefing .steps { list-style: none; margin: 4px 0 0; padding: 0; display: grid; gap: 10px; width: 100%; text-align: left; }
-.briefing .steps li { display: grid; grid-template-columns: 24px minmax(0, 1fr); gap: 10px; font-size: 14px; line-height: 1.6; color: var(--text-2); }
-.briefing .steps .n { width: 22px; height: 22px; margin-top: 1px; border-radius: 50%; border: 1px solid var(--accent); color: var(--accent); font-size: 11.5px; display: grid; place-items: center; font-variant-numeric: tabular-nums; }
-.briefing .btn.primary { padding: 10px 22px; font-size: 15px; }
-.briefing .btn.primary.mentor { --btn-bg: var(--explore); }
-.briefing .sub { margin: 0; font-size: 12px; color: var(--muted); }
-.pill.mode { background: transparent; border: 1px solid var(--line); color: var(--muted); }
+.briefing h3 { margin: 0; font-size: var(--fs-xl); font-weight: var(--fw-medium); line-height: var(--lh-ui); text-wrap: balance; }
+.briefing .lede { margin: 0; font-size: var(--fs-base); line-height: var(--lh-read); color: var(--text-2); text-wrap: pretty; }
+.briefing .steps { list-style: none; margin: var(--sp-1) 0 0; padding: 0; display: grid; gap: var(--sp-2); width: 100%; text-align: left; }
+.briefing .steps li { display: grid; grid-template-columns: var(--sp-6) minmax(0, 1fr); gap: var(--sp-2); font-size: var(--fs-base); line-height: var(--lh-read); color: var(--text-2); }
+.briefing .steps .n { width: 22px; height: 22px; margin-top: 1px; border-radius: 50%; border: 1px solid var(--accent); color: var(--accent); font-size: var(--fs-xs); display: grid; place-items: center; font-variant-numeric: tabular-nums; }
+.briefing .btn.start { --btn-bg: var(--accent); padding-left: var(--sp-5); padding-right: var(--sp-5); }
+.briefing .sub { margin: 0; font-size: var(--fs-sm); color: var(--muted); }
+.pill.mode { border-color: var(--line); color: var(--muted); }
 .pill.mode.mentor { border-color: var(--explore); color: var(--explore); }
 @keyframes lit-pulse { 0% { box-shadow: 0 0 0 0 var(--lamp-pulse); } 100% { box-shadow: 0 0 0 10px transparent; } }
-.sub { display: flex; justify-content: space-between; gap: 10px; font-size: 12px; color: var(--muted); }
-.sub .links { display: flex; gap: 10px; }
+/* The head's last row: the status and the counts it explains on the left, the ways on from here on the right. A
+   narrow pane wraps the row rather than breaking a label. */
+.pane > .head .sub { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: var(--sp-1) var(--sp-3); min-height: var(--h-sm); font-size: var(--fs-sm); color: var(--muted); }
+.pane > .head .standing { display: inline-flex; align-items: center; flex-wrap: wrap; gap: var(--sp-1) var(--sp-2); min-width: 0; }
+.pane > .head .links { display: flex; gap: 0; margin: 0 calc(-1 * var(--sp-3)) 0 auto; }
+.pane > .head .links .btn { white-space: nowrap; }
 .link { background: none; border: 0; padding: 0; color: var(--text); font: inherit; font-size: 12px; text-decoration: underline;
   text-underline-offset: 2px; cursor: pointer; }
 .link:hover { color: var(--sand); }
-.note { display: flex; gap: 6px; margin: 0; }
-.note input { flex: 1; background: var(--water); border: 1px solid var(--line); border-radius: 6px; color: var(--text); padding: 6px 8px;
-  font: inherit; font-size: 12px; }
-.sent { color: var(--sand); font-size: 12px; }
-.note-help { margin: 0; font-size: 12px; color: var(--muted); }
-.earlier { font-size: 12px; color: var(--muted); }
+.note { display: flex; gap: var(--sp-15); margin: 0; }
+.note .field { flex: 1; min-width: 0; padding: 3px var(--sp-2); font-size: var(--fs-md); }
+.note-help { margin: 0; max-width: var(--measure); font-size: var(--fs-sm); line-height: var(--lh-body); color: var(--muted); }
+.earlier { font-size: var(--fs-sm); color: var(--muted); }
 .muted { color: var(--muted); font-size: 12px; }
 .error { color: var(--reef); font-size: 12px; }
-.stopped { color: var(--muted); font-size: 12px; font-style: italic; margin: 4px 0; }
 
-.log { flex: 1; overflow: auto; padding: 14px 20px; display: flex; flex-direction: column; gap: 12px; }
-.msg p { margin: 0 0 6px; }
+.log { flex: 1; overflow: auto; padding: var(--sp-5) var(--gutter) var(--sp-6); display: flex; flex-direction: column; gap: var(--sp-4); }
+.msg p { margin: 0 0 var(--sp-2); }
 .msg p:last-child { margin-bottom: 0; }
-.msg ul, .msg ol { margin: 0 0 6px; padding-left: 20px; }
-.msg h1, .msg h2, .msg h3 { margin: 0 0 4px; font-size: 1em; font-weight: 600; }
+.msg ul, .msg ol { margin: 0 0 var(--sp-2); padding-left: var(--sp-5); }
+.msg li + li { margin-top: var(--sp-1); }
+.msg h1, .msg h2, .msg h3 { margin: 0 0 var(--sp-1); font-size: 1em; font-weight: var(--fw-semibold); }
 pre, code, kbd { font-family: var(--font-mono); }
-.msg pre { margin: 0 0 6px; padding: 8px 10px; background: var(--water); border-radius: 6px; overflow-x: auto; font-size: 12px; }
-.msg .ask { text-decoration: underline dotted var(--line-03); text-underline-offset: 3px; cursor: pointer; border-radius: 3px; }
-.msg .ask:hover, .msg .ask:focus-visible { text-decoration-color: var(--lamp); color: var(--lamp); }
-.msg blockquote { margin: 0 0 6px; padding: 2px 0 2px 10px; border-left: 2px solid var(--line-03); color: var(--muted); }
+.msg pre { margin: 0 0 var(--sp-2); padding: var(--sp-2) var(--sp-3); background: var(--water); border-radius: var(--r-sm); overflow-x: auto; font-size: var(--fs-sm); }
+/* A question in a reply can be answered directly: a press puts it at the top of the answer as a quote. */
+.msg .ask { text-decoration: underline dotted var(--line-03); text-underline-offset: 3px; cursor: pointer; border-radius: 3px; transition: background-color var(--t-fast) var(--ease), text-decoration-color var(--t-fast) var(--ease); }
+.msg .ask:hover, .msg .ask:focus-visible { text-decoration-color: var(--accent); text-decoration-style: solid; background: var(--hover); }
+.msg blockquote { margin: 0 0 var(--sp-2); padding: var(--sp-05) 0 var(--sp-05) var(--sp-3); border-left: 2px solid var(--line-strong); color: var(--muted); }
 .msg blockquote p { margin: 0; }
-.msg code { font-family: var(--font-mono); font-size: .85em; background: var(--water); padding: 1px 4px; border-radius: 3px; }
+.msg code { font-family: var(--font-mono); font-size: .85em; background: var(--water); padding: 1px 4px; border-radius: var(--r-xs); -webkit-box-decoration-break: clone; box-decoration-break: clone; overflow-wrap: anywhere; }
 .msg pre code { background: none; padding: 0; }
-/* Reading: the conversation in one face at a reading size, persona lines capped at a comfortable measure, and each
-   paragraph's first sentence bright while the rest steps back (`renderMarkdown(…, { lead: true })`). */
-.log .msg:not(.system) { font-family: var(--font-text); font-size: 15px; line-height: 1.7; }
-.msg:is(.judge, .mentor, .cartographer) { font-size: 16px; }
-.msg:is(.judge, .mentor, .cartographer) :is(p, li, blockquote) { max-width: 64ch; }
-.msg:is(.judge, .mentor, .cartographer) p:not(:last-child) { margin-bottom: 10px; }
+/* Reading: the conversation in one face. The persona's words are a step larger than the reader's and capped at a
+   comfortable measure; paragraphs stand further apart than their own lines; each paragraph's first sentence is bright
+   while the rest steps back (`renderMarkdown(…, { lead: true })`), except a question, which is what the reader
+   answers and so never the dimmest thing in it. */
+.log .msg { font-family: var(--font-text); font-size: var(--fs-read); line-height: var(--lh-read); }
+.log .msg:is(.judge, .mentor, .cartographer) { font-size: var(--fs-lg); }
+.msg:is(.judge, .mentor, .cartographer) :is(p, li, blockquote, h1, h2, h3) { max-width: 64ch; }
+.msg:is(.judge, .mentor, .cartographer) :is(p, ul, ol, blockquote):not(:last-child) { margin-bottom: var(--sp-4); }
 .msg p.led .rest { color: var(--muted); }
-:lang(zh) .log .msg:not(.system) { line-height: 1.9; letter-spacing: .02em; }
-:lang(zh) .msg:is(.judge, .mentor, .cartographer) :is(p, li, blockquote) { max-width: 34em; }
-.msg.you { align-self: flex-end; max-width: 88%; background: var(--panel-2); border-radius: 10px 10px 2px 10px; padding: 8px 12px; }
-button.msg.system.board-line { display: block; width: 100%; background: none; border: 0; padding: 0; font-family: inherit; cursor: pointer; text-decoration: underline dotted; text-underline-offset: 3px; }
-button.msg.system.board-line:hover { color: var(--text); }
-.msg.system { font-size: var(--fs-micro); text-transform: uppercase; letter-spacing: var(--track-caps); color: var(--muted); text-align: center; }
-.lit-line { display: flex; align-items: center; gap: 8px; font-size: 11px; color: var(--sand); }
-.lit-line::before, .lit-line::after { content: ""; flex: 1; border-top: 1px solid var(--line); }
-.explored-line { display: flex; align-items: center; gap: 8px; font-size: 11px; color: var(--explore); }
-.explored-line::before, .explored-line::after { content: ""; flex: 1; border-top: 1px solid var(--line); }
-.verdict-card { border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; background: var(--panel-2); display: grid; gap: 6px; }
-.verdict-card .row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-.verdict-card .conf { font-size: 11px; color: var(--muted); }
-.verdict-card q { font-family: Georgia, serif; font-style: italic; quotes: "“" "”"; }
-.verdict-card .why { font-size: 12px; color: var(--muted); }
-.reef-block { border: 1px solid var(--reef); border-radius: 8px; padding: 8px 10px; }
-.reef-block p { margin: 0 0 4px; }
-.reef-title { font-size: var(--fs-micro); text-transform: uppercase; letter-spacing: var(--track-caps); color: var(--reef); margin-bottom: 4px; }
-.progress { font-size: 11px; color: var(--muted); font-style: italic; }
-.thinking { color: var(--muted); font-style: italic; display: inline-flex; align-items: baseline; gap: 6px; }
+.msg p.led .rest .ask { color: var(--text); }
+:lang(zh) .log .msg { line-height: 1.9; letter-spacing: .02em; }
+:lang(zh) .msg:is(.judge, .mentor, .cartographer) :is(p, li, blockquote, h1, h2, h3) { max-width: 34em; }
+/* The blocks in a reply (code, a diagram, a plot, a demo) keep the paragraphs' distance; the first and last sit flush. */
+.log .msg > :is(.codeblock, .diagram, .plot, .demo) { margin: var(--sp-4) 0; }
+.log .msg > :is(.codeblock, .diagram, .plot, .demo):first-child { margin-top: 0; }
+.log .msg > :is(.codeblock, .diagram, .plot, .demo):last-child { margin-bottom: 0; }
+.msg.you { align-self: flex-end; box-sizing: border-box; max-width: min(85%, 60ch); padding: var(--sp-2) var(--sp-4); background: var(--panel-2); border-radius: var(--r-lg) var(--r-lg) var(--r-xs) var(--r-lg); overflow-wrap: anywhere; }
+/* The reader's own words that something rests on (`renderMarkdown(…, { marks })`): underlined in the lamp's colour
+   where a landmark was lit from them (the mentor's teal where one was explored), ringed in the reef's where a reef
+   is claimed of them, dotted where a loose end was noted. Hovering the words, their line in the trail, or the
+   landmark's chip lights all three (`lightLandmark` in card.js). */
+.msg.you mark.evidence { background: none; color: inherit; border-radius: 2px; text-decoration: underline 2px var(--lamp); text-underline-offset: 5px; transition: background-color var(--t-fast) var(--ease); }
+.msg.you mark.evidence.explored { text-decoration-color: var(--explore); }
+.msg.you mark.evidence.loose { text-decoration: underline dotted 1.5px var(--muted); }
+.msg.you mark.evidence.reef { text-decoration: none; padding: 0 var(--sp-15); margin: 0 calc(-1 * var(--sp-05)); border: 1.5px solid var(--reef); border-radius: var(--r-lg); -webkit-box-decoration-break: clone; box-decoration-break: clone; }
+.msg.you mark.evidence.hot { background: var(--lamp-tint); }
+.msg.you mark.evidence.explored.hot { background: color-mix(in oklab, var(--explore) 18%, transparent); }
+.msg.you mark.evidence.reef.hot { background: var(--reef-tint); }
+.msg.you mark.evidence.loose.hot { background: var(--hover); }
+/* The trail: what happened between the words, as one family of rows (`eventEl`). A mark in the margin, then the
+   line. The ones that matter (a lamp lit, a landmark explored, a reef) carry a small capitals label in their own
+   colour, the name in the chart's serif, and the reader's words they rest on; the rest (a board write, a loose end,
+   another model answering, any other line) are one quiet sentence. No boxes: the type carries it. */
+.events { display: grid; gap: var(--sp-3); }
+.event { display: grid; grid-template-columns: var(--sp-4) minmax(0, 1fr); column-gap: var(--sp-2); align-items: start; box-sizing: border-box; max-width: var(--measure); padding: 0; background: none; border: 0;
+  color: var(--muted); font: var(--fs-sm)/var(--lh-body) var(--font-ui); text-align: left; }
+.event-mark { display: grid; place-items: center; width: var(--sp-4); height: calc(var(--fs-sm) * var(--lh-body)); }
+.event-mark:empty::before { content: ""; width: 5px; height: 5px; border-radius: 50%; background: var(--line-strong); }
+.event-body { display: grid; min-width: 0; }
+.event-text::first-letter { text-transform: uppercase; }
+.event-label { font-size: var(--fs-micro); font-weight: var(--fw-medium); line-height: calc(var(--fs-sm) * var(--lh-body)); letter-spacing: var(--track-caps); text-transform: uppercase; }
+.event-name { margin-top: var(--sp-05); color: var(--text); font: var(--fs-lg)/var(--lh-ui) var(--font-serif); text-wrap: pretty; }
+.event-note { margin-top: var(--sp-1); color: var(--text-2); }
+.event-note.todo { color: var(--reef); }
+.event-from { display: block; margin-top: var(--sp-1); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.event-quote { color: var(--text-2); transition: color var(--t-fast) var(--ease); }
+.event.hot .event-quote { color: var(--text); }
+.event.lit :is(.event-mark, .event-label) { color: var(--lamp); }
+.event.explored :is(.event-mark, .event-label) { color: var(--explore); }
+.event.reef :is(.event-mark, .event-label) { color: var(--reef); }
+.event.reef.confirmed .ic-reef path { fill: currentColor; }
+.event.reef.disputed :is(.event-mark, .event-label, .event-name) { color: var(--muted); }
+.event.model .event-text { font-family: var(--font-mono); font-size: var(--fs-xs); }
+.event.model .event-text::first-letter { text-transform: none; }
+button.event { cursor: pointer; border-radius: var(--r-xs); }
+button.event .event-text { text-decoration: underline dotted var(--line-strong); text-underline-offset: 3px; }
+button.event:hover { color: var(--text); }
+:lang(zh) .event-label { letter-spacing: .02em; font-size: var(--fs-xs); }
+/* The island's verdict, where the thread recorded it: the one boxed line of the trail. */
+.verdict-card { display: grid; gap: var(--sp-15); box-sizing: border-box; max-width: var(--measure); padding: var(--sp-3) var(--sp-4); border: 1px solid var(--line); border-radius: var(--r-md); background: var(--panel-2); }
+.verdict-card .row { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: var(--sp-1) var(--sp-2); }
+.verdict-card .conf { font-size: var(--fs-xs); color: var(--muted); }
+.verdict-card q { font: italic var(--fs-read)/var(--lh-body) var(--font-serif); quotes: "“" "”"; }
+.verdict-card .why { font-size: var(--fs-sm); line-height: var(--lh-body); color: var(--muted); }
+/* Where something failed or stopped, with the one thing to do about it (`noticeEl`); and a thread that did not load. */
+.notice { display: flex; align-items: center; gap: var(--sp-2); box-sizing: border-box; max-width: var(--measure); padding: var(--sp-15) var(--sp-15) var(--sp-15) var(--sp-3); border: 1px solid var(--line); border-radius: var(--r-sm);
+  color: var(--text-2); font: var(--fs-md)/var(--lh-ui) var(--font-ui); }
+.notice > .ic { color: var(--muted); }
+.notice.bad > .ic { color: var(--reef); }
+.notice-text { flex: 1; min-width: 0; padding: var(--sp-05) 0; }
+.pane-state { margin: auto; max-width: 360px; display: grid; justify-items: center; gap: var(--sp-2); padding: var(--sp-4) 0; text-align: center; }
+.pane-state h3 { margin: 0; font: var(--fs-xl)/var(--lh-ui) var(--font-serif); font-weight: 400; }
+.pane-state p { margin: 0 0 var(--sp-2); font-size: var(--fs-md); line-height: var(--lh-body); color: var(--muted); }
+/* While a thread is read: bars where its words will be. They show only after a moment, so a quick load shows nothing. */
+.skeleton { display: grid; gap: var(--sp-3); padding-top: var(--sp-1); opacity: 0; animation: skeleton-in var(--t-med) var(--ease) 180ms forwards; }
+.skeleton i { display: block; height: var(--sp-3); border-radius: var(--r-xs); background: var(--hover); }
+.skeleton i:nth-child(1) { width: 62%; }
+.skeleton i:nth-child(2) { width: 48%; }
+.skeleton i:nth-child(3) { width: 30%; }
+@keyframes skeleton-in { to { opacity: 1; } }
+.progress { font-size: var(--fs-xs); color: var(--muted); font-style: italic; }
+.thinking { color: var(--muted); font-style: italic; display: inline-flex; align-items: baseline; gap: var(--sp-15); }
 /* a band of light sweeps across the words, left to right, while the turn is under way */
 .thinking .words { background: linear-gradient(90deg, var(--muted) 0%, var(--muted) 35%, var(--text) 50%, var(--muted) 65%, var(--muted) 100%);
   background-size: 300% 100%; -webkit-background-clip: text; background-clip: text; color: transparent; animation: shimmer 2.2s linear infinite; }
 @keyframes shimmer { from { background-position: 100% 0; } to { background-position: 0% 0; } }
 .thinking .dots { display: inline-flex; gap: 3px; }
-.thinking .dots i { width: 4px; height: 4px; border-radius: 50%; background: var(--lamp); opacity: .25; animation: dot 1.2s ease-in-out infinite; }
+.thinking .dots i { width: 4px; height: 4px; border-radius: 50%; background: var(--accent, var(--lamp)); opacity: .25; animation: dot 1.2s ease-in-out infinite; }
 .thinking .dots i:nth-child(2) { animation-delay: .15s; }
 .thinking .dots i:nth-child(3) { animation-delay: .3s; }
 @keyframes dot { 0%, 60%, 100% { opacity: .25; transform: translateY(0); } 30% { opacity: 1; transform: translateY(-3px); } }
 @media (prefers-reduced-motion: reduce) { .thinking .words { animation: none; color: var(--muted); background: none; } .thinking .dots i { animation: none; opacity: .6; } }
-.caret { display: inline-block; width: 2px; height: 1em; background: var(--sand); vertical-align: -2px; margin-left: 2px;
+.caret { display: inline-block; width: 2px; height: 1em; background: var(--accent, var(--lamp)); vertical-align: -2px; margin-left: 2px;
   animation: blink 1s steps(2) infinite; }
 @keyframes blink { to { visibility: hidden; } }
 @media (prefers-reduced-motion: reduce) { .caret, .chip.just-lit { animation: none; } }
@@ -542,55 +610,72 @@ button.msg.system.board-line:hover { color: var(--text); }
 .segs > :hover { color: var(--text); }
 .segs > :is(.on, [aria-selected="true"], [aria-pressed="true"]) { background: var(--seg-fill, var(--lamp)); color: var(--on-accent); }
 
-.foot { padding: 12px 20px 14px; border-top: 1px solid var(--line); display: grid; gap: 6px; }
-.foot form { display: flex; gap: 6px; align-items: flex-end; margin: 0; }
-.foot textarea { flex: 1; resize: none; background: var(--water); border: 1px solid var(--line); border-radius: 6px; color: var(--text);
-  padding: 8px 10px; font: 15px/22px var(--font-text); min-height: 40px; max-height: 118px; box-sizing: border-box; }
-/* The answer row: every button is the box's one-line height (22 + 16 padding + 2 border), so the row lines up, and
-   they stay at its foot as the box grows. */
-.foot form > button { height: 40px; box-sizing: border-box; flex: none; display: inline-flex; align-items: center; justify-content: center; padding: 0 14px; font-size: 13px; }
-.foot textarea:disabled { color: var(--muted); }
-.foot textarea::placeholder { color: var(--muted); opacity: 1; }
-.btn.send.judge { --btn-bg: var(--panel-2); color: var(--text); }
-.btn.send.mentor { --btn-bg: var(--explore); }
-.foot .meta { display: flex; justify-content: space-between; gap: 12px; font-size: 11px; color: var(--muted); }
-.foot .meta .model.buy { cursor: pointer; text-decoration: underline dotted; text-underline-offset: 3px; }
-.foot .meta .model.buy:hover, .foot .meta .model.buy:focus-visible { color: var(--text); }
-.foot .meta .model { font-family: var(--font-mono); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
-.foot .meta .meta-r { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.pane > .foot { padding: var(--sp-3) var(--gutter); border-top: 1px solid var(--line); display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--sp-15); }
+/* The answer box (`composerEl`): one field that holds the draft's images, the words, attach and the one action. The
+   whole box shows the hover and the focus, as the family's fields do; the textarea inside has no edge of its own.
+   One line of it is a control's height (32) inside a 40px box, and the buttons stay at its foot as the words grow.
+   Send is filled with the persona's colour only when there is something to send. */
+.composer { display: grid; gap: var(--sp-1); box-sizing: border-box; margin: 0; padding: calc(var(--sp-1) - 1px); background: var(--water); border: 1px solid var(--line-strong); border-radius: var(--r-md); cursor: text;
+  transition: border-color var(--t-fast) var(--ease), box-shadow var(--t-fast) var(--ease); }
+.composer:hover:not(:has(textarea:is(:focus, :disabled))) { border-color: var(--open); }
+.composer:has(textarea:focus) { border-color: var(--lamp); box-shadow: 0 0 0 3px var(--lamp-tint); }
+.composer:has(textarea:disabled) { cursor: default; }
+.composer-row { display: flex; align-items: flex-end; gap: var(--sp-1); min-width: 0; }
+.composer textarea { flex: 1; min-width: 0; box-sizing: border-box; min-height: var(--h-lg); max-height: 120px; padding: 5px var(--sp-2); resize: none; background: transparent; border: 0; border-radius: var(--r-sm); color: var(--text);
+  font: var(--fs-read)/22px var(--font-text); }
+.composer textarea:is(:focus, :focus-visible) { outline: none; box-shadow: none; }
+.composer textarea:disabled { color: var(--muted); }
+.composer textarea::placeholder { color: var(--muted); opacity: 1; }
+.composer .btn { flex: none; cursor: pointer; }
+.composer .btn:disabled { cursor: default; }
+.composer .send { --btn-bg: var(--accent); }
+.composer .send:disabled { --btn-bg: transparent; opacity: 1; color: var(--muted); border-color: var(--line); }
+.composer .attach { color: var(--muted); }
+/* Under the box: what the keys do, quietly (one line while the box has the keyboard, another while it does not),
+   and on the right the model answering. In a narrow pane the hint gives way first, then the model's name. */
+.pane > .foot .meta { display: flex; justify-content: space-between; align-items: center; gap: var(--sp-3); min-height: var(--sp-4); font-size: var(--fs-xs); color: var(--muted); }
+.pane > .foot .meta .hint { flex: 1 1 0; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.pane > .foot .meta .when-typing { display: none; }
+.pane > .foot:has(#answer:focus) .meta .when-idle { display: none; }
+.pane > .foot:has(#answer:focus) .meta .when-typing { display: inline; }
+@media (hover: none) { .pane > .foot .meta .when-idle { display: none; } } /* a key to press means nothing under a thumb */
+.pane > .foot .meta .model.buy { cursor: pointer; text-decoration: underline dotted; text-underline-offset: 3px; }
+.pane > .foot .meta .model.buy:hover, .pane > .foot .meta .model.buy:focus-visible { color: var(--text); }
+.pane > .foot .meta .model { font-family: var(--font-mono); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.pane > .foot .meta .meta-r { display: flex; align-items: center; justify-content: flex-end; gap: var(--sp-3); flex: 0 1 auto; min-width: 0; max-width: 62%; }
 
-/* ---- the reader's images: the tray over the answer box, the attach button, thumbnails on a message ---- */
-.foot form > .attach { width: 40px; padding: 0; color: var(--muted); }
-.foot .attach:hover:not(:disabled), .foot .attach:focus-visible { color: var(--text); }
-.foot .attach svg { width: 18px; height: 18px; }
-.tray { display: flex; flex-wrap: wrap; gap: 6px; align-items: flex-start; }
-.tray-item { position: relative; margin: 0; width: 64px; height: 64px; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; background: var(--panel-2); }
+/* ---- the reader's images: the tray in the answer box, the attach button, thumbnails on a message ---- */
+.tray { display: flex; flex-wrap: wrap; gap: var(--sp-15); align-items: flex-start; padding: var(--sp-1) var(--sp-1) 0; cursor: default; }
+.tray-item { position: relative; margin: 0; width: 64px; height: 64px; border: 1px solid var(--line); border-radius: var(--r-sm); overflow: hidden; background: var(--panel-2); }
 .tray-item img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .tray-item:is(.preparing, .uploading) img { opacity: .45; }
 .tray-item.failed { border-color: var(--reef); }
 .tray-item.failed img { opacity: .3; }
-.tray-state { position: absolute; left: 0; right: 0; bottom: 0; padding: 2px 4px; font-size: 10px; text-align: center; background: var(--panel); color: var(--text); }
+.tray-state { position: absolute; left: 0; right: 0; bottom: 0; padding: var(--sp-05) var(--sp-1); font-size: var(--fs-micro); line-height: var(--lh-ui); text-align: center; background: var(--panel); color: var(--text); }
 .tray-item.failed .tray-state { color: var(--reef); }
-.tray-x { position: absolute; top: 2px; right: 2px; width: 18px; height: 18px; padding: 0; border: 0; border-radius: 50%; background: var(--panel); color: var(--text); font: 12px/18px system-ui, sans-serif; cursor: pointer; }
-.tray-x:hover, .tray-x:focus-visible { color: var(--reef); }
-.tray-notice { flex-basis: 100%; font-size: 11px; color: var(--reef); }
+.tray-x { position: absolute; top: var(--sp-05); right: var(--sp-05); display: grid; place-items: center; width: 18px; height: 18px; padding: 0; border: 0; border-radius: 50%; background: var(--panel); color: var(--text-2); cursor: pointer; }
+.tray-x:hover { color: var(--reef); }
+.tray-notice { flex-basis: 100%; font-size: var(--fs-xs); color: var(--reef); }
 .pane.dropping { outline: 2px dashed var(--lamp); outline-offset: -6px; }
-.msg-images { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 6px; }
-.msg-images:not(:last-child) { margin-bottom: 8px; }
-.msg-image { display: block; padding: 0; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; background: var(--water); cursor: zoom-in; max-width: 100%; }
+.msg-images { display: flex; flex-wrap: wrap; align-items: flex-start; gap: var(--sp-15); }
+.msg-images:not(:last-child) { margin-bottom: var(--sp-2); }
+.msg.you:has(> .msg-images) { padding: var(--sp-3) var(--sp-3) var(--sp-2); }
+.msg-image { display: block; padding: 0; border: 1px solid var(--line); border-radius: var(--r-sm); overflow: hidden; background: var(--water); cursor: zoom-in; max-width: 100%; }
 .msg-image img { display: block; width: 100%; height: 100%; object-fit: cover; }
-.msg-image:hover { border-color: var(--line-03); }
+.msg-image:hover { border-color: var(--line-strong); }
 .msg-image.broken { cursor: default; }
-.msg-image.removed { display: inline-block; padding: 4px 8px; font-size: 11px; color: var(--muted); border-style: dashed; cursor: default; }
-.read-aloud { background: none; border: 0; padding: 0; font: inherit; color: var(--muted); cursor: pointer; white-space: nowrap; }
+.msg-image.removed { display: inline-block; padding: var(--sp-1) var(--sp-2); font-size: var(--fs-xs); color: var(--muted); border-style: dashed; cursor: default; }
+.read-aloud { background: none; border: 0; border-radius: var(--r-xs); padding: 0; font: inherit; color: var(--muted); cursor: pointer; white-space: nowrap; }
 .read-aloud:hover, .read-aloud[aria-pressed="true"] { color: var(--text-2); }
-/* Listen: a pill above each voiced reply naming the voice; it fills with the persona's accent while it reads, and its
-   bars move by transform in a box of fixed height, so nothing around it shifts (still under reduced motion). */
-/* It sticks to the top of the log while its reply is in view, so a long reply scrolled to its end still shows it whole. */
-.speak { position: sticky; top: -6px; z-index: 1; box-shadow: 0 2px 8px var(--shadow-soft); display: flex; width: fit-content; align-items: center; gap: 7px; margin: 0 0 8px; padding: 4px 12px 4px 10px; border: 1px solid var(--line);
-  border-radius: 999px; background: var(--panel-2); color: var(--text-2); font: 500 12px/1.3 var(--font-text); cursor: pointer; --accent: var(--lamp); }
+/* Listen: a pill above each voiced reply naming the voice. At rest it is only its words, so the reply leads and the
+   tool follows; it takes its outline under the pointer or the keyboard, and fills with the persona's accent while it
+   reads. All in the same box, with bars that move by transform, so nothing around it shifts (still under reduced motion). */
+/* While it reads it sticks to the top of the log as long as its reply is in view, so a long reply scrolled to its end still shows it whole. */
+.speak { position: sticky; top: -6px; z-index: 1; box-shadow: var(--e-1); display: flex; width: fit-content; align-items: center; gap: var(--sp-15); margin: 0 0 var(--sp-2); padding: var(--sp-1) var(--sp-3) var(--sp-1) var(--sp-2); border: 1px solid var(--line);
+  border-radius: var(--r-full); background: var(--panel-2); color: var(--text-2); font: var(--fw-medium) var(--fs-sm)/1.3 var(--font-text); cursor: pointer; --accent: var(--lamp); }
 .msg.mentor .speak, .now-playing[data-role="mentor"] { --accent: var(--explore); }
-.speak:hover, .speak:focus-visible { color: var(--text); border-color: var(--accent); }
+.speak[data-state="idle"] { position: static; margin-left: calc(-1 * var(--sp-2)); background: transparent; border-color: transparent; box-shadow: none; color: var(--muted); }
+.msg:hover > .speak[data-state="idle"], .speak[data-state="idle"]:is(:hover, :focus-visible) { background: var(--panel-2); border-color: var(--line); color: var(--text); }
 .speak .ic, .now-playing .ic { flex: none; display: flex; align-items: center; justify-content: center; gap: 2px; width: 12px; height: 12px; }
 .speak .ic i, .now-playing .ic i { width: 2px; height: 12px; border-radius: 1px; background: currentColor; transform: scaleY(.4); }
 .speak[data-state="idle"] .ic i { display: none; }
@@ -631,8 +716,6 @@ body.pane-open .now-playing { --np-room: calc(100vw - var(--outline-w) - var(--p
 @container (max-width: 380px) { .now-playing .np-time { display: none; } }
 @container (max-width: 300px) { .now-playing :is(.np-back, .np-fwd, .np-rate) { display: none; } }
 @media (max-width: 720px) { .now-playing, body.pane-open .now-playing { left: 50%; transform: translateX(-50%); top: var(--sp-2); bottom: auto; --np-room: calc(100vw - 2 * var(--sp-4)); } }
-.model-line { display: flex; align-items: center; gap: 8px; font-size: 11px; font-family: var(--font-mono); color: var(--muted); }
-.model-line::before, .model-line::after { content: ""; flex: 1; border-top: 1px dashed var(--line); }
 
 /* ---- the outline: Linear rows, Shuttle rail ---- */
 .outline { position: fixed; top: 0; left: 0; bottom: 0; width: var(--outline-w); background: var(--panel); border-right: 1px solid var(--line);
@@ -831,13 +914,19 @@ body.outline-resizing :is(.outline, .chrome, .map-focus, .board-scrim, .board, .
 :lang(zh) .demo > .bar > .cap { letter-spacing: .02em; }
 :lang(zh) :is(:is(.diagram, .plot, .codeblock) > .cap, .demo > .bar > .cap) { font-size: var(--fs-xs); }
 
-/* ---- choices under a judge message ---- */
-.choices { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
-.choices .q { width: 100%; font-size: var(--fs-micro); color: var(--muted); text-transform: uppercase; letter-spacing: var(--track-caps); }
-.choice { background: transparent; border: 1px solid var(--lamp); color: var(--lamp); border-radius: 999px; padding: 5px 12px; font: 12px system-ui, sans-serif; cursor: pointer; }
-.choice:hover { background: var(--lamp); color: var(--on-accent); }
-.choice:disabled { opacity: .4; cursor: default; }
-.choice.picked { background: var(--lamp); color: var(--on-accent); opacity: 1; }
+/* ---- choices under a persona's question ---- */
+/* One option a line, each with its key while the question waits. Neutral at rest and under the pointer; once
+   answered, the pick keeps the persona's colour on its edge and its tick, and the rest step back but stay readable. */
+.choices { display: grid; justify-items: start; gap: var(--sp-15); max-width: var(--measure); margin-top: var(--sp-3); font-family: var(--font-ui); }
+.choices .q { font-size: var(--fs-micro); font-weight: var(--fw-medium); line-height: var(--lh-ui); color: var(--muted); text-transform: uppercase; letter-spacing: var(--track-caps); }
+.choice { display: inline-flex; align-items: center; gap: var(--sp-2); box-sizing: border-box; max-width: 100%; min-height: var(--h-lg); padding: 5px var(--sp-3) 5px var(--sp-2); background: transparent; border: 1px solid var(--line-strong); border-radius: var(--r-sm);
+  color: var(--text); font: var(--fs-md)/var(--lh-ui) var(--font-ui); text-align: left; cursor: pointer; }
+.choice > kbd, .choice > .ic { flex: none; }
+.choice:hover:not(:disabled) { background: var(--hover); border-color: var(--open); }
+.choice:active:not(:disabled) { background: var(--pressed); }
+.choice:disabled { cursor: default; color: var(--muted); border-color: var(--line); padding-left: var(--sp-3); }
+.choice.picked { color: var(--text); border-color: var(--accent); padding-left: var(--sp-2); }
+.choice.picked > .ic { color: var(--accent); }
 
 /* ---- the call to action over the map ---- */
 /* One card, one thing asked. On the bare map it shares the dock's bottom line; beside a pane it stands over the
@@ -1178,16 +1267,18 @@ body.pane-open .dock { display: none; }
 .dock-item.chart:hover .dock-icon, .dock-item.chart:focus-visible .dock-icon { color: var(--lamp); }
 /* a pending sketch: a lamp dot on the cartographer's icon */
 .dock-item.pending::after { content: ""; position: absolute; top: 2px; right: 2px; width: 7px; height: 7px; border-radius: 50%; background: var(--lamp); box-shadow: 0 0 0 2px var(--panel); }
-.sketch-card { border: 1px dashed var(--lamp); border-radius: 8px; padding: 10px 12px; display: grid; gap: 6px; }
-.sketch-card .lbl { font-size: var(--fs-micro); text-transform: uppercase; letter-spacing: var(--track-caps); color: var(--lamp); }
-.sketch-card .sum { font-size: 12px; color: var(--muted); }
-.sketch-card .isles { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
-.sketch-card .isles .name { font-family: Georgia, serif; font-size: 14.5px; display: flex; align-items: center; gap: 6px; }
-.sketch-card .isles .blurb { font-size: 12.5px; color: var(--text-2); }
-.sketch-card .isles .marks { font-size: 11px; color: var(--muted); }
-.sketch-card .sec { font-size: var(--fs-micro); text-transform: uppercase; letter-spacing: var(--track-caps); color: var(--muted); margin-top: 4px; }
-.sketch-card .straits, .sketch-card .update { font-size: 12px; color: var(--text-2); }
-.sketch-card .actions { display: flex; gap: 6px; margin-top: 4px; }
+/* The cartographer's pending sketch: dashed in the lamp's colour, as its drafts are drawn on the map, until it is approved. */
+.sketch-card { display: grid; gap: var(--sp-15); box-sizing: border-box; max-width: var(--measure); padding: var(--sp-3) var(--sp-4) var(--sp-4); border: 1px dashed var(--lamp-ring); border-radius: var(--r-md); }
+.sketch-card .lbl { font-size: var(--fs-micro); font-weight: var(--fw-medium); text-transform: uppercase; letter-spacing: var(--track-caps); color: var(--lamp); }
+.sketch-card .sum { font-size: var(--fs-sm); line-height: var(--lh-body); color: var(--muted); }
+.sketch-card .isles { list-style: none; margin: var(--sp-15) 0 0; padding: 0; display: grid; gap: var(--sp-3); }
+.sketch-card .isles .name { font-family: var(--font-serif); font-size: var(--fs-lg); line-height: var(--lh-ui); display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-15) var(--sp-2); }
+.sketch-card .isles .blurb { margin-top: var(--sp-05); font-size: var(--fs-md); line-height: var(--lh-body); color: var(--text-2); }
+.sketch-card .isles .marks { margin-top: var(--sp-05); font-size: var(--fs-sm); line-height: var(--lh-body); color: var(--muted); }
+.sketch-card .sec { font-size: var(--fs-micro); font-weight: var(--fw-medium); text-transform: uppercase; letter-spacing: var(--track-caps); color: var(--muted); margin-top: var(--sp-2); }
+.sketch-card .straits, .sketch-card .update { font-size: var(--fs-sm); line-height: var(--lh-body); color: var(--text-2); }
+.sketch-card .update .name { margin-right: var(--sp-15); color: var(--text); font-family: var(--font-serif); }
+.sketch-card .actions { display: flex; flex-wrap: wrap; gap: var(--sp-15); margin-top: var(--sp-3); }
 .crumb.start { color: var(--lamp); text-decoration: underline; }
 .breadcrumb:has(.crumb.start) { flex-wrap: wrap; white-space: normal; } /* a sentence with its one way forward (hosted.js): it may take two lines */
 
@@ -1333,18 +1424,20 @@ body.empty .outline, body.empty .chrome, body.empty #map-focus, body.empty #boar
   body:has(#cta:not([hidden])) .dock { display: none; }
   body:not([data-place="map"]) .dock { display: none; }
   /* Island: the pane, above the bar. */
-  .pane { height: calc(100dvh - var(--places-h)); bottom: auto; border-left: 0; z-index: 4; }
+  .pane { height: calc(100dvh - var(--places-h)); bottom: auto; border-left: 0; z-index: 4; --gutter: var(--sp-4); }
   body:not([data-place="island"]) .pane { display: none; }
   .pane .grip, .pane-width { display: none; }
   /* The head stays short so the conversation has the screen: no summary, and the landmarks are one line that scrolls. */
-  .head { padding: 12px 16px 8px; gap: 6px; }
-  .head .row, .pills, .sub, .sub .links { flex-wrap: wrap; }
-  .head .row { justify-content: space-between; row-gap: 6px; }
-  .head h2 { font-size: 19px; }
-  .head .summary { display: none; }
-  .head .chips { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin-right: -16px; padding-right: 16px; }
-  .head .chips::-webkit-scrollbar { display: none; }
-  .head .chips .chip { flex: none; }
+  .pane > .head { padding-top: var(--sp-3); padding-bottom: var(--sp-2); gap: var(--sp-15); }
+  .pane > .head h2 { font-size: var(--fs-xl); }
+  .pane > .head .summary { display: none; }
+  .pane > .head .chips { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin-right: calc(-1 * var(--gutter)); padding-right: var(--gutter); }
+  .pane > .head .chips::-webkit-scrollbar { display: none; }
+  .pane > .head .chips .chip { flex: none; }
+  /* The answer box at 16px: under that, iOS zooms the page when the box takes the keyboard. */
+  .composer textarea { font-size: var(--fs-lg); }
+  .log { padding-top: var(--sp-4); padding-bottom: var(--sp-5); }
+  .msg.you { max-width: 88%; }
   /* The lamp lines that show which region the keyboard is in mean nothing under a thumb. */
   body[data-focus] #outline, body[data-focus] #pane { box-shadow: none; }
   .map-focus { display: none !important; }
@@ -1381,10 +1474,6 @@ body.empty .outline, body.empty .chrome, body.empty #map-focus, body.empty #boar
   .keys-card .cols { columns: 1; }
 }
 
-/* the pane head: the name has the whole width; the pills wrap under it */
-.head .row { flex-wrap: wrap; justify-content: flex-start; row-gap: 6px; }
-.head .row h2 { flex: 1 1 100%; text-wrap: balance; }
-.head .pills { flex-wrap: wrap; }
 
 /* ---- seas: the field that names one on the water, and the button under a selected name (seas.js) ---- */
 .sea-edit { position: fixed; transform: translate(-50%, -50%); z-index: 3; width: min(300px, 80vw); box-sizing: border-box; background: var(--panel); color: var(--text);

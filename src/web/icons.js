@@ -44,6 +44,9 @@ export const ICONS = {
   enter: "M12.5 3.5v5a1 1 0 0 1-1 1h-8M6 7 3.5 9.5 6 12",
   play: "M5 3.2v9.6L12.5 8z",
   pause: "M5.5 3.5v9M10.5 3.5v9",
+  clip: "M10.8 5.2 6.2 9.8a1.3 1.3 0 0 0 1.8 1.8l4.8-4.8a2.5 2.5 0 0 0-3.6-3.6L4.3 8.1a3.8 3.8 0 0 0 5.4 5.4l4-4",
+  reef: "M8 2.8 13.6 12.6H2.4z",
+  question: "M8 14A6 6 0 1 0 8 2a6 6 0 0 0 0 12zM6.3 6.4a1.8 1.8 0 1 1 2.7 1.5c-.6.4-1 .8-1 1.5M8 11.4v.1",
 };
 /** Parts drawn filled, over the strokes. */
 const FILLED = {

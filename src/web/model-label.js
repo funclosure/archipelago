@@ -7,6 +7,7 @@ import { request } from "./transport.js";
 import { setVoices } from "./voice.js";
 import { creditLabel } from "./credit-model.js";
 import { openYourKey } from "./hosted.js";
+import { tip } from "./tip.js";
 
 let current = null;
 let credit = null; // { balanceUsd, purchased, packs } on the hosted build's own server; null when there is no credit to show
@@ -39,6 +40,11 @@ export async function refreshJudgeModel() {
   }
 }
 
+/** Everything `modelEl` is drawn from, as a string: a pane's foot is drawn again only when this changes. */
+export function modelSig() {
+  return JSON.stringify([current, credit]);
+}
+
 /** The model in a pane's foot, quiet, beside the key hints; null for the stub. */
 export function modelEl() {
   if (!current) return null;
@@ -46,8 +52,9 @@ export function modelEl() {
   span.className = "model";
   const label = creditLabel(current, credit?.balanceUsd, credit?.purchased);
   span.textContent = label.key ? t(label.key, label.vars) : current;
-  span.title = label.key ? t(credit.packs.length ? "card.creditTitleBuy" : "card.creditTitle") : t("card.modelTitle");
+  tip(span, label.key ? t(credit.packs.length ? "card.creditTitleBuy" : "card.creditTitle") : t("card.modelTitle"));
   if (label.key && credit.packs.length) {
+    span.dataset.fk = "credit";
     // Where credit is on sale, the balance is the way to more of it.
     span.classList.add("buy");
     span.setAttribute("role", "button");

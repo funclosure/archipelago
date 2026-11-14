@@ -119,7 +119,8 @@ function escape(e) {
     menuOpen: handlers.outline?.menuOpen?.() ?? false,
     hint: pinnedHints().length > 0,
     turn: handlers.pane?.turning?.() ?? false,
-    typing: isTyping(e.target),
+    // A control in the pane showing the keyboard's ring lets go of it like a field does, before anything closes.
+    typing: isTyping(e.target) || Boolean(e.target?.closest?.("#pane :is(button, [role='button'])")?.matches(":focus-visible")),
     editor: handlers.board?.editing?.() ?? false,
     board: handlers.board?.isOpen?.() ?? false,
     loose: handlers.pane?.looseOpen?.() ?? false,
@@ -223,6 +224,8 @@ function onKeydown(e) {
   }
   if (isTyping(e.target)) return; // the field owns its keys
   if (e.metaKey || e.ctrlKey || e.altKey) return; // browser shortcuts stay the browser's
+  // A control in the pane that holds the keyboard (← and → walk them) keeps its own Enter and Space: they press it.
+  if ((e.key === "Enter" || e.key === " ") && e.target?.closest?.("#pane :is(button, [role='button'], summary)")) return;
   if (e.key === "?") {
     e.preventDefault();
     toggleSheet();

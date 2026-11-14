@@ -41,11 +41,13 @@ import toast from "./toast.js";
 import palette from "./palette.js";
 import wide from "./wide.js";
 import dialog from "./dialog.js";
+import paneParts from "./pane-parts.js";
 export const TABLES = {
   toast,
   palette,
   wide,
   dialog,
+  paneParts,
   places,
   images,
   about,
