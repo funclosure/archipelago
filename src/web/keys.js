@@ -177,6 +177,13 @@ function onKeydown(e) {
     } else if (act === "block") e.stopPropagation();
     return;
   }
+  // The outline's domain menu owns the keys while it is open (outline.js: menuKey): nothing reaches the list behind
+  // it, Tab changes no region, no page key fires under it. Escape still runs the ladder, whose menu rung closes it.
+  if (handlers.outline?.menuOpen?.()) {
+    if (e.key === "Escape") escape(e);
+    else handlers.outline.menuKey?.(e);
+    return;
+  }
   if (e.key === "Tab" && !e.metaKey && !e.ctrlKey && !e.altKey) { // ⌘⇥ and friends stay the browser's
     if (isTyping(e.target) && e.target.closest("#board .editor, #about")) return; // these fields keep the browser's Tab order
     e.preventDefault();
