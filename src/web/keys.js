@@ -69,7 +69,7 @@ function renderSheet() {
   box.setAttribute("aria-labelledby", "keys-title");
   const cols = el("div", "cols");
   for (const section of cheatSheet(current, { board: handlers.board?.isOpen?.() ?? false, chart: handlers.pane?.chartOpen?.() ?? false })) {
-    const sec = el("section", `sec${section.here ? " here" : ""}`);
+    const sec = el("section", `ksec${section.here ? " here" : ""}`);
     const name = el("h3", "eyebrow", section.title);
     if (section.here) tip(name, t("keys.here"));
     sec.append(name);

@@ -668,9 +668,9 @@ body[data-focus="outline"] .outline .dash.cur { outline: 1px solid var(--lamp); 
    section of the region that has the keyboard is named in the lamp. The foot names the command palette's key. */
 .keys-card { gap: var(--sp-4); }
 .keys-card .cols { columns: 2; column-gap: var(--sp-10); }
-.keys-card .sec { break-inside: avoid; padding-bottom: var(--sp-5); }
-.keys-card .sec > .eyebrow { margin: 0 0 var(--sp-1); padding-bottom: var(--sp-15); border-bottom: 1px solid var(--line); }
-.keys-card .sec.here > .eyebrow { color: var(--lamp); }
+.keys-card .ksec { break-inside: avoid; padding-bottom: var(--sp-5); }
+.keys-card .ksec > .eyebrow { margin: 0 0 var(--sp-1); padding-bottom: var(--sp-15); border-bottom: 1px solid var(--line); }
+.keys-card .ksec.here > .eyebrow { color: var(--lamp); }
 .keys-card .klist { list-style: none; margin: 0; padding: 0; }
 .keys-card .krow { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-4); min-height: var(--h-md); font-size: var(--fs-md); line-height: var(--lh-ui); }
 .keys-card .caps { display: inline-flex; flex: none; align-items: center; gap: var(--sp-15); }
