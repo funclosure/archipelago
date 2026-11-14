@@ -62,7 +62,6 @@ export function renderCta(model) {
       button(t("cta.startKeeper"), () => model.onStart(start.slug, "judge")),
     );
     card.append(row);
-    card.append(button(t("cta.startGuide"), model.onGuide, "link start-guide"));
   } else {
     // every landmark explored: the mentor's work here is done, and the Keeper can chart it
     card.append(el("div", "lbl", t("cta.exploredLabel")));

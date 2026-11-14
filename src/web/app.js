@@ -1,4 +1,4 @@
-import { buildNodes, buildLinks, WORLD, stripItems } from "./view-model.js";
+import { buildNodes, buildLinks, WORLD, stripItems, dockItems } from "./view-model.js";
 import { createSimulation } from "./layout.js";
 import { createCamera } from "./camera.js";
 import { clear, drawIsland, drawStrait, drawSeaWater, drawSeaName, drawMarquee, drawPress, drawSketching, NAME_FONT } from "./draw.js";
@@ -395,20 +395,32 @@ function stripItem({ label, value, hint, action }) {
   h.className = "hint";
   h.textContent = hint;
   el.append(l, v, h);
-  if (action === "chart" || action === "guide") {
-    // The cartographer's cell opens it at this scale, the guide's the domain's guide; hover still shows the hint.
-    el.classList.add("action");
-    el.addEventListener("click", () => (action === "guide" ? openGuide() : openChart()));
-  } else {
-    el.addEventListener("click", () => el.classList.toggle("open")); // hover shows the hint; a click (or a tap) pins it
-  }
+  el.addEventListener("click", () => el.classList.toggle("open")); // hover shows the hint; a click (or a tap) pins it
   return el;
+}
+
+/** One of the dock's buttons: who, and what to ask them; the hint is its tooltip. */
+function dockItem({ action, label, value, hint, pending }) {
+  const b = document.createElement("button");
+  b.type = "button";
+  b.className = `dock-item ${action}${pending ? " pending" : ""}`;
+  b.title = hint;
+  const l = document.createElement("span");
+  l.className = "dock-label";
+  l.textContent = label;
+  const v = document.createElement("span");
+  v.className = "dock-value";
+  v.textContent = value;
+  b.append(l, v);
+  b.addEventListener("click", () => (action === "guide" ? openGuide() : openChart()));
+  return b;
 }
 
 function renderStrip() {
   const strip = document.getElementById("strip");
   if (!app.snapshot) return;
   strip.replaceChildren(...stripItems(app.snapshot, app.mode).map(stripItem));
+  document.getElementById("dock")?.replaceChildren(...dockItems(app.snapshot).map(dockItem));
 }
 
 function renderStatus() {

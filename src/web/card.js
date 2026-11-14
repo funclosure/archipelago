@@ -18,7 +18,7 @@ import { renderCta } from "./cta.js";
 import { select } from "./interactions.js";
 import { registerRegion, region } from "./keys.js";
 import { isImeKey } from "./keys-model.js";
-import { chartKey, chartSend, chartTurning, closeChart, decideSketch, dropChart, focusChartAnswer, installChart, isChartOpen, openChart, openGuide, renderChart, stopChartTurn } from "./chart.js";
+import { chartKey, chartSend, chartTurning, closeChart, decideSketch, dropChart, focusChartAnswer, installChart, isChartOpen, openChart, renderChart, stopChartTurn } from "./chart.js";
 
 const pane = document.getElementById("pane");
 const STICK_PX = 40;            // within this of the bottom, the log follows new content
@@ -1018,7 +1018,6 @@ function ctaModel(island) {
       setMode(mode);
       void select(slug);
     },
-    onGuide: () => openGuide(),
     onConfirm: () => {
       const p = logItems(thread.messages, island).find((i) => i.kind === "reef_proposal" && i.proposal.status === "pending");
       if (p) void answerReef(island.slug, p.id, "confirm");

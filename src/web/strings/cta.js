@@ -18,7 +18,6 @@ export default {
     startAt: "Start at {name}, or pick any island on the map.",
     startMentor: "Learn it with the mentor",
     startKeeper: "Test me with the Keeper",
-    startGuide: "Not sure? Tell the mentor where you stand",
   },
   "zh-TW": {
     reefLabel: "暗礁？",
@@ -38,6 +37,5 @@ export default {
     startAt: "從「{name}」開始，或在地圖上挑任一座島。",
     startMentor: "跟領航員一起學",
     startKeeper: "讓守塔人考考我",
-    startGuide: "不確定？告訴領航員你的程度",
   },
 };
