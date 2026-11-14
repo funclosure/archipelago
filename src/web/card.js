@@ -250,9 +250,17 @@ const atBottom = (log) => log.scrollHeight - log.scrollTop - log.clientHeight < 
 const NOTE_HELP = t("card.noteHelp");
 
 /** Sail closer: go inside the island and let the cartographer sketch its islets. */
-async function sailCloser(island) {
+export async function sailCloser(island) {
   await setScale(island.slug);
   openChart(island.slug, { start: true });
+}
+
+/** Opens the Note to cartographer field on the selected island's pane, with the caret in it (the palette's way in). */
+export function openNote() {
+  if (!pane.querySelector("#note-toggle")) return;
+  noteOpen = true;
+  render();
+  pane.querySelector("#note")?.focus();
 }
 
 function post(path, body) {
