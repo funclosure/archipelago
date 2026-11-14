@@ -37,6 +37,13 @@ describe("ctaKind", () => {
     expect(ctaKind({ ...none, start })).toBe("start");
     expect(ctaKind({ ...none, island, start })).toBeNull(); // an island is open: the pane's briefing starts it
   });
+
+  test("a scale with no islands points at the cartographer, unless its pane is open or its sketch is waiting", () => {
+    expect(ctaKind({ ...none, blank: true })).toBe("blank");
+    expect(ctaKind({ ...none, blank: true, chartOpen: true })).toBeNull();
+    expect(ctaKind({ ...none, blank: true, sketch })).toBe("sketch");
+    expect(ctaKind({ ...none, blank: false })).toBeNull();
+  });
 });
 
 describe("ctaView", () => {
@@ -76,8 +83,16 @@ describe("ctaView", () => {
     expect(view.buttons[0]).toMatchObject({ id: "handoff", label: "Chart it with the Keeper", tone: "primary", key: "m" });
   });
 
+  test("an empty scale: one button, to the cartographer, on the dock's own key", () => {
+    const view = ctaView({ ...none, blank: true });
+    expect(view).toMatchObject({ kind: "blank", label: "nothing charted yet" });
+    expect(view.text).toContain("nothing is drawn until you approve");
+    expect(view.buttons.map((b) => [b.id, b.label, b.tone, b.key])).toEqual([["read", "Ask the cartographer", "primary", "c"]]);
+  });
+
   test("no card fills more than one button, and every key on a card is its own", () => {
     const views = [
+      ctaView({ ...none, blank: true }),
       ctaView({ ...none, island, pendingReef: reef }),
       ctaView({ ...none, sketch }),
       ctaView({ ...none, island, verdict, nearest }),

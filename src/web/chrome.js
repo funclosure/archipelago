@@ -108,10 +108,11 @@ function renderLens() {
     }
   }
   for (const b of box.children) b.setAttribute("aria-pressed", String(b.dataset.mode === app.mode));
-  const islandOpen = Boolean(app.selected) && app.snapshot.islands.some((i) => i.slug === app.selected);
-  if (box.hidden !== islandOpen) {
-    if (islandOpen && box.contains(document.activeElement)) document.getElementById("map")?.focus({ preventScroll: true });
-    box.hidden = islandOpen;
+  // Away while an island's pane shows its own, and on a scale with no islands, where there is nothing to look at through a lens.
+  const away = app.snapshot.islands.length === 0 || app.snapshot.islands.some((i) => i.slug === app.selected);
+  if (box.hidden !== away) {
+    if (away && box.contains(document.activeElement)) document.getElementById("map")?.focus({ preventScroll: true });
+    box.hidden = away;
   }
 }
 

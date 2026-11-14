@@ -1,3 +1,4 @@
+import { app } from "./app.js";
 import { ctaView, ctaAction } from "./cta-model.js";
 import { tip } from "./tip.js";
 import { t } from "./i18n.js";
@@ -41,7 +42,8 @@ export function renderCta(model) {
   const wrap = document.getElementById("cta");
   if (!wrap) return;
   current = model;
-  const view = ctaView(model);
+  // One fact the pane's model does not carry: this scale has no islands at all (and so nothing to select).
+  const view = ctaView({ ...model, blank: Boolean(app.snapshot) && app.snapshot.islands.length === 0 });
   const sig = view ? JSON.stringify(view) : "";
   if (sig === drawn) return;
   drawn = sig;

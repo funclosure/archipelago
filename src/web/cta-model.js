@@ -5,15 +5,17 @@ import { t } from "./i18n.js";
 
 /**
  * Which card shows, if any: a reef to confirm, then a sketch to approve, then where to sail next, the hand-off to
- * the Keeper, or where to begin. Nothing while a turn is in flight.
+ * the Keeper, where to begin, or, on a scale with no islands (`blank`) and the cartographer's pane closed, the
+ * way to the cartographer. Nothing while a turn is in flight.
  */
-export function ctaKind({ island, pendingReef, verdict, inFlight, stay, nearest, handoff, sketch, start }) {
+export function ctaKind({ island, pendingReef, verdict, inFlight, stay, nearest, handoff, sketch, start, blank, chartOpen }) {
   if (inFlight) return null;
   if (island && pendingReef) return "reef";
   if (sketch) return "sketch"; // a map action too: it waits on the map, island pane or not, behind only a reef
   if (island && verdict && !stay && nearest) return "next";
   if (island && handoff) return "handoff";
   if (!island && start) return "start";
+  if (!island && blank && !chartOpen) return "blank";
   return null;
 }
 
@@ -57,6 +59,10 @@ export function ctaView(model) {
   if (kind === "handoff") {
     // every landmark explored: the mentor's work here is done, and the Keeper can chart it
     return { kind, label: t("cta.exploredLabel"), text: null, buttons: [{ id: "handoff", label: t("cta.chartWithKeeper"), tone: "primary", key: "m", tip: t("cta.handoffTip") }] };
+  }
+  if (kind === "blank") {
+    // an empty sea is no dead end: the one thing to do here is ask for a sketch
+    return { kind, label: t("cta.blankLabel"), text: t("cta.blankText"), buttons: [{ id: "read", label: t("cta.askCartographer"), tone: "primary", key: "c", tip: t("cta.askTip") }] };
   }
   const { start } = model;
   return {

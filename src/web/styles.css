@@ -207,6 +207,7 @@ body.pane-open .chrome { right: var(--pane-w); }
 /* A path wider than the map gives way name by name, the scales above first, and never wraps. */
 .crumb { flex: 0 4 auto; min-width: 3ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; background: none; border: 0; border-radius: var(--r-xs); color: var(--muted); font: inherit; cursor: pointer; padding: 0; }
 .crumb:hover { color: var(--text); }
+.crumb:active { color: var(--text-2); }
 .crumb.here { flex-shrink: 1; min-width: 8ch; color: var(--text); cursor: default; }
 .breadcrumb .sep { flex: none; display: flex; color: var(--muted); }
 /* the connection, only while it is down: a quiet pill beside the name, so the header's height never changes */
@@ -229,6 +230,7 @@ body[data-mode="mentor"] .lens { --seg-fill: var(--explore); }
 /* the label is the cell's button: it opens the card that explains the cell */
 .strip-label { background: none; border: 0; border-radius: var(--r-xs); padding: 0; color: var(--muted); font: inherit; font-size: var(--fs-micro); font-weight: var(--fw-medium); text-transform: uppercase; letter-spacing: var(--track-caps); white-space: nowrap; cursor: pointer; }
 .strip-item:hover .strip-label, .strip-label[aria-expanded="true"] { color: var(--text); }
+.strip-label:active { color: var(--text-2); }
 /* The value is one line. Its box is a little larger than its words (and pulled back by as much), so the focus ring
    of a name inside it is not cut off by the clipping that makes the ellipsis. */
 .strip-value { align-self: stretch; box-sizing: content-box; max-width: 72ch; margin: calc(-1 * var(--sp-1)); padding: var(--sp-1); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

@@ -28,6 +28,10 @@ export default {
     mentorTip: "The mentor explains and answers; nothing is graded",
     startKeeper: "Test me with the Keeper",
     keeperTip: "The Keeper asks, and charts what you show",
+    blankLabel: "nothing charted yet",
+    blankText: "No islands here yet. The cartographer can sketch them; nothing is drawn until you approve the sketch.",
+    askCartographer: "Ask the cartographer",
+    askTip: "Open the cartographer, who sketches this scale",
   },
   "zh-TW": {
     regionLabel: "下一步",
@@ -56,5 +60,9 @@ export default {
     mentorTip: "領航員講解、回答問題，不評分",
     startKeeper: "讓守塔人考考我",
     keeperTip: "守塔人提問，並測繪你展現出的理解",
+    blankLabel: "還沒有島嶼",
+    blankText: "這裡還沒有島嶼。製圖師可以先畫出草圖；你採用之前，地圖上不會畫出任何東西。",
+    askCartographer: "請製圖師繪製",
+    askTip: "打開製圖師的窗格，繪製這個層級",
   },
 };
