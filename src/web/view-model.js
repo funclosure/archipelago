@@ -231,8 +231,6 @@ export const HINTS = {
   reefs: t("viewModel.hintReefs"),
   explored: t("viewModel.hintExplored"),
   unexplored: t("viewModel.hintUnexplored"),
-  cartographer: t("viewModel.hintCartographer"),
-  guide: t("viewModel.hintGuide"),
 };
 
 /** The strip's cells for a snapshot in a lens: `[{ label, value, hint }]`. */
@@ -260,14 +258,14 @@ export function stripItems(s, lens = "judge") {
 }
 
 /**
- * The dock at the map's bottom right: the two conversations that are not about one island, `[{ action, label,
- * value, hint, pending? }]`. The mentor's guide (where to begin) at the top of a charted domain, then the
- * cartographer at this scale, which names a pending sketch when there is one.
+ * The dock at the map's bottom right: an icon each for the two conversations that are not about one island,
+ * `[{ action, label, pending }]`; the label shows on hover. The mentor's guide (where to begin) at the top of a
+ * charted domain, then the cartographer at this scale, whose label names a pending sketch when there is one.
  */
 export function dockItems(s) {
   const items = [];
-  if (!s.scale?.path?.length && s.islands.length) items.push({ action: "guide", label: t("viewModel.whereToBegin"), value: t("viewModel.askTheMentor"), hint: HINTS.guide });
+  if (!s.scale?.path?.length && s.islands.length) items.push({ action: "guide", label: t("viewModel.dockGuide"), pending: false });
   const sketch = s.sketch ? sketchSummary(s.sketch.body, s.islands) : null;
-  items.push({ action: "chart", label: t("viewModel.cartographer"), value: sketch ? t("viewModel.sketchToApprove", { summary: sketch }) : t("viewModel.askToSketch"), hint: HINTS.cartographer, pending: Boolean(sketch) });
+  items.push({ action: "chart", label: sketch ? t("viewModel.dockSketch", { summary: sketch }) : t("viewModel.dockChart"), pending: Boolean(sketch) });
   return items;
 }

@@ -104,15 +104,15 @@ test("stripItems: harbour, open water, reefs, and the cartographer, each with a 
 test("dockItems: the guide at the top of a charted domain, then the cartographer, naming a pending sketch", () => {
   const base = { ...snapshot([island("caching"), island("queues"), island("db")]), harbour: null, nearestOpenWater: [], reefs: [], sketch: null };
   expect(dockItems(base)).toEqual([
-    { action: "guide", label: "Not sure where to begin?", value: "ask the mentor", hint: HINTS.guide },
-    { action: "chart", label: "Cartographer", value: "ask to sketch or change", hint: HINTS.cartographer, pending: false },
+    { action: "guide", label: "Not sure where to begin? Ask the mentor", pending: false },
+    { action: "chart", label: "Ask the cartographer to sketch or change", pending: false },
   ]);
   // The guide is the domain's: offered at the top scale only, and only once there are islands.
   expect(dockItems({ ...base, scale: { path: [{ slug: "caching", name: "Caching" }] } }).map((i) => i.action)).toEqual(["chart"]);
   expect(dockItems({ ...base, islands: [] }).map((i) => i.action)).toEqual(["chart"]);
   const body = { islands: [{ slug: "q", name: "Queues", summary: "s", landmarks: [] }], straits: [{ from: "q", to: "db" }], updates: [], harbour: undefined };
   const sketched = dockItems({ ...base, sketch: { id: 1, body, messageId: null } });
-  expect(sketched[1]).toMatchObject({ value: "sketch to approve · 1 island · 1 strait", pending: true });
+  expect(sketched[1]).toEqual({ action: "chart", label: "Sketch to approve · 1 island · 1 strait", pending: true });
 });
 
 test("a landmark is lit in the judge's lens by the judge, in the mentor's by being explored", () => {
