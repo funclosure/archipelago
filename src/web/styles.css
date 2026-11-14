@@ -626,19 +626,30 @@ body.outline-resizing :is(.outline, .chrome, .map-focus, .board-scrim, .board, .
 .choice.picked { background: var(--lamp); color: var(--on-accent); opacity: 1; }
 
 /* ---- the call to action over the map ---- */
-.cta { position: fixed; bottom: 56px; left: var(--outline-w); right: 0; display: flex; justify-content: center; pointer-events: none; z-index: 1; }
+/* One card, one thing asked. On the bare map it shares the dock's bottom line; beside a pane it stands over the
+   board's button, and over the board's first-card callout while that shows; it steps over the now-playing bar.
+   It is centred in the map area while that leaves the dock's sliding labels their room, and stands at the header's
+   left edge when it does not (the .cta is a size container: the map area's own width decides, not the window's). */
+.cta { position: fixed; bottom: var(--sp-4); left: var(--outline-w); right: 0; display: flex; justify-content: center; pointer-events: none; z-index: var(--z-map); container: cta / inline-size; }
 body.pane-open .cta { right: var(--pane-w); }
 .cta[hidden] { display: none; }
-.cta-card { pointer-events: auto; background: var(--panel); border: 1px solid var(--line); border-radius: var(--r-md); padding: 12px 14px; box-shadow: var(--e-2); max-width: min(560px, 90%); display: grid; gap: 8px; }
-.cta-card .lbl { font-size: var(--fs-micro); text-transform: uppercase; letter-spacing: var(--track-caps); color: var(--lamp); }
-.cta-card .q { font-family: Georgia, serif; font-size: 14px; }
-.cta-card .row { display: flex; flex-wrap: wrap; gap: 6px; }
-.cta-card .row button { background: transparent; border: 1px solid var(--lamp); color: var(--lamp); border-radius: 999px; padding: 6px 12px; font: 12px system-ui, sans-serif; cursor: pointer; }
-.cta-card .row button:hover { background: var(--lamp); color: var(--on-accent); }
-.cta-card .row button.primary { background: var(--lamp); color: var(--on-accent); }
-.cta-card .row button.reefy { border-color: var(--reef); color: var(--reef); }
-.cta-card .row button.reefy:hover { background: var(--reef); color: var(--on-accent); }
-.cta-card .row button:disabled { opacity: .5; cursor: default; }
+.cta-card { pointer-events: auto; box-sizing: border-box; background: var(--panel); border: 1px solid var(--line); border-radius: var(--r-md); padding: var(--sp-3) var(--sp-4) var(--sp-4); box-shadow: var(--e-2); max-width: min(560px, calc(100% - 2 * var(--sp-5))); display: grid; gap: var(--sp-2); }
+/* what the card stands over is its foot's margin: the board's button; the now-playing bar (not on a bare map wide
+   enough for both on the bottom line); the board's callout, which stands 60px up and is two or three lines tall */
+body.pane-open .cta-card { margin-bottom: calc(var(--h-lg) + var(--sp-2)); }
+body:has(.now-playing:not([hidden])) .cta-card { margin-bottom: calc(var(--h-xl) + var(--sp-3)); }
+@container cta (min-width: 1500px) { body:not(.pane-open):has(.now-playing:not([hidden])) .cta-card { margin-bottom: 0; } }
+body.pane-open:has(.board-hint) .cta-card { margin-bottom: 132px; }
+.cta-card.arrive { animation: cta-in var(--t-med) var(--ease); }
+@keyframes cta-in { from { opacity: 0; transform: translateY(6px); } }
+@media (prefers-reduced-motion: reduce) { .cta-card.arrive { animation: none; } }
+@container cta (max-width: 1200px) { body:not(.pane-open) .cta-card { margin-left: var(--sp-5); margin-right: auto; } }
+/* the label is the chart's voice and stays quiet: the card's one accent is its main button (or, for a reef, the reef) */
+.cta-card .lbl { font-size: var(--fs-micro); font-weight: var(--fw-medium); text-transform: uppercase; letter-spacing: var(--track-caps); color: var(--muted); }
+.cta-card.reef .lbl { color: var(--reef); }
+.cta-card .q { font-family: var(--font-serif); font-size: var(--fs-base); line-height: var(--lh-body); text-wrap: pretty; }
+.cta-card .row { display: flex; flex-wrap: wrap; gap: var(--sp-2); margin-top: var(--sp-1); }
+.cta-card .btn.mentor { --btn-bg: var(--explore); }
 
 /* ---- keyboard focus ---- */
 #map:focus, #pane:focus, #outline:focus { outline: none; }
