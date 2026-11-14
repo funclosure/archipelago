@@ -3,7 +3,7 @@
 // returns. Tested in tests/web/palette-model.test.js.
 import { t } from "./i18n.js";
 import { TABLES } from "./strings/index.js";
-import { cheatSheet } from "./keys-model.js";
+import { KEY_SECTIONS } from "./keys-model.js";
 import { rowMarks } from "./outline-model.js";
 import { stateLabel } from "./mode-model.js";
 
@@ -39,19 +39,11 @@ export function paletteKeys(mac = isMac()) {
  * loads: the sheet's labels were translated as its own module loaded, so they are matched in that same language.
  */
 const SHORTCUTS = (() => {
-  const sections = {
-    everywhere: cheatSheet("outline")[0],
-    outline: cheatSheet("outline")[1],
-    map: cheatSheet("map")[1],
-    pane: cheatSheet("pane")[1],
-    board: cheatSheet("map", { board: true })[1],
-    chart: cheatSheet("pane", { chart: true })[1],
-  };
   const out = new Map();
-  for (const [scope, section] of Object.entries(sections)) {
+  for (const [scope, section] of Object.entries(KEY_SECTIONS)) {
     for (const name of Object.keys(TABLES.keysModel.en)) {
       const label = t(`keysModel.${name}`);
-      const row = section.keys.find(([, said]) => said === label);
+      const row = section.rows.find(([, said, kind]) => kind !== "gesture" && said === label);
       if (row) out.set(`${scope}:${name}`, row[0]);
     }
   }

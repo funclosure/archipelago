@@ -6,7 +6,7 @@ import {
   flatIslands, fold, isMac, isPaletteKey, islandCommand, islandWords, keysShown, markRuns, matchCommand, matchWord, mergeRanges,
   moveActive, nearbyIslands, paletteKeys, paletteSections, queryWords, shortcut,
 } from "../../src/web/palette-model.js";
-import { cheatSheet } from "../../src/web/keys-model.js";
+import { KEY_SECTIONS } from "../../src/web/keys-model.js";
 import { useLanguage } from "../../src/web/i18n.js";
 
 const key = (over) => ({ key: "k", code: "KeyK", metaKey: false, ctrlKey: false, altKey: false, shiftKey: false, ...over });
@@ -59,10 +59,11 @@ describe("shortcuts come from the cheat sheet", () => {
   });
 
   test("every key the palette shows is a row of the sheet it names, so the two cannot drift", () => {
-    const all = (section) => section.keys.map(([k]) => k);
-    expect(all(cheatSheet("outline")[0])).toContain(shortcut("everywhere", "boardKey"));
-    expect(all(cheatSheet("map")[1])).toContain(shortcut("map", "home"));
-    expect(all(cheatSheet("pane")[1])).toContain(shortcut("pane", "landfall"));
+    // the sheet draws KEY_SECTIONS: a row is [keys, words], and the palette shows a row's keys as they are written there
+    const all = (id) => KEY_SECTIONS[id].rows.map(([k]) => k);
+    expect(all("everywhere")).toContain(shortcut("everywhere", "boardKey"));
+    expect(all("map")).toContain(shortcut("map", "home"));
+    expect(all("pane")).toContain(shortcut("pane", "landfall"));
   });
 
   test("an action the sheet does not list, or a section that does not exist, has no key", () => {
