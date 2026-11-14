@@ -1061,7 +1061,7 @@ function footEl(island) {
   if (pending) form.querySelector("#answer").dataset.reef = "1";
   foot.append(form);
   const role = personaRole(thread.mode);
-  const hint = pending ? { typing: t("card.metaReef") } : streaming ? { typing: t("paneParts.hintStop") } : { typing: t("paneParts.hintSend"), idle: t("paneParts.hintWrite") };
+  const hint = pending ? { typing: t("card.metaReef"), words: true } : streaming ? { typing: t("paneParts.hintStop") } : { typing: t("paneParts.hintSend"), idle: t("paneParts.hintWrite") };
   foot.append(footMetaEl(hint, [canSpeak(role) ? autoReadEl() : null, modelEl()]));
   return foot;
 }
