@@ -567,7 +567,7 @@ body.outline-resizing :is(.outline, .chrome, .map-focus, .board-scrim, .board, .
    The buttons of a caption row are the family's small quiet ones (.btn.sm.quiet), the same in both places. ---- */
 .diagram, .plot, .demo, .codeblock { position: relative; margin: var(--sp-15) 0 var(--sp-2); padding: var(--sp-15) var(--sp-3) var(--sp-3); background: var(--water); border: 1px solid var(--line); border-radius: var(--r-md); }
 /* the caption row: a small capitals label at the left, the block's actions at the right, their labels ending on the content's edge */
-:is(.diagram, .plot, .codeblock) > .cap, .demo > .bar { display: flex; align-items: center; gap: var(--sp-05); min-height: var(--h-sm); margin: 0 calc(-1 * var(--sp-15)) var(--sp-1) 0; }
+:is(.diagram, .plot, .codeblock) > .cap, .demo > .bar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-05); min-height: var(--h-sm); margin: 0 calc(-1 * var(--sp-15)) var(--sp-1) 0; }
 :is(.diagram, .plot, .codeblock) > .cap, .demo > .bar > .cap { font: var(--fw-medium) var(--fs-micro)/var(--lh-tight) var(--font-ui); letter-spacing: var(--track-caps); text-transform: uppercase; color: var(--muted); }
 :is(.diagram, .plot, .codeblock) > .cap .btn { letter-spacing: normal; text-transform: none; }
 :is(.diagram, .codeblock) > .cap > :is(.pin, .acts) { margin-left: auto; }

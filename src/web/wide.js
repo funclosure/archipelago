@@ -22,9 +22,13 @@ function update(record) {
     const mode = svg ? wideMode(naturalWidth(svg), holder.clientWidth) : "none";
     box.classList.toggle("fit", mode === "fit");
     scrolls = mode === "scroll";
-    // A holder that scrolls takes focus, so the arrow keys move it; one that does not is no stop for the keyboard.
-    if (scrolls) holder.tabIndex = 0;
-    else holder.removeAttribute("tabindex");
+    // A holder that scrolls takes focus, so the arrow keys move it (and says what it is); one that does not is no
+    // stop for the keyboard.
+    if (scrolls) {
+      holder.tabIndex = 0;
+      holder.setAttribute("role", "group");
+      holder.setAttribute("aria-label", t("wide.region"));
+    } else for (const name of ["tabindex", "role", "aria-label"]) holder.removeAttribute(name);
   }
   const more = scrolls ? moreSides(holder.scrollLeft, holder.clientWidth, holder.scrollWidth) : "none";
   if (holder.dataset.more !== more) holder.dataset.more = more;
