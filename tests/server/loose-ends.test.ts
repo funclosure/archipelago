@@ -112,6 +112,11 @@ test("the snapshot carries the open ones with their landmark's slug; the reader 
   const view = buildSnapshot(db, "rn", null).islands[0]!;
   db.close();
   expect(view.looseEnds.map((e) => [e.landmark, e.kind, e.author])).toEqual([["state", "confused", "mentor"], [null, "asked", "mentor"]]);
+  // each names the reader's message it quotes, so the pane can mark the words where they were said
+  const thread = openDatabase(dbPath);
+  const saidIds = thread.query<{ id: number }, []>("select id from messages where role = 'you'").all().map((m) => m.id);
+  thread.close();
+  for (const e of view.looseEnds) expect(saidIds).toContain(e.messageId!);
 
   writeFileSync(join(dir, "index.html"), "<!doctype html>");
   const server = startServer({ port: 0, dbPath, staticRoot: dir, stub: true });
