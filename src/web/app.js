@@ -644,8 +644,11 @@ function placeRose() {
   // The bottom card covers the middle of the map's foot, not its corners: the rose may stand beside it.
   const card = document.querySelector("#cta:not([hidden]) .cta-card")?.getBoundingClientRect();
   const foot = card ? (document.getElementById("places")?.offsetHeight ?? 0) : ins.bottom;
-  const a = world(ins.left + ROSE_EDGE, ins.top + ROSE_EDGE);
-  const z = world(w - ROSE_EDGE, h - foot - ROSE_EDGE);
+  // With nothing charted yet the rose stands in the corner of the fresh scale itself, which home shows whole
+  // whether or not the cartographer's pane is open; else in what home shows of the map.
+  const empty = app.nodes.length === 0;
+  const a = empty ? { x: 0, y: 0 } : world(ins.left + ROSE_EDGE, ins.top + ROSE_EDGE);
+  const z = empty ? { x: WORLD, y: WORLD } : world(w - ROSE_EDGE, h - foot - ROSE_EDGE);
   const rects = letteringRects(layout());
   const labels = restLabels(rects);
   for (const n of app.nodes) {
@@ -682,6 +685,8 @@ function sketchingTool() {
 }
 
 let laying = false; // the simulation was placing islands on the last frame
+let layingFrames = 0; // how many frames it has been placing them for
+const REFIT_EVERY = 24; // while it does, home is fitted again this often (frames)
 /**
  * One turn of the loop. The map is redrawn only when something it shows has changed or is in motion: a still map
  * costs a handful of comparisons a frame and no drawing at all.
@@ -689,13 +694,20 @@ let laying = false; // the simulation was placing islands on the last frame
 function frame(now) {
   requestAnimationFrame(frame);
   const moving = app.sim.tick();
+  const following = !app.selected && app.camera.atHome(); // the reader has not moved the map: home may move under it
   // New islands have found their places: if the reader has not moved the map since, home grows to take them in.
   if (laying && !moving) {
     roseDue = true;
-    if (!app.selected && app.camera.atHome()) {
+    if (following) {
       fitHome(insets());
       glide(app.camera.home);
     }
+  }
+  // And while they are still finding them, home keeps up, so none drifts under the header on its way.
+  layingFrames = moving ? layingFrames + 1 : 0;
+  if (moving && following && layingFrames % REFIT_EVERY === 0 && !stillMotion?.matches) {
+    fitHome(app.covered);
+    glide(app.camera.home);
   }
   laying = moving;
   if (!moving && app.placing.size > 0 && !app.placementInFlight) void persistPlacement();
