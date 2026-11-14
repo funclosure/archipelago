@@ -7,6 +7,7 @@ import { t } from "./i18n.js";
 import { pinButton } from "./pin.js";
 import { icon } from "./icons.js";
 import { tip } from "./tip.js";
+import { watchMore } from "./wide.js";
 
 const CACHE_MAX = 64;
 const COPIED_MS = 1500;
@@ -145,6 +146,7 @@ export function codeElement(tag, text, closed, { pin = null, lang = null, cap: c
   const code = document.createElement("code");
   fillCode(code, tag, text, closed);
   pre.append(code);
+  if (closed) watchMore(pre); // a long line scrolls the block sideways; the side that hides something fades
   box.append(pre);
   return box;
 }

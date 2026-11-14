@@ -573,6 +573,7 @@ body.outline-resizing :is(.outline, .chrome, .map-focus, .board-scrim, .board, .
 :is(.diagram, .codeblock) > .cap > :is(.pin, .acts) { margin-left: auto; }
 .codeblock > .cap > .acts { display: inline-flex; align-items: center; gap: var(--sp-05); }
 :is(.demo > .bar, .codeblock > .cap, .diagram > .cap) .btn { white-space: nowrap; }
+:is(.demo > .bar, .codeblock > .cap, .diagram > .cap) .btn[hidden] { display: none; } /* the family's .btn sets a display, which outbids the hidden attribute */
 /* Code open, or the window filled: the button that did it stays lit in the neutral selected fill, never the lamp */
 .demo > .bar .btn:is([aria-expanded="true"], [aria-pressed="true"]) { background: var(--selected); color: var(--text); }
 /* On the board already: a statement with a tick, nothing to press */
@@ -584,9 +585,10 @@ body.outline-resizing :is(.outline, .chrome, .map-focus, .board-scrim, .board, .
 /* A diagram a little wider than its box is drawn smaller to fit (wide.js); one much wider scrolls, and says so: the
    side that hides something fades out, and an arrow there moves it along. */
 .diagram.fit > .holder > svg { max-width: 100%; }
-.diagram[data-more="end"] > .holder { -webkit-mask-image: linear-gradient(to right, black calc(100% - var(--sp-12)), transparent); mask-image: linear-gradient(to right, black calc(100% - var(--sp-12)), transparent); }
-.diagram[data-more="start"] > .holder { -webkit-mask-image: linear-gradient(to left, black calc(100% - var(--sp-12)), transparent); mask-image: linear-gradient(to left, black calc(100% - var(--sp-12)), transparent); }
-.diagram[data-more="both"] > .holder { -webkit-mask-image: linear-gradient(to right, transparent, black var(--sp-12), black calc(100% - var(--sp-12)), transparent); mask-image: linear-gradient(to right, transparent, black var(--sp-12), black calc(100% - var(--sp-12)), transparent); }
+/* (the same fade for a block of code whose long line scrolls it) */
+:is(.diagram > .holder, .codeblock pre)[data-more="end"] { -webkit-mask-image: linear-gradient(to right, black calc(100% - var(--sp-12)), transparent); mask-image: linear-gradient(to right, black calc(100% - var(--sp-12)), transparent); }
+:is(.diagram > .holder, .codeblock pre)[data-more="start"] { -webkit-mask-image: linear-gradient(to left, black calc(100% - var(--sp-12)), transparent); mask-image: linear-gradient(to left, black calc(100% - var(--sp-12)), transparent); }
+:is(.diagram > .holder, .codeblock pre)[data-more="both"] { -webkit-mask-image: linear-gradient(to right, transparent, black var(--sp-12), black calc(100% - var(--sp-12)), transparent); mask-image: linear-gradient(to right, transparent, black var(--sp-12), black calc(100% - var(--sp-12)), transparent); }
 .diagram > .wide-go { --btn-bg: var(--panel); position: absolute; top: calc(50% + var(--go-shift, 11px)); margin-top: calc(var(--h-sm) / -2); display: none; color: var(--text); border-color: var(--line-strong); border-radius: var(--r-full); box-shadow: var(--e-1); }
 .diagram > .wide-go.start { left: var(--sp-2); }
 .diagram > .wide-go.end { right: var(--sp-2); }
@@ -646,6 +648,7 @@ body.outline-resizing :is(.outline, .chrome, .map-focus, .board-scrim, .board, .
    there a second light line reads as a double border, not as engraving. ---- */
 :root:is([data-theme="chart"], [data-theme="vellum"]) .msg > :is(.diagram, .plot, .demo:not(.full), .codeblock) { border-color: var(--line-03); box-shadow: inset 0 0 0 3px var(--water), inset 0 0 0 4px var(--line); }
 :lang(zh) .demo > .bar > .cap { letter-spacing: .02em; }
+:lang(zh) :is(:is(.diagram, .plot, .codeblock) > .cap, .demo > .bar > .cap) { font-size: var(--fs-xs); }
 
 /* ---- choices under a judge message ---- */
 .choices { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
@@ -720,7 +723,7 @@ body.pane-open .board { right: var(--pane-w); }
   .board .head { flex-wrap: wrap; row-gap: var(--sp-2); padding-right: var(--sp-2); }
   .board .head .name { flex: 1 1 0; }
   .board .head .close { order: 1; }
-  .board .head .adds { order: 2; flex: 1 0 100%; margin-left: calc(-1 * var(--sp-1)); }
+  .board .head .adds { order: 2; flex: 1 0 100%; margin-left: 0; }
 }
 /* the column: one rhythm between its cards, and cards and editors share both edges */
 .board .column { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: var(--sp-3); padding: var(--sp-4) var(--sp-5) 80px; }
@@ -729,7 +732,8 @@ body.pane-open .board { right: var(--pane-w); }
 /* an empty board says what a board is for and offers the four kinds */
 .board .empty { display: grid; justify-items: center; gap: var(--sp-3); padding: 10vh 0 0; text-align: center; }
 .board .empty h3 { margin: 0; font: 400 var(--fs-xl)/var(--lh-ui) var(--font-serif); color: var(--text); }
-.board .empty p { margin: 0; max-width: 48ch; color: var(--muted); font-size: var(--fs-md); line-height: var(--lh-body); text-wrap: pretty; }
+.board .empty p { margin: 0; max-width: 48ch; color: var(--muted); font-size: var(--fs-md); line-height: var(--lh-body); text-wrap: balance; }
+:lang(zh) .board .empty p { max-width: 30em; }
 .board .empty .kinds { display: grid; gap: 1px; width: min(400px, 100%); margin-top: var(--sp-2); padding: var(--sp-1); box-sizing: border-box; background: var(--panel); border: 1px solid var(--line); border-radius: var(--r-md); text-align: left; }
 .board .empty .kinds .nm { flex: none; min-width: 64px; font-weight: var(--fw-medium); }
 .board .empty .kinds .grow { color: var(--muted); }
@@ -754,10 +758,12 @@ body.pane-open .board { right: var(--pane-w); }
 .board .card > .cap .who { flex: none; white-space: nowrap; font-size: var(--fs-xs); color: var(--lamp); }
 .board .card > .cap .who.mentor { color: var(--explore); }
 .board .card > .cap .who.you { color: var(--muted); }
+:lang(zh) :is(.board .card > .cap .kind, .board .editor .ehead .kind) { font-size: var(--fs-xs); }
 /* The card's controls: quiet until wanted. They show while the pointer is on the card, while the keyboard is in it,
    and on the cursor's card; always where there is no pointer to hover with. They lie over the caption's end on the
    card's own ground, so showing them moves nothing and a long title is cut only while they are up. */
 .board .card:is(:hover, :focus-within, .cur) { --ctl: 1; }
+@media (hover: hover) { .board.editing .card.cur:not(:hover, :focus-within) { --ctl: 0; } } /* while an editor is open the cursor's card is as quiet as the rest */
 @media (hover: none) { .board .card { --ctl: 1; } }
 .board .card > .cap .ctl { position: absolute; top: 0; bottom: 0; right: calc(-1 * var(--sp-1)); display: flex; align-items: center; gap: var(--sp-05); padding-left: var(--sp-6);
   background: linear-gradient(to right, transparent, var(--panel) var(--sp-5)); opacity: var(--ctl); transition: opacity var(--t-fast) var(--ease); }
