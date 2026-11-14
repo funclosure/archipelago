@@ -88,7 +88,8 @@ function escape(e) {
     about: handlers.about?.isOpen?.() ?? false,
     menuOpen: handlers.outline?.menuOpen?.() ?? false,
     turn: handlers.pane?.turning?.() ?? false,
-    typing: isTyping(e.target),
+    // A control in the pane showing the keyboard's ring lets go of it like a field does, before anything closes.
+    typing: isTyping(e.target) || Boolean(e.target?.closest?.("#pane :is(button, [role='button'])")?.matches(":focus-visible")),
     editor: handlers.board?.editing?.() ?? false,
     board: handlers.board?.isOpen?.() ?? false,
     cursor: current === "outline" && (handlers.outline?.hasCursor?.() ?? false),

@@ -692,7 +692,7 @@ function headEl(island) {
   }, "btn quiet sm");
   noteToggle.id = "note-toggle";
   noteToggle.setAttribute("aria-expanded", String(noteOpen));
-  tip(noteToggle, t("card.noteTip"), "n");
+  if (!noteOpen) tip(noteToggle, t("card.noteTip"), "n"); // open, the field under it says the same, and a tip would cover its Send
   links.append(sail, noteToggle);
   sub.append(links);
   head.append(sub);
@@ -867,6 +867,13 @@ function itemSig(item, reefPending) {
 /** Whether there is a thread to draw: it has loaded, or it has words in hand, or the island has none to load (the snapshot counts both lenses' messages). */
 const threadReady = (island) => thread.loaded || thread.inFlight || thread.messages.length > 0 || island.messages === 0;
 
+let itemsFor = { messages: null, island: null, items: [] };
+/** The thread's log items on this island: worked out once per thread and snapshot, since one redraw asks several times (the log, the foot, the map's card). */
+function itemsNow(island) {
+  if (itemsFor.messages !== thread.messages || itemsFor.island !== island) itemsFor = { messages: thread.messages, island, items: logItems(thread.messages, island) };
+  return itemsFor.items;
+}
+
 /** The log's children, in order. A keyed entry (a thread item, a notice) keeps its element until its content changes. */
 function logEntries(island) {
   const out = [];
@@ -876,7 +883,7 @@ function logEntries(island) {
     else out.push({ key: "skeleton", sig: "", build: skeletonEl });
     return out;
   }
-  const items = logItems(thread.messages, island);
+  const items = itemsNow(island);
   const turnError = () => out.push({
     key: "turn-error", sig: thread.error,
     build: () => noticeEl(thread.error, items.length ? { action: { label: t("paneParts.tryAgain"), run: () => retryTurn(island.slug), keys: "r" } } : {}),
@@ -975,7 +982,7 @@ function briefingEl(island) {
 // ---- foot ----
 
 /** The reef waiting for the reader's answer in this thread, or null. */
-const pendingReef = (island) => (threadReady(island) ? logItems(thread.messages, island).find((i) => i.kind === "reef_proposal" && i.proposal.status === "pending") ?? null : null);
+const pendingReef = (island) => (threadReady(island) ? itemsNow(island).find((i) => i.kind === "reef_proposal" && i.proposal.status === "pending") ?? null : null);
 
 /** What the answer box holds right now: the objection while a reef waits, else the draft. */
 const draftOf = (reef) => (reef ? thread.disputeDraft : thread.draft);
@@ -1051,7 +1058,7 @@ function ctaModel(island) {
   const judging = thread.mode === "judge";
   return {
     island,
-    pendingReef: judging && island && thread.loaded ? logItems(thread.messages, island).find((i) => i.kind === "reef_proposal" && i.proposal.status === "pending") ?? null : null,
+    pendingReef: judging && island && thread.loaded ? itemsNow(island).find((i) => i.kind === "reef_proposal" && i.proposal.status === "pending") ?? null : null,
     verdict: judging && island ? island.verdict : null,
     handoff: !judging && Boolean(island) && allExplored(island),
     inFlight: thread.inFlight,
@@ -1065,7 +1072,7 @@ function ctaModel(island) {
       void select(slug);
     },
     onConfirm: () => {
-      const p = logItems(thread.messages, island).find((i) => i.kind === "reef_proposal" && i.proposal.status === "pending");
+      const p = itemsNow(island).find((i) => i.kind === "reef_proposal" && i.proposal.status === "pending");
       if (p) void answerReef(island.slug, p.id, "confirm");
     },
     onDispute: () => focusAnswer(),
