@@ -2,14 +2,17 @@
 // Global keys (Tab, [, ?, /, Escape, Cmd-Enter) are handled here; everything else is the region's.
 import { app, toggleMode } from "./app.js";
 import { select } from "./interactions.js";
-import { REGIONS, nextRegion, isTyping, escapeRung, aboutKey, cheatSheet, isImeKey } from "./keys-model.js";
+import { REGIONS, nextRegion, isTyping, escapeRung, cheatSheet, isImeKey, PALETTE_KEY } from "./keys-model.js";
 import { cycleTheme } from "./theme.js";
 import { exitFull } from "./full.js";
+import { dialogOpen, dialogKeydown, escapeDialog, onFocusReturn, showDialog, dialogHead, focusFirst, keyCaps } from "./dialog.js";
+import { tip } from "./tip.js";
 import { t } from "./i18n.js";
 
 const handlers = {}; // region name → handler
 let current = "outline";
 let sheetOpen = false;
+let installed = false; // the regions exist (installKeys ran): before that only a dialog has keys
 
 const containers = () => ({
   outline: document.getElementById("outline"),
@@ -39,7 +42,6 @@ export function setRegion(name) {
     handlers[prev]?.onBlur?.();
     handlers[name]?.onFocus?.();
   }
-  if (sheetOpen) renderSheet();
 }
 
 function el(tag, className, text) {
@@ -49,32 +51,60 @@ function el(tag, className, text) {
   return e;
 }
 
+/**
+ * The cheat sheet, a dialog like the others (dialog.js): the page's map of keys. Every section of where the page is
+ * now, each row what a key does and its caps; the section of the region that has the keyboard is named in the lamp.
+ * Its foot names the command palette's key. The rows come from KEY_SECTIONS in keys-model.js.
+ */
 function renderSheet() {
   const box = document.getElementById("keys");
   if (!box) return;
   box.hidden = !sheetOpen;
+  showDialog(box, sheetOpen, { close: () => toggleSheet(false) });
   box.replaceChildren();
   if (!sheetOpen) return;
-  const card = el("div", "keys-card");
-  card.append(el("div", "lbl", t("keys.title")));
+  const card = el("div", "dialog-card lg keys-card");
+  card.tabIndex = -1; // a dialog that is only read: the card takes focus, not its close button
+  card.append(dialogHead(t("keys.title"), () => toggleSheet(false), { title: true, id: "keys-title" }));
+  box.setAttribute("aria-labelledby", "keys-title");
   const cols = el("div", "cols");
   for (const section of cheatSheet(current, { board: handlers.board?.isOpen?.() ?? false, chart: handlers.pane?.chartOpen?.() ?? false })) {
-    const col = el("div", "col");
-    col.append(el("div", "sec", section.title));
-    for (const [k, label] of section.keys) {
-      const row = el("div", "krow");
-      row.append(el("kbd", null, k), el("span", null, label));
-      col.append(row);
+    const sec = el("section", `sec${section.here ? " here" : ""}`);
+    const name = el("h3", "eyebrow", section.title);
+    if (section.here) tip(name, t("keys.here"));
+    sec.append(name);
+    const list = el("ul", "klist");
+    for (const row of section.rows) {
+      const item = el("li", "krow");
+      const caps = el("span", row.gesture ? "caps gesture" : "caps", row.gesture ?? undefined);
+      for (const chord of row.keys) {
+        const group = el("span", "chord");
+        for (const cap of chord) group.append(el("kbd", null, cap));
+        caps.append(group);
+      }
+      item.append(el("span", "what", row.label), caps);
+      list.append(item);
     }
-    cols.append(col);
+    sec.append(list);
+    cols.append(sec);
   }
-  card.append(cols);
+  const foot = el("div", "keys-foot");
+  foot.append(keyCaps(PALETTE_KEY), el("span", null, t("keys.palette")));
+  card.append(cols, foot);
   box.append(card);
+  focusFirst(box);
 }
 
-function toggleSheet() {
-  sheetOpen = !sheetOpen;
+function toggleSheet(open = !sheetOpen) {
+  if (open === sheetOpen) return;
+  sheetOpen = open;
   renderSheet();
+}
+
+/** A strip hint a click pinned open (app.js toggles `.open` on its cell): Escape and a press elsewhere fold it. */
+const pinnedHints = () => [...document.querySelectorAll(".strip-item.open")];
+function foldHints(except = null) {
+  for (const cell of pinnedHints()) if (!except || !cell.contains(except)) cell.classList.remove("open");
 }
 
 function escape(e) {
@@ -84,13 +114,14 @@ function escape(e) {
     return;
   }
   const rung = escapeRung({
-    sheetOpen,
-    about: handlers.about?.isOpen?.() ?? false,
+    dialog: dialogOpen(), // any modal dialog, the cheat sheet among them: it steps back or closes by its own rule
     menuOpen: handlers.outline?.menuOpen?.() ?? false,
+    hint: pinnedHints().length > 0,
     turn: handlers.pane?.turning?.() ?? false,
     typing: isTyping(e.target),
     editor: handlers.board?.editing?.() ?? false,
     board: handlers.board?.isOpen?.() ?? false,
+    loose: handlers.pane?.looseOpen?.() ?? false,
     cursor: current === "outline" && (handlers.outline?.hasCursor?.() ?? false),
     chart: handlers.pane?.chartOpen?.() ?? false,
     group: handlers.map?.gathered?.() ?? false,
@@ -100,9 +131,10 @@ function escape(e) {
   if (!rung) return;
   e.preventDefault();
   e.stopImmediatePropagation();
-  if (rung === "sheet") toggleSheet();
-  else if (rung === "about") handlers.about?.close?.();
+  if (rung === "dialog") escapeDialog();
   else if (rung === "menu") handlers.outline?.closeMenu?.();
+  else if (rung === "hint") foldHints();
+  else if (rung === "loose") handlers.pane?.closeLoose?.();
   else if (rung === "stop") handlers.pane?.stop?.();
   else if (rung === "blur") {
     e.target.blur();
@@ -136,49 +168,19 @@ function step(from, back) {
 
 function onKeydown(e) {
   if (isImeKey(e)) return; // the input method owns this key: picking or dismissing a candidate is not a page key
+  // A modal dialog owns the keyboard (dialog.js): Tab stays inside it, ⌘↵ is its main action, and no key reaches
+  // the page behind it. Escape still goes through the ladder below, where the dialog is the top rung.
+  if (dialogOpen()) {
+    if (sheetOpen && e.key === "?" && !e.metaKey && !e.ctrlKey && !e.altKey) { // the key that opened the sheet closes it
+      e.preventDefault();
+      toggleSheet(false);
+    } else if (dialogKeydown(e) === "escape") escape(e);
+    return;
+  }
+  if (!installed) return; // before the map is up (the first-run page, the hosted welcome) there are no regions to drive
   if (!shown(current)) setRegion(step(current, false)); // a hidden region (e.g. the pane, poll-hidden) never keeps focus
-  // The image viewer and Images… sit over everything, the New domain and hosted dialogs included: Escape closes them,
-  // and keys inside them (Tab, Enter on a button) stay the browser's.
-  for (const [name, root] of [["viewer", "#viewer"], ["imagesSheet", "#images-sheet"]]) {
-    if (!handlers[name]?.isOpen?.()) continue;
-    if (e.key === "Escape") {
-      e.preventDefault();
-      e.stopImmediatePropagation();
-      handlers[name].close();
-    } else if (!e.target?.closest?.(root)) e.stopPropagation();
-    return;
-  }
-  if (handlers.hosted?.isOpen?.()) { // the hosted build's dialogs are modal: Escape closes the ones that can close
-    if (e.key === "Escape") {
-      e.preventDefault();
-      e.stopImmediatePropagation();
-      handlers.hosted.close();
-    } else if (!e.target?.closest?.("#hosted")) e.stopPropagation();
-    return;
-  }
-  if (handlers.newDomain?.isOpen?.()) { // the New domain dialog is modal: Escape closes it, its field keeps its keys
-    if (e.key === "Escape") {
-      e.preventDefault();
-      e.stopImmediatePropagation();
-      handlers.newDomain.close();
-    } else if (!e.target?.closest?.("#new-domain")) e.stopPropagation();
-    return;
-  }
-  if (handlers.about?.isOpen?.()) { // the About you editor is modal for page keys
-    const act = aboutKey({ key: e.key, meta: e.metaKey, ctrl: e.ctrlKey, alt: e.altKey, inAbout: Boolean(e.target?.closest?.("#about")) });
-    if (act === "escape") escape(e);
-    else if (act === "save") {
-      e.preventDefault();
-      e.stopPropagation();
-      handlers.about.save?.();
-    } else if (act === "enter") {
-      e.preventDefault();
-      handlers.about.focusIn?.();
-    } else if (act === "block") e.stopPropagation();
-    return;
-  }
   if (e.key === "Tab" && !e.metaKey && !e.ctrlKey && !e.altKey) { // ⌘⇥ and friends stay the browser's
-    if (isTyping(e.target) && e.target.closest("#board .editor, #about")) return; // these fields keep the browser's Tab order
+    if (isTyping(e.target) && e.target.closest("#board .editor")) return; // these fields keep the browser's Tab order
     e.preventDefault();
     setRegion(step(current, e.shiftKey));
     return;
@@ -229,16 +231,29 @@ function onKeydown(e) {
     handlers.pane?.focusAnswer?.();
     return;
   }
-  if (sheetOpen) return; // the sheet is modal for region keys
   const target = current === "map" && handlers.board?.isOpen?.() ? handlers.board : handlers[current];
   if (target?.onKey?.(e)) e.preventDefault();
 }
 
+// The page's one keydown listener, live from the first import: a dialog can open before the map is up (the hosted
+// welcome) and must have its keys. Region keys wait for installKeys.
+if (typeof window !== "undefined") window.addEventListener("keydown", onKeydown, { capture: true });
+
+// A dialog that closes gives the keyboard back to what opened it; when that is gone, to its region (dialog.js).
+onFocusReturn((name) => {
+  if (!installed) return;
+  if (REGIONS.includes(name) && shown(name)) setRegion(name);
+  const c = containers()[current];
+  if (c && !c.contains(document.activeElement)) c.focus({ preventScroll: true });
+});
+
 export function installKeys() {
-  window.addEventListener("keydown", onKeydown, { capture: true });
+  installed = true;
   for (const [name, c] of Object.entries(containers())) {
     c?.addEventListener("mousedown", () => setRegion(name));
   }
   document.getElementById("board")?.addEventListener("mousedown", () => setRegion("map")); // the loop registered the canvas; the board is the map's container only while open
+  // A pinned strip hint folds on a press anywhere but its own cell (the cell's click toggles it).
+  document.addEventListener("pointerdown", (e) => foldHints(e.target instanceof Node ? e.target : null), true);
   setRegion("outline");
 }
