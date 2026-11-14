@@ -9,6 +9,11 @@ test("questions are counted in prose only, half- and full-width, never in code o
   expect(questionMarks("Why? 為什麼？")).toBe(2);
   expect(questionMarks("Look:\n```js\nconst a = b ?? c ? 1 : 2;\n```\nWhat prints?")).toBe(1);
   expect(questionMarks("See https://x.dev/a?b=1 and `x?.y`. Which one?")).toBe(1);
+  // A placeholder in SQL quoted without backticks is not a question; the sentence after it is.
+  expect(questionMarks("查詢是「WHERE user_id = ? AND status = 'paid'」，目前完全沒有索引。你會怎麼設計索引？")).toBe(1);
+  expect(questionMarks("Run INSERT INTO t VALUES (?, ?) twice. What breaks?")).toBe(1);
+  expect(questionMarks("首頁的 key 會怎麼樣？你會選哪一種淘汰策略？")).toBe(2);
+  expect(questionMarks("Is it *fresh?* Or stale?!")).toBe(2);
 });
 
 test("the CJK share ignores code and punctuation", () => {

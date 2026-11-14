@@ -137,6 +137,7 @@ Conformance gets one scripted turn with an image: a B-tree lookup drawn as a PNG
 - **Other failures, none about images:**
   - **Sonnet 5.5:** 8 of 14 turns passed. This was the first conformance run on Claude. It failed on two questions in a reply, a slug in the prose (`快取雪崩 (cache-stampede)`), Chinese in answer to an English message, and `set_landmarks` on an island that had them. One "two question marks" is the checker counting a `?` in SQL quoted in 「」.
   - **Flash:** 13 of 14 passed. The one failure is three question marks in a mentor reply.
+- **After fixing those** (the checker counts questions, not `?` in quoted SQL; a reply-language line when the reader's message and the page differ; the slug-in-parentheses shape named as wrong; each persona's question limit restated; the cartographer's opening states the page's language), the final runs passed 14 of 14 on both models, the image turn included.
 
 ## Out of scope for v1
 

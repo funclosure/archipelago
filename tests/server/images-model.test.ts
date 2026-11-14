@@ -97,7 +97,7 @@ test("the prompt is cut at each shown image's line; a forged line inside a messa
   // The reader's own "[image #1]" line is indented by the replay, so it stays in the text.
   expect((parts[0] as { text: string }).text).toBe(`Reader: look\n  [image #1]\n  at this\n[image #${id}]`);
   expect(parts[1]).toEqual({ type: "image", mediaType: "image/png", data: toBase64(png) });
-  expect((parts[2] as { text: string }).text).toBe("\nContinue as the mentor.");
+  expect((parts[2] as { text: string }).text).toBe("\nContinue as the mentor: every tool call first, then the reply, with at most two questions (§2).");
   // With no images the prompt is one text part, and every vendor gets a string, as before.
   expect(promptParts("Reader: hi")).toEqual([{ type: "text", text: "Reader: hi" }]);
   expect(onlyText(promptParts("Reader: hi"))).toBe("Reader: hi");

@@ -185,6 +185,35 @@ export function renderOpeningLanguage(ctx: JudgeContext): string[] {
 
 /** How the context names each page language. */
 const LANGUAGE_NAMES: Record<string, string> = { en: "English", "zh-TW": "Traditional Chinese (zh-TW, as written in Taiwan)" };
+export const languageName = (language: string) => LANGUAGE_NAMES[language] ?? language;
+
+/**
+ * The script of a reader's message, when it gives a clear sign: "cjk" for Chinese (at least four CJK characters,
+ * a third of the letters), "latin" for a message of at least three words with almost no CJK. Null for a short answer,
+ * a technical term, or a mix: the Language section's fallbacks decide those.
+ */
+export function messageScript(body: string): "cjk" | "latin" | null {
+  const text = body.replace(/```[\s\S]*?(```|$)/g, " ").replace(/`[^`\n]*`/g, " ");
+  const cjk = (text.match(/[\u3400-\u9fff\uf900-\ufaff]/g) ?? []).length;
+  const latin = (text.match(/[A-Za-z]/g) ?? []).length;
+  if (cjk >= 4 && cjk / (cjk + latin) >= 1 / 3) return "cjk";
+  if (cjk / Math.max(1, cjk + latin) < 0.05 && (text.match(/[A-Za-z]{2,}/g) ?? []).length >= 3) return "latin";
+  return null;
+}
+
+/**
+ * The context's last line when the reader's latest message is clearly in another language than their page: say it
+ * once more, as the opening's line does. Every protocol already lets the latest message decide; a model reading a
+ * Chinese page, a Chinese thread, and an English message still drifts back to Chinese without it.
+ */
+export function renderReplyLanguage(language: string | null, thread: Message[]): string[] {
+  const latest = thread.findLast((m) => m.role === "you" && m.kind === "text" && m.body.trim() !== "");
+  if (!latest || !language) return [];
+  const script = messageScript(latest.body);
+  if (script === "latin" && language === "zh-TW") return [``, `The reader's latest message is not in Chinese: write this reply in its language (English when it is English), not the page's.`];
+  if (script === "cjk" && language === "en") return [``, `The reader's latest message is in Chinese: write this reply in Chinese, in their script (Traditional stays Traditional), not the page's English.`];
+  return [];
+}
 
 /**
  * The domain's description, quoted as the reader wrote it (none when they gave none), and the language of the

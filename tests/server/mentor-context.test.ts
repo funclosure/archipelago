@@ -120,7 +120,7 @@ test("the mentor's island block: landmarks explored or not, the next unexplored,
   expect(text).not.toContain("Judge secret");
   expect(text).not.toContain("Round:");
   expect(renderMentorThreadPrompt(ctx.thread, ctx.asks).split("\n")).toEqual([
-    "Mentor: Here the coastline has two points.", "Reader: eviction is NSCache dropping things", "", "Continue as the mentor.",
+    "Mentor: Here the coastline has two points.", "Reader: eviction is NSCache dropping things", "", "Continue as the mentor: every tool call first, then the reply, with at most two questions (§2).",
   ]);
   expect(renderMentorThreadPrompt([])).toBe("Open the session on this island: the coastline, one analogy, and where to start.");
   const db2 = openDatabase(dbPath);

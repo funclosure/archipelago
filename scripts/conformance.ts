@@ -54,8 +54,13 @@ export function prose(reply: string): string {
   return reply.replace(/```[\s\S]*?(```|$)/g, " ").replace(/`[^`\n]*`/g, " ");
 }
 
+/**
+ * The questions a reply asks. A full-width ？ always ends one (Chinese runs the next sentence on without a space). A
+ * half-width ? does when it ends a word and what follows is a space, the end, or closing punctuation; one with a space
+ * before it, or running into more text (`= ? AND`, `(?, ?)` in SQL quoted without backticks, a URL's query), is not.
+ */
 export function questionMarks(reply: string): number {
-  return (prose(reply).replace(/https?:\/\/\S+/g, " ").match(/[?？]/g) ?? []).length;
+  return (prose(reply).replace(/https?:\/\/\S+/g, " ").match(/？+|(?<=\S)\?+(?=$|[\s」』）)"'”’*_!！])/gu) ?? []).length;
 }
 
 /** The share of CJK characters among CJK characters and Latin letters, outside code. */
