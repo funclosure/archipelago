@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { tipPlace, tipDelay, tipKeys, TIP_DELAY_MS, TIP_WARM_MS } from "../../src/web/tip-model.js";
+import { tipPlace, tipDelay, tipKeys, isNearPress, TIP_DELAY_MS, TIP_WARM_MS } from "../../src/web/tip-model.js";
 import { ICONS, ICON_NAMES } from "../../src/web/icons.js";
 
 const viewport = { width: 1000, height: 600 };
@@ -41,6 +41,13 @@ describe("tipKeys", () => {
     expect(tipKeys("↑ ↓")).toEqual(["↑", "↓"]);
     expect(tipKeys("")).toEqual([]);
     expect(tipKeys(undefined)).toEqual([]);
+  });
+});
+
+describe("isNearPress", () => {
+  test("a pointer resting where it pressed is not hovering anew; one that moved away is", () => {
+    expect(isNearPress({ x: 100, y: 100 }, { clientX: 103, clientY: 104 })).toBe(true);
+    expect(isNearPress({ x: 100, y: 100 }, { clientX: 100, clientY: 107 })).toBe(false);
   });
 });
 

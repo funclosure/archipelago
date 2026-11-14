@@ -1,7 +1,7 @@
 // Tooltips: a control names itself, and its key, when the pointer rests on it or the keyboard lands on it. One element
 // for the page, moved from control to control; it listens at the document, so a control only needs `data-tip` (and
 // `data-keys`), which `tip()` sets. Nothing shows under a finger.
-import { tipPlace, tipDelay, tipKeys } from "./tip-model.js";
+import { tipPlace, tipDelay, tipKeys, isNearPress } from "./tip-model.js";
 
 let box = null; // the one tooltip element
 let shownFor = null; // the control it is showing for
@@ -9,6 +9,8 @@ let pending = null; // the control the timer is waiting on
 let timer = 0;
 let watch = 0;
 let lastHiddenAt = null;
+let pressedAt = null; // where the pointer was last pressed: no tip until it has moved away from there
+const noHover = typeof matchMedia === "function" ? matchMedia("(hover: none)") : null;
 
 /**
  * Gives a control its tip: `text` (already translated) and, if it has one, its key (`"b"`, `"⌘K"`, `"⇧J"`).
@@ -81,6 +83,8 @@ function hide() {
 
 function ask(el) {
   if (el === shownFor || el === pending) return;
+  if (noHover?.matches) return; // nothing shows under a finger
+  if (el.getAttribute("aria-expanded") === "true") return; // its own menu or popover is open: the tip would sit on it
   clearTimeout(timer);
   if (shownFor) hide();
   pending = el;
@@ -94,11 +98,18 @@ const tipped = (target) => (target instanceof Element ? target.closest("[data-ti
 
 document.addEventListener("pointerover", (e) => {
   if (e.pointerType === "touch") return;
+  // A press usually redraws what is under the pointer (a menu opens, a row is rebuilt), and the browser then reports
+  // the pointer "entering" the new element though it never moved. A tip there would cover what the press opened.
+  if (pressedAt && isNearPress(pressedAt, e)) return;
+  pressedAt = null;
   const el = tipped(e.target);
   if (el) ask(el);
   else if (pending || shownFor) hide();
 });
-document.addEventListener("pointerdown", hide, true);
+document.addEventListener("pointerdown", (e) => {
+  pressedAt = { x: e.clientX, y: e.clientY };
+  hide();
+}, true);
 document.addEventListener("keydown", hide, true);
 document.addEventListener("wheel", hide, { capture: true, passive: true });
 document.addEventListener("focusin", (e) => {

@@ -36,3 +36,9 @@ export function tipKeys(hint) {
   }
   return out;
 }
+
+export const PRESS_SLOP_PX = 6;
+/** Whether the pointer is still where it was pressed (within a few px): a redraw under a resting pointer is not a hover. */
+export function isNearPress(press, point, slop = PRESS_SLOP_PX) {
+  return Math.hypot(point.clientX - press.x, point.clientY - press.y) <= slop;
+}
