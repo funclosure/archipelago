@@ -5,6 +5,7 @@ import { request, release } from "./transport.js";
 import { registerRegion } from "./keys.js";
 import { t } from "./i18n.js";
 import { amountOf, PAID_CHECKS_MS } from "./credit-model.js";
+import { toast, toastError } from "./toast.js";
 
 export const isHosted = () => globalThis.ARCHIPELAGO_HOSTED === true;
 
@@ -84,7 +85,7 @@ export function openYourKey() {
         render();
       }
     })
-    .catch((error) => alert(error.message));
+    .catch((error) => toastError(error));
 }
 
 /** This browser's credit on our own server; null where there is none to show. */
@@ -243,7 +244,7 @@ export async function exportDatabase() {
     a.click();
     setTimeout(() => URL.revokeObjectURL(url), 10_000);
   } catch (error) {
-    alert(t("hosted.exportFailed", { message: error.message }));
+    toast(t("hosted.exportFailed", { message: error.message }), { kind: "error" });
   }
 }
 

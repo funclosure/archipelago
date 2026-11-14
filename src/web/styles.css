@@ -137,6 +137,14 @@ kbd { display: inline-block; box-sizing: border-box; min-width: 18px; padding: 0
 .tip .tip-keys { display: inline-flex; gap: 3px; flex: none; }
 @keyframes tip-in { from { opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .tip.arrive { animation: none; } }
+/* Toasts (toast.js): one line that something happened or went wrong, at the foot of the page; it leaves by itself. */
+.toasts { position: fixed; left: 50%; bottom: calc(var(--places-h, 0px) + var(--sp-6)); transform: translateX(-50%); z-index: var(--z-tip); display: grid; gap: var(--sp-2); justify-items: center; width: max-content; max-width: calc(100vw - 2 * var(--sp-4)); pointer-events: none; }
+.toast { pointer-events: auto; display: flex; align-items: center; gap: var(--sp-2); box-sizing: border-box; max-width: min(520px, 100%); padding: var(--sp-15) var(--sp-15) var(--sp-15) var(--sp-3);
+  background: var(--panel-2); color: var(--text); border: 1px solid var(--line); border-radius: var(--r-md); box-shadow: var(--e-2); font: var(--fs-md)/var(--lh-ui) var(--font-ui); }
+.toast .toast-text { flex: 1; min-width: 0; padding: var(--sp-05) 0; }
+.toast[data-kind="error"] > .ic { color: var(--reef); }
+.toast.arrive { animation: toast-in var(--t-med) var(--ease); }
+@keyframes toast-in { from { opacity: 0; transform: translateY(8px); } }
 /* A small capitals label over a group or a card. */
 .eyebrow { font-size: var(--fs-micro); font-weight: 500; letter-spacing: var(--track-caps); text-transform: uppercase; color: var(--muted); }
 /* A field: one line or many. */

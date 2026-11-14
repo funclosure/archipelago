@@ -14,6 +14,7 @@ import { mapFileName } from "./map-model.js";
 import { request } from "./transport.js";
 import { LANGUAGES, language, setLanguage, t } from "./i18n.js";
 import { tip } from "./tip.js";
+import { toastError } from "./toast.js";
 
 // app.js imports installOutline from here and this file imports app: fine, because nothing below reads app or select at module evaluation.
 
@@ -34,7 +35,7 @@ async function exportMap() {
     a.click();
     setTimeout(() => URL.revokeObjectURL(url), 10_000);
   } catch (error) {
-    alert(error.message);
+    toastError(error, t("outline.exportMap"));
   }
 }
 
