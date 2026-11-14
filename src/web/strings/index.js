@@ -38,8 +38,10 @@ import outlineModel from "./outline-model.js";
 import places from "./places.js";
 import images from "./images.js";
 import toast from "./toast.js";
+import wide from "./wide.js";
 export const TABLES = {
   toast,
+  wide,
   places,
   images,
   about,
