@@ -230,7 +230,9 @@ function gather() {
     you: t("palette.groupYou"),
   };
   // The tree may not have arrived yet: the actions are all there, and a quiet line stands where the islands will be.
-  const notes = { islands: app.outline ? null : t("palette.islandsLoading") };
+  // Once it has, and before anything is typed, the same line says how many more a name would find.
+  const more = flat.length - near.length;
+  const notes = { islands: !app.outline ? t("palette.islandsLoading") : !typed && more > 0 ? t("palette.moreIslands", { n: more }) : null };
   return { commands: out, where, labels, notes };
 }
 

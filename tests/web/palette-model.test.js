@@ -1,4 +1,6 @@
 import { describe, expect, test } from "bun:test";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import {
   GROUPS, NEARBY_MAX, RESULTS_MAX, TIER,
   flatIslands, fold, isMac, isPaletteKey, islandCommand, islandWords, keysShown, markRuns, matchCommand, matchWord, mergeRanges,
@@ -589,5 +591,32 @@ describe("moveActive", () => {
     expect(moveActive(0, 5, "Enter")).toBeNull();
     expect(moveActive(0, 5, "Tab")).toBeNull();
     expect(moveActive(0, 5, "a")).toBeNull();
+  });
+});
+
+// palette.js gathers its commands from a dozen modules by name. A name one of them no longer exports would stop the
+// whole page loading (a module graph with a missing import does not run at all), so the names are checked here.
+describe("what palette.js is wired to", () => {
+  const web = (file) => readFileSync(resolve(import.meta.dir, "../../src/web", file), "utf8");
+  const imports = (source) => [...source.matchAll(/^import\s*\{([^}]+)\}\s*from\s*"\.\/([\w./-]+)";/gm)].map((m) => ({
+    file: m[2],
+    names: m[1].split(",").map((n) => n.trim().split(/\s+as\s+/)[0]).filter(Boolean),
+  }));
+  const exportsName = (source, name) => new RegExp(`export\\s+(?:async\\s+)?(?:function\\*?|const|let|class)\\s+${name}\\b`).test(source);
+
+  test("every name palette.js imports is exported by the module it names", () => {
+    const wired = imports(web("palette.js"));
+    expect(wired.length).toBeGreaterThan(15);
+    for (const { file, names } of wired) {
+      const source = web(file);
+      for (const name of names) expect(`${file}: ${name} ${exportsName(source, name)}`).toBe(`${file}: ${name} true`);
+    }
+  });
+
+  test("keys.js asks palette.js only for what it exports, and the entry points for a button are there", () => {
+    const palette = web("palette.js");
+    const asked = imports(web("keys.js")).find((i) => i.file === "palette.js");
+    expect(asked.names.sort()).toEqual(["isPaletteOpen", "openPalette", "opensPalette", "paletteKey"]);
+    for (const name of [...asked.names, "closePalette"]) expect(`${name} ${exportsName(palette, name)}`).toBe(`${name} true`);
   });
 });
