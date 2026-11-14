@@ -46,6 +46,29 @@ test("closer steps in from the base it is given: home with the pane shut, not th
   expect(cam.closer(open)).toBeCloseTo(open * 1.5);
 });
 
+test("the zoom's limits run from half of home to six times it, and with the pane open are measured from home with it shut too", () => {
+  const cam = createCamera();
+  cam.fit(1000, 800);
+  cam.snapHome();
+  const home = cam.home.scale;
+  cam.zoomAt(500, 400, 100);
+  expect(cam.state.scale).toBeCloseTo(home * 6);
+  cam.zoomAt(500, 400, 0.0001);
+  expect(cam.state.scale).toBeCloseTo(home * 0.5);
+  // the pane opens: home is far smaller, but the reader can still zoom in as far as before, and out past the small home
+  cam.fit(1000, 800, { right: 700 });
+  cam.zoomFrom(home);
+  const small = cam.home.scale;
+  expect(small).toBeLessThan(home * 0.5);
+  cam.snapHome();
+  cam.zoomAt(150, 400, 0.9); // a step out from the small home zooms out: it does not jump in to a limit above it
+  expect(cam.state.scale).toBeCloseTo(small * 0.9);
+  cam.zoomAt(150, 400, 100);
+  expect(cam.state.scale).toBeCloseTo(home * 6);
+  cam.zoomAt(150, 400, 0.0001);
+  expect(cam.state.scale).toBeCloseTo(small * 0.5);
+});
+
 test("framing is what fit would make home, without making it home", () => {
   const cam = createCamera();
   const home = { ...cam.fit(1000, 800, { right: 400 }) };

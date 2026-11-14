@@ -7,10 +7,14 @@ const MARGIN = 0.06; // of the shorter viewport side, each edge
 /** Home never zooms closer than this × the scale that fits a whole 1000-unit scale: two islands stay island-sized. */
 const MAX_HOME = 1.4;
 const SELECT_ZOOM = 1.5; // × home's scale (with the pane shut) when an island is selected
+/** How far the reader can zoom: out to half of home, in to six times it. */
+const ZOOM_OUT = 0.5;
+const ZOOM_IN = 6;
 
 export function createCamera() {
   const cam = { x: 0, y: 0, scale: 1 };
   let home = { x: 0, y: 0, scale: 1 };
+  let zoomBase = null; // see `zoomFrom`
   let anim = null;
 
   return {
@@ -76,8 +80,18 @@ export function createCamera() {
       cam.y += dy;
       anim = null;
     },
+    /**
+     * The scale the zoom's limits are measured from, beside home's own: home as it is with the pane shut. Home
+     * beside an open pane is far smaller, and limits taken from it alone would stop the reader a step past the
+     * selection's own framing.
+     */
+    zoomFrom(scale) {
+      zoomBase = scale;
+    },
     zoomAt(px, py, factor) {
-      const next = Math.min(home.scale * 6, Math.max(home.scale * 0.5, cam.scale * factor));
+      const far = Math.min(home.scale, zoomBase ?? home.scale) * ZOOM_OUT;
+      const near = Math.max(home.scale, zoomBase ?? home.scale) * ZOOM_IN;
+      const next = Math.min(near, Math.max(far, cam.scale * factor));
       const k = next / cam.scale;
       cam.x = px - (px - cam.x) * k;
       cam.y = py - (py - cam.y) * k;

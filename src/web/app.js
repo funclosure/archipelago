@@ -193,7 +193,7 @@ function applySnapshot(snapshot) {
     roseDue = true;
     // A restored tab starts from the real home, not from the empty sea the camera was fitted to before any island arrived.
     if (isFirstSnapshot) {
-      app.camera.fit(app.size.w, app.size.h, { ...insets(), right: 0 }, homeBounds());
+      fitHome({ ...insets(), right: 0 });
       app.camera.snapHome();
     }
     frameSelection(); // the listeners have opened or closed the pane; refit home to the map area and frame the selection or go home
@@ -349,8 +349,17 @@ export function homeBounds() {
   return b;
 }
 
+/**
+ * Fits home to the map area between `ins`, and returns the scale home would have with the pane shut: what the
+ * select zoom steps in from and what the zoom's limits are measured from, since home beside an open pane is far smaller.
+ */
 function fitHome(ins) {
-  return app.camera.fit(app.size.w, app.size.h, ins, homeBounds());
+  const { w, h } = app.size;
+  const bounds = homeBounds();
+  const open = app.camera.framing(w, h, { ...ins, right: 0 }, bounds).scale;
+  app.camera.fit(w, h, ins, bounds);
+  app.camera.zoomFrom(open);
+  return open;
 }
 
 /** How far the selected island's marks reach to the side and down to the foot of a three-line name, in radii. */
@@ -359,16 +368,14 @@ const SELECT_HALF_H = 2.9;
 
 /**
  * Frames the selected island at the centre of the map area beside the pane, or returns home. The zoom steps in
- * from home as it is with the pane shut (home beside an open pane is far smaller, and a step in from that would
- * be no zoom at all), and never so far that the island, its lamps and its name no longer fit the area: the
- * selection stays whole and clear of the header on a short or narrow window too.
+ * from home as it is with the pane shut (a step in from the small home beside the pane would be no zoom at all),
+ * and never so far that the island, its lamps and its name no longer fit the area: the selection stays whole and
+ * clear of the header on a short or narrow window too.
  */
 export function frameSelection() {
   const { w, h } = app.size;
   const ins = insets();
-  const bounds = homeBounds();
-  const open = app.camera.framing(w, h, { ...ins, right: 0 }, bounds).scale;
-  app.camera.fit(w, h, ins, bounds);
+  const open = fitHome(ins);
   const node = app.selected ? app.nodes.find((n) => n.slug === app.selected) : null;
   if (!node) return glide(app.camera.home);
   const aw = Math.max(1, w - ins.left - ins.right);
@@ -850,8 +857,12 @@ async function boot() {
   window.addEventListener("resize", resize);
   installInteractions(canvas);
   installTheme(); // first: the canvas palette and mermaid read the stamped theme's tokens
-  document.addEventListener("theme", redraw); // the palette is not something a frame can see has changed
+  // What a frame cannot see has changed: the palette, a font arriving, a canvas the browser emptied while the tab was away.
+  document.addEventListener("theme", redraw);
   document.fonts?.addEventListener?.("loadingdone", redraw);
+  document.addEventListener("visibilitychange", () => document.hidden || redraw());
+  window.addEventListener("pageshow", redraw);
+  canvas.addEventListener("contextrestored", redraw);
   installCard();
   installBoard();
   installOutline();
