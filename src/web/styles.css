@@ -70,6 +70,34 @@
   --reef-tint: rgba(182, 50, 43, .28);
   --code-keyword: #AA167D; --code-string: #7A5A1E; --code-type: #132E50;
 }
+/* The scale: one set of steps for space, type, radius, elevation, motion and control size, shared by every theme. None
+   of these is a literal colour (the surfaces below are mixed from a theme's own tokens), so no theme block redefines
+   them; tests/web/theme-tokens.test.js holds this block to that. Use a step, never a new one-off value. */
+:root {
+  --font-ui: system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-serif: Georgia, "Times New Roman", serif;
+  /* space: a 4px base */
+  --sp-1: 4px; --sp-2: 8px; --sp-3: 12px; --sp-4: 16px; --sp-5: 20px; --sp-6: 24px; --sp-8: 32px;
+  /* type: micro is the tracked small-capitals label; sm is chrome's small print; md is chrome; base is body */
+  --fs-micro: 10.5px; --fs-xs: 11px; --fs-sm: 12px; --fs-md: 13px; --fs-base: 14px; --fs-lg: 16px; --fs-xl: 18px; --fs-2xl: 22px;
+  /* radius: marks and keys; controls and rows; cards, menus and popovers; dialogs and sheets */
+  --r-xs: 4px; --r-sm: 6px; --r-md: 10px; --r-lg: 14px; --r-full: 999px;
+  /* elevation: a raised control; a menu, popover or floating card; a dialog */
+  --e-1: 0 1px 2px var(--shadow-soft);
+  --e-2: 0 8px 24px var(--shadow-soft), 0 1px 3px var(--shadow-soft);
+  --e-3: 0 18px 48px var(--shadow-deep), 0 2px 8px var(--shadow-soft);
+  /* motion: feedback under the pointer; something entering or leaving */
+  --t-fast: 120ms; --t-med: 180ms; --ease: cubic-bezier(.2, 0, 0, 1);
+  /* control heights */
+  --h-sm: 24px; --h-md: 28px; --h-lg: 32px;
+  /* surfaces under the pointer, mixed from the theme's text so they read on the panel and on the sea alike */
+  --hover: color-mix(in oklab, var(--text) 7%, transparent);
+  --pressed: color-mix(in oklab, var(--text) 12%, transparent);
+  --selected: color-mix(in oklab, var(--text) 10%, transparent);
+  --line-strong: color-mix(in oklab, var(--text) 28%, transparent);
+  /* the one focus ring */
+  --ring: 0 0 0 2px var(--panel), 0 0 0 4px var(--lamp-ring);
+}
 html, body { margin: 0; height: 100%; background: var(--water); color: var(--text);
   font: 14px/1.5 system-ui, -apple-system, sans-serif; overflow: hidden; }
 #map { position: fixed; inset: 0; display: block; cursor: grab; touch-action: none; -webkit-touch-callout: none; user-select: none; -webkit-user-select: none; }
@@ -910,7 +938,6 @@ body.empty .outline, body.empty .chrome, body.empty #map-focus, body.empty #boar
   .peek { display: none; }
   .new-domain-card .hint { display: none; }
   .new-domain.first .title { font-size: 28px; }
-}
 }
 .new-domain-card .sub-lbl { font-size: 12px; color: var(--muted); margin-top: 4px; }
 /* The other ways in, under the description: ready-made maps as tiles, then the links. */
