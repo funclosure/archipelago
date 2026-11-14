@@ -214,7 +214,7 @@ test("on Gemini, thought summaries keep the stream alive and never reach the rep
 });
 
 test("the effort becomes Gemini's thinking level, or reasoning_effort elsewhere", () => {
-  const request = { model: "m", protocol: "p", context: "c", prompt: "t", tools: [] };
+  const request = { model: "m", protocol: "p", context: "c", prompt: [{ type: "text" as const, text: "t" }], tools: [] };
   expect(chatBodyFor(request, [], { gemini: true, effort: "low" }).extra_body).toEqual({ google: { thinking_config: { include_thoughts: true, thinking_level: "low" } } });
   expect(chatBodyFor(request, [], { effort: "low" })).toMatchObject({ reasoning_effort: "low" });
   expect("reasoning_effort" in chatBodyFor(request, [])).toBe(false);

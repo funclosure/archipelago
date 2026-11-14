@@ -9,6 +9,7 @@ import type { JudgeRunner } from "./runner.ts";
 import { toolDescriptionsFor, inputSchemaFor, type ToolResult } from "./tool-specs.ts";
 import type { ToolName } from "./persona.ts";
 import type { TurnDeps } from "./tools.ts";
+import { promptParts, type PromptPart } from "./prompt-images.ts";
 
 /** Requests per turn, like the SDK runner's MAX_TURNS. */
 export const MAX_REQUESTS = 16;
@@ -24,8 +25,11 @@ export type ToolBox = {
 /** A tool as every vendor needs it: name, wording for this persona, and its input's JSON Schema. */
 export type ToolSpec = { name: ToolName; description: string; schema: { type: "object"; [key: string]: unknown } };
 
-/** What a turn sends first, vendor-neutral: the protocol (stable, worth caching), the context, the thread, the tools. */
-export type TurnRequest = { model: string; protocol: string; context: string; prompt: string; tools: ToolSpec[] };
+/**
+ * What a turn sends first, vendor-neutral: the protocol (stable, worth caching), the context, the thread, the tools.
+ * The thread is parts: text, and the reader's images it shows where each was attached (one text part when none).
+ */
+export type TurnRequest = { model: string; protocol: string; context: string; prompt: PromptPart[]; tools: ToolSpec[] };
 
 export type ToolCall = { id: string; name: string; input: unknown };
 
@@ -60,13 +64,13 @@ export function toolSpecsFor(persona: Persona): ToolSpec[] {
   return persona.toolNames.map((name) => ({ name, description: describe[name], schema: inputSchemaFor(name) }));
 }
 
-/** The turn's first request: the protocol, the island's context, the thread as one prompt. */
+/** The turn's first request: the protocol, the island's context, the thread as one prompt with its images. */
 export function turnRequestFor(persona: Persona, context: PersonaContext, model: string): TurnRequest {
   return {
     model,
     protocol: readProtocol(persona),
     context: persona.renderContext(context),
-    prompt: persona.renderThreadPrompt(context.thread, context.asks),
+    prompt: promptParts(persona.renderThreadPrompt(context.thread, context.asks), context.images),
     tools: toolSpecsFor(persona),
   };
 }

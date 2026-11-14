@@ -10,6 +10,7 @@ import { cartographerStubTurn, guideStubTurn, judgeStubTurn, mentorStubTurn } fr
 import { islandContext, type TurnDeps } from "./tools.ts";
 import { chartContext, renderChartContext, renderChartThreadPrompt, type ChartContext } from "./chart.ts";
 import { guideContext, renderGuideContext, renderGuideThreadPrompt, type GuideContext } from "./guide.ts";
+import type { PromptImage, ThreadMessage } from "./prompt-images.ts";
 
 export const TOOL_NAMES = [
   "island_context", "record_verdict", "propose_reef", "set_landmarks", "unlock_landmark", "ask_reader", "board_write", "mark_explored", "loose_end", "point_to",
@@ -17,8 +18,8 @@ export const TOOL_NAMES = [
 ] as const;
 export type ToolName = (typeof TOOL_NAMES)[number];
 
-/** What every persona's context carries for the runners: its thread and the asks on it. */
-export type PersonaContext = { thread: Message[]; asks: Ask[] };
+/** What every persona's context carries for the runners: its thread, the asks on it, and the reader's images it shows. */
+export type PersonaContext = { thread: ThreadMessage[]; asks: Ask[]; images?: PromptImage[] };
 
 export type Persona<C extends PersonaContext = any> = {
   id: MessageMode;
@@ -29,7 +30,7 @@ export type Persona<C extends PersonaContext = any> = {
   /** The turn's context, read fresh from the database before the first request. */
   buildContext: (deps: TurnDeps) => C;
   renderContext: (ctx: C) => string;
-  renderThreadPrompt: (thread: Message[], asks?: Ask[]) => string;
+  renderThreadPrompt: (thread: ThreadMessage[], asks?: Ask[]) => string;
   stubTurn: JudgeRunner;
 };
 
@@ -75,7 +76,7 @@ export function renderJudgeContext(ctx: JudgeContext): string {
 }
 
 /** The judge's thread as the turn's prompt. */
-export function renderJudgeThreadPrompt(thread: Message[], asks: Ask[] = []): string {
+export function renderJudgeThreadPrompt(thread: ThreadMessage[], asks: Ask[] = []): string {
   if (thread.length === 0) return "Open the probe on this island.";
   return [...renderReplay(thread, asks), "", "Continue as the judge."].join("\n");
 }
@@ -111,7 +112,7 @@ export function renderMentorContext(ctx: JudgeContext): string {
 }
 
 /** The mentor's thread as the turn's prompt. */
-export function renderMentorThreadPrompt(thread: Message[], asks: Ask[] = []): string {
+export function renderMentorThreadPrompt(thread: ThreadMessage[], asks: Ask[] = []): string {
   if (thread.length === 0) return "Open the session on this island: the coastline, one analogy, and where to start.";
   return [...renderReplay(thread, asks), "", "Continue as the mentor."].join("\n");
 }

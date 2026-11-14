@@ -83,9 +83,11 @@ Both builds, in `api-routes.ts`:
 
 `TurnRequest.prompt` changes from a string to `PromptPart[]`: `{ type: "text", text }` or `{ type: "image", mediaType, data }` (base64).
 
-- **Replay.** `renderReplay` writes a line `[image #12]` at column 0 after a reader message, for each image it carries. A reader's own text can never forge one: their first line follows `Reader: `, and `indent` indents the rest.
-- **Budget.** `promptParts(text, thread)` in `context.ts` splits the replay at those lines. It puts the image itself in place of the newest `IMAGES_IN_VIEW` (4) images. Older ones stay as text: `[image #12, shown earlier; not shown again]`. A long thread then costs the same per turn, and a request stays well under any body limit (four images are at most about 5.5 MB of base64, under the proxy's 8 MB).
-- **Context line.** Each persona's context says how many images are in view and that they are the reader's.
+- **Which images.** `threadWithImages` (`src/server/judge/prompt-images.ts`) gives each thread message its images and reads the bytes of the newest `IMAGES_IN_VIEW` (4) the reader has not removed, across the whole thread. Every persona's context builder calls it (`buildJudgeContext`, `buildChartContext`, `buildGuideContext`), and the context carries `images`.
+- **Replay.** `renderReplay` writes one line per image under the reader's message, at column 0: `[image #12]` when shown, `[image #12, shown earlier; not shown again]` when older, `[image #12, removed by the reader]` after Remove. A message of images alone is `Reader:` and its lines. A reader's own text can never forge a line: their first line follows `Reader: `, and `indent` indents the rest.
+- **Parts.** `promptParts` cuts the thread prompt after each shown image's line and puts the image there. The line stays, so the persona can name the image it means. A long thread then costs the same per turn, and a request stays well under any body limit (four images are at most about 5.5 MB of base64, under the proxy's 8 MB). There is no extra context line: the replay's lines and each protocol's Images section say it all.
+- **Rounds.** A message of images alone is no answer for the Keeper: `roundOf` counts only reader messages with words, so it spends none of the four.
+- **Pointers.** A pointer never carries a message of images alone as its question (`point_to` stores none; the guide's `carry` is refused).
 
 Per runner:
 
@@ -93,8 +95,10 @@ Per runner:
 |---|---|
 | `api` (`claudeAdapter`) | The user message's `content` becomes text and `image` blocks (`source: { type: "base64", media_type, data }`). |
 | `openai` (`chatAdapter`) | `content` becomes an array of `{ type: "text" }` and `{ type: "image_url", image_url: { url: "data:…;base64,…" } }`. Gemini and OpenRouter take it. A model that cannot see answers with its own error, which `describeError` shows. |
-| `sdk` | `query({ prompt })` takes an async iterable yielding one `SDKUserMessage` whose content is the same blocks as the API's. |
+| `sdk` | `sdkPrompt`: still a string when there is no image; with images, an async iterable yielding one `SDKUserMessage` whose content is the same blocks as the API's (`claudeContent`, shared with `api.ts`). |
 | `stub` | Says how many images it was shown (`I see 2 images.`), so tests can check what reached the persona. |
+
+With no image, every runner sends exactly what it sent before: one string.
 
 A stored image is read from the database as the turn starts, like the rest of the context. Nothing is cached in the server.
 
@@ -107,7 +111,7 @@ A short section in each of `PROTOCOL.md`, `MENTOR.md`, `GUIDE.md`, `CARTOGRAPHER
 - **Guide:** use the image to tell where the reader stands, then point as usual.
 - **Cartographer:** an image of a syllabus, a table of contents, or a diagram is material for the sketch, like a description.
 
-Conformance gets one scripted turn with an image: a small PNG of a diagram, sent to the Keeper. It FAILs if a landmark is lit or a verdict written from that turn, and WARNs if the reply does not ask for words.
+Conformance gets one scripted turn with an image: a B-tree lookup drawn as a PNG (`scripts/fixtures/b-tree-lookup.png`), sent alone to the Keeper on Indexes. It FAILs if a landmark is lit, a verdict written, or a reef proposed from that turn (`lightsNothing`), WARNs as usual when the reply asks no question, and checks the reply is in the page's language, since the message has no words.
 
 ## Hosted and the proxy
 

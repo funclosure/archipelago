@@ -58,6 +58,14 @@ test("checkTurn fails the hard rules, warns on judgement, and passes a clean tur
   expect(checkTurn({ ...turn, decided: true }, clean).some((c) => c.say.startsWith("no verdict"))).toBe(true);
 });
 
+test("an image turn fails when it lit a landmark or decided anything from the image", () => {
+  const turn: Turn = { id: "t", mode: "judge", domain: "sd", island: "indexes", lang: "en", images: ["b-tree-lookup.png"], lightsNothing: true };
+  const looked: Observed = { reply: "I see a lookup for 45 through the root. Can you say in a sentence why it reads two pages?", tools: [], error: null, slugs: [], quotes: [], refused: [], decided: false, lit: [], decidedNow: false };
+  expect(worst(checkTurn(turn, looked))).toBe("pass");
+  const fails = checkTurn(turn, { ...looked, lit: ["b-tree"], decidedNow: true }).filter((c) => c.level === "fail").map((c) => c.say);
+  expect(fails).toEqual(["lit b-tree from an image", "decided from an image"]);
+});
+
 test("the whole script runs on the stub, and its English, slug-naming replies fail", async () => {
   const dir = mkdtempSync(join(tmpdir(), "archipelago-conformance-test-"));
   try {
@@ -68,6 +76,10 @@ test("the whole script runs on the stub, and its English, slug-naming replies fa
     expect(result.turns.at(-1)!.tools).toContain("propose_sketch"); // the new domain's slug was found
     expect(result.turns[1]!.checks.some((c) => c.say.startsWith("slugs in the reply"))).toBe(true);
     expect(result.turns.every((t) => !t.checks.some((c) => c.say.startsWith("turn failed")))).toBe(true);
+    // The image reached the persona: the stub says how many it was shown, and lit nothing from it.
+    const image = result.turns.find((t) => t.id === "judge: an answer as an image alone")!;
+    expect(image.reply.startsWith("I see 1 image.")).toBe(true);
+    expect(image.checks.some((c) => c.say.endsWith("from an image"))).toBe(false);
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }

@@ -295,7 +295,8 @@ export function pointTo(deps: ToolDeps, input: unknown, mode: "judge" | "mentor"
     const island = requireIsland(db, domain.id, deps.island);
     if (parsed.island === island.slug) throw new ArchipelagoError("that is this island; point_to names another one");
     const target = requireIsland(db, domain.id, parsed.island);
-    const question = listMessages(db, island.id, mode).findLast((m) => m.role === "you" && m.kind === "text")?.body ?? null;
+    // A message of images alone has no words to take along.
+    const question = listMessages(db, island.id, mode).findLast((m) => m.role === "you" && m.kind === "text")?.body || null;
     addPointer(db, { domainId: domain.id, islandId: island.id, targetIslandId: target.id, why: parsed.why, question });
     return { island: target.slug, name: target.name, note: "the link appears under your reply; the rest of your reply stays about this island" };
   });

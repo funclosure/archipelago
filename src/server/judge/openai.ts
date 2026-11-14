@@ -4,6 +4,7 @@
 import { ArchipelagoError } from "../../core/errors.ts";
 import { createModelRunner, type ModelAdapter, type StepEnd, type ToolBox, type ToolCall, type TurnRequest } from "./loop.ts";
 import type { JudgeRunner } from "./runner.ts";
+import { onlyText, type PromptPart } from "./prompt-images.ts";
 
 /** Known endpoints by name, so `ARCHIPELAGO_BASE_URL=gemini` is enough; any other value is taken as a base URL. */
 export const PROVIDERS = {
@@ -44,8 +45,11 @@ function hostOf(baseUrl: string): string {
 /** OpenRouter's record of a model's reasoning (Gemini's thought signatures among it), sent back with the tool results. */
 type ReasoningDetail = { type?: string; index?: number; [field: string]: unknown };
 type ChatToolCall = { id: string; type: "function"; function: { name: string; arguments: string }; [extra: string]: unknown };
+/** A user message's content in parts: OpenAI's shape, which Gemini, OpenRouter, and Ollama's vision models read. */
+type ChatPart = { type: "text"; text: string } | { type: "image_url"; image_url: { url: string } };
 type ChatMessage =
-  | { role: "system" | "user"; content: string }
+  | { role: "system"; content: string }
+  | { role: "user"; content: string | ChatPart[] }
   | { role: "assistant"; content: string | null; tool_calls?: ChatToolCall[]; reasoning_details?: ReasoningDetail[] }
   | { role: "tool"; tool_call_id: string; content: string };
 
@@ -125,6 +129,11 @@ async function* events(body: ReadableStream<Uint8Array>): AsyncGenerator<unknown
 type Delta = { content?: string | null; reasoning_details?: ReasoningDetail[]; extra_content?: { google?: { thought?: boolean } }; tool_calls?: { index?: number; id?: string; function?: { name?: string; arguments?: string }; [extra: string]: unknown }[] };
 type Chunk = { choices?: { delta?: Delta; finish_reason?: string | null }[]; error?: { message?: string } };
 
+/** The thread as a user message's content: a string when it is text alone, else text and image parts (data URLs) in order. */
+export function chatContent(parts: PromptPart[]): string | ChatPart[] {
+  return onlyText(parts) ?? parts.map((p) => (p.type === "text" ? { type: "text" as const, text: p.text } : { type: "image_url" as const, image_url: { url: `data:${p.mediaType};base64,${p.data}` } }));
+}
+
 export function chatAdapter(options: ChatOptions): ModelAdapter {
   const doFetch = options.fetch ?? fetch;
   const url = `${options.baseUrl.replace(/\/+$/, "")}/chat/completions`;
@@ -135,7 +144,7 @@ export function chatAdapter(options: ChatOptions): ModelAdapter {
     start: (request) => {
       const messages: ChatMessage[] = [
         { role: "system", content: `${request.protocol}\n\n${request.context}` },
-        { role: "user", content: request.prompt },
+        { role: "user", content: chatContent(request.prompt) },
       ];
       let pending: { text: string; calls: ChatToolCall[]; reasoning: ReasoningDetail[] } | null = null;
       let fresh = 0; // ids for tool calls a server sent without one

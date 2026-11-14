@@ -10,8 +10,17 @@ const CANNED = [
   { slug: "failure", name: "Failure", terms: ["failure", "breaks"] }, { slug: "tradeoff", name: "Tradeoff", terms: ["tradeoff", "cost"] },
 ];
 
-/** The stub for whichever persona the turn is for: the judge's unless the turn says mentor. */
-export const stubRunner: JudgeRunner = (turn) => personaFor(turn.mode ?? "judge").stubTurn(turn);
+/**
+ * The stub for whichever persona the turn is for: the judge's unless the turn says otherwise. When the turn shows the
+ * persona any of the reader's images, the reply starts by saying how many, so a test can see what reached it.
+ */
+export const stubRunner: JudgeRunner = async (turn) => {
+  const persona = personaFor(turn.mode ?? "judge");
+  const seen = persona.buildContext({ dbPath: turn.dbPath, domain: turn.domain, island: turn.island, mode: turn.mode }).images?.length ?? 0;
+  const saw = seen ? `I see ${seen} image${seen === 1 ? "" : "s"}. ` : "";
+  if (saw) turn.emit({ type: "text", text: saw });
+  return saw + (await persona.stubTurn(turn));
+};
 
 /**
  * No-login judge for `serve --stub` and tests. Reads the thread, reacts to a keyword in the reader's
