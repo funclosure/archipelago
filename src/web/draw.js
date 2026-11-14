@@ -756,11 +756,18 @@ function drawLamps(ctx, node, now, hair) {
   });
 }
 
-/** The harbour's anchor, drawn (not a glyph, which every platform draws its own way), in the water between two lamps. */
+/**
+ * The harbour's anchor, drawn (not a glyph, which every platform draws its own way), in the water between two
+ * lamps, on a patch of bare sheet so the water-lining does not run through it.
+ */
 function drawAnchor(ctx, total, hair) {
   const at = polar(anchorAngle(total), ANCHOR_R);
   ctx.save();
   ctx.translate(at.x, at.y);
+  ctx.beginPath();
+  ctx.arc(0, 0, 9.5, 0, Math.PI * 2);
+  ctx.fillStyle = PALETTE.sea;
+  ctx.fill();
   ctx.strokeStyle = alpha(PALETTE.line, 0.85);
   ctx.lineWidth = Math.max(1.3, hair);
   ctx.stroke(cachedPath("anchor", (p) => {

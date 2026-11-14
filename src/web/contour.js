@@ -20,7 +20,7 @@ export const SNOW_R = 6;
 /** The selection and hover rings: clear of a lit lamp's rays (LAMP_R + 12.5 where the coast is widest, about 92). */
 export const HALO_R = 96;
 /** How far from the centre the harbour's anchor sits (its angle is `anchorAngle`). */
-export const ANCHOR_R = 80;
+export const ANCHOR_R = 84;
 export const NAME_Y = 204;
 export const HATCH_PITCH = 9;
 export const POINTS = 60; // divisible by 4, 5, and 6, so 4–6 landmarks get equal arcs on whole points
