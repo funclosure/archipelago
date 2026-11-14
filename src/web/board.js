@@ -338,6 +338,7 @@ async function remove(id) {
   }
   state.removing = { id, kind: card.kind, title: card.title ?? null, slug: state.slug, timer: setTimeout(() => void flushRemove(), UNDO_MS) };
   render();
+  document.dispatchEvent(new CustomEvent("board", { detail: {} })); // one card fewer on show: the phone's tab counts them
   // The Undo line stands where the card stood; a tall card gone may have left that place above the fold.
   board.querySelector(".column > .undo")?.scrollIntoView({ block: "nearest" });
 }
@@ -366,6 +367,7 @@ function undoRemove() {
   state.near = null;
   state.removing = null;
   render();
+  document.dispatchEvent(new CustomEvent("board", { detail: {} })); // the card is back on show
   scrollCursorIntoView();
 }
 
