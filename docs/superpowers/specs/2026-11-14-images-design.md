@@ -125,6 +125,19 @@ Conformance gets one scripted turn with an image: a B-tree lookup drawn as a PNG
   - `updated` on both pages is 14 November 2026.
 - **CSP.** No change: `img-src 'self' data: blob:` already covers it, and nothing loads from elsewhere.
 
+## Results (2026-11-14)
+
+- **Hosted build**, served by `wrangler pages dev` with its real `_headers` (CSP), in Chromium:
+  - two images attached and sent through the worker;
+  - thumbnails came back as `blob:` URLs;
+  - the viewer, Remove, and Images… all worked, the prune compacting the database on OPFS. No page errors.
+- **Conformance, the image turn passed on both models:**
+  - **Claude Sonnet 5.5**, through our proxy, as a hosted reader on credit reaches it. It described the diagram (root 30 | 60, the path to 45, two page reads), said the round does not count, and asked for the index and column order in a sentence. It lit nothing, in the page's language.
+  - **Gemini 3.8 Flash.** It described a two-level B+ tree read in two pages and asked for the words. It lit nothing.
+- **Other failures, none about images:**
+  - **Sonnet 5.5:** 8 of 14 turns passed. This was the first conformance run on Claude. It failed on two questions in a reply, a slug in the prose (`快取雪崩 (cache-stampede)`), Chinese in answer to an English message, and `set_landmarks` on an island that had them. One "two question marks" is the checker counting a `?` in SQL quoted in 「」.
+  - **Flash:** 13 of 14 passed. The one failure is three question marks in a mentor reply.
+
 ## Out of scope for v1
 
 - Image cards on the board, and pinning an image from a message.
