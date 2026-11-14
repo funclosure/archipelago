@@ -34,7 +34,7 @@
 
 <main>
   <h1 data-t="privacy.heading">Privacy</h1>
-  <p class="updated" data-t="privacy.updated">Last updated 12 November 2026</p>
+  <p class="updated" data-t="privacy.updated">Last updated 14 November 2026</p>
   <p class="lede" data-t="privacy.intro">Archipelago is built so that your charts stay with you. This page says what is stored where, who else handles it, and what we never collect. It covers the hosted site at archipelago.school.</p>
   <section>
     <h2 data-t="privacy.s1Title">The short version</h2>
@@ -47,11 +47,11 @@
   </section>
   <section>
     <h2 data-t="privacy.s2Title">What stays in your browser</h2>
-    <p data-t="privacy.s2a">Everything you chart: domains, islands, conversations with the personas, board cards, the About you note, your theme and language, and any API key you paste (if you choose to remember it). It lives in this browser's storage for archipelago.school. We cannot see it, and we cannot recover it if the browser's data is cleared. Download a backup from the domain menu to keep a copy.</p>
+    <p data-t="privacy.s2a">Everything you chart: domains, islands, conversations with the personas (with the images you attach to them), board cards, the About you note, your theme and language, and any API key you paste (if you choose to remember it). It lives in this browser's storage for archipelago.school. We cannot see it, and we cannot recover it if the browser's data is cleared. Download a backup from the domain menu to keep a copy.</p>
   </section>
   <section>
     <h2 data-t="privacy.s3Title">What is sent to AI models</h2>
-    <p data-t="privacy.s3a">Each turn sends the model what it needs to answer: the persona's instructions, the island and the chart around it, the conversation on that island, your About you note, and your new message.</p>
+    <p data-t="privacy.s3a">Each turn sends the model what it needs to answer: the persona's instructions, the island and the chart around it, the conversation on that island, your About you note, and your new message. When you have attached images, the newest few in that conversation go along with it; older ones, and ones you removed, do not.</p>
     <p data-t="privacy.s3b">On Archipelago credit, the request goes through our server to Anthropic, the maker of Claude. Our server forwards it and does not store or log its content. Anthropic handles it under its own commercial terms and privacy policy (<a data-slot="anthropic" href="https://www.anthropic.com/legal/privacy">anthropic.com/legal</a>).</p>
     <p data-t="privacy.s3c">With your own key, the request goes straight from your browser to the provider you chose (Anthropic, Google or OpenRouter) and never touches our server. Their privacy policies apply.</p>
   </section>
@@ -60,7 +60,7 @@
     <p data-t="privacy.s4a">Using Archipelago credit creates an anonymous account for your browser. For it we keep:</p>
     <ul>
       <li data-t="privacy.s4b">a random account id and a one-way hash of the account's token (the token itself is only in your browser);</li>
-      <li data-t="privacy.s4c">for each reply: the time, the model, how many tokens it used and what it cost. Never the text;</li>
+      <li data-t="privacy.s4c">for each reply: the time, the model, how many tokens it used and what it cost. Never the text, and never an image;</li>
       <li data-t="privacy.s4d">credit added to the account: the free start, and each purchase or refund with Polar's order number;</li>
       <li data-t="privacy.s4e">a salted one-way hash of the network address that created the account, used only to limit free accounts per address.</li>
     </ul>

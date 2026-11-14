@@ -119,8 +119,24 @@ Conformance gets one scripted turn with an image: a B-tree lookup drawn as a PNG
 
 - **The proxy** (private `archipelago-proxy`) refused requests over `MAX_BODY = 512 KB`, which one screenshot can approach. Raised to 8 MB in that repo (archipelago-proxy #8), shipped first. Anthropic's own limit is 32 MB.
 - **Cost.** An image costs about (w × h) / 750 tokens: a 1568 × 980 screenshot is about 2k tokens, every turn it stays in view. The budget of four bounds it. No change to pricing; the foot's balance already shows what a turn spent.
-- **Privacy and terms.** `privacy.html` says images are sent to the model provider with the conversation and kept only in the reader's browser (hosted) or database (local). The proxy stores none, only its ledger. Bump `updated` on both pages (CLAUDE.md: change the page with the behaviour).
+- **Privacy and terms** (done 2026-11-14, both languages):
+  - `privacy.html` says images stay in the browser with the conversations, and that the newest few in a conversation go to the model with a turn (older and removed ones do not). The ledger never holds an image.
+  - `terms.html` says images are sent with messages, and adds one line to acceptable use: attach only images you have the right to share, and none showing other people's private information.
+  - `updated` on both pages is 14 November 2026.
 - **CSP.** No change: `img-src 'self' data: blob:` already covers it, and nothing loads from elsewhere.
+
+## Results (2026-11-14)
+
+- **Hosted build**, served by `wrangler pages dev` with its real `_headers` (CSP), in Chromium:
+  - two images attached and sent through the worker;
+  - thumbnails came back as `blob:` URLs;
+  - the viewer, Remove, and Images… all worked, the prune compacting the database on OPFS. No page errors.
+- **Conformance, the image turn passed on both models:**
+  - **Claude Sonnet 5.5**, through our proxy, as a hosted reader on credit reaches it. It described the diagram (root 30 | 60, the path to 45, two page reads), said the round does not count, and asked for the index and column order in a sentence. It lit nothing, in the page's language.
+  - **Gemini 3.8 Flash.** It described a two-level B+ tree read in two pages and asked for the words. It lit nothing.
+- **Other failures, none about images:**
+  - **Sonnet 5.5:** 8 of 14 turns passed. This was the first conformance run on Claude. It failed on two questions in a reply, a slug in the prose (`快取雪崩 (cache-stampede)`), Chinese in answer to an English message, and `set_landmarks` on an island that had them. One "two question marks" is the checker counting a `?` in SQL quoted in 「」.
+  - **Flash:** 13 of 14 passed. The one failure is three question marks in a mentor reply.
 
 ## Out of scope for v1
 
