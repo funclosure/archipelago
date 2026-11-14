@@ -39,11 +39,14 @@ export const ICONS = {
   sparkle: "M8 2.5c.4 2.9 1.6 4.1 5.5 5.5-3.9 1.4-5.1 2.6-5.5 5.5-.4-2.9-1.6-4.1-5.5-5.5C6.4 6.6 7.6 5.4 8 2.5z",
   more: "M3.5 8v.1M8 8v.1M12.5 8v.1",
   enter: "M12.5 3.5v5a1 1 0 0 1-1 1h-8M6 7 3.5 9.5 6 12",
+  play: "M5 3.2v9.6L12.5 8z",
+  pause: "M5.5 3.5v9M10.5 3.5v9",
 };
 /** Parts drawn filled, over the strokes. */
 const FILLED = {
   theme: "M8 2a6 6 0 0 1 0 12z",
   lamp: "M8 10.2a2.2 2.2 0 1 0 0-4.4 2.2 2.2 0 0 0 0 4.4z",
+  play: "M5 3.2v9.6L12.5 8z",
 };
 /** Glyphs made of dots, which want a heavier stroke to read as dots. */
 const HEAVY = new Set(["more"]);
