@@ -158,8 +158,9 @@ export function footMetaEl({ typing, idle = typing }, right = []) {
 
 /**
  * One row of a thread's trail: a mark in the margin, then what happened. `kind` is its class (lit, explored, reef,
- * loose, board, model, note); `key` links it to the reader's words it rests on and to the landmark's chip, which
- * light together under the pointer (`lightLandmark` in card.js). Returns the row and the body to fill.
+ * loose, board-line, model, note; never a class the page gives a meaning of its own, such as `board`); `key` links
+ * it to the reader's words it rests on and to the landmark's chip, which light together under the pointer
+ * (`lightLandmark` in card.js). Returns the row and the body to fill.
  */
 export function eventEl(kind, glyph = null, key = null, tag = "div") {
   const row = el(tag, `event ${kind}`);

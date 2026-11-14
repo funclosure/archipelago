@@ -777,7 +777,8 @@ function trailEl(item) {
   }
   if (/^board: (pinned|updated) /.test(item.text)) {
     // A persona's board write happens out of sight when the board is closed: its line opens the board at that card.
-    const { row, body } = eventEl("board board-line", icon("board", { size: 14 }), null, "button");
+    // (Its class is never plain `board`: that is the board's own sheet, fixed over the map, and the row would become one.)
+    const { row, body } = eventEl("board-line", icon("board", { size: 14 }), null, "button");
     row.addEventListener("click", () => openBoard({ latest: true }));
     row.dataset.fk = `board-line-${item.id}`;
     body.append(el("span", "event-text", systemText(item.text)));
