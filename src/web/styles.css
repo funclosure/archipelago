@@ -138,7 +138,6 @@ body.pane-open .chrome { right: var(--pane-w); }
 .sail.mentor { border-color: var(--explore); }
 .sail.mentor .sail-go { color: var(--explore); }
 .sail .sail-alt { display: block; margin-top: 6px; color: var(--muted); font-size: 11px; }
-.cta-card .start-guide { display: block; margin-top: 8px; color: var(--muted); font-size: 12px; }
 .briefing .carried { margin: 4px 0 12px; padding: 8px 12px; border-left: 2px solid var(--lamp); background: var(--panel-2); border-radius: 0 6px 6px 0; text-align: left; max-width: 46ch; }
 .briefing .carried .lbl { color: var(--muted); font-size: 11px; }
 .briefing .carried p { margin: 2px 0 0; color: var(--text); font-size: 13px; line-height: 1.5; }
@@ -657,7 +656,19 @@ body.empty .board-hint { display: none; }
 /* The cartographer: its pane reuses the island pane's head, log, and foot; its colour is the lamp's. */
 .pill.mode.cartographer { border-color: var(--lamp); color: var(--lamp); }
 .btn.send.cartographer { background: var(--lamp); color: var(--on-land); }
-.strip-item.action { cursor: pointer; }
+/* the dock: the map's bottom right, the conversations that are not about one island (only on the bare map) */
+.dock { position: fixed; right: 16px; bottom: 16px; z-index: 2; display: flex; flex-direction: column; align-items: stretch; gap: 8px; width: max-content; max-width: min(320px, calc(100vw - var(--outline-w) - 32px)); }
+body.pane-open .dock { display: none; }
+body:not(.pane-open) .cta { right: 352px; } /* the bottom card centres in the water the dock leaves */
+.dock-item { display: grid; gap: 2px; text-align: left; padding: 10px 16px 11px; border-radius: 12px; background: var(--panel); border: 1px solid var(--line); border-left: 3px solid var(--accent, var(--line)); color: var(--text); font: inherit; cursor: pointer; box-shadow: 0 10px 28px var(--shadow); transition: border-color .15s ease, transform .15s ease; }
+.dock-item:hover, .dock-item:focus-visible { border-color: var(--accent); transform: translateY(-1px); outline: none; }
+.dock-item.guide { --accent: var(--explore); }
+.dock-item.chart { --accent: var(--lamp); }
+.dock-label { font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--accent); }
+.dock-value { font-size: 15px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dock-value::after { content: " →"; color: var(--accent); }
+.dock-item.pending { border-color: var(--lamp); }
+:lang(zh) .dock-label { letter-spacing: .04em; }
 .strip-item.action:hover > span:nth-child(2) { color: var(--lamp); }
 .sketch-card { border: 1px dashed var(--lamp); border-radius: 8px; padding: 10px 12px; display: grid; gap: 6px; }
 .sketch-card .lbl { font-size: 10px; text-transform: uppercase; letter-spacing: .1em; color: var(--lamp); }
@@ -809,6 +820,10 @@ body.empty .outline, body.empty .chrome, body.empty #map-focus, body.empty #boar
   .strip-item:last-child .hint { left: 12px; right: 12px; }
   .cta { left: 0; bottom: calc(var(--places-h) + 12px); padding: 0 12px; }
   body:not([data-place="map"]) .cta { display: none; }
+  body:not(.pane-open) .cta { right: 0; }
+  .dock { right: 12px; bottom: calc(var(--places-h) + 12px); }
+  body:has(#cta:not([hidden])) .dock { display: none; }
+  body:not([data-place="map"]) .dock { display: none; }
   /* Island: the pane, above the bar. */
   .pane { height: calc(100dvh - var(--places-h)); bottom: auto; border-left: 0; z-index: 4; }
   body:not([data-place="island"]) .pane { display: none; }

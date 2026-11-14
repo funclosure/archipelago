@@ -256,10 +256,18 @@ export function stripItems(s, lens = "judge") {
     const reefs = s.reefs.map((r) => (r.startsWith("island:") ? nameOf(r.slice(7)) : r.startsWith("strait:") ? t("viewModel.strait", { name: r.slice(7) }) : r));
     items.push({ label: t("viewModel.reefs"), value: reefs.length ? reefs.join(" · ") : t("viewModel.noneCharted"), hint: HINTS.reefs });
   }
-  // At the top of a charted domain, the mentor's guide: where to begin, without picking an island first.
-  if (!s.scale?.path?.length && s.islands.length) items.push({ label: t("viewModel.whereToBegin"), value: t("viewModel.askTheMentor"), hint: HINTS.guide, action: "guide" });
-  // The last cell opens the cartographer at this scale; it names a pending sketch when there is one.
+  return items;
+}
+
+/**
+ * The dock at the map's bottom right: the two conversations that are not about one island, `[{ action, label,
+ * value, hint, pending? }]`. The mentor's guide (where to begin) at the top of a charted domain, then the
+ * cartographer at this scale, which names a pending sketch when there is one.
+ */
+export function dockItems(s) {
+  const items = [];
+  if (!s.scale?.path?.length && s.islands.length) items.push({ action: "guide", label: t("viewModel.whereToBegin"), value: t("viewModel.askTheMentor"), hint: HINTS.guide });
   const sketch = s.sketch ? sketchSummary(s.sketch.body, s.islands) : null;
-  items.push({ label: t("viewModel.cartographer"), value: sketch ? t("viewModel.sketchToApprove", { summary: sketch }) : t("viewModel.askToSketch"), hint: HINTS.cartographer, action: "chart" });
+  items.push({ action: "chart", label: t("viewModel.cartographer"), value: sketch ? t("viewModel.sketchToApprove", { summary: sketch }) : t("viewModel.askToSketch"), hint: HINTS.cartographer, pending: Boolean(sketch) });
   return items;
 }
