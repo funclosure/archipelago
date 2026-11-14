@@ -9,9 +9,10 @@
 
 ## What the reader sees
 
-- **Attaching.** In any answer box: paste (⌘V with an image on the clipboard), drop onto the pane, or the attach button beside Send (a file input with `accept="image/*"`, so a phone offers the camera). Up to `IMAGES_PER_MESSAGE` (4) per message.
-- **Before sending.** A row of thumbnails above the box, each with ×. A message may be an image alone, with no words.
-- **In the log.** The reader's message shows its images as thumbnails (at most 240 px high) above the text. A click opens one full size in the top layer (`full.js`). Escape closes it.
+- **Attaching.** In any answer box (the Keeper's and the mentor's, the guide's, the cartographer's): paste (⌘V with an image on the clipboard; words pasted with it still paste), drop onto the pane, or the paper clip beside Send (a file input with `accept="image/*"`, so a phone offers the camera). Up to `IMAGES_PER_MESSAGE` (4) per message. Not in a reef dispute, which is words only.
+- **Before sending.** A tray of thumbnails above the box, each with ×. Each image is shrunk and uploaded as soon as it is added, so Send is quick; Send waits while one is still on its way. × on an uploaded one deletes it on the server (it was never attached). A message may be images alone, with no words. While an ask is pending, words with images go as a message of their own, not as a pick.
+- **When it does not go.** A refused or stopped send puts the images back in the tray with the words. Leaving the thread (another island, another lens) clears the tray and deletes what it had uploaded.
+- **In the log.** The reader's message shows its images as thumbnails (120 px high, the box sized from the stored width and height so the log never jumps) above the text. A click opens the viewer: the image full size over everything, its size, **Remove image** (asks once), and Close; Escape closes it.
 - **Limits, said plainly.** A file that is not an image, or more than four, is refused in a line under the box, never silently dropped.
 - **Personas never send images.** Only the reader's messages carry them.
 
@@ -51,11 +52,12 @@ create index images_domain on images(domain_id, id);
 Images are the one thing that makes the database grow fast: a screenshot is 100–400 KB, and a whole domain's text rarely reaches that. There are three kinds of outdated image, each with its own way out. Nothing the reader attached to a conversation is deleted without them asking.
 
 - **Never attached.** An upload no message took (removed before sending, or a refused turn) goes after a day, swept on the next upload. Automatic, since the reader never saw it in a conversation.
-- **One image.** On a reader message's thumbnail, **Remove image** (in the viewer, and on hover) deletes the bytes and keeps a tombstone: `bytes` becomes null and `removed_at` is set (both in migration 0022). The log keeps a small "image removed" placeholder where it was. The replay says `[image #12, removed by the reader]`, so the persona never pretends to still see it, and the thread's order and its evidence quotes stay intact.
+- **One image.** **Remove image** in the viewer (only there: removing cannot be undone, so it is never one stray click on a thumbnail) deletes the bytes and keeps a tombstone: `bytes` becomes null and `removed_at` is set (both in migration 0022). The log keeps a small "image removed" placeholder where it was. The replay says `[image #12, removed by the reader]`, so the persona never pretends to still see it, and the thread's order and its evidence quotes stay intact.
 - **In bulk.** **Images…** in the domain menu opens a small sheet:
-  - how much this domain's images take (count and size);
+  - how much this domain's images take (count and size), and how many were removed before;
   - **Remove images older than** 30 days / 90 days / all, by age alone. An old image a persona still has in view goes too: the replay then says it was removed, and the persona can ask for it again. Protecting the newest four of every thread would leave a long-idle conversation's images impossible to clear in bulk.
-  - a confirm line naming the count.
+  - each option with what it would remove (`GET /api/images/usage?older=30,90`), disabled when nothing;
+  - a confirm line naming the count, then a line saying what was removed and freed.
 
   Then it tombstones them in one transaction and runs `VACUUM` (local; on hosted the `opfs-sahpool` VFS supports it too), so the file actually shrinks. A backup downloaded afterwards is smaller.
 - **Routes:**

@@ -15,10 +15,11 @@ import { modelEl, refreshJudgeModel } from "./model-label.js";
 import { autoRead, autoReadEl, canSpeak, speak, speakButton } from "./voice.js";
 import { loadHighlighter } from "./code.js";
 import { renderCta } from "./cta.js";
+import { acceptDrops, attachButton, createTray, messageImagesEl, pastedImages, trayEl } from "./images.js";
 import { select } from "./interactions.js";
 import { registerRegion, region } from "./keys.js";
 import { isImeKey } from "./keys-model.js";
-import { chartKey, chartSend, chartTurning, closeChart, decideSketch, dropChart, focusChartAnswer, installChart, isChartOpen, openChart, renderChart, stopChartTurn } from "./chart.js";
+import { chartKey, chartSend, chartTray, chartTurning, closeChart, decideSketch, dropChart, focusChartAnswer, installChart, isChartOpen, openChart, renderChart, stopChartTurn } from "./chart.js";
 
 const pane = document.getElementById("pane");
 const STICK_PX = 40;            // within this of the bottom, the log follows new content
@@ -81,6 +82,7 @@ const thread = {
   answering: false,   // a reef answer is in flight: Confirm and Dispute are one-shot
   stay: false,        // the reader chose Stay here after a verdict: hide the "sail on" card
   speakNext: false,   // a turn ended well: Read aloud plays its reply once the refetch brings it
+  stoppedImages: null, // ids an early stop gave back to the tray, until the refetch shows whether the server kept them
 };
 
 /** Where a reading belongs, for the now-playing bar: the island's name, and how to come back to the reply from
@@ -107,6 +109,8 @@ function readingOf(slug, mode) {
 const personaRole = (mode) => (mode === "mentor" ? "mentor" : "judge");
 
 let carry = null; // { slug, question, from }: the reader's question a mentor's pointer is taking to another island
+/** The images attached to the draft in this thread's answer box; a new thread starts with none. */
+const tray = createTray(() => render());
 let looseShown; // which loose ends are unfolded under the chips: a landmark's slug, "" for the island's own, undefined for none
 let looseFor = null; // the island looseShown belongs to: another island starts folded
 let terms = null; // the selected island's landmark words (`landmarkTerms`), marked in the persona's replies
@@ -155,6 +159,12 @@ export function installCard() {
   }
   app.listeners.add(() => render());
   loadHighlighter(() => render());
+  // Images dropped on the pane join whichever answer box it shows, while that box takes them.
+  acceptDrops(pane, () => {
+    const attach = pane.querySelector(".attach");
+    if (!attach || attach.disabled) return null;
+    return isChartOpen() && !app.selected ? chartTray() : tray;
+  });
   installChart({ render: () => render(), sail: (pointer, lens) => void sailFromGuide(pointer, lens) });
   registerRegion("pane", {
     focusAnswer: () => (isChartOpen() ? focusChartAnswer() : focusAnswer()),
@@ -252,10 +262,11 @@ function post(path, body) {
 /** Points the thread at another island, or another mode's thread, dropping everything from the previous one. */
 function resetThread(slug, mode = app.mode) {
   takeDemoSteps(); // what a demo printed belongs to the thread it was used beside
+  tray.clear(); // the draft's images go with its words; sent ahead, they are deleted (never attached)
   turnGen += 1; // a stream still running from an earlier visit to this island is no longer ours
   Object.assign(thread, {
     slug, mode, version: null, messages: [], asks: [], pointers: [], loaded: false, draft: "", live: "", progress: null, inFlight: false, error: null, loadError: null,
-    disputeDraft: "", stopped: false, stoppedDraft: null, litSeen: null, focusPending: false, answering: false, stay: false, speakNext: false,
+    disputeDraft: "", stopped: false, stoppedDraft: null, litSeen: null, focusPending: false, answering: false, stay: false, speakNext: false, stoppedImages: null,
   });
   noteOpen = false;
 }
@@ -291,6 +302,12 @@ async function loadThread(slug) {
       if (thread.draft === thread.stoppedDraft && messages.some((m) => m.role === "you" && m.body === thread.stoppedDraft)) thread.draft = "";
       thread.stoppedDraft = null;
     }
+    if (thread.stoppedImages !== null) {
+      // The same for the images it gave back: on a stored message they are no longer the tray's to send.
+      const kept = new Set(messages.flatMap((m) => (m.images ?? []).map((i) => i.id)));
+      if (thread.stoppedImages.some((id) => kept.has(id))) tray.drop();
+      thread.stoppedImages = null;
+    }
     thread.loaded = true;
     thread.answering = false; // a reef answer is complete once the stored proposal status is back
     thread.loadError = null; // thread.error belongs to the last turn and stays until the next one
@@ -309,8 +326,11 @@ function stopTurn() {
   return true;
 }
 
-/** One judge turn. `message` null opens or continues the thread without a new reader message. */
-async function runTurn(slug, message, askId) {
+/**
+ * One judge turn. `message` null opens or continues the thread without a new reader message; `sent` is the tray's
+ * images going with it (a message may be images alone, with `message` "").
+ */
+async function runTurn(slug, message, askId, sent = []) {
   if (thread.inFlight || thread.slug !== slug) return;
   const gen = ++turnGen;
   const mode = thread.mode;
@@ -323,17 +343,19 @@ async function runTurn(slug, message, askId) {
   thread.stopped = false;
   const abort = new AbortController();
   turnAbort = abort;
-  if (message) thread.messages = [...thread.messages, { id: `local-${Date.now()}`, role: "you", kind: "text", body: message }];
+  const images = sent.map((item) => item.image);
+  const said = Boolean(message) || images.length > 0;
+  if (said) thread.messages = [...thread.messages, { id: `local-${Date.now()}`, role: "you", kind: "text", body: message ?? "", images: images.map((i) => ({ ...i, removed: false })) }];
   render();
-  if (message) {
+  if (said) {
     const log = pane.querySelector(".log");
     following = true; // sending is a request to watch the reply arrive
     if (log) toEnd(log);
   }
   try {
     // What the reader did in a demo goes along with their words, so the mentor answers what actually happened.
-    const demoSteps = message && mode === "mentor" ? takeDemoSteps() : [];
-    await streamPost("/api/probe", { domain: app.domain, island: slug, mode, ...(message ? { message } : {}), ...(askId ? { askId } : {}), ...(demoSteps.length ? { demoSteps } : {}) }, (e) => {
+    const demoSteps = said && mode === "mentor" ? takeDemoSteps() : [];
+    await streamPost("/api/probe", { domain: app.domain, island: slug, mode, ...(message ? { message } : {}), ...(askId ? { askId } : {}), ...(images.length ? { images: images.map((i) => i.id) } : {}), ...(demoSteps.length ? { demoSteps } : {}) }, (e) => {
       if (!mine()) return;
       if (e.type === "text") {
         thread.live += e.data.text;
@@ -358,11 +380,16 @@ async function runTurn(slug, message, askId) {
         thread.draft = message;
         thread.stoppedDraft = message;
       }
+      if (sent.length && !error.midStream) {
+        tray.restore(sent);
+        thread.stoppedImages = images.map((i) => i.id);
+      }
     } else {
       thread.error = error.message;
-      // Refused or never sent: the server stored nothing, so the words go back in the box.
+      // Refused or never sent: the server stored nothing, so the words (and images) go back in the box.
       // Broken mid-stream: the server may have stored them, and the refetch will show it.
       if (message && !error.midStream) thread.draft = message;
+      if (sent.length && !error.midStream) tray.restore(sent);
     }
   }
   if (turnAbort === abort) turnAbort = null;
@@ -757,7 +784,8 @@ function itemEl(item, reefPending) {
   const m = el("div", `msg ${item.role}`);
   const persona = item.role === "judge" || item.role === "mentor";
   if (persona && Number.isInteger(item.id) && canSpeak(item.role)) m.append(speakButton(item.id, item.role, readingOf(thread.slug, thread.mode)));
-  m.append(renderMarkdown(item.text, persona ? { onQuestion: quoteIntoAnswer, lead: true, terms, pin: pinFor(item.role) } : {}));
+  if (item.images?.length) m.append(messageImagesEl(item.images));
+  if (item.text || !item.images?.length) m.append(renderMarkdown(item.text, persona ? { onQuestion: quoteIntoAnswer, lead: true, terms, pin: pinFor(item.role) } : {}));
   const ask = persona ? askFor(thread.asks, item.id) : null;
   if (ask) m.append(choicesEl(ask, reefPending));
   if (persona) for (const p of thread.pointers.filter((x) => x.messageId === item.id)) m.append(sailEl(p));
@@ -949,6 +977,11 @@ function footEl(island) {
       form.requestSubmit();
     }
   });
+  // A pasted screenshot joins the draft's images; a dispute is words only.
+  if (!pending) ta.addEventListener("paste", (e) => {
+    const files = pastedImages(e);
+    if (files.length) tray.add(files);
+  });
   form.append(ta);
   if (pending) {
     const dispute = button(t("card.dispute"), null, "btn ghost");
@@ -961,6 +994,7 @@ function footEl(island) {
       void answerReef(island.slug, pending.id, "dispute", ta.value.trim() || undefined);
     });
   } else {
+    form.append(attachButton(tray, ta.disabled));
     if (thread.inFlight && turnAbort) {
       // While a reply streams, Send is Stop (Escape does the same).
       const stop = button(t("card.stop"), () => stopTurn(), "btn ghost");
@@ -970,20 +1004,24 @@ function footEl(island) {
     } else {
       const send = button(t("card.send"), null, `btn send ${thread.mode}`); // tinted by who it goes to, like the head's mode pill
       send.type = "submit";
-      send.disabled = ta.disabled;
+      send.disabled = ta.disabled || tray.busy(); // an image still being shrunk or sent goes with the message, so wait
       form.append(send);
     }
     form.addEventListener("submit", (e) => {
       e.preventDefault();
       const body = ta.value.trim();
-      if (!body || thread.inFlight) return;
-      if (ask) answerAsk(island.slug, ask, body);
+      const withImages = tray.ready().length > 0;
+      if ((!body && !withImages) || thread.inFlight || tray.busy()) return;
+      // A pick from the options carries no images: words with images go as a message of their own.
+      if (ask && !withImages) answerAsk(island.slug, ask, body);
       else {
         thread.draft = "";
-        void runTurn(island.slug, body);
+        void runTurn(island.slug, body, undefined, tray.take());
       }
     });
   }
+  const shelf = pending ? null : trayEl(tray);
+  if (shelf) foot.append(shelf);
   foot.append(form);
   const meta = el("div", "meta");
   meta.append(el("span", null, t(pending ? "card.metaReef" : thread.inFlight ? "card.metaStop" : "card.metaSend")));
@@ -1069,6 +1107,8 @@ function render() {
   }
 
   const hadFocus = document.activeElement && document.activeElement.id === "answer";
+  // Where the caret was: a repaint while the reader edits mid-sentence (an image finishing upload) must not move it.
+  const caret = hadFocus ? [document.activeElement.selectionStart, document.activeElement.selectionEnd] : null;
   const hadNoteFocus = document.activeElement && document.activeElement.id === "note";
   const prevLog = pane.querySelector(":scope > .log");
   const prevTop = prevLog ? prevLog.scrollTop : 0;
@@ -1093,6 +1133,7 @@ function render() {
     }
   }
   if (hadFocus || thread.focusPending) focusAnswer();
+  if (caret) pane.querySelector("#answer")?.setSelectionRange(caret[0], caret[1]);
   // Remember which chips are lit so the next render can pulse only the newly lit ones.
   thread.litSeen = new Set((island.landmarks?.items ?? []).filter((l) => landmarkLit(l, thread.mode)).map((l) => l.slug));
   void renderHistory(island, ++renderId);

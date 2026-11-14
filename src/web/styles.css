@@ -277,6 +277,30 @@ button:focus-visible, textarea:focus-visible, input:focus-visible { outline: 2px
 .foot .meta .model.buy:hover, .foot .meta .model.buy:focus-visible { color: var(--text); }
 .foot .meta .model { font-family: var(--font-mono); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .foot .meta .meta-r { display: flex; align-items: center; gap: 12px; min-width: 0; }
+
+/* ---- the reader's images: the tray over the answer box, the attach button, thumbnails on a message ---- */
+.foot .attach { display: inline-flex; align-items: center; justify-content: center; padding: 6px 8px; color: var(--muted); }
+.foot .attach:hover:not(:disabled), .foot .attach:focus-visible { color: var(--text); }
+.foot .attach svg { width: 16px; height: 16px; }
+.tray { display: flex; flex-wrap: wrap; gap: 6px; align-items: flex-start; }
+.tray-item { position: relative; margin: 0; width: 64px; height: 64px; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; background: var(--panel-2); }
+.tray-item img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.tray-item:is(.preparing, .uploading) img { opacity: .45; }
+.tray-item.failed { border-color: var(--reef); }
+.tray-item.failed img { opacity: .3; }
+.tray-state { position: absolute; left: 0; right: 0; bottom: 0; padding: 2px 4px; font-size: 10px; text-align: center; background: var(--panel); color: var(--text); }
+.tray-item.failed .tray-state { color: var(--reef); }
+.tray-x { position: absolute; top: 2px; right: 2px; width: 18px; height: 18px; padding: 0; border: 0; border-radius: 50%; background: var(--panel); color: var(--text); font: 12px/18px system-ui, sans-serif; cursor: pointer; }
+.tray-x:hover, .tray-x:focus-visible { color: var(--reef); }
+.tray-notice { flex-basis: 100%; font-size: 11px; color: var(--reef); }
+.pane.dropping { outline: 2px dashed var(--lamp); outline-offset: -6px; }
+.msg-images { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 6px; }
+.msg-images:not(:last-child) { margin-bottom: 8px; }
+.msg-image { display: block; padding: 0; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; background: var(--water); cursor: zoom-in; max-width: 100%; }
+.msg-image img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.msg-image:hover, .msg-image:focus-visible { border-color: var(--line-03); outline: none; }
+.msg-image.broken { cursor: default; }
+.msg-image.removed { display: inline-block; padding: 4px 8px; font-size: 11px; color: var(--muted); border-style: dashed; cursor: default; }
 .read-aloud { background: none; border: 0; padding: 0; font: inherit; color: var(--muted); cursor: pointer; white-space: nowrap; }
 .read-aloud:hover, .read-aloud[aria-pressed="true"] { color: var(--text-2); }
 /* Listen: a pill above each voiced reply naming the voice; it fills with the persona's accent while it reads, and its
@@ -642,6 +666,31 @@ body.empty .board-hint { display: none; }
 
 /* ---- About you: the learner note ---- */
 .about { position: fixed; top: 72px; left: calc(var(--outline-w) + 16px); z-index: 5; }
+/* the image viewer: one of the reader's images, full size, over everything */
+.viewer { position: fixed; inset: 0; z-index: 8; display: flex; align-items: center; justify-content: center; padding: 24px; }
+.viewer[hidden], .images-sheet[hidden] { display: none; } /* their display would otherwise beat the hidden attribute */
+.viewer-scrim { position: absolute; inset: 0; background: var(--scrim); }
+.viewer-card { position: relative; display: grid; gap: 8px; max-width: min(1568px, 100%); max-height: 100%; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 12px; box-shadow: 0 12px 32px var(--shadow); }
+.viewer-card img { display: block; max-width: 100%; max-height: calc(100vh - 140px); margin: 0 auto; object-fit: contain; border-radius: 6px; }
+.viewer-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; font-size: 12px; color: var(--muted); }
+.viewer-size { font-family: var(--font-mono); }
+.viewer-confirm { color: var(--text); flex: 1; min-width: 12em; }
+.viewer-actions { display: flex; gap: 6px; margin-left: auto; }
+/* Images…: what a domain's images take, and removing old ones */
+.images-sheet { position: fixed; inset: 0; z-index: 7; display: flex; align-items: flex-start; justify-content: center; padding: 12vh 16px 16px; background: var(--scrim); overflow-y: auto; }
+.images-card { width: min(420px, 100%); display: grid; gap: 10px; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; box-shadow: 0 12px 32px var(--shadow); }
+.images-card .lbl { font-size: 10px; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); }
+.images-card .help { margin: 0; font-size: 13px; }
+.images-card .help.muted { color: var(--muted); font-size: 12px; }
+.images-options { display: grid; gap: 2px; }
+.images-option { display: flex; justify-content: space-between; gap: 12px; text-align: left; border: 0; background: transparent; color: var(--text); font: inherit; font-size: 13px; padding: 7px 8px; border-radius: 6px; cursor: pointer; }
+.images-option:hover:not(:disabled), .images-option.on { background: var(--panel-2); }
+.images-option:disabled { color: var(--muted); cursor: default; }
+.images-option .cur { color: var(--muted); font-size: 12px; }
+.images-confirm { display: grid; gap: 8px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel-2); }
+.images-confirm p { margin: 0; font-size: 13px; }
+.images-card .row { display: flex; gap: 6px; }
+.images-done { margin: 0; font-size: 12px; color: var(--text); }
 .about[hidden] { display: none; }
 .about-card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; box-shadow: 0 12px 32px var(--shadow);
   width: min(420px, calc(100vw - var(--outline-w) - 32px)); display: grid; gap: 8px; }
@@ -909,6 +958,6 @@ body.empty .outline, body.empty .chrome, body.empty #map-focus, body.empty #boar
 
 /* Chinese: tracked small capitals scatter Han characters, a 10px glyph blurs, and synthetic italic slants them.
    Labels that track Latin are set close and a size up, and italic lines stand upright. */
-:lang(zh) :is(.strip-label, .pill, .msg.system, .reef-title, .outline .menu .ml, .outline .sec, .pane-width, .diagram .cap, .plot .cap, .codeblock .cap, .choices .q, .cta-card .lbl, .keys-card .lbl, .keys-card .sec, .board .card > .cap .kind, .board .editor .ehead .kind, .about-card .lbl, .sketch-card .lbl, .sketch-card .sec, .new-domain-card .lbl, .hosted-card .lbl) { letter-spacing: .02em; }
+:lang(zh) :is(.strip-label, .pill, .msg.system, .reef-title, .outline .menu .ml, .outline .sec, .pane-width, .diagram .cap, .plot .cap, .codeblock .cap, .choices .q, .cta-card .lbl, .keys-card .lbl, .keys-card .sec, .board .card > .cap .kind, .board .editor .ehead .kind, .about-card .lbl, .sketch-card .lbl, .sketch-card .sec, .new-domain-card .lbl, .hosted-card .lbl, .images-card .lbl) { letter-spacing: .02em; }
 :lang(zh) :is(.strip-label, .pill, .outline .sec, .pane-width, .cta-card .lbl, .keys-card .lbl, .keys-card .sec, .about-card .lbl, .sketch-card .lbl, .sketch-card .sec, .new-domain-card .lbl, .hosted-card .lbl) { font-size: 11px; }
 :lang(zh) :is(.stopped, .progress, .thinking) { font-style: normal; }

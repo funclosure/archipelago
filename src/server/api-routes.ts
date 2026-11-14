@@ -306,7 +306,10 @@ async function handleApi(req: Request, url: URL, ctx: ApiContext): Promise<Respo
 
   if (route === "GET /api/images/usage") {
     const slug = slugSchema.parse(q("domain"));
-    return json(withDb(ctx, (db) => imageUsage(db, requireDomain(db, slug).id)));
+    // `older=30,90`: how much a prune at each age would remove, so Images… can say so before it asks.
+    const older = (q("older") ?? "").split(",").filter(Boolean).map(Number);
+    if (older.some((d) => !Number.isInteger(d) || d < 0 || d > 36500) || older.length > 4) throw new ArchipelagoError("older is up to four whole numbers of days, e.g. 30,90");
+    return json(withDb(ctx, (db) => imageUsage(db, requireDomain(db, slug).id, older)));
   }
 
   if (route === "POST /api/images/remove") {

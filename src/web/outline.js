@@ -9,6 +9,7 @@ import { applyTheme, endPreview, savedTheme } from "./theme.js";
 import { openAbout } from "./learner.js";
 import { exportDatabase, importDatabase, isHosted, openYourKey } from "./hosted.js";
 import { openDomainEdit, openNewDomain } from "./new-domain.js";
+import { openImagesSheet } from "./images.js";
 import { mapFileName } from "./map-model.js";
 import { request } from "./transport.js";
 import { LANGUAGES, language, setLanguage, t } from "./i18n.js";
@@ -271,7 +272,10 @@ function headerEl(outline) {
     // The open domain as one file to share: its structure, with nothing the reader said.
     const share = button(t("outline.exportMap"), () => { closeMenu(); void exportMap(); }, "mi");
     share.title = t("outline.exportMapHint");
-    menu.append(share);
+    // The images in this domain's conversations: how much they take, and removing old ones.
+    const images = button(t("outline.images"), () => { closeMenu(); openImagesSheet(); }, "mi");
+    images.title = t("outline.imagesHint");
+    menu.append(share, images);
     // Theme: one row naming the chosen theme; a click opens the list under it. Hovering a theme previews it on the
     // whole page; leaving the list (or closing the menu) goes back; a click keeps it and closes the menu.
     const cur = savedTheme();

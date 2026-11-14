@@ -95,13 +95,29 @@ export function removeImages(db: Database, domainId: number, ids: readonly numbe
   })();
 }
 
-/** What the domain's images take: those still there, and how many the reader removed. */
-export function imageUsage(db: Database, domainId: number): { count: number; bytes: number; removed: number } {
-  return db
+export type ImageUsage = { count: number; bytes: number; removed: number; older?: Record<string, { count: number; bytes: number }> };
+
+/**
+ * What the domain's images take: those still there, and how many the reader removed. With `olderThanDays`, also how
+ * many of them, and how many bytes, a prune at each of those ages would remove (Images… names it before it asks).
+ */
+export function imageUsage(db: Database, domainId: number, olderThanDays: readonly number[] = []): ImageUsage {
+  const usage: ImageUsage = db
     .query<{ count: number; bytes: number; removed: number }, [number]>(
       `select count(bytes) as count, coalesce(sum(length(bytes)), 0) as bytes, count(removed_at) as removed from images where domain_id = ?`,
     )
     .get(domainId)!;
+  if (olderThanDays.length === 0) return usage;
+  const older: Record<string, { count: number; bytes: number }> = {};
+  for (const days of olderThanDays) {
+    older[String(days)] = db
+      .query<{ count: number; bytes: number }, [number, string]>(
+        `select count(*) as count, coalesce(sum(length(bytes)), 0) as bytes from images
+         where domain_id = ? and bytes is not null and created_at < strftime('%Y-%m-%dT%H:%M:%fZ', 'now', ?)`,
+      )
+      .get(domainId, `-${Math.max(0, Math.floor(days))} days`)!;
+  }
+  return { ...usage, older };
 }
 
 /**

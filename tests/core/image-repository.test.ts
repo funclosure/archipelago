@@ -80,6 +80,7 @@ test("usage counts what is there; prune removes by age, or every one, and says h
   age(ids[0]!, 40);
   age(ids[2]!, 40); // unattached and old: deleted, not a tombstone
   expect(imageUsage(db, domainId)).toEqual({ count: 3, bytes: png.length * 2 + webp.length, removed: 0 });
+  expect(imageUsage(db, domainId, [30, 90]).older).toEqual({ "30": { count: 2, bytes: png.length * 2 }, "90": { count: 0, bytes: 0 } });
   expect(pruneImages(db, domainId, 30)).toEqual({ removed: 2, bytes: png.length * 2 });
   expect(imageUsage(db, domainId)).toEqual({ count: 1, bytes: webp.length, removed: 1 });
   expect(imagesByMessage(db, domainId).get(m.id)!.map((i) => i.removed)).toEqual([true, false]);

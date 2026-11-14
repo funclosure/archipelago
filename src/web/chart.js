@@ -12,6 +12,7 @@ import { thinkingEl } from "./thinking.js";
 import { systemText } from "./thread.js";
 import { t } from "./i18n.js";
 import { modelEl } from "./model-label.js";
+import { attachButton, createTray, messageImagesEl, pastedImages, trayEl } from "./images.js";
 
 const STICK_PX = 40;
 const LOG_STEP = 80;
@@ -47,6 +48,10 @@ let liveFrame = 0;
 let composing = false;
 let rerender = () => {};
 let sail = () => {};
+/** The images attached to the draft in this pane's answer box (a syllabus for the cartographer, a screenshot for the guide). */
+const tray = createTray(() => rerender());
+/** The tray images dropped on the pane go to, while this pane shows (card.js owns the drop). */
+export const chartTray = () => tray;
 
 /** card.js passes its render (it owns the pane) and how to sail from a guide's card (it owns the island's pane). */
 export function installChart({ render, sail: sailWith }) {
@@ -64,6 +69,7 @@ export const chartWorkingHere = () => (!guiding() && chart.inFlight && (chart.sc
 
 function reset(scale, mode = chart.mode) {
   turnGen += 1; // a stream from an earlier scale is no longer ours
+  tray.clear(); // the draft's images go with its words
   Object.assign(chart, { mode, scale: mode === "guide" ? null : scale, version: null, messages: [], sketch: null, pointers: [], loaded: false, loadError: null, draft: "", live: "", progress: null, inFlight: false, error: null, stopped: false, deciding: false });
 }
 
@@ -144,7 +150,7 @@ async function load() {
 }
 
 /** One cartographer turn at the open scale. `message` null starts it without a reader message. */
-async function runTurn(message) {
+async function runTurn(message, sent = []) {
   if (chart.inFlight || !chart.open) return;
   const gen = ++turnGen;
   const scale = chart.scale;
@@ -152,10 +158,12 @@ async function runTurn(message) {
   Object.assign(chart, { inFlight: true, live: "", progress: null, error: null, stopped: false });
   const abort = new AbortController();
   turnAbort = abort;
-  if (message) chart.messages = [...chart.messages, { id: `local-${Date.now()}`, role: "you", kind: "text", body: message }];
+  const images = sent.map((item) => item.image);
+  if (message || images.length) chart.messages = [...chart.messages, { id: `local-${Date.now()}`, role: "you", kind: "text", body: message ?? "", images: images.map((i) => ({ ...i, removed: false })) }];
   rerender();
   try {
-    await streamPost("/api/probe", { domain: app.domain, mode: chart.mode, ...(scale && !guiding() ? { island: scale } : {}), ...(message ? { message } : {}) }, (e) => {
+    const body = { domain: app.domain, mode: chart.mode, ...(scale && !guiding() ? { island: scale } : {}), ...(message ? { message } : {}), ...(images.length ? { images: images.map((i) => i.id) } : {}) };
+    await streamPost("/api/probe", body, (e) => {
       if (!mine()) return;
       if (e.type === "text") {
         chart.live += e.data.text;
@@ -175,6 +183,7 @@ async function runTurn(message) {
     else chart.error = error.message;
     // Refused or stopped before the stream opened: the server stored nothing, so the words go back in the box.
     if (message && !error.midStream) chart.draft = message;
+    if (sent.length && !error.midStream) tray.restore(sent);
   }
   if (turnAbort === abort) turnAbort = null;
   if (!mine()) return;
@@ -346,7 +355,8 @@ function sketchCard(sketch) {
 function messageEl(m) {
   if (m.kind === "system") return el("div", "msg system", systemText(m.body));
   const box = el("div", `msg ${m.role === "you" ? "you" : speaker()}`);
-  box.append(renderMarkdown(m.body, m.role === "you" ? {} : { lead: true }));
+  if (m.images?.length) box.append(messageImagesEl(m.images));
+  if (m.body || !m.images?.length) box.append(renderMarkdown(m.body, m.role === "you" ? {} : { lead: true }));
   return box;
 }
 
@@ -417,7 +427,11 @@ function footEl() {
       form.requestSubmit();
     }
   });
-  form.append(ta);
+  ta.addEventListener("paste", (e) => {
+    const files = pastedImages(e);
+    if (files.length) tray.add(files);
+  });
+  form.append(ta, attachButton(tray, ta.disabled));
   if (chart.inFlight && turnAbort) {
     const stop = button(t("chart.stop"), () => stopChartTurn(), "btn ghost");
     stop.id = "stop";
@@ -425,16 +439,18 @@ function footEl() {
   } else {
     const send = button(t("chart.send"), null, `btn send ${speaker()}`);
     send.type = "submit";
-    send.disabled = ta.disabled;
+    send.disabled = ta.disabled || tray.busy();
     form.append(send);
   }
   form.addEventListener("submit", (e) => {
     e.preventDefault();
     const body = ta.value.trim();
-    if (!body || chart.inFlight) return;
+    if ((!body && tray.ready().length === 0) || chart.inFlight || tray.busy()) return;
     chart.draft = "";
-    void runTurn(body);
+    void runTurn(body, tray.take());
   });
+  const shelf = trayEl(tray);
+  if (shelf) foot.append(shelf);
   foot.append(form);
   const meta = el("div", "meta");
   meta.append(el("span", null, t(chart.inFlight ? "chart.metaStop" : chart.sketch ? "chart.metaSketch" : "chart.metaSend")));
@@ -451,6 +467,7 @@ export function renderChart(pane) {
   if (!guiding() && chart.scale !== scale) reset(scale); // the breadcrumb or the outline moved the map: the cartographer follows (the guide is the domain's)
   if (chart.version !== app.version) void load();
   const hadFocus = document.activeElement?.id === "answer";
+  const caret = hadFocus ? [document.activeElement.selectionStart, document.activeElement.selectionEnd] : null; // a repaint never moves it
   const prevLog = pane.querySelector(".log");
   const stuck = !prevLog || atBottom(prevLog);
   const prevTop = prevLog ? prevLog.scrollTop : 0;
@@ -460,6 +477,7 @@ export function renderChart(pane) {
   const log = pane.querySelector(".log");
   log.scrollTop = stuck ? log.scrollHeight : prevTop;
   if (hadFocus) focusChartAnswer();
+  if (caret) pane.querySelector("#answer")?.setSelectionRange(caret[0], caret[1]);
 }
 
 /** The pane region's keys while the cartographer is open. Returns whether the key was used. */

@@ -137,6 +137,17 @@ function step(from, back) {
 function onKeydown(e) {
   if (isImeKey(e)) return; // the input method owns this key: picking or dismissing a candidate is not a page key
   if (!shown(current)) setRegion(step(current, false)); // a hidden region (e.g. the pane, poll-hidden) never keeps focus
+  // The image viewer and Images… sit over everything, the New domain and hosted dialogs included: Escape closes them,
+  // and keys inside them (Tab, Enter on a button) stay the browser's.
+  for (const [name, root] of [["viewer", "#viewer"], ["imagesSheet", "#images-sheet"]]) {
+    if (!handlers[name]?.isOpen?.()) continue;
+    if (e.key === "Escape") {
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      handlers[name].close();
+    } else if (!e.target?.closest?.(root)) e.stopPropagation();
+    return;
+  }
   if (handlers.hosted?.isOpen?.()) { // the hosted build's dialogs are modal: Escape closes the ones that can close
     if (e.key === "Escape") {
       e.preventDefault();
