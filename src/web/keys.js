@@ -6,6 +6,7 @@ import { REGIONS, nextRegion, isTyping, escapeRung, aboutKey, cheatSheet, isImeK
 import { cycleTheme } from "./theme.js";
 import { exitFull } from "./full.js";
 import { t } from "./i18n.js";
+import { isPaletteOpen, openPalette, opensPalette, paletteKey } from "./palette.js";
 
 const handlers = {}; // region name → handler
 let current = "outline";
@@ -72,7 +73,7 @@ function renderSheet() {
   box.append(card);
 }
 
-function toggleSheet() {
+export function toggleSheet() {
   sheetOpen = !sheetOpen;
   renderSheet();
 }
@@ -136,6 +137,8 @@ function step(from, back) {
 
 function onKeydown(e) {
   if (isImeKey(e)) return; // the input method owns this key: picking or dismissing a candidate is not a page key
+  // The command palette (palette.js) is modal for keys: while it is open every key is its own and none reaches the page.
+  if (isPaletteOpen()) return paletteKey(e);
   if (!shown(current)) setRegion(step(current, false)); // a hidden region (e.g. the pane, poll-hidden) never keeps focus
   // The image viewer and Images… sit over everything, the New domain and hosted dialogs included: Escape closes them,
   // and keys inside them (Tab, Enter on a button) stay the browser's.
@@ -175,6 +178,13 @@ function onKeydown(e) {
       e.preventDefault();
       handlers.about.focusIn?.();
     } else if (act === "block") e.stopPropagation();
+    return;
+  }
+  // ⌘K (Ctrl+K off a Mac) opens the command palette from anywhere on the page, a text field included; the dialogs
+  // above are modal and have already returned.
+  if (opensPalette(e)) {
+    e.preventDefault();
+    openPalette();
     return;
   }
   if (e.key === "Tab" && !e.metaKey && !e.ctrlKey && !e.altKey) { // ⌘⇥ and friends stay the browser's

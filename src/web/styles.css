@@ -180,6 +180,73 @@ kbd { display: inline-block; box-sizing: border-box; min-width: 18px; padding: 0
 .mi:disabled { color: var(--muted); cursor: default; background: transparent; }
 .menu .sep { border-top: 1px solid var(--line); margin: var(--sp-1) calc(-1 * var(--sp-1)); }
 .menu .ml { font-size: var(--fs-micro); font-weight: 500; letter-spacing: var(--track-caps); text-transform: uppercase; color: var(--muted); padding: var(--sp-2) var(--sp-2) 2px; }
+/* ---- command palette (palette.js) ---- */
+/* One field over the page: the card hangs a fifth down the window and its list scrolls inside it. The root fills the
+   window from the top layer (a popover), so it is above a demo that fills the window too, and a press on it outside
+   the card closes. Rows are the menu's (.mi) a step taller; the highlight is one row (--selected), moved by the keys
+   or by a pointer that moves, never by :hover, so a list scrolling under a still pointer shows one highlight. */
+.palette { position: fixed; inset: 0; z-index: var(--z-dialog-top); box-sizing: border-box; width: auto; height: auto; max-width: none; max-height: none; margin: 0; border: 0;
+  padding: 20vh var(--sp-4) var(--sp-6); overflow: hidden; display: flex; flex-direction: column; align-items: center; background: transparent; color: var(--text); }
+.palette[hidden] { display: none; }
+.palette-scrim { position: absolute; inset: 0; background: var(--scrim); }
+.palette-card { position: relative; box-sizing: border-box; display: flex; flex-direction: column; width: min(600px, 100%); min-height: 0; max-height: 100%; overflow: hidden; transform-origin: top center; }
+/* The entrance is the root's, added once as it opens: the list inside is rebuilt on every keystroke and must not replay it. */
+.palette.arrive .palette-card { animation: pop-in var(--t-med) var(--ease); }
+.palette.arrive .palette-scrim { animation: palette-scrim var(--t-med) var(--ease); }
+@keyframes palette-scrim { from { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .palette.arrive :is(.palette-card, .palette-scrim) { animation: none; } }
+.palette-head { flex: none; display: flex; align-items: center; gap: var(--sp-3); padding: var(--sp-1) var(--sp-4); border-bottom: 1px solid var(--line); color: var(--muted); }
+/* The field has no edge of its own: the card is its box, and the lamp is only its caret. */
+.palette-field, .palette-field:focus-visible { flex: 1; min-width: 0; height: var(--h-xl); padding: 0; border: 0; outline: none; box-shadow: none; background: transparent; color: var(--text);
+  font: var(--fs-lg)/var(--lh-ui) var(--font-ui); caret-color: var(--lamp); }
+.palette-field::placeholder { color: var(--muted); opacity: 1; }
+.palette-list.menu { position: static; z-index: auto; flex: 0 1 auto; min-width: 0; min-height: 0; max-height: calc(var(--h-lg) * 12); overflow-y: auto; overscroll-behavior: contain; scroll-padding-block: var(--sp-1) var(--sp-2);
+  padding: 0 var(--sp-2) var(--sp-2); background: none; border: 0; border-radius: 0; box-shadow: none; grid-template-columns: minmax(0, 1fr); }
+.palette-list[hidden], .palette-empty[hidden] { display: none; }
+/* One column no wider than the card: a long name is cut with an ellipsis, never pushing its row out of the list. */
+.palette-group { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1px; }
+.palette .ml { padding-top: var(--sp-3); }
+.palette .mi { min-height: var(--h-lg); transition: none; }
+.palette .mi:hover { background: transparent; }
+.palette .mi.on, .palette .mi.on:hover { background: var(--selected); }
+.palette .mi:active { background: var(--pressed); }
+.palette .mi.on > .ic { color: var(--text-2); }
+.palette .mi > .detail { flex: 0 1 auto; min-width: 0; max-width: 55%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); font-size: var(--fs-sm); }
+.palette .mi > .cur { margin-left: 0; color: var(--text-2); }
+/* A row's key. `.keys` is also the cheat sheet's root (a fixed layer with an entrance), and none of that is a row's. */
+.palette .mi > .keys { position: static; z-index: auto; margin-left: var(--sp-1); pointer-events: auto; animation: none; }
+/* What the typed words matched: a touch heavier, on the lamp's line. */
+.palette mark { background: none; color: inherit; font-weight: var(--fw-semibold); text-decoration: underline; text-decoration-color: var(--lamp); text-decoration-thickness: 1px; text-underline-offset: 3px; }
+/* In the quiet detail a match only steps up to the text's own colour. */
+.palette .detail mark { color: var(--text); font-weight: var(--fw-medium); text-decoration: none; }
+/* An island's state, as the outline's dot says it. */
+.palette-dot { display: grid; place-items: center; }
+.palette-dot > span { width: 8px; height: 8px; border-radius: 50%; box-sizing: border-box; border: 1px dashed var(--open); }
+.palette-dot > .lit { border-style: solid; border-color: var(--lamp); }
+.palette-dot > .explored { border-style: solid; border-color: var(--explore); }
+.palette-dot > .explored.all { background: var(--explore); border: 0; }
+.palette-dot > .sandbar { background: var(--sand-fill); border: 0; }
+.palette-dot > .settled { background: var(--grass); border: 0; }
+.palette-dot > .mountainous { background: var(--ridge); border: 1px solid var(--line-07); }
+.palette-dot > .reef { background: var(--sand-fill); border: 0; box-shadow: inset 0 -2px 0 var(--reef); }
+.palette-note { padding: var(--sp-15) var(--sp-2); color: var(--muted); font-size: var(--fs-md); }
+.palette-empty { padding: var(--sp-8) var(--sp-6); text-align: center; color: var(--text-2); font-size: var(--fs-md); line-height: var(--lh-body); overflow-wrap: anywhere; }
+.palette-foot { flex: none; display: flex; align-items: center; gap: var(--sp-4); padding: var(--sp-2) var(--sp-4); border-top: 1px solid var(--line); color: var(--muted); font-size: var(--fs-xs); }
+.palette-foot > span { display: inline-flex; align-items: center; gap: var(--sp-1); }
+:lang(zh) .palette .ml { letter-spacing: .02em; font-size: var(--fs-xs); }
+/* A phone: the card takes the width at the top, and the list ends where the keyboard begins (palette.js keeps the root
+   to the part of the window that can be seen). A row is tall enough for a finger, its detail on a second line under
+   the name; there are no keys to name. */
+@media (max-width: 720px) {
+  .palette { padding: var(--sp-2); }
+  .palette-list.menu { max-height: none; }
+  .palette-foot, .palette .mi > .keys { display: none; }
+  .palette .mi { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-content: center; gap: 0 var(--sp-3); min-height: var(--h-xl); padding: var(--sp-15) var(--sp-2); }
+  .palette .mi > .ic { grid-row: 1 / span 2; }
+  .palette .mi > .grow { grid-column: 2; }
+  .palette .mi > .detail { grid-column: 2; grid-row: 2; max-width: none; }
+  .palette .mi > .cur { grid-column: 3; grid-row: 1 / span 2; }
+}
 #map { position: fixed; inset: 0; display: block; cursor: grab; touch-action: none; -webkit-touch-callout: none; user-select: none; -webkit-user-select: none; }
 #map.dragging { cursor: grabbing; }
 #map.hover { cursor: pointer; }

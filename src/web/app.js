@@ -27,6 +27,7 @@ import { modeKey, storedMode, nextMode } from "./mode-model.js";
 import { installLaunch } from "./launch.js";
 import { installPlaces } from "./places.js";
 import "./tip.js"; // tooltips listen at the document; a control only carries data-tip
+import "./palette.js"; // the command palette (⌘K): keys.js hands it the opening key and, while it is open, every key
 
 const canvas = document.getElementById("map");
 const ctx = canvas.getContext("2d");

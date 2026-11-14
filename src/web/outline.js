@@ -25,7 +25,7 @@ let root = null;
 let peek = null;
 
 /** Downloads the open domain as a map file (GET /api/map). */
-async function exportMap() {
+export async function exportMap() {
   try {
     const file = await api(`/api/map?domain=${encodeURIComponent(app.domain)}`);
     const url = URL.createObjectURL(new Blob([JSON.stringify(file, null, 2) + "\n"], { type: "application/json" }));
@@ -37,6 +37,25 @@ async function exportMap() {
   } catch (error) {
     toastError(error, t("outline.exportMap"));
   }
+}
+
+/** Opens another domain: the page loads again on it, at its top scale. */
+export function switchDomain(slug) {
+  const url = new URL(location.href);
+  url.searchParams.set("domain", slug);
+  url.searchParams.delete("scale");
+  location.href = url.toString();
+}
+
+/** Picks the page's language: stores it, tells the server (the personas reply in it), and reloads, since every word on the page was drawn in the old one. */
+export async function chooseLanguage(id) {
+  setLanguage(id);
+  try {
+    await api("/api/learner", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ language: id }) });
+  } catch {
+    // the page still switches; the personas keep the old language until the next pick
+  }
+  location.reload();
 }
 
 function storageKey() {
@@ -99,7 +118,7 @@ async function go(node) {
   await select(node.slug);
 }
 
-function toggleRail() {
+export function toggleRail() {
   state.rail = !state.rail;
   applyWidth();
   hidePeek();
@@ -252,12 +271,7 @@ function headerEl(outline) {
     const menu = el("div", state.menuArriving ? "menu arrive" : "menu");
     state.menuArriving = false;
     for (const d of state.domains) {
-      const item = button(d.name, () => {
-        const url = new URL(location.href);
-        url.searchParams.set("domain", d.slug);
-        url.searchParams.delete("scale");
-        location.href = url.toString();
-      }, `mi${d.slug === app.domain ? " on" : ""}`);
+      const item = button(d.name, () => switchDomain(d.slug), `mi${d.slug === app.domain ? " on" : ""}`);
       if (d.slug !== app.domain) {
         menu.append(item);
         continue;
@@ -318,15 +332,7 @@ function headerEl(outline) {
     if (state.languagesOpen) {
       const list = el("div", "themes");
       for (const l of LANGUAGES) {
-        const item = button(l.name, async () => {
-          setLanguage(l.id);
-          try {
-            await api("/api/learner", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ language: l.id }) });
-          } catch {
-            // the page still switches; the personas keep the old language until the next pick
-          }
-          location.reload();
-        }, `mi sub${l.id === lang ? " on" : ""}`);
+        const item = button(l.name, () => void chooseLanguage(l.id), `mi sub${l.id === lang ? " on" : ""}`);
         item.setAttribute("aria-current", String(l.id === lang));
         item.lang = l.id;
         list.append(item);
