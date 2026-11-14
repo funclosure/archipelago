@@ -11,6 +11,7 @@
       "slug": "pitch",
       "name": "Pitch and notes",
       "summary": "How a vibration becomes a note with a name, and why the same twelve notes keep repeating.",
+      "harbour": true,
       "landmarks": [
         {
           "slug": "faster-vibration-means-higher-pitch",

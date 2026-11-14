@@ -1,5 +1,5 @@
 import { test, expect } from "bun:test";
-import { hashSeed, seededRandom, islandRadius, buildNodes, buildLinks, WORLD, stripItems, HINTS, landmarkLit, lensState, lensMarks, allExplored } from "../../src/web/view-model.js";
+import { hashSeed, seededRandom, islandRadius, buildNodes, buildLinks, WORLD, stripItems, HINTS, landmarkLit, lensState, lensMarks, allExplored, startIsland } from "../../src/web/view-model.js";
 
 const island = (slug, verdict = null, pos = { x: null, y: null }, byState = { sandbar: 0, settled: 0, mountainous: 0, reef: 0, open: 0 }) => ({
   slug, name: slug, summary: null, hasChildren: Object.values(byState).some(Boolean), verdict, x: pos.x, y: pos.y,
@@ -162,4 +162,17 @@ test("allExplored needs at least one landmark, and every one explored", () => {
   expect(allExplored(withItems([{ slug: "a", lit: true, exploredAt: null }]))).toBe(false); // lit is not explored
   expect(allExplored(withItems([{ slug: "a", lit: false, exploredAt: at }, { slug: "b", lit: false, exploredAt: null }]))).toBe(false);
   expect(allExplored(withItems([{ slug: "a", lit: false, exploredAt: at }, { slug: "b", lit: true, exploredAt: at }]))).toBe(true);
+});
+
+test("startIsland: on a scale nobody has talked about, the harbour, else nearest open water, else the first island", () => {
+  const isl = (slug, extra = {}) => ({ slug, name: slug.toUpperCase(), harbour: false, messages: 0, ...extra });
+  const s = { islands: [isl("a"), isl("b", { harbour: true }), isl("c")], harbour: "b", nearestOpenWater: ["c"], sketch: null };
+  expect(startIsland(s)).toEqual({ slug: "b", name: "B", harbour: true });
+  expect(startIsland({ ...s, harbour: null, islands: s.islands.map((i) => ({ ...i, harbour: false })) })).toEqual({ slug: "c", name: "C", harbour: false });
+  expect(startIsland({ ...s, harbour: null, nearestOpenWater: [] })).toEqual({ slug: "a", name: "A", harbour: false });
+  // Once any island has a thread, or while a sketch waits, the reader knows their way: no card.
+  expect(startIsland({ ...s, islands: [isl("a", { messages: 2 }), ...s.islands.slice(1)] })).toBeNull();
+  expect(startIsland({ ...s, sketch: { id: 1 } })).toBeNull();
+  expect(startIsland({ ...s, islands: [] })).toBeNull();
+  expect(startIsland(null)).toBeNull();
 });

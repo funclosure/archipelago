@@ -21,14 +21,15 @@ function button(label, onClick, className = "") {
 export function renderCta(model) {
   const wrap = document.getElementById("cta");
   if (!wrap) return;
-  const { island, pendingReef, verdict, inFlight, answering, stay, nearest, handoff, sketch } = model;
+  const { island, pendingReef, verdict, inFlight, answering, stay, nearest, handoff, sketch, start } = model;
   const showReef = island && pendingReef && !inFlight;
   // A pending sketch is a map action too: it waits on the map, island pane or not, behind only a reef.
   const showSketch = sketch && !inFlight && !showReef;
   const showNext = island && verdict && !inFlight && !pendingReef && !stay && nearest && !showSketch;
   const showHandoff = island && handoff && !inFlight && !showSketch;
+  const showStart = !island && start && !inFlight && !showSketch;
   wrap.replaceChildren();
-  if (!showReef && !showSketch && !showNext && !showHandoff) {
+  if (!showReef && !showSketch && !showNext && !showHandoff && !showStart) {
     wrap.hidden = true;
     return;
   }
@@ -52,6 +53,14 @@ export function renderCta(model) {
     card.append(el("div", "lbl", t("cta.chartedLabel")));
     const row = el("div", "row");
     row.append(button(t("cta.sailTo", { name: nearest.name }), () => model.onSail(nearest.slug), "primary"), button(t("cta.stayHere"), model.onStay));
+    card.append(row);
+  } else if (showStart) {
+    card.append(el("div", "lbl", t("cta.startLabel")), el("div", "q", t(start.harbour ? "cta.startHarbour" : "cta.startAt", { name: start.name })));
+    const row = el("div", "row");
+    row.append(
+      button(t("cta.startMentor"), () => model.onStart(start.slug, "mentor"), "primary"),
+      button(t("cta.startKeeper"), () => model.onStart(start.slug, "judge")),
+    );
     card.append(row);
   } else {
     // every landmark explored: the mentor's work here is done, and the Keeper can chart it

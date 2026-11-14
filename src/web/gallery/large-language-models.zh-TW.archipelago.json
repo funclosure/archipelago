@@ -11,6 +11,7 @@
       "slug": "tokens",
       "name": "Token",
       "summary": "模型讀和寫的文字片段，和我們說的「字詞」不太一樣。",
+      "harbour": true,
       "landmarks": [
         {
           "slug": "why-models-read-word-pieces-not-words-or-letters",

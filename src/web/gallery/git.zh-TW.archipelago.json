@@ -11,6 +11,7 @@
       "slug": "snapshots",
       "name": "Commit 就是快照",
       "summary": "Git 真正保存的東西：一份份完整的快照，以內容的雜湊值命名，再串成歷史。",
+      "harbour": true,
       "landmarks": [
         {
           "slug": "a-commit-is-a-snapshot-not-a-diff",

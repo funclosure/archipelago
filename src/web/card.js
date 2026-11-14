@@ -1,7 +1,7 @@
 import { app, api, setScale, frameSelection, setMode } from "./app.js";
 import { streamPost } from "./stream.js";
 import { logItems, askFor, roundOf, systemText } from "./thread.js";
-import { landmarkLit, allExplored } from "./view-model.js";
+import { landmarkLit, allExplored, startIsland } from "./view-model.js";
 import { MODES, MODE_LABELS, MODE_ROLES, MODE_HINTS, PERSONA_NAMES, headPill, stateLabel } from "./mode-model.js";
 import { t } from "./i18n.js";
 import { thinkingLine } from "./progress-model.js";
@@ -1004,6 +1004,12 @@ function ctaModel(island) {
     answering: thread.answering,
     stay: thread.stay,
     nearest: nearestOpen(),
+    // A scale nobody has talked about yet: where to begin, in either lens, without first picking an island.
+    start: island || isChartOpen() ? null : startIsland(app.snapshot),
+    onStart: (slug, mode) => {
+      setMode(mode);
+      void select(slug);
+    },
     onConfirm: () => {
       const p = logItems(thread.messages, island).find((i) => i.kind === "reef_proposal" && i.proposal.status === "pending");
       if (p) void answerReef(island.slug, p.id, "confirm");

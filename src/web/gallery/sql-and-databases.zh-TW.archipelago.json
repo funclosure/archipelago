@@ -11,6 +11,7 @@
       "slug": "relational-model",
       "name": "關聯式模型",
       "summary": "資料是由一列列資料組成的資料表，每一列是一件事實，再用鍵把資料表串在一起。",
+      "harbour": true,
       "landmarks": [
         {
           "slug": "a-row-is-one-fact-a-column-one-attribute",

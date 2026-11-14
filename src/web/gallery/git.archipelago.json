@@ -11,6 +11,7 @@
       "slug": "snapshots",
       "name": "Commits as snapshots",
       "summary": "What Git actually keeps: whole snapshots named by a hash of their content, linked into a history.",
+      "harbour": true,
       "landmarks": [
         {
           "slug": "a-commit-is-a-snapshot-not-a-diff",

@@ -374,6 +374,13 @@ button:focus-visible, textarea:focus-visible, input:focus-visible { outline: 2px
 .outline.rail .ws, .outline.rail .sp, .outline.rail .sum, .outline.rail .sec, .outline.rail .list, .outline.rail .ft { display: none; }
 .outline .dashes { display: none; flex: 1; flex-direction: column; justify-content: center; align-items: flex-start; gap: 7px; padding-left: 14px; }
 .outline.rail .dashes { display: flex; }
+/* the outline's grip: its right edge, like the pane's left (outline.js keeps the width) */
+.outline .grip { position: absolute; top: 0; bottom: 0; right: -5px; width: 10px; cursor: col-resize; z-index: 3; }
+.outline .grip::after { content: ""; position: absolute; top: 50%; left: 4px; width: 2px; height: 36px; margin-top: -18px; border-radius: 2px; background: transparent; }
+.outline .grip:hover::after, body.outline-resizing .outline .grip::after { background: var(--lamp); }
+.outline.rail .grip { display: none; }
+body.outline-resizing { user-select: none; cursor: col-resize; }
+body.outline-resizing :is(.outline, .chrome, .map-focus, .board-scrim, .board, .cta, .keys) { transition: none; }
 .outline .dash { height: 3px; border-radius: 2px; background: var(--muted); opacity: .35; width: 14px; cursor: pointer; transition: width .15s, opacity .15s; }
 .outline .dash.lit { opacity: .6; width: 18px; background: var(--lamp); }
 .outline .dash.explored { opacity: .7; width: 18px; background: var(--explore); }
@@ -780,7 +787,7 @@ body.empty .outline, body.empty .chrome, body.empty #map-focus, body.empty #boar
   .outline { display: none; width: 100vw; bottom: var(--places-h); border-right: 0; z-index: 5; font-size: 15px; transition: none; }
   body[data-place="islands"] .outline { display: flex; }
   .outline .oh { height: 52px; }
-  .outline .ib, .outline .ft > :first-child { display: none; }
+  .outline .ib, .outline .ft > :first-child, .outline .grip { display: none; }
   .outline .list .row { height: 46px; gap: 12px; }
   .outline .list .row.islet { height: 40px; font-size: 14px; }
   .outline .list .row .tw { width: 32px; height: 32px; font-size: 12px; }

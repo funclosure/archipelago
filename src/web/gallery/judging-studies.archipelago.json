@@ -11,6 +11,7 @@
       "slug": "describing",
       "name": "Describing data",
       "summary": "Summarizing many numbers in a few, without hiding what matters.",
+      "harbour": true,
       "landmarks": [
         {
           "slug": "mean-median-and-when-they-differ",

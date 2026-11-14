@@ -11,6 +11,7 @@
       "slug": "tokens",
       "name": "Tokens",
       "summary": "The pieces of text a model reads and writes, which are not quite words.",
+      "harbour": true,
       "landmarks": [
         {
           "slug": "why-models-read-word-pieces-not-words-or-letters",

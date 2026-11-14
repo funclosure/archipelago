@@ -32,8 +32,10 @@ function seed() {
   const a1 = upsertIsland(db, { domainId: d.id, slug: "lfu", name: "LFU", parentId: a.id, sortOrder: 1 });
   const a2 = upsertIsland(db, { domainId: d.id, slug: "arc", name: "ARC", parentId: a.id, sortOrder: 2 });
   upsertStrait(db, { domainId: d.id, fromIslandId: a1.id, toIslandId: a2.id });
-  // The reader's own: none of it belongs in the file.
+  // Where to start is structure: it travels, at each scale.
   setHarbour(db, d.id, "eviction");
+  setHarbour(db, d.id, "arc");
+  // The reader's own: none of it belongs in the file.
   const said = addMessage(db, { domainId: d.id, islandId: a.id, role: "you", kind: "text", body: "the one touched longest ago goes first" });
   unlockLandmark(db, a.id, "lru", "the one touched longest ago goes first", said.id);
   return d;
@@ -49,9 +51,9 @@ test("a domain exports as its structure and the reader's arrangement, and nothin
     description: "For interviews.",
     islands: [
       {
-        slug: "eviction", name: "Eviction", summary: "What leaves, and when", x: 120, y: -40.5,
+        slug: "eviction", name: "Eviction", summary: "What leaves, and when", harbour: true, x: 120, y: -40.5,
         landmarks: [{ slug: "lru", name: "Least recently used", terms: ["LRU", "recency"] }, ...marks],
-        islets: [{ slug: "lfu", name: "LFU" }, { slug: "arc", name: "ARC" }],
+        islets: [{ slug: "lfu", name: "LFU" }, { slug: "arc", name: "ARC", harbour: true }],
         straits: [{ from: "lfu", to: "arc" }],
       },
       { slug: "invalidation", name: "Invalidation", summary: "Knowing it is stale" },
@@ -61,7 +63,7 @@ test("a domain exports as its structure and the reader's arrangement, and nothin
     seas: [{ name: "Freshness", x: 10, y: 20 }, { name: "Capacity", islands: ["eviction", "warming"] }],
   });
   const text = JSON.stringify(file);
-  for (const own of ["touched longest ago", "harbour", "unlocked", "evidence"]) expect(text).not.toContain(own);
+  for (const own of ["touched longest ago", "unlocked", "evidence"]) expect(text).not.toContain(own);
   // What it writes, it reads.
   expect(parseMapFile(JSON.parse(text))).toEqual(file);
 });
@@ -73,7 +75,8 @@ test("importing makes a new domain with the same map, dark and unanswered, and n
   expect(made).toMatchObject({ domain: { slug: "caching-2", name: "Caching", description: "For interviews.", provisional: 0 }, islands: 5, straits: 2, seas: 2 });
   expect(exportMap(db, "caching-2")).toEqual({ ...file, slug: "caching-2" });
   const top = listIslands(db, made.domain.id, null);
-  expect(top.map((i) => [i.slug, i.x, i.harbour])).toEqual([["eviction", 120, 0], ["invalidation", null, 0], ["warming", null, 0]]);
+  expect(top.map((i) => [i.slug, i.x, i.harbour])).toEqual([["eviction", 120, 1], ["invalidation", null, 0], ["warming", null, 0]]);
+  expect(listIslands(db, made.domain.id, top[0]!.id).map((i) => [i.slug, i.harbour])).toEqual([["lfu", 0], ["arc", 1]]);
   expect(listLandmarks(db, top[0]!.id).every((l) => l.unlockedAt === null && l.exploredAt === null)).toBe(true);
   expect(listSeas(db, made.domain.id, null).map((s) => [s.name, s.x, s.anchor])).toEqual([["Freshness", 10, null], ["Capacity", null, ["eviction", "warming"]]]);
   expect(listStraits(db, made.domain.id, top[0]!.id)).toHaveLength(1);
@@ -115,6 +118,8 @@ test("a file that is not a map is refused in words that say where, and nothing i
   expect(bad((f) => (f.islands[0].x = 4))).toMatch(/both x and y/);
   expect(bad((f) => (f.islands[0].straits = [{ from: "x", to: "y" }]))).toContain("straits or seas but no islets");
   expect(bad((f) => (f.islands[0].landmarks = [{ slug: "m", name: "M" }, { slug: "m", name: "M again" }]))).toContain("two landmarks with one slug");
+  expect(bad((f) => (f.islands[0].harbour = true, f.islands[1].harbour = true))).toContain("the top scale has 2 harbours (a, b)");
+  expect(bad((f) => (f.islands[0].harbour = "yes"))).toMatch(/islands\.0\.harbour/);
   // Too deep: islands inside islands past the limit.
   let inner: MapIsland = { slug: "d0", name: "D0" };
   for (let n = 1; n <= MAP_DEPTH_MAX; n++) inner = { slug: `d${n}`, name: `D${n}`, islets: [inner] };

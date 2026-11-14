@@ -35,6 +35,7 @@ export function galleryProblems(file: string, map: MapFile): string[] {
     }
   };
   walk(map.islands);
+  if (!map.islands.some((i) => i.harbour)) say('needs a harbour: "harbour": true on the island a newcomer starts from');
   const inSea = map.islands.map((i) => (map.seas ?? []).filter((s) => s.islands?.includes(i.slug)).length);
   if (!map.seas?.length) say("needs 2 to 4 seas that group its islands");
   else if (inSea.some((n) => n !== 1)) say(`every island belongs to exactly one sea (${map.islands.filter((_, n) => inSea[n] !== 1).map((i) => i.slug).join(", ")})`);

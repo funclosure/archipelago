@@ -85,6 +85,18 @@ export function allExplored(island) {
   return items.length > 0 && items.every((l) => landmarkLit(l, "mentor"));
 }
 
+/**
+ * Where a reader starts on a scale nobody has talked about yet, as { slug, name, harbour }: the harbour, else the
+ * nearest open water, else the first island. Null once any island here has a thread, or while a sketch is pending.
+ */
+export function startIsland(s) {
+  if (!s || !s.islands.length || s.sketch) return null;
+  if (s.islands.some((i) => (i.messages ?? 0) > 0)) return null;
+  const slug = s.harbour ?? s.nearestOpenWater?.[0] ?? s.islands[0].slug;
+  const island = s.islands.find((i) => i.slug === slug) ?? s.islands[0];
+  return { slug: island.slug, name: island.name, harbour: island.harbour === true };
+}
+
 /** When each lit mark lit: 0 for those already lit when the page first saw the island in this lens, now() for ones lit since. */
 function litTimes(marks, prev) {
   const litAt = new Map(prev ? prev.litAt : []);

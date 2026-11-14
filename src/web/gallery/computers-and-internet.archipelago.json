@@ -11,6 +11,7 @@
       "slug": "bits",
       "name": "Bits and encoding",
       "summary": "How on and off become numbers, text, pictures and sound.",
+      "harbour": true,
       "landmarks": [
         {
           "slug": "two-states-are-the-easiest-to-tell-apart",

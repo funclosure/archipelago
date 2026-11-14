@@ -13,6 +13,7 @@ The maps on <https://archipelago.school/maps> and under **New domain → Start f
 ## What a shared map needs
 
 - 6 to 12 islands at the top, each with a one-line summary and 3 to 8 landmarks: the ideas someone must be able to explain to say they understand the island.
+- `"harbour": true` on the one island a newcomer starts from (usually the first).
 - 2 to 4 seas, with every island in exactly one.
 - A description: one or two sentences on what the map is for and who it is for.
 - Accurate, and your own work. A map is read by people who do not yet know the subject.

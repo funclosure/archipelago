@@ -11,6 +11,7 @@
       "slug": "relational-model",
       "name": "The relational model",
       "summary": "Data as tables of rows, each row a fact, with keys that tie tables together.",
+      "harbour": true,
       "landmarks": [
         {
           "slug": "a-row-is-one-fact-a-column-one-attribute",

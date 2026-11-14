@@ -11,6 +11,7 @@ export const PROMPT_EXAMPLE = {
       slug: "eviction",
       name: "Eviction",
       summary: "What leaves a full cache, and how the choice shapes the hit rate.",
+      harbour: true,
       landmarks: [
         { slug: "lru", name: "Least recently used", terms: ["LRU", "recency"] },
         { slug: "lfu", name: "Least frequently used", terms: ["LFU", "frequency"] },
@@ -56,6 +57,7 @@ ${JSON.stringify(PROMPT_EXAMPLE, null, 2)}
 Rules:
 - "archipelago" is 1. "name" is the subject in a few words; "description" is one or two sentences on what the map is for.
 - 6 to 10 islands at the top: the parts of the subject a learner would study separately, in a sensible order to learn them. Each has a short "name", a one-line "summary" of what it covers, and 4 to 6 "landmarks": the ideas someone must be able to explain before they can say they understand that island.
+- Mark the one island a newcomer should start from with "harbour": true (usually the first). A scale of islets may mark its own.
 - A landmark may carry "terms": 2 to 5 words a teacher would use when talking about it.
 - "straits" join two islands that depend on or shed light on each other, named for what connects them. One or two per island is plenty. Both ends are top-level islands; never join an island to itself.
 - "seas" are 2 to 4 names that group the islands. Every island belongs to exactly one sea.

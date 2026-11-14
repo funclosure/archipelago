@@ -1,7 +1,7 @@
 // The outline: the domain's tree on the left. Pure helpers first (tested), then the DOM.
 import { app, api, setScale, frameSelection } from "./app.js";
 import { select } from "./interactions.js";
-import { FULL_W, RAIL_W, visibleRows, collapsible, dashClass, countNodes, summaryLine, rowMarks } from "./outline-model.js";
+import { RAIL_W, outlineWidth, visibleRows, collapsible, dashClass, countNodes, summaryLine, rowMarks } from "./outline-model.js";
 import { registerRegion, region } from "./keys.js";
 import { moveCursor } from "./keys-model.js";
 import { THEMES } from "./theme-model.js";
@@ -17,7 +17,7 @@ import { LANGUAGES, language, setLanguage, t } from "./i18n.js";
 
 // ---- DOM ----
 
-const state = { rail: false, expanded: new Set(), menuOpen: false, themesOpen: false, languagesOpen: false, domains: null, cursor: null, cursorCleared: false };
+const state = { rail: false, width: outlineWidth(null), expanded: new Set(), menuOpen: false, themesOpen: false, languagesOpen: false, domains: null, cursor: null, cursorCleared: false };
 let root = null;
 let peek = null;
 
@@ -43,8 +43,20 @@ function storageKey() {
 /** A phone has no rail: the outline is the Islands place, the whole screen or not there (places.js). */
 const NARROW = "(max-width: 720px)";
 
+/** The open outline's width is the reader's, per browser like the pane's (not per domain). */
+const WIDTH_KEY = "outline-w";
+
+function applyWidth() {
+  document.documentElement.style.setProperty("--outline-w", `${state.rail ? RAIL_W : state.width}px`);
+}
+
 function load() {
   state.rail = false;
+  try {
+    state.width = outlineWidth(localStorage.getItem(WIDTH_KEY));
+  } catch {
+    /* storage unavailable */
+  }
   try {
     const raw = localStorage.getItem(storageKey());
     if (!raw) return;
@@ -86,7 +98,7 @@ async function go(node) {
 
 function toggleRail() {
   state.rail = !state.rail;
-  document.documentElement.style.setProperty("--outline-w", `${state.rail ? RAIL_W : FULL_W}px`);
+  applyWidth();
   hidePeek();
   save();
   state.cursorCleared = false;
@@ -342,6 +354,48 @@ function railEl(outline) {
   return dashes;
 }
 
+/** The grip on the outline's right edge: drag to widen or narrow it, double-click for the width it started at. */
+function gripEl() {
+  const grip = el("div", "grip");
+  grip.title = t("outline.resize");
+  grip.addEventListener("dblclick", () => {
+    state.width = outlineWidth(null);
+    try {
+      localStorage.removeItem(WIDTH_KEY);
+    } catch {
+      /* storage unavailable */
+    }
+    applyWidth();
+    frameSelection();
+  });
+  grip.addEventListener("pointerdown", (e) => {
+    if (e.button !== 0) return;
+    e.preventDefault();
+    document.body.classList.add("outline-resizing");
+    let moved = false;
+    const move = (ev) => {
+      moved = true;
+      state.width = outlineWidth(ev.clientX);
+      applyWidth();
+    };
+    const up = () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+      document.body.classList.remove("outline-resizing");
+      if (!moved) return;
+      try {
+        localStorage.setItem(WIDTH_KEY, String(state.width));
+      } catch {
+        /* storage unavailable */
+      }
+      frameSelection();
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+  });
+  return grip;
+}
+
 function render() {
   if (!root) return;
   const outline = app.outline;
@@ -363,6 +417,7 @@ function render() {
   hint.append(el("kbd", null, "["), t("outline.outline"), el("kbd", null, "?"), t("outline.keys"));
   ft.append(hint, el("span", null, t("outline.count", { n: countNodes(outline.islands) })));
   frag.append(ft);
+  frag.append(gripEl());
   const top = root.querySelector(".list")?.scrollTop ?? 0;
   root.replaceChildren(frag);
   const list = root.querySelector(".list");
@@ -462,7 +517,7 @@ export function installOutline() {
   root = document.getElementById("outline");
   load();
   registerRegion("outline", outlineHandler);
-  document.documentElement.style.setProperty("--outline-w", `${state.rail ? RAIL_W : FULL_W}px`);
+  applyWidth();
   root.addEventListener("mouseenter", () => showPeek());
   root.addEventListener("mouseleave", (e) => { if (!(peek && e.relatedTarget && peek.contains(e.relatedTarget))) hidePeek(); });
   // An open menu is left alone: rebuilding it between a press and its release on a theme loses the click (a reply

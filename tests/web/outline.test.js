@@ -1,5 +1,5 @@
 import { test, expect } from "bun:test";
-import { visibleRows, collapsible, dashClass, summaryLine, countNodes, rowMarks } from "../../src/web/outline-model.js";
+import { FULL_W, OUTLINE_MAX, OUTLINE_MIN, outlineWidth, visibleRows, collapsible, dashClass, summaryLine, countNodes, rowMarks } from "../../src/web/outline-model.js";
 
 const node = (slug, extra = {}, children = []) => ({
   slug, name: slug, state: "open", landmarks: { total: 4, unlocked: 0 }, harbour: false, scale: null, children, ...extra,
@@ -62,4 +62,13 @@ test("the rail dash and the summary follow the lens", () => {
   expect(dashClass(n, "a", "mentor")).toBe("dash on");
   expect(summaryLine({ charted: 1, lit: 3, explored: 2, exploredIslands: 1, islands: tree }, "mentor")).toBe("1 of 4 explored · 2 landmarks");
   expect(summaryLine({ charted: 1, lit: 3, explored: 2, exploredIslands: 1, islands: tree }, "judge")).toBe("1 of 4 charted · 3 lit");
+});
+
+test("outlineWidth clamps a dragged or stored width, and starts at FULL_W", () => {
+  expect(outlineWidth(null)).toBe(FULL_W);
+  expect(outlineWidth("junk")).toBe(FULL_W);
+  expect(outlineWidth("300")).toBe(300);
+  expect(outlineWidth(301.6)).toBe(302);
+  expect(outlineWidth(10)).toBe(OUTLINE_MIN);
+  expect(outlineWidth(5000)).toBe(OUTLINE_MAX);
 });
