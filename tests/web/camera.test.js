@@ -35,6 +35,36 @@ test("closer is 1.5× home unless the reader already zoomed further", () => {
   expect(cam.closer()).toBe(cam.state.scale);
 });
 
+test("closer steps in from the base it is given: home with the pane shut, not the smaller home beside it", () => {
+  const cam = createCamera();
+  const open = cam.framing(1000, 800, {}).scale; // what home would be with nothing over the map
+  cam.fit(1000, 800, {});
+  cam.snapHome(); // the reader is at home, the pane shut
+  cam.fit(1000, 800, { right: 600 }); // the pane opens: home is now far smaller
+  expect(cam.home.scale).toBeLessThan(open / 1.5);
+  expect(cam.closer()).toBe(cam.state.scale); // a step in from the small home is no zoom at all
+  expect(cam.closer(open)).toBeCloseTo(open * 1.5);
+});
+
+test("framing is what fit would make home, without making it home", () => {
+  const cam = createCamera();
+  const home = { ...cam.fit(1000, 800, { right: 400 }) };
+  const other = cam.framing(1000, 800, { left: 200 }, { x0: 0, y0: 0, x1: 3000, y1: 500 });
+  expect(cam.home).toEqual(home);
+  expect(other).toEqual(createCamera().fit(1000, 800, { left: 200 }, { x0: 0, y0: 0, x1: 3000, y1: 500 }));
+});
+
+test("a glide with no time to take is there at once (reduced motion)", () => {
+  const cam = createCamera();
+  cam.fit(1000, 800);
+  cam.snapHome();
+  cam.animateTo({ x: 5, y: 6, scale: 2 }, 0);
+  expect(cam.state).toEqual({ x: 5, y: 6, scale: 2 });
+  expect(cam.tick(performance.now())).toBe(false); // nothing left to animate
+  cam.animateTo(cam.home, 0);
+  expect(cam.atHome()).toBe(true);
+});
+
 test("a left inset shifts the area the world is centred in", () => {
   const cam = createCamera();
   const both = cam.fit(1000, 800, { left: 232, right: 400 });
