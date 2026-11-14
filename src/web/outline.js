@@ -430,7 +430,10 @@ function miEl(k, { cls, iconName, label, desc, value, radio = false, on = false,
     b.append(caps);
   }
   if (opens) b.append(icon(open ? "chevron-down" : "chevron-right", { size: 12 }));
-  if (hint) tipAbove(b, hint);
+  if (hint) {
+    tipAbove(b, hint);
+    b.setAttribute("aria-description", hint); // a screen reader hears what the tip shows
+  }
   return b;
 }
 
