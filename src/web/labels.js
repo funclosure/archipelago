@@ -3,7 +3,8 @@
 // Names wrap to WRAP box units, at most MAX_LINES lines. Each island tries below its coast, then above, right, and
 // left; the first spot clear of every label already placed and every other island's lamps wins. An island with
 // no clear spot shows no name until it is hovered or selected (the outline still lists it): those two are placed
-// first and always drawn, below when nothing is clear.
+// first and always drawn, below when nothing is clear. A name also keeps off whatever the caller says to avoid
+// (the seas' lettering).
 import { CENTRE, LAMP_R, NAME_Y } from "./contour.js";
 
 export const WRAP = 210;
@@ -11,10 +12,10 @@ export const MAX_LINES = 3;
 export const LINE_H = 23;
 /** The "draft" line under a draft island's name. */
 export const DRAFT_H = 20;
-/** Above the coast: the label's last line ends this far over the lamps. */
-const ABOVE_GAP = 10;
+/** Above the coast: the label's last line ends this far over the lamps' ring, clear of a lit lamp's rays. */
+export const ABOVE_GAP = 20;
 /** Around each island, the disc no other island's name may cross: its lamps, plus a little water. */
-const KEEP_R = LAMP_R + 6;
+const KEEP_R = LAMP_R + 4;
 
 /** Splits a name into lines no wider than `max`, breaking at spaces; the last allowed line ends in "…" if words remain. */
 export function wrapName(name, measure, max = WRAP, maxLines = MAX_LINES) {
@@ -38,8 +39,8 @@ export function wrapName(name, measure, max = WRAP, maxLines = MAX_LINES) {
   return lines;
 }
 
-/** Beside the coast: the label's near edge starts this far out from the island's centre. */
-const SIDE_GAP = LAMP_R + 10;
+/** Beside the coast: the label's near edge starts this far out from the island's centre, clear of a lit lamp's rays. */
+const SIDE_GAP = LAMP_R + 20;
 export const PLACES = ["below", "above", "right", "left"];
 
 /** Where the label sits in box units: its centre x and its top. Text is drawn centred on `cx`. */
@@ -57,6 +58,11 @@ function rectFor(node, s, width, height, place) {
   return { x0: x - (width / 2) * s, x1: x + (width / 2) * s, y0: node.y + (top - CENTRE) * s, y1: node.y + (top - CENTRE + height) * s };
 }
 
+/** A laid-out label's box in world units (`label` as `layoutLabels` returns it), for whoever needs to keep clear of it. */
+export function labelRect(node, s, label) {
+  return rectFor(node, s, label.width, label.height, label.place);
+}
+
 const overlaps = (a, b) => a.x0 < b.x1 && b.x0 < a.x1 && a.y0 < b.y1 && b.y0 < a.y1;
 
 function crossesDisc(r, cx, cy, radius) {
@@ -67,10 +73,10 @@ function crossesDisc(r, cx, cy, radius) {
 
 /**
  * Lays out every node's name. `nodes` carry x, y (world), radius, name, slug, and draft; `scale(node)` is its box
- * scale (world units per box unit). Returns a Map slug → { lines, place, cx, top (box units), hidden }; a hidden
- * label is not drawn.
+ * scale (world units per box unit); `avoid` is world rects no name may sit on (the seas' lettering). Returns a Map
+ * slug → { lines, place, cx, top (box units), width, height (box units), hidden }; a hidden label is not drawn.
  */
-export function layoutLabels(nodes, { measure, scale, focus = null, hover = null }) {
+export function layoutLabels(nodes, { measure, scale, focus = null, hover = null, avoid = [] }) {
   const order = [...nodes].sort((a, b) => rank(a) - rank(b) || a.y - b.y || a.x - b.x);
   function rank(n) {
     if (n.slug === focus) return 0;
@@ -86,13 +92,14 @@ export function layoutLabels(nodes, { measure, scale, focus = null, hover = null
     const height = lines.length * LINE_H + (node.draft ? DRAFT_H : 0);
     const clear = (r) =>
       !placed.some((p) => overlaps(p, r)) &&
+      !avoid.some((a) => overlaps(a, r)) &&
       !nodes.some((o) => o !== node && crossesDisc(r, o.x, o.y, KEEP_R * scale(o)));
     const must = node.slug === focus || node.slug === hover;
     const place = PLACES.find((p) => clear(rectFor(node, s, width, height, p))) ?? (must ? "below" : undefined);
     const hidden = place === undefined;
     const chosen = place ?? "below";
     if (!hidden) placed.push(rectFor(node, s, width, height, chosen));
-    out.set(node.slug, { lines, place: chosen, ...spotFor(chosen, width, height), hidden });
+    out.set(node.slug, { lines, place: chosen, ...spotFor(chosen, width, height), width, height, hidden });
   }
   return out;
 }
