@@ -43,6 +43,31 @@ export function withoutRemoving(cards, removingId) {
   return removingId === null ? cards : cards.filter((c) => c.id !== removingId);
 }
 
+/**
+ * Every card after `id` moved to sit before `before` (null: the end), ordered as the server will order them
+ * (`moveCard` in boardRepository.ts). A card waiting out its undo is among them, so its Undo line stands in the same
+ * row before and after the server answers.
+ */
+export function afterMove(cards, id, before) {
+  const moving = cards.find((c) => c.id === id);
+  if (!moving || before === id) return cards;
+  const rest = cards.filter((c) => c !== moving);
+  const at = before === null ? -1 : rest.findIndex((c) => c.id === before);
+  rest.splice(at < 0 ? rest.length : at, 0, moving);
+  return rest;
+}
+
+/**
+ * Tab inside the open editor stays among its own controls: the stop to move to when Tab (or ⇧Tab, `back`) would
+ * leave them, or null when the browser's own order is right. `index` is the focused stop's place among `count`
+ * stops (-1 when focus is on none of them, such as the editor's own box).
+ */
+export function tabWrap(count, index, back) {
+  if (count === 0) return null;
+  if (back) return index <= 0 ? count - 1 : null;
+  return index === count - 1 ? 0 : null;
+}
+
 /** An editor over an existing card. */
 export function startEdit(card) {
   return { id: card.id, kind: card.kind, body: card.body, lang: card.kind === "code" ? card.lang ?? PLAIN : null };
@@ -105,6 +130,18 @@ export const KIND_LABELS = { diagram: t("boardModel.kindDiagram"), note: t("boar
 
 export function kindLabel(kind) {
   return KIND_LABELS[kind] ?? kind;
+}
+
+/** Each card kind as a button names it: sentence case, where a caption's small capitals take the plain word. */
+export const KIND_NAMES = { diagram: t("boardModel.nameDiagram"), note: t("boardModel.nameNote"), code: t("boardModel.nameCode"), demo: t("boardModel.nameDemo") };
+
+export function kindName(kind) {
+  return KIND_NAMES[kind] ?? kind;
+}
+
+/** The key that adds a card of `kind` (from `KIND_KEYS`, so a button's hint and the key cannot drift apart). */
+export function keyOfKind(kind) {
+  return Object.keys(KIND_KEYS).find((key) => KIND_KEYS[key] === kind) ?? null;
 }
 
 export function authorLabel(author) {

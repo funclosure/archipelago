@@ -1,5 +1,5 @@
 import { test, expect } from "bun:test";
-import { stepCard, originOf, isDirty, draftKey, DEMO_STARTER, KIND_KEYS, withoutRemoving, startAdd, startEdit, canSave, writeOf, moveCard, keepCursor, authorLabel, bylineOf, hintCard } from "../../src/web/board-model.js";
+import { afterMove, tabWrap, kindName, keyOfKind, CARD_KINDS, stepCard, originOf, isDirty, draftKey, DEMO_STARTER, KIND_KEYS, withoutRemoving, startAdd, startEdit, canSave, writeOf, moveCard, keepCursor, authorLabel, bylineOf, hintCard } from "../../src/web/board-model.js";
 
 test("startAdd and startEdit build editors without a title; lang lives only on code cards", () => {
   expect(startAdd("note")).toEqual({ id: null, kind: "note", body: "", lang: null });
@@ -100,4 +100,34 @@ test("a card steps up or down one place, and the write names the card it now sit
   expect(stepCard(cards, 1, -1)).toBeNull();
   expect(stepCard(cards, 3, 1)).toBeNull();
   expect(stepCard(cards, 9, 1)).toBeNull();
+});
+
+test("after a move the cards stand as the server will order them, the card waiting out its undo among them", () => {
+  const [a, b, c, d] = [{ id: 1 }, { id: 2 }, { id: 3 }, { id: 4 }];
+  const all = [a, b, c, d]; // b is off the board, waiting out its undo
+  const up = stepCard([a, c, d], 3, -1); // c steps over a
+  expect(up.write).toEqual({ op: "move", id: 3, before: 1 });
+  expect(afterMove(all, 3, up.write.before)).toEqual([c, a, b, d]);
+  const down = stepCard([a, c, d], 3, 1); // c steps to the end
+  expect(afterMove(all, 3, down.write.before)).toEqual([a, b, d, c]);
+  expect(afterMove(all, 9, null)).toBe(all); // no such card
+  expect(afterMove(all, 2, 2)).toBe(all); // before itself: nothing moves
+  expect(afterMove(all, 1, 99)).toEqual([b, c, d, a]); // a card gone meanwhile: the end, as a null would be
+});
+
+test("Tab in the editor comes round at either end and is the browser's in between", () => {
+  expect(tabWrap(4, 3, false)).toBe(0); // Tab on the last stop
+  expect(tabWrap(4, 0, true)).toBe(3); // Shift-Tab on the first
+  expect(tabWrap(4, 1, false)).toBeNull();
+  expect(tabWrap(4, 2, true)).toBeNull();
+  expect(tabWrap(4, -1, false)).toBeNull(); // focus on the editor's own box: forward is the first stop anyway
+  expect(tabWrap(4, -1, true)).toBe(3); // back from the box would leave the editor
+  expect(tabWrap(0, -1, false)).toBeNull();
+});
+
+test("every kind has a name for its button and the key that adds it", () => {
+  expect(CARD_KINDS.map(kindName)).toEqual(["Diagram", "Note", "Code", "Demo"]);
+  expect(CARD_KINDS.map(keyOfKind)).toEqual(["d", "n", "c", "p"]);
+  for (const kind of CARD_KINDS) expect(KIND_KEYS[keyOfKind(kind)]).toBe(kind);
+  expect(keyOfKind("plot")).toBeNull();
 });
