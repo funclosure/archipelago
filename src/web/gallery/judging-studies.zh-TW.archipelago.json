@@ -11,6 +11,7 @@
       "slug": "describing",
       "name": "描述資料",
       "summary": "用幾個數字概括一大堆數字，又不把要緊的東西藏起來。",
+      "harbour": true,
       "landmarks": [
         {
           "slug": "mean-median-and-when-they-differ",

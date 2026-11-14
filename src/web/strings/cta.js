@@ -13,6 +13,11 @@ export default {
     stayHere: "Stay here",
     exploredLabel: "explored",
     chartWithJudge: "Chart with the judge",
+    startLabel: "where to begin",
+    startHarbour: "This map sets out from {name}. Or pick any island on the map.",
+    startAt: "Start at {name}, or pick any island on the map.",
+    startMentor: "Learn it with the mentor",
+    startKeeper: "Test me with the Keeper",
   },
   "zh-TW": {
     reefLabel: "暗礁？",
@@ -27,5 +32,10 @@ export default {
     stayHere: "留在這裡",
     exploredLabel: "已探索",
     chartWithJudge: "交給守塔人測繪",
+    startLabel: "從哪裡開始",
+    startHarbour: "這張地圖從「{name}」出發，也可以在地圖上挑任一座島。",
+    startAt: "從「{name}」開始，或在地圖上挑任一座島。",
+    startMentor: "跟領航員一起學",
+    startKeeper: "讓守塔人考考我",
   },
 };

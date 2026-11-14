@@ -1,13 +1,13 @@
 // A map as one JSON file: a domain's structure (its islands at every scale, their landmarks, straits, seas and where
 // the reader put them), with nothing of the reader's own in it: no conversation, verdict, lit or explored landmark,
-// loose end, board, or harbour. It is what a reader shares, and what another program can write for the app to import.
+// loose end, or board. The harbour (where a scale suggests starting) is structure and travels with it. It is what a reader shares, and what another program can write for the app to import.
 import { z } from "zod";
 import type { Database } from "./sql.ts";
 import { ArchipelagoError } from "./errors.ts";
 import type { Domain, Island } from "./types.ts";
 import { COORDINATE_MAX, DESCRIPTION_MAX, SEA_NAME_MAX, kebab, slugSchema, termsSchema } from "./validators.ts";
 import { getDomain, requireDomain, upsertDomain } from "./repositories/domainRepository.ts";
-import { listIslands, setIslandPositions, upsertIsland } from "./repositories/islandRepository.ts";
+import { listIslands, setHarbour, setIslandPositions, upsertIsland } from "./repositories/islandRepository.ts";
 import { listLandmarks, setLandmarks } from "./repositories/landmarkRepository.ts";
 import { listStraits, upsertStrait } from "./repositories/straitRepository.ts";
 import { addSea, listSeas } from "./repositories/seaRepository.ts";
@@ -52,6 +52,8 @@ export type MapIsland = {
   slug: string;
   name: string;
   summary?: string;
+  /** Where a learner starts at this scale: at most one island per scale. */
+  harbour?: true;
   x?: number;
   y?: number;
   landmarks?: MapLandmark[];
@@ -68,6 +70,7 @@ const island: z.ZodType<MapIsland> = z.lazy(() =>
       slug: slugSchema,
       name: oneLine(120),
       summary: oneLine(400).optional(),
+      harbour: z.literal(true).optional(),
       x: coordinate.optional(),
       y: coordinate.optional(),
       landmarks: z.array(landmark).max(MAP_LANDMARKS_MAX).optional(),
@@ -119,6 +122,8 @@ export function parseMapFile(input: unknown): MapFile {
       const marks = (i.landmarks ?? []).map((l) => l.slug);
       if (new Set(marks).size !== marks.length) throw new ArchipelagoError(`not a map file: ${i.slug} has two landmarks with one slug`);
     }
+    const harbours = scale.islands.filter((i) => i.harbour).map((i) => i.slug);
+    if (harbours.length > 1) throw new ArchipelagoError(`not a map file: ${where} has ${harbours.length} harbours (${harbours.join(", ")}); a scale has at most one, the island to start from`);
     const joined = new Set<string>();
     for (const s of scale.straits ?? []) {
       for (const end of [s.from, s.to]) if (!here.has(end)) throw new ArchipelagoError(`not a map file: the strait ${s.from} to ${s.to} names "${end}", which is not an island of ${where}; straits join islands of one scale`);
@@ -153,6 +158,7 @@ export function exportMap(db: Database, slug: string): MapFile {
         slug: i.slug,
         name: i.name,
         ...(i.summary ? { summary: i.summary.replace(/\s+/g, " ").trim() } : {}),
+        ...(i.harbour === 1 ? { harbour: true as const } : {}),
         ...(i.x !== null && i.y !== null ? { x: i.x, y: i.y } : {}),
         ...(landmarks.length ? { landmarks } : {}),
         ...(inner.islands.length ? { islets: inner.islands } : {}),
@@ -200,6 +206,8 @@ export function importMap(db: Database, input: unknown): ImportedMap {
         tally.islands++;
         if (i.landmarks?.length) setLandmarks(db, domain.id, row.id, i.landmarks);
       });
+      const harbour = scale.islands.find((i) => i.harbour);
+      if (harbour) setHarbour(db, domain.id, harbour.slug);
       const placed = scale.islands.flatMap((i) => (i.x !== undefined && i.y !== undefined ? [{ slug: i.slug, x: i.x, y: i.y }] : []));
       if (placed.length) setIslandPositions(db, domain.id, placed);
       for (const s of scale.straits ?? []) {

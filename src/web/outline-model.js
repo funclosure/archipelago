@@ -3,6 +3,16 @@ import { t } from "./i18n.js";
 
 export const FULL_W = 232;
 export const RAIL_W = 44;
+/** The open outline's width runs between these while the reader drags its grip. */
+export const OUTLINE_MIN = 200;
+export const OUTLINE_MAX = 480;
+
+/** The open outline's width from a stored or dragged value: clamped, and FULL_W when there is none. */
+export function outlineWidth(value) {
+  const w = typeof value === "string" ? parseFloat(value) : value;
+  if (typeof w !== "number" || !Number.isFinite(w)) return FULL_W;
+  return Math.round(Math.min(OUTLINE_MAX, Math.max(OUTLINE_MIN, w)));
+}
 
 /** Whether `slug` is `node` or one of its descendants. */
 function holds(node, slug) {

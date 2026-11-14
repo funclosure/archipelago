@@ -11,6 +11,7 @@
       "slug": "pitch",
       "name": "音高與音名",
       "summary": "振動怎麼變成一個有名字的音，以及為什麼總是同樣的十二個音一再重複。",
+      "harbour": true,
       "landmarks": [
         {
           "slug": "faster-vibration-means-higher-pitch",

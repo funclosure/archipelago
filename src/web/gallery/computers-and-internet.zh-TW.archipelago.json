@@ -11,6 +11,7 @@
       "slug": "bits",
       "name": "位元與編碼",
       "summary": "開和關怎麼變成數字、文字、圖片和聲音。",
+      "harbour": true,
       "landmarks": [
         {
           "slug": "two-states-are-the-easiest-to-tell-apart",
