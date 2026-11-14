@@ -77,8 +77,11 @@ export type ViewState = { domainId: number; focusIslandId: number | null; versio
 export const messageRoles = ["you", "judge", "mentor", "cartographer"] as const;
 export type MessageRole = (typeof messageRoles)[number];
 
-/** Each island has two threads, the judge's and the mentor's, and each scale one cartographer's; a message lives in exactly one. */
-export const messageModes = ["judge", "mentor", "cartographer"] as const;
+/**
+ * Each island has two threads, the judge's and the mentor's, each scale one cartographer's, and each domain one
+ * guide thread (the mentor's, before any island: where to start); a message lives in exactly one.
+ */
+export const messageModes = ["judge", "mentor", "cartographer", "guide"] as const;
 export type MessageMode = (typeof messageModes)[number];
 /** The modes whose threads belong to an island. */
 export const islandModes = ["judge", "mentor"] as const;
@@ -90,7 +93,7 @@ export type MessageKind = (typeof messageKinds)[number];
 export type Message = {
   id: number;
   domainId: number;
-  /** Null only in a cartographer thread at the domain's top scale. */
+  /** Null only in a cartographer thread at the domain's top scale, and in the guide thread. */
   islandId: number | null;
   role: MessageRole;
   kind: MessageKind;
@@ -130,11 +133,14 @@ export type Ask = {
 /** A persona's "sail to" another island, riding on the reply that carries it. `island` is the target as the page needs it. */
 export type Pointer = {
   id: number;
-  islandId: number;
+  /** The island it points from; null for the guide's, which point from the whole domain. */
+  islandId: number | null;
   messageId: number | null;
   island: { slug: string; name: string; scale: string | null };
   why: string;
   question: string | null;
+  /** The lens the guide suggests sailing in; null for an island persona's pointer (the reader's own lens). */
+  lens: IslandMode | null;
   createdAt: string;
 };
 

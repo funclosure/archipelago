@@ -16,7 +16,7 @@ import { installAbout } from "./learner.js";
 import { installKeys } from "./keys.js";
 import { installBoard } from "./board.js";
 import { installTheme } from "./theme.js";
-import { openChart, chartWorkingHere } from "./chart.js";
+import { openChart, openGuide, chartWorkingHere } from "./chart.js";
 import { thinkingLine } from "./progress-model.js";
 import { language, t } from "./i18n.js";
 import { request } from "./transport.js";
@@ -395,10 +395,10 @@ function stripItem({ label, value, hint, action }) {
   h.className = "hint";
   h.textContent = hint;
   el.append(l, v, h);
-  if (action === "chart") {
-    // The cartographer's cell opens it at this scale; hover still shows the hint.
+  if (action === "chart" || action === "guide") {
+    // The cartographer's cell opens it at this scale, the guide's the domain's guide; hover still shows the hint.
     el.classList.add("action");
-    el.addEventListener("click", () => openChart());
+    el.addEventListener("click", () => (action === "guide" ? openGuide() : openChart()));
   } else {
     el.addEventListener("click", () => el.classList.toggle("open")); // hover shows the hint; a click (or a tap) pins it
   }

@@ -1,6 +1,7 @@
 import { ArchipelagoError } from "../../core/errors.ts";
 import type { JudgeRunner, JudgeTurn } from "./runner.ts";
 import { chartContext, proposeSketchTool } from "./chart.ts";
+import { guideContext, suggestIsland } from "./guide.ts";
 import { personaFor } from "./persona.ts";
 import { askReader, boardWrite, islandContext, looseEnd, markExplored, pointTo, proposeReef, recordVerdict, setLandmarks, unlockLandmark } from "./tools.ts";
 
@@ -243,4 +244,26 @@ export async function cartographerStubTurn({ dbPath, domain, island, emit }: Jud
     return say(`I proposed a new summary for ${first.name}. Approve it, or say what to change.`);
   }
   return say(`This scale has ${ctx.islands.length} islands. Say what to add or change.`);
+}
+
+/**
+ * The guide's stub: an opening that asks where the reader stands; after any message, a pointer to the harbour (else
+ * the first island not started) with the mentor, or with the Keeper when the message says "test". "fail" throws.
+ */
+export async function guideStubTurn({ dbPath, domain, emit }: JudgeTurn): Promise<string> {
+  const ctx = guideContext({ dbPath, domain });
+  const say = (text: string) => {
+    emit({ type: "text", text });
+    return text;
+  };
+  const last = ctx.thread.findLast((m) => m.role === "you" && m.kind === "text");
+  if (ctx.islands.length === 0) return say(`${ctx.domain.name} has no islands yet: ask the cartographer for a sketch first.`);
+  if (!last) return say(`Welcome to ${ctx.domain.name}. What do you already know about it, and what do you want it for?`);
+  const text = last.body.toLowerCase();
+  if (text.includes("fail")) throw new Error("stub failure");
+  const target = ctx.islands.find((i) => i.harbour) ?? ctx.islands.find((i) => i.started.judge + i.started.mentor === 0) ?? ctx.islands[0]!;
+  const lens = text.includes("test") ? "judge" : "mentor";
+  emit({ type: "progress", message: "suggest_island" });
+  suggestIsland({ dbPath, domain }, { island: target.slug, why: `${target.name} is where this map starts.`, lens, carry: text.includes("?") });
+  return say(`Start at ${target.name}${lens === "judge" ? " with the Keeper" : " with the mentor"}.`);
 }

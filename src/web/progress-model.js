@@ -7,6 +7,8 @@ import { PERSONA_NAMES } from "./mode-model.js";
 export const STEPS = {
   chart_context: t("progressModel.chartContext"),
   propose_sketch: t("progressModel.proposeSketch"),
+  guide_context: t("progressModel.guideContext"),
+  suggest_island: t("progressModel.suggestIsland"),
   island_context: t("progressModel.islandContext"),
   set_landmarks: t("progressModel.setLandmarks"),
   unlock_landmark: t("progressModel.unlockLandmark"),

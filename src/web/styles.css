@@ -135,6 +135,10 @@ body.pane-open .chrome { right: var(--pane-w); }
 .sail-go:hover { text-decoration: underline; }
 .sail-why { color: var(--text); font-size: 12px; line-height: 1.45; margin-top: 2px; }
 .sail-carry { color: var(--muted); font-size: 11px; margin-top: 2px; }
+.sail.mentor { border-color: var(--explore); }
+.sail.mentor .sail-go { color: var(--explore); }
+.sail .sail-alt { display: block; margin-top: 6px; color: var(--muted); font-size: 11px; }
+.cta-card .start-guide { display: block; margin-top: 8px; color: var(--muted); font-size: 12px; }
 .briefing .carried { margin: 4px 0 12px; padding: 8px 12px; border-left: 2px solid var(--lamp); background: var(--panel-2); border-radius: 0 6px 6px 0; text-align: left; max-width: 46ch; }
 .briefing .carried .lbl { color: var(--muted); font-size: 11px; }
 .briefing .carried p { margin: 2px 0 0; color: var(--text); font-size: 13px; line-height: 1.5; }

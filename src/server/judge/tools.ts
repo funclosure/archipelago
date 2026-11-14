@@ -33,6 +33,7 @@ import { buildJudgeContext, type JudgeContext } from "./context.ts";
 import type { Persona, ToolName } from "./persona.ts";
 import { toolError, toolResult, type ToolResult } from "./tool-specs.ts";
 import { chartContext, proposeSketchTool } from "./chart.ts";
+import { guideContext, suggestIsland } from "./guide.ts";
 
 /** Where a tool call writes: the database path, the island whose threads this turn belongs to, and whose turn it is. */
 export type ToolDeps = {
@@ -360,12 +361,14 @@ export function runTool(persona: Persona, deps: TurnDeps, name: string, input: u
       case "set_landmarks": return toolResult(setLandmarks(onIsland(deps), input));
       case "unlock_landmark": return toolResult(unlockLandmark(onIsland(deps), input));
       case "ask_reader": return toolResult(askReader(onIsland(deps), input));
-      case "board_write": return toolResult(boardWrite(onIsland(deps), input, persona.id));
+      case "board_write": return toolResult(boardWrite(onIsland(deps), input, persona.id === "guide" ? "mentor" : persona.id));
       case "mark_explored": return toolResult(markExplored(onIsland(deps), input));
       case "point_to": return toolResult(pointTo(onIsland(deps), input, persona.id === "mentor" ? "mentor" : "judge"));
       case "loose_end": return toolResult(looseEnd(onIsland(deps), input, persona.id === "mentor" ? "mentor" : "judge"));
       case "chart_context": return toolResult(chartContext(deps));
       case "propose_sketch": return toolResult(proposeSketchTool(deps, input));
+      case "guide_context": return toolResult(guideContext(deps));
+      case "suggest_island": return toolResult(suggestIsland(deps, input));
     }
   } catch (error) {
     return toolError(error);

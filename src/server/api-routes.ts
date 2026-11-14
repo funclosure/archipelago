@@ -2,7 +2,7 @@
 // build runs it unchanged inside a Web Worker (`src/hosted/worker.ts`); routes.ts adds the static files and vendor bundles.
 import { exportMap, importMap, parseMapFile } from "../core/map-file.ts";
 import type { Database } from "../core/sql.ts";
-import type { MessageMode, MessageRole } from "../core/types.ts";
+import type { IslandMode, MessageMode, MessageRole } from "../core/types.ts";
 import { forVoice, speakableText, speechLanguage } from "../core/speakable.ts";
 import { z } from "zod";
 import { openDatabase } from "../core/db.ts";
@@ -14,14 +14,14 @@ import {
 import { attachAsks, listAsks, pickAsk, requireAsk } from "../core/repositories/askRepository.ts";
 import { listCards, moveCard } from "../core/repositories/boardRepository.ts";
 import { closeLooseEnd } from "../core/repositories/looseEndRepository.ts";
-import { attachPointers, listPointers, pointerFloor } from "../core/repositories/pointerRepository.ts";
+import { attachGuidePointers, attachPointers, listGuidePointers, listPointers, pointerFloor } from "../core/repositories/pointerRepository.ts";
 import { addSeaFrom, removeSea, updateSea } from "../core/repositories/seaRepository.ts";
 import { getLearner, setLearnerNote, setLearnerLanguage } from "../core/repositories/learnerRepository.ts";
 import { createDomain, listDomains, requireDomain, updateDomain, removeDomain } from "../core/repositories/domainRepository.ts";
 import { getIslandById, requireIsland, setIslandPositions } from "../core/repositories/islandRepository.ts";
 import { addVerdict, verdictHistory } from "../core/repositories/verdictRepository.ts";
 import { addComment } from "../core/repositories/commentRepository.ts";
-import { addMessage, getMessage, listMessages, listScaleMessages, parseProposal, setReefStatus } from "../core/repositories/messageRepository.ts";
+import { addMessage, getMessage, listGuideMessages, listMessages, listScaleMessages, parseProposal, setReefStatus } from "../core/repositories/messageRepository.ts";
 import { approveSketch, attachSketch, discardSketch, pendingSketch, requireSketch, sketchFloor } from "../core/repositories/sketchRepository.ts";
 import { activeSession } from "../core/repositories/sessionRepository.ts";
 import { getViewState, setFocus } from "../core/repositories/viewStateRepository.ts";
@@ -62,8 +62,10 @@ export const JUDGE_TURN_TIMEOUT_MS = 180_000;
 /** Islands with a turn running, as `<domain>/<island>` (`<domain>/` for the cartographer at the top scale), and whose turn it is. One turn per island at a time. */
 const inFlight = new Map<string, MessageMode>();
 /** What the page calls each persona, for the 409 that names who is answering. */
-const SPEAKER_NAME: Record<MessageMode, string> = { judge: "the Keeper", mentor: "the mentor", cartographer: "the cartographer" };
+const SPEAKER_NAME: Record<MessageMode, string> = { judge: "the Keeper", mentor: "the mentor", cartographer: "the cartographer", guide: "the mentor" };
 const turnKey = (domain: string, island: string) => `${domain}/${island}`;
+/** The guide's lock: one guide turn per domain, apart from every island's and the top scale's. */
+const guideKey = (domain: string) => `${domain}/#guide`; // "#" is never in a slug; the "/" keeps a domain delete waiting on it
 
 export async function handleApiRequest(req: Request, ctx: ApiContext): Promise<Response> {
   const url = new URL(req.url);
@@ -229,6 +231,17 @@ async function handleApi(req: Request, url: URL, ctx: ApiContext): Promise<Respo
   if (route === "GET /api/thread") {
     const slug = slugSchema.parse(q("domain"));
     const mode = modeSchema.parse(q("mode") ?? "judge");
+    if (mode === "guide") {
+      return json(
+        withDb(ctx, (db) => {
+          const d = requireDomain(db, slug);
+          const messages = listGuideMessages(db, d.id);
+          const inThread = new Set(messages.map((m) => m.id));
+          const pointers = listGuidePointers(db, d.id).filter((p) => p.messageId !== null && inThread.has(p.messageId));
+          return { island: null, mode, messages, asks: [], pointers };
+        }),
+      );
+    }
     if (mode === "cartographer") {
       const scaleSlug = q("island") ? slugSchema.parse(q("island")) : null;
       return json(
@@ -330,6 +343,7 @@ async function handleApi(req: Request, url: URL, ctx: ApiContext): Promise<Respo
   if (route === "POST /api/probe") {
     const input = probeInputSchema.parse(await req.json());
     if (input.mode === "cartographer") return chartTurn(ctx, input);
+    if (input.mode === "guide") return guideTurn(ctx, input);
     const mode = input.mode;
     const island = input.island!; // required for the judge and the mentor (probeInputSchema)
     // One turn per island across every mode: no two personas ever write the same island at once.
@@ -365,7 +379,7 @@ async function handleApi(req: Request, url: URL, ctx: ApiContext): Promise<Respo
         const body = reply || (unattached ? unattached.question : "");
         if (!body) return;
         // The reply is the persona's, in its own thread.
-        const stored = addMessage(db, { domainId: d.id, islandId: i.id, role: mode, kind: "text", body, mode, model });
+        const stored = addMessage(db, { domainId: d.id, islandId: i.id, role: mode as IslandMode, kind: "text", body, mode, model });
         attachAsks(db, i.id, stored.id, askFloor);
         attachPointers(db, i.id, stored.id, pointFloor);
       }),
@@ -522,6 +536,29 @@ function chartTurn(ctx: ApiContext, input: z.infer<typeof probeInputSchema>): Re
       if (!body) return;
       const stored = addMessage(db, { domainId: d.id, islandId: scaleId, role: "cartographer", kind: "text", body, mode: "cartographer", model });
       attachSketch(db, d.id, scaleId, stored.id, floor);
+    }),
+  );
+}
+
+/** A guide turn: the mentor before any island, for the whole domain. Its lock is the domain's guide thread alone. */
+function guideTurn(ctx: ApiContext, input: z.infer<typeof probeInputSchema>): Response {
+  const key = guideKey(input.domain);
+  if (inFlight.has(key)) throw new ConflictError("the mentor is answering; try again when it ends");
+  if (input.askId !== undefined) throw new ArchipelagoError("the guide does not ask with options");
+  const floor = withDb(ctx, (db) => {
+    const d = requireDomain(db, input.domain);
+    if (input.message) addMessage(db, { domainId: d.id, islandId: null, role: "you", kind: "text", body: input.message, mode: "guide" });
+    return pointerFloor(db, null, d.id);
+  });
+  return streamTurn(ctx, key, "guide", { domain: input.domain }, (reply, model) =>
+    withDb(ctx, (db) => {
+      const d = requireDomain(db, input.domain);
+      // A silent turn that pointed somewhere still shows the card, under its one line.
+      const pointed = listGuidePointers(db, d.id).find((p) => p.messageId === null && p.id > floor);
+      const body = reply || (pointed ? pointed.why : "");
+      if (!body) return;
+      const stored = addMessage(db, { domainId: d.id, islandId: null, role: "mentor", kind: "text", body, mode: "guide", model });
+      attachGuidePointers(db, d.id, stored.id, floor);
     }),
   );
 }

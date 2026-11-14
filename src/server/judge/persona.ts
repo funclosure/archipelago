@@ -1,4 +1,4 @@
-// A persona is everything that differs between the judge, the mentor, and the cartographer: the protocol
+// A persona is everything that differs between the judge, the mentor, the cartographer, and the guide: the protocol
 // file, the closed tool list, the context it reads and how it and the thread are rendered, and the stub
 // turn. One runner serves all three.
 import type { Ask, Message, MessageMode } from "../../core/types.ts";
@@ -6,13 +6,14 @@ import {
   indent, renderBoard, renderDemoSteps, renderElsewhere, renderIslandHead, renderLearner, renderLooseEnds, renderOpeningLanguage, renderPendingAsk, renderPendingReefs, renderReplay, renderSurroundings, type JudgeContext,
 } from "./context.ts";
 import type { JudgeRunner } from "./runner.ts";
-import { cartographerStubTurn, judgeStubTurn, mentorStubTurn } from "./stub.ts";
+import { cartographerStubTurn, guideStubTurn, judgeStubTurn, mentorStubTurn } from "./stub.ts";
 import { islandContext, type TurnDeps } from "./tools.ts";
 import { chartContext, renderChartContext, renderChartThreadPrompt, type ChartContext } from "./chart.ts";
+import { guideContext, renderGuideContext, renderGuideThreadPrompt, type GuideContext } from "./guide.ts";
 
 export const TOOL_NAMES = [
   "island_context", "record_verdict", "propose_reef", "set_landmarks", "unlock_landmark", "ask_reader", "board_write", "mark_explored", "loose_end", "point_to",
-  "chart_context", "propose_sketch",
+  "chart_context", "propose_sketch", "guide_context", "suggest_island",
 ] as const;
 export type ToolName = (typeof TOOL_NAMES)[number];
 
@@ -147,7 +148,18 @@ export const cartographer: Persona<ChartContext> = {
   stubTurn: cartographerStubTurn,
 };
 
-const PERSONAS: Record<MessageMode, Persona> = { judge, mentor, cartographer };
+export const guide: Persona<GuideContext> = {
+  id: "guide",
+  protocolFile: "GUIDE.md",
+  // Reads the whole map and points; it writes nothing to an island (no landmark, no board, no loose end).
+  toolNames: ["guide_context", "suggest_island"],
+  buildContext: (deps) => guideContext(deps),
+  renderContext: renderGuideContext,
+  renderThreadPrompt: renderGuideThreadPrompt,
+  stubTurn: guideStubTurn,
+};
+
+const PERSONAS: Record<MessageMode, Persona> = { judge, mentor, cartographer, guide };
 
 export function personaFor(mode: MessageMode): Persona {
   return PERSONAS[mode];

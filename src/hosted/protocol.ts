@@ -2,10 +2,11 @@
 import PROTOCOL from "../server/judge/PROTOCOL.md" with { type: "text" };
 import MENTOR from "../server/judge/MENTOR.md" with { type: "text" };
 import CARTOGRAPHER from "../server/judge/CARTOGRAPHER.md" with { type: "text" };
+import GUIDE from "../server/judge/GUIDE.md" with { type: "text" };
 
 export type ProtocolSource = { protocolFile: string };
 
-const TEXT: Record<string, string> = { "PROTOCOL.md": PROTOCOL, "MENTOR.md": MENTOR, "CARTOGRAPHER.md": CARTOGRAPHER };
+const TEXT: Record<string, string> = { "PROTOCOL.md": PROTOCOL, "MENTOR.md": MENTOR, "CARTOGRAPHER.md": CARTOGRAPHER, "GUIDE.md": GUIDE };
 
 export function readProtocol(persona: ProtocolSource = { protocolFile: "PROTOCOL.md" }): string {
   const text = TEXT[persona.protocolFile];

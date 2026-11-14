@@ -158,9 +158,9 @@ export const DEMO_STEP_MAX = 160;
 export const probeInputSchema = z
   .object({
     domain: slugSchema,
-    /** The island; for the cartographer, the scale, and absent at the domain's top scale. */
+    /** The island; for the cartographer, the scale, and absent at the domain's top scale; never for the guide (the whole domain). */
     island: slugSchema.optional(),
-    /** Whose turn: the judge's (default), the mentor's, or the cartographer's. */
+    /** Whose turn: the judge's (default), the mentor's, the cartographer's, or the guide's. */
     mode: z.enum(messageModes).default("judge"),
     message: z.string().trim().min(1).optional(),
     askId: numberInput.pipe(z.number().int().positive()).optional(),
@@ -171,7 +171,8 @@ export const probeInputSchema = z
       .optional()
       .transform((steps) => steps?.map((s) => s.trim().slice(0, DEMO_STEP_MAX)).filter(Boolean).slice(-DEMO_STEPS_MAX)),
   })
-  .refine((v) => v.mode === "cartographer" || v.island !== undefined, { message: "island is required", path: ["island"] });
+  .refine((v) => v.mode === "cartographer" || v.mode === "guide" || v.island !== undefined, { message: "island is required", path: ["island"] })
+  .refine((v) => v.mode !== "guide" || v.island === undefined, { message: "the guide speaks for the whole domain, never one island", path: ["island"] });
 
 export const askInputSchema = z.object({
   question: z.string().trim().min(1),

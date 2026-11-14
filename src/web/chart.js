@@ -1,5 +1,6 @@
-// The cartographer's pane: one thread per scale, the pending sketch as a card, and the turn in flight.
-// card.js owns #pane and hands it over while the cartographer is open; nothing else here touches the map.
+// The cartographer's pane: one thread per scale, the pending sketch as a card, and the turn in flight. The same pane
+// holds the guide (`mode: "guide"`): the mentor before any island, one thread per domain, whose replies carry
+// "Sail to" cards instead of a sketch. card.js owns #pane and hands it over while either is open.
 import { app, api, refresh, frameSelection } from "./app.js";
 import { streamPost } from "./stream.js";
 import { renderMarkdown } from "./markdown.js";
@@ -23,10 +24,12 @@ const SCROLL_BY = {
 
 const chart = {
   open: false,
+  mode: "cartographer", // or "guide": the domain's guide thread, never at a scale
   scale: null,        // the island whose islets this thread sketches; null at the top scale
   version: null,      // snapshot version the thread was fetched at; null forces a refetch
   messages: [],
   sketch: null,       // the pending sketch at this scale, from /api/thread
+  pointers: [],       // the guide's "Sail to" cards, each under the reply it rode on
   loaded: false,
   loadError: null,
   draft: "",
@@ -43,28 +46,34 @@ let turnAbort = null;
 let liveFrame = 0;
 let composing = false;
 let rerender = () => {};
+let sail = () => {};
 
-/** card.js passes its render: the cartographer asks for a repaint through it, since card.js owns the pane. */
-export function installChart({ render }) {
+/** card.js passes its render (it owns the pane) and how to sail from a guide's card (it owns the island's pane). */
+export function installChart({ render, sail: sailWith }) {
   rerender = render;
+  if (sailWith) sail = sailWith;
 }
 
 export const isChartOpen = () => chart.open;
+export const isGuideOpen = () => chart.open && chart.mode === "guide";
+const guiding = () => chart.mode === "guide";
+const speaker = () => (guiding() ? "mentor" : "cartographer");
 export const chartTurning = () => chart.inFlight && turnAbort !== null;
 /** The tool in flight while the cartographer works at the map's scale (null while it thinks), or undefined when it is not working there. */
-export const chartWorkingHere = () => (chart.inFlight && (chart.scale ?? null) === (app.scale ?? null) ? chart.progress : undefined);
+export const chartWorkingHere = () => (!guiding() && chart.inFlight && (chart.scale ?? null) === (app.scale ?? null) ? chart.progress : undefined);
 
-function reset(scale) {
+function reset(scale, mode = chart.mode) {
   turnGen += 1; // a stream from an earlier scale is no longer ours
-  Object.assign(chart, { scale, version: null, messages: [], sketch: null, loaded: false, loadError: null, draft: "", live: "", progress: null, inFlight: false, error: null, stopped: false, deciding: false });
+  Object.assign(chart, { mode, scale: mode === "guide" ? null : scale, version: null, messages: [], sketch: null, pointers: [], loaded: false, loadError: null, draft: "", live: "", progress: null, inFlight: false, error: null, stopped: false, deciding: false });
 }
 
 /**
  * Opens the cartographer at a scale (the map's current one by default). `start` runs the first turn without a
  * message, as a new domain or a sail-closer does; `message` sends one, as a note to the cartographer does.
  */
-export function openChart(scale = app.scale ?? null, { start = false, message = null } = {}) {
-  if (!chart.open || chart.scale !== scale) reset(scale);
+export function openChart(scale = app.scale ?? null, { start = false, message = null, mode = "cartographer" } = {}) {
+  if (mode === "guide") scale = null;
+  if (!chart.open || chart.mode !== mode || chart.scale !== scale) reset(scale, mode);
   chart.open = true;
   if (app.selected) void select(null); // the island pane closes; its listeners repaint the pane as the cartographer's
   else rerender();
@@ -73,11 +82,16 @@ export function openChart(scale = app.scale ?? null, { start = false, message = 
   else if (start) void runTurn(null);
 }
 
+/** Opens the guide: the mentor before any island. `start` runs its opening turn when the thread is new. */
+export function openGuide({ start = false } = {}) {
+  openChart(null, { mode: "guide", start });
+}
+
 export function closeChart() {
   if (!chart.open) return;
   turnAbort?.abort();
   chart.open = false;
-  reset(null);
+  reset(null, "cartographer");
   rerender();
   frameSelection();
 }
@@ -112,10 +126,12 @@ async function load() {
   const scale = chart.scale;
   const stale = () => !chart.open || chart.scale !== scale || gen !== loadGen;
   try {
-    const { messages, sketch } = await api(`/api/thread?domain=${encodeURIComponent(app.domain)}&mode=cartographer${scaleQuery()}`);
-    if (stale()) return;
+    const mode = chart.mode;
+    const { messages, sketch, pointers } = await api(`/api/thread?domain=${encodeURIComponent(app.domain)}&mode=${mode}${mode === "guide" ? "" : scaleQuery()}`);
+    if (stale() || chart.mode !== mode) return;
     chart.messages = messages;
-    chart.sketch = sketch;
+    chart.sketch = sketch ?? null;
+    chart.pointers = pointers ?? [];
     chart.loaded = true;
     chart.loadError = null;
     chart.deciding = false; // a decision is complete once the refetched thread shows it
@@ -139,7 +155,7 @@ async function runTurn(message) {
   if (message) chart.messages = [...chart.messages, { id: `local-${Date.now()}`, role: "you", kind: "text", body: message }];
   rerender();
   try {
-    await streamPost("/api/probe", { domain: app.domain, mode: "cartographer", ...(scale ? { island: scale } : {}), ...(message ? { message } : {}) }, (e) => {
+    await streamPost("/api/probe", { domain: app.domain, mode: chart.mode, ...(scale && !guiding() ? { island: scale } : {}), ...(message ? { message } : {}) }, (e) => {
       if (!mine()) return;
       if (e.type === "text") {
         chart.live += e.data.text;
@@ -216,14 +232,14 @@ function renderLive() {
   if (!live || !progress || !log) return;
   const stuck = atBottom(log);
   if (chart.inFlight && !chart.live) {
-    live.replaceChildren(thinkingEl(thinkingLine("cartographer", chart.progress)));
+    live.replaceChildren(thinkingEl(thinkingLine(speaker(), chart.progress)));
   } else if (chart.live) {
     live.replaceChildren(renderMarkdown(chart.live, { lead: true }));
   } else {
     live.replaceChildren();
   }
   live.hidden = !(chart.live || chart.inFlight);
-  progress.textContent = chart.progress && chart.live ? `${thinkingLine("cartographer", chart.progress)}…` : "";
+  progress.textContent = chart.progress && chart.live ? `${thinkingLine(speaker(), chart.progress)}…` : "";
   progress.hidden = !progress.textContent;
   if (stuck) log.scrollTop = log.scrollHeight;
 }
@@ -238,7 +254,39 @@ export function focusChartAnswer() {
 
 // ---- the pane ----
 
+function guideHeadEl() {
+  const head = el("div", "head");
+  const row = el("div", "row");
+  row.append(el("h2", null, t("chart.guideTitle")));
+  const pills = el("span", "pills");
+  pills.append(el("span", "pill mode mentor", app.snapshot?.domain.name ?? ""));
+  row.append(pills);
+  head.append(row);
+  head.append(el("p", "summary", t("chart.guideSummary")));
+  const sub = el("div", "sub");
+  sub.append(el("span"));
+  const links = el("span", "links");
+  links.append(button(t("chart.close"), () => closeChart(), "link"));
+  sub.append(links);
+  head.append(sub);
+  return head;
+}
+
+/** The guide's card: sail in the lens it suggests, or the other one; in the mentor's, the question goes along. */
+function guideSailEl(pointer) {
+  const lens = pointer.lens ?? "mentor";
+  const box = el("div", `sail ${lens}`);
+  const other = lens === "mentor" ? "judge" : "mentor";
+  const go = button(t(lens === "mentor" ? "chart.sailMentor" : "chart.sailKeeper", { name: pointer.island.name }), () => sail(pointer, lens), "sail-go");
+  box.append(go, el("div", "sail-why", pointer.why));
+  if (lens === "mentor" && pointer.question) box.append(el("div", "sail-carry", t("chart.sailCarries")));
+  const alt = button(t(other === "mentor" ? "chart.orMentor" : "chart.orKeeper"), () => sail(pointer, other), "link sail-alt");
+  box.append(alt);
+  return box;
+}
+
 function headEl() {
+  if (guiding()) return guideHeadEl();
   const head = el("div", "head");
   const row = el("div", "row");
   row.append(el("h2", null, t("chart.title")));
@@ -297,7 +345,7 @@ function sketchCard(sketch) {
 
 function messageEl(m) {
   if (m.kind === "system") return el("div", "msg system", systemText(m.body));
-  const box = el("div", `msg ${m.role === "you" ? "you" : "cartographer"}`);
+  const box = el("div", `msg ${m.role === "you" ? "you" : speaker()}`);
   box.append(renderMarkdown(m.body, m.role === "you" ? {} : { lead: true }));
   return box;
 }
@@ -310,7 +358,7 @@ function logEl() {
   }
   if (chart.loadError) log.append(el("p", "muted", t("chart.refreshFailed", { error: chart.loadError })));
   if (chart.messages.length === 0 && !chart.inFlight && app.snapshot) {
-    const opening = chartOpening(app.snapshot);
+    const opening = guiding() ? { text: t("chart.guideOpening"), action: t("chart.guideStart") } : chartOpening(app.snapshot);
     const empty = el("div", "empty");
     empty.append(el("p", "muted", opening.text));
     if (opening.action) {
@@ -323,13 +371,14 @@ function logEl() {
   let placed = false;
   for (const m of chart.messages) {
     log.append(messageEl(m));
+    for (const p of chart.pointers) if (p.messageId === m.id) log.append(guideSailEl(p));
     if (chart.sketch && chart.sketch.messageId === m.id) {
       log.append(sketchCard(chart.sketch));
       placed = true;
     }
   }
   if (chart.sketch && !placed) log.append(sketchCard(chart.sketch)); // proposed in a turn whose reply was not kept
-  const live = el("div", "msg cartographer");
+  const live = el("div", `msg ${speaker()}`);
   live.id = "live";
   live.hidden = true;
   const progress = el("div", "progress");
@@ -349,7 +398,7 @@ function footEl() {
   ta.id = "answer";
   ta.rows = 1;
   ta.disabled = !chart.loaded || chart.deciding;
-  ta.placeholder = t(chart.sketch ? "chart.placeholderSketch" : "chart.placeholder");
+  ta.placeholder = t(guiding() ? "chart.guidePlaceholder" : chart.sketch ? "chart.placeholderSketch" : "chart.placeholder");
   ta.value = chart.draft;
   ta.addEventListener("input", () => {
     chart.draft = ta.value;
@@ -374,7 +423,7 @@ function footEl() {
     stop.id = "stop";
     form.append(stop);
   } else {
-    const send = button(t("chart.send"), null, "btn send cartographer");
+    const send = button(t("chart.send"), null, `btn send ${speaker()}`);
     send.type = "submit";
     send.disabled = ta.disabled;
     form.append(send);
@@ -399,7 +448,7 @@ function footEl() {
 export function renderChart(pane) {
   if (composing && pane.contains(document.activeElement)) return; // a rebuild now would destroy the word being composed
   const scale = app.scale ?? null;
-  if (chart.scale !== scale) reset(scale); // the breadcrumb or the outline moved the map: the cartographer follows
+  if (!guiding() && chart.scale !== scale) reset(scale); // the breadcrumb or the outline moved the map: the cartographer follows (the guide is the domain's)
   if (chart.version !== app.version) void load();
   const hadFocus = document.activeElement?.id === "answer";
   const prevLog = pane.querySelector(".log");
@@ -433,7 +482,7 @@ export function chartKey(e) {
 
 /** ⌘↵ in the cartographer: approves the pending sketch, else sends what is in the box. */
 export function chartSend() {
-  if (chart.sketch && !chart.inFlight && !chart.deciding) {
+  if (!guiding() && chart.sketch && !chart.inFlight && !chart.deciding) {
     void decideSketch(chart.sketch.id, "approve");
     return true;
   }
@@ -449,5 +498,5 @@ export function dropChart() {
   if (!chart.open) return;
   turnAbort?.abort();
   chart.open = false;
-  reset(null);
+  reset(null, "cartographer");
 }
