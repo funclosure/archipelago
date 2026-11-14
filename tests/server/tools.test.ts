@@ -68,7 +68,7 @@ test("islandContext gathers the island, islets, straits, open water, pending ree
 });
 
 test("renderThreadPrompt opens an empty thread and replays a full one", () => {
-  expect(renderThreadPrompt([])).toBe("Open the probe on this island.");
+  expect(renderThreadPrompt([])).toBe("Open the probe on this island: the landmarks in one line, then one question (one sentence, one question mark).");
   const db = openDatabase(dbPath);
   const a = addMessage(db, { domainId: ids.domain, islandId: ids.caching, role: "judge", kind: "text", body: "Explain caching." });
   const b = addMessage(db, { domainId: ids.domain, islandId: ids.caching, role: "you", kind: "text", body: "hot data" });
@@ -409,7 +409,7 @@ test("the judge sees which landmarks were explored, never the mentor's messages"
   expect(text).toContain("- Eviction (eviction): dark"); // explored is not lit
   expect(text).not.toContain("Mentor secret");
   expect(text).not.toContain("NSCache");
-  expect(renderThreadPrompt(ctx.thread, ctx.asks)).toBe("Open the probe on this island.");
+  expect(renderThreadPrompt(ctx.thread, ctx.asks)).toBe("Open the probe on this island: the landmarks in one line, then one question (one sentence, one question mark).");
   expect(renderContext(islandContext({ ...deps(), island: "databases" }))).not.toContain("Explored with the mentor");
 });
 

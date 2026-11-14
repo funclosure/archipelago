@@ -11,7 +11,7 @@ test("the judge persona: PROTOCOL.md, its nine tools, its renderers, its stub", 
   expect([...judge.toolNames]).toEqual(["island_context", "record_verdict", "propose_reef", "set_landmarks", "unlock_landmark", "ask_reader", "board_write", "loose_end", "point_to"]);
   expect(judge.renderContext).toBe(renderJudgeContext);
   expect(judge.renderThreadPrompt).toBe(renderJudgeThreadPrompt);
-  expect(judge.renderThreadPrompt([])).toBe("Open the probe on this island.");
+  expect(judge.renderThreadPrompt([])).toBe("Open the probe on this island: the landmarks in one line, then one question (one sentence, one question mark).");
   expect(judge.stubTurn).toBe(judgeStubTurn);
   expect(personaFor("judge")).toBe(judge);
 });

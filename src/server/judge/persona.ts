@@ -79,7 +79,7 @@ export function renderJudgeContext(ctx: JudgeContext): string {
 
 /** The judge's thread as the turn's prompt. */
 export function renderJudgeThreadPrompt(thread: ThreadMessage[], asks: Ask[] = []): string {
-  if (thread.length === 0) return "Open the probe on this island.";
+  if (thread.length === 0) return "Open the probe on this island: the landmarks in one line, then one question (one sentence, one question mark).";
   return [...renderReplay(thread, asks), "", "Continue as the judge: every tool call first, then the reply, which asks at most one question (one sentence, one question mark)."].join("\n");
 }
 
