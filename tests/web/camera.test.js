@@ -145,3 +145,51 @@ test("home frames the islands, wherever they are, and never zooms closer than MA
   expect(one.scale).toBeCloseTo(((800 * 0.88) / WORLD) * 1.4);
   expect(500 * one.scale + one.y).toBeCloseTo(400);
 });
+
+// ---- a home that is nearer than the fit (a phone) ----
+
+const WIDE = { x0: 0, y0: 0, x1: 4000, y1: 1000 }; // far wider than a phone's screen is
+
+test("without a floor, or where everything fits at the floor or closer, home is the fitted framing exactly", () => {
+  const cam = createCamera();
+  const plain = cam.framing(390, 844, { top: 90, bottom: 56 }, WIDE);
+  expect(cam.framing(390, 844, { top: 90, bottom: 56 }, WIDE, {})).toEqual(plain);
+  expect(cam.framing(390, 844, { top: 90, bottom: 56 }, WIDE, { minScale: plain.scale, focus: { x: 0, y: 0 } })).toEqual(plain);
+  expect(cam.framing(390, 844, { top: 90, bottom: 56 }, WIDE, { minScale: plain.scale / 2 })).toEqual(plain);
+});
+
+test("a floor closer than the fit holds home at the floor, round the focus", () => {
+  const cam = createCamera();
+  const ins = { top: 90, bottom: 56 };
+  const fit = cam.framing(390, 844, ins, WIDE).scale;
+  const home = cam.framing(390, 844, ins, WIDE, { minScale: fit * 3, focus: { x: 2000, y: 500 } });
+  expect(home.scale).toBeCloseTo(fit * 3);
+  expect(2000 * home.scale + home.x).toBeCloseTo(195); // the focus at the middle of the width
+  // the islands still fit the height at this scale, so they are centred that way as ever
+  expect(500 * home.scale + home.y).toBeCloseTo(90 + (844 - 90 - 56) / 2);
+});
+
+test("a focus near the islands' edge stops at the margin: home never frames open water beyond them", () => {
+  const cam = createCamera();
+  const fit = cam.framing(390, 844, {}, WIDE).scale;
+  const m = 390 * 0.06;
+  const left = cam.framing(390, 844, {}, WIDE, { minScale: fit * 3, focus: { x: 0, y: 500 } });
+  expect(0 * left.scale + left.x).toBeCloseTo(m); // the islands' left edge at the left margin
+  const right = cam.framing(390, 844, {}, WIDE, { minScale: fit * 3, focus: { x: 4000, y: 500 } });
+  expect(4000 * right.scale + right.x).toBeCloseTo(390 - m);
+  const none = cam.framing(390, 844, {}, WIDE, { minScale: fit * 3 }); // no focus: the islands' middle
+  expect(2000 * none.scale + none.x).toBeCloseTo(195);
+});
+
+test("from a home nearer than the fit the reader can still pinch out to the whole map, and no further than half of home otherwise", () => {
+  const cam = createCamera();
+  const fit = cam.framing(390, 844, {}, WIDE).scale;
+  cam.fit(390, 844, {}, WIDE, { minScale: fit * 3 });
+  cam.snapHome();
+  cam.zoomAt(195, 400, 0.0001);
+  expect(cam.state.scale).toBeCloseTo(fit); // a third of home: past the usual half, as far as the fit
+  cam.fit(390, 844, {}, WIDE, { minScale: fit * 1.2 });
+  cam.snapHome();
+  cam.zoomAt(195, 400, 0.0001);
+  expect(cam.state.scale).toBeCloseTo(fit * 0.6); // half of home is already further out than the fit
+});

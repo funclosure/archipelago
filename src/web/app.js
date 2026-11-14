@@ -30,6 +30,7 @@ import { anotherTab, installHosted, welcomeGate } from "./hosted.js";
 import { modeKey, storedMode, nextMode } from "./mode-model.js";
 import { installLaunch } from "./launch.js";
 import { installPlaces } from "./places.js";
+import { NARROW, homeFloor, homeFocus } from "./places-model.js";
 import { installChrome, renderChrome, renderStatus, showReading, showFailure, clearNote } from "./chrome.js";
 import "./tip.js"; // tooltips listen at the document; a control only carries data-tip
 import "./palette.js"; // the command palette (⌘K): keys.js hands it the opening key and, while it is open, every key
@@ -284,7 +285,9 @@ function bottomInset() {
   const card = document.querySelector("#cta:not([hidden]) .cta-card");
   if (card) return Math.max(0, app.size.h - card.getBoundingClientRect().top) + 8;
   const places = document.getElementById("places"); // a phone's bar; display: none anywhere else
-  return places ? places.offsetHeight : 0;
+  if (!places || !places.offsetHeight) return 0;
+  const reading = document.querySelector(".now-playing:not([hidden])"); // there, the now-reading strip lies across the screen over the bar
+  return places.offsetHeight + (reading ? reading.offsetHeight : 0);
 }
 
 /**
@@ -358,10 +361,23 @@ export function homeBounds() {
 function fitHome(ins) {
   const { w, h } = app.size;
   const bounds = homeBounds();
-  const open = app.camera.framing(w, h, { ...ins, right: 0 }, bounds).scale;
-  app.camera.fit(w, h, ins, bounds);
+  const near = nearHome();
+  const open = app.camera.framing(w, h, { ...ins, right: 0 }, bounds, near).scale;
+  app.camera.fit(w, h, ins, bounds, near);
   app.camera.zoomFrom(open);
   return open;
+}
+
+const phone = window.matchMedia?.(NARROW);
+/**
+ * A phone's home (places-model.js): the whole of a domain fitted to so narrow a screen draws names a few pixels
+ * tall and islands too small for a thumb. There home comes no further out than a scale at which a name can be read,
+ * round the island the reader would go to next, and the rest is a pan or a pinch away. Nothing on a wider screen.
+ */
+function nearHome() {
+  if (!phone?.matches || !app.nodes.length || !app.snapshot) return {};
+  const slug = homeFocus(app.snapshot);
+  return { minScale: homeFloor(app.nodes[0].radius), focus: app.nodes.find((n) => n.slug === slug) ?? null };
 }
 
 /** How far the selected island's marks reach to the side and down to the foot of a three-line name, in radii. */
@@ -551,7 +567,7 @@ function placeRose() {
   const { w, h } = app.size;
   const radius = app.nodes[0]?.radius ?? 62;
   const ins = { ...app.covered, right: 0 };
-  const home = app.camera.framing(w, h, ins, homeBounds());
+  const home = app.camera.framing(w, h, ins, homeBounds(), nearHome());
   const world = (x, y) => ({ x: (x - home.x) / home.scale, y: (y - home.y) / home.scale });
   // The bottom card covers the middle of the map's foot, not its corners: the rose may stand beside it.
   const card = document.querySelector("#cta:not([hidden]) .cta-card")?.getBoundingClientRect();

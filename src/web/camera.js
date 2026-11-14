@@ -11,9 +11,34 @@ const SELECT_ZOOM = 1.5; // × home's scale (with the pane shut) when an island 
 const ZOOM_OUT = 0.5;
 const ZOOM_IN = 6;
 
+/**
+ * Where one axis of the map stands at a scale too close for the whole of it (`lo`..`hi`, world units) to fit the
+ * room (`start`..`start + room`, screen px): `at` (a world coordinate) at the middle of the room, but never so far
+ * that open water beyond the islands' own edge takes the screen, so each edge stops at the margin `m`. Islands
+ * that do fit this way are centred as ever.
+ */
+function along(lo, hi, at, scale, start, room, m) {
+  if ((hi - lo) * scale <= room - 2 * m) return start + room / 2 - ((lo + hi) / 2) * scale;
+  const near = start + m - lo * scale; // the islands' near edge at the margin
+  const far = start + room - m - hi * scale; // their far edge at the margin
+  return Math.min(near, Math.max(far, start + room / 2 - at * scale));
+}
+
+/** The scale at which `bounds` (a fresh 1000-unit scale without them) fit the area between the insets, with the margin, never closer than MAX_HOME. */
+function fitted(w, h, { left = 0, right = 0, top = 0, bottom = 0 } = {}, bounds = null) {
+  const b = bounds ?? { x0: 0, y0: 0, x1: WORLD, y1: WORLD };
+  const aw = Math.max(1, w - left - right);
+  const ah = Math.max(1, h - top - bottom);
+  const bw = Math.max(1, b.x1 - b.x0);
+  const bh = Math.max(1, b.y1 - b.y0);
+  const cap = ((Math.min(aw, ah) * (1 - 2 * MARGIN)) / WORLD) * MAX_HOME;
+  return Math.min(cap, Math.min(aw / bw, ah / bh) * (1 - 2 * MARGIN));
+}
+
 export function createCamera() {
   const cam = { x: 0, y: 0, scale: 1 };
   let home = { x: 0, y: 0, scale: 1 };
+  let whole = null; // the scale at which everything fits home's area: home's own, unless home is nearer than that (`fit`'s `near`)
   let zoomBase = null; // see `zoomFrom`
   let anim = null;
 
@@ -26,23 +51,30 @@ export function createCamera() {
      * Home: the framing that fits `bounds` (the islands, in world units; a fresh 1000-unit scale when there are
      * none) into the area between the insets, centred, with a margin, and never closer than MAX_HOME. The insets
      * are what covers the map: the outline (left), the pane (right), the header (top), the bottom card (bottom).
+     * `near` keeps home legible on a small screen: see `framing`.
      */
-    fit(w, h, insets = {}, bounds = null) {
-      home = this.framing(w, h, insets, bounds);
+    fit(w, h, insets = {}, bounds = null, near = {}) {
+      home = this.framing(w, h, insets, bounds, near);
+      whole = fitted(w, h, insets, bounds);
       return home;
     },
-    /** The framing `fit` would make home, without making it home: what the map would be framed as under other insets. */
-    framing(w, h, { left = 0, right = 0, top = 0, bottom = 0 } = {}, bounds = null) {
+    /**
+     * The framing `fit` would make home, without making it home: what the map would be framed as under other insets.
+     * `near` is for a screen too small to show everything legibly (a phone): `{ minScale, focus }`. Where fitting
+     * it all would be further out than `minScale`, home is at `minScale` instead and shows a part of the map, the
+     * part round `focus` (a world point; the islands' middle without one), and the reader pans to the rest.
+     * Without `near`, or where everything fits at `minScale` or closer, the framing is exactly the fitted one.
+     */
+    framing(w, h, { left = 0, right = 0, top = 0, bottom = 0 } = {}, bounds = null, { minScale = 0, focus = null } = {}) {
       const b = bounds ?? { x0: 0, y0: 0, x1: WORLD, y1: WORLD };
       const aw = Math.max(1, w - left - right);
       const ah = Math.max(1, h - top - bottom);
-      const bw = Math.max(1, b.x1 - b.x0);
-      const bh = Math.max(1, b.y1 - b.y0);
-      const cap = ((Math.min(aw, ah) * (1 - 2 * MARGIN)) / WORLD) * MAX_HOME;
-      const scale = Math.min(cap, Math.min(aw / bw, ah / bh) * (1 - 2 * MARGIN));
+      const fit = fitted(w, h, { left, right, top, bottom }, bounds);
       const cx = (b.x0 + b.x1) / 2;
       const cy = (b.y0 + b.y1) / 2;
-      return { x: left + aw / 2 - cx * scale, y: top + ah / 2 - cy * scale, scale };
+      if (!(minScale > fit)) return { x: left + aw / 2 - cx * fit, y: top + ah / 2 - cy * fit, scale: fit };
+      const m = Math.min(aw, ah) * MARGIN;
+      return { x: along(b.x0, b.x1, focus?.x ?? cx, minScale, left, aw, m), y: along(b.y0, b.y1, focus?.y ?? cy, minScale, top, ah, m), scale: minScale };
     },
     /** The framing at `scale` that puts a world point at the centre of the area between the insets. */
     centreOn(point, w, h, { left = 0, right = 0, top = 0, bottom = 0 } = {}, scale = cam.scale) {
@@ -89,7 +121,8 @@ export function createCamera() {
       zoomBase = scale;
     },
     zoomAt(px, py, factor) {
-      const far = Math.min(home.scale, zoomBase ?? home.scale) * ZOOM_OUT;
+      // out to half of home, and where home shows only a part of the map (a phone), always far enough to see it whole
+      const far = Math.min(Math.min(home.scale, zoomBase ?? home.scale) * ZOOM_OUT, whole ?? Infinity);
       const near = Math.max(home.scale, zoomBase ?? home.scale) * ZOOM_IN;
       const next = Math.min(near, Math.max(far, cam.scale * factor));
       const k = next / cam.scale;
