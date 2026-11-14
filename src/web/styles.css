@@ -312,7 +312,7 @@ body.pane-open .chrome { right: var(--pane-w); }
    narrow pane wraps the row rather than breaking a label. */
 .pane > .head .sub { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: var(--sp-1) var(--sp-3); min-height: var(--h-sm); font-size: var(--fs-sm); color: var(--muted); }
 .pane > .head .standing { display: inline-flex; align-items: center; flex-wrap: wrap; gap: var(--sp-1) var(--sp-2); min-width: 0; }
-.pane > .head .links { display: flex; gap: var(--sp-05); margin: 0 calc(-1 * var(--sp-2)) 0 auto; }
+.pane > .head .links { display: flex; gap: 0; margin: 0 calc(-1 * var(--sp-3)) 0 auto; }
 .pane > .head .links .btn { white-space: nowrap; }
 .link { background: none; border: 0; padding: 0; color: var(--text); font: inherit; font-size: 12px; text-decoration: underline;
   text-underline-offset: 2px; cursor: pointer; }

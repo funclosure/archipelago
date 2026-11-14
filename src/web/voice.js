@@ -5,6 +5,7 @@
 // 2×, kept per browser), stop, a progress line to seek on, or tap it to go back to the reply. Read aloud (per
 // browser) plays each new reply when its turn ends.
 import { t } from "./i18n.js";
+import { tip } from "./tip.js";
 
 const AUTO = "voice:auto";
 const RATE = "voice:rate";
@@ -92,7 +93,7 @@ function sync() {
     const name = b.dataset.name;
     const key = { idle: "listen", starting: "starting", reading: "pause", paused: "resume" }[state];
     b.querySelector(".lbl").textContent = name ? t(`voice.${key}As`, { name }) : t(`voice.${key}`);
-    b.title = t(state === "idle" ? "voice.playTitle" : state === "paused" ? "voice.resumeTitle" : "voice.pauseTitle");
+    tip(b, t(state === "idle" ? "voice.playTitle" : state === "paused" ? "voice.resumeTitle" : "voice.pauseTitle"));
   }
   drawBar();
 }
@@ -155,6 +156,7 @@ export function speakButton(id, role, meta = {}) {
   const b = document.createElement("button");
   b.type = "button";
   b.className = "speak";
+  b.dataset.fk = `speak-${id}`; // the keyboard finds it again when its reply is drawn anew
   b.dataset.id = String(id);
   const name = nameOf(role);
   if (name) b.dataset.name = name;
@@ -296,11 +298,12 @@ export function autoReadEl() {
   const b = document.createElement("button");
   b.type = "button";
   b.className = "read-aloud";
+  b.dataset.fk = "read-aloud";
   const draw = () => {
     const on = autoRead();
     b.textContent = t(on ? "voice.autoOn" : "voice.autoOff");
     b.setAttribute("aria-pressed", String(on));
-    b.title = t("voice.autoTitle");
+    tip(b, t("voice.autoTitle"));
   };
   b.addEventListener("click", () => {
     setAutoRead(!autoRead());

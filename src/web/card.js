@@ -682,14 +682,14 @@ function headEl(island) {
   sub.append(standing);
   const links = el("span", "links");
   const sail = island.hasChildren
-    ? tip(button(t("card.sailIn"), () => setScale(island.slug), "btn quiet sm"), t("card.sailInTip"), "s")
-    : tip(button(t("card.sailCloser"), () => void sailCloser(island), "btn quiet sm"), t("card.sailCloserTip"), "s");
+    ? tip(button(t("card.sailIn"), () => setScale(island.slug), "btn quiet md"), t("card.sailInTip"), "s")
+    : tip(button(t("card.sailCloser"), () => void sailCloser(island), "btn quiet md"), t("card.sailCloserTip"), "s");
   sail.dataset.fk = "sail";
   const noteToggle = button(t("card.noteToggle"), () => {
     noteOpen = !noteOpen;
     render();
     if (noteOpen) pane.querySelector("#note")?.focus();
-  }, "btn quiet sm");
+  }, "btn quiet md");
   noteToggle.id = "note-toggle";
   noteToggle.setAttribute("aria-expanded", String(noteOpen));
   if (!noteOpen) tip(noteToggle, t("card.noteTip"), "n"); // open, the field under it says the same, and a tip would cover its Send

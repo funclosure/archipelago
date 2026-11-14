@@ -10,6 +10,7 @@ import { DEMO_LANG } from "./demo-model.js";
 import { pinButton } from "./pin.js";
 import { resolveLang } from "./code-model.js";
 import { t } from "./i18n.js";
+import { tip } from "./tip.js";
 
 const nodeCache = new Map(); // diagram source → parsed SVG node, cloned on repeat appends
 const pending = new Map(); // diagram source → in-flight render promise, shared across frames
@@ -129,8 +130,8 @@ function appendTermed(parent, text, terms) {
     const span = document.createElement("span");
     span.className = "term";
     span.dataset.lm = run.slug;
-    span.title = run.name;
     span.textContent = run.text;
+    tip(span, run.name);
     parent.append(span);
   }
 }
@@ -154,8 +155,8 @@ function askSpan(run, onQuestion, terms) {
   span.className = "ask";
   span.setAttribute("role", "button");
   span.tabIndex = 0;
-  span.title = t("markdown.answerThis");
   appendInline(span, inlineSegments(run.text), terms);
+  tip(span, t("markdown.answerThis"));
   const fire = () => onQuestion(run.text.trim());
   span.addEventListener("click", fire);
   span.addEventListener("keydown", (e) => {
