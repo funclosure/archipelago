@@ -542,7 +542,7 @@ function drawReef(ctx, node, hair) {
   ctx.fillStyle = PALETTE.reef;
   ctx.fill();
   ctx.strokeStyle = PALETTE.sea;
-  ctx.lineWidth = Math.max(1.4, hair * 1.2);
+  ctx.lineWidth = Math.max(1.4, hair * 0.5); // its edge of bare sheet: never so wide, zoomed out, that it eats the mark
   ctx.stroke();
 }
 
@@ -566,8 +566,9 @@ function drawRollup(ctx, node, hair) {
     }
     ctx.beginPath();
     ctx.arc(m.x, m.y, r, 0, Math.PI * 2);
+    // The marks are small: their lines keep to a share of a screen pixel when zoomed out, so a mark stays a mark.
     if (m.state === "open") {
-      const w = Math.max(1, hair);
+      const w = Math.max(1, hair * 0.7);
       ctx.setLineDash([w * 1.4, w * 2.6]);
       ctx.strokeStyle = alpha(PALETTE.line, 0.55);
       ctx.lineWidth = w;
@@ -578,7 +579,7 @@ function drawRollup(ctx, node, hair) {
     ctx.fillStyle = alpha(m.state === "sandbar" ? PALETTE.sand : PALETTE.grass, ink(0.75, 0.6));
     ctx.fill();
     ctx.strokeStyle = alpha(PALETTE.line, 0.75);
-    ctx.lineWidth = Math.max(1.1, hair);
+    ctx.lineWidth = Math.max(1.1, hair * 0.6);
     ctx.stroke();
     if (m.state === "mountainous") {
       ctx.beginPath();
