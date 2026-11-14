@@ -24,8 +24,6 @@ import { toastError } from "./toast.js";
 import { canSend, withRestored, withoutStored } from "./pane-model.js";
 import { button, composerEl, el, eventEl, failedEl, failureWords, footMetaEl, fromWordsEl, keepFocus, logFollower, noticeEl, personaGlyph, roveFocus, skeletonEl, syncAnswer } from "./pane-parts.js";
 import { chartKey, chartSend, chartTray, chartTurning, closeChart, decideSketch, dropChart, focusChartAnswer, installChart, isChartOpen, openChart, renderChart, stopChartTurn } from "./chart.js";
-import { toastError } from "./toast.js";
-import { tip } from "./tip.js";
 
 const pane = document.getElementById("pane");
 const LOG_STEP = 80;            // one arrow's worth of the log
