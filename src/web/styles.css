@@ -194,6 +194,9 @@ body.pane-open .chrome { right: var(--pane-w); }
 .pane { position: fixed; top: 0; right: 0; bottom: 0; width: var(--pane-w); background: var(--panel);
   border-left: 1px solid var(--line); display: flex; flex-direction: column; box-shadow: -12px 0 32px var(--shadow-soft); z-index: 2; }
 .pane[hidden] { display: none; }
+/* The pane arrives in one short step from its own edge (its root stays in the page, so a redraw never replays it). */
+@media (min-width: 721px) and (prefers-reduced-motion: no-preference) { .pane { animation: pane-in var(--t-med) var(--ease); } }
+@keyframes pane-in { from { transform: translateX(14px); opacity: 0; } }
 @media (max-width: 720px) { .pane { width: 100%; } }
 
 .head { padding: 18px 20px 12px; border-bottom: 1px solid var(--line); display: grid; gap: 8px; }
