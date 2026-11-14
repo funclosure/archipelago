@@ -240,7 +240,8 @@ function galleryView(card) {
     row.append(mapIcon(entry), words);
     list.append(row);
   }
-  card.append(list);
+  const unread = !state.maps && Boolean(state.error); // the index could not be read: say so, and offer to read it again
+  if (!unread) card.append(list);
   if (state.error) card.append(el("p", "error", state.error));
   const back = button(t("newDomain.back"), () => showGallery(false), "btn ghost", "back");
   back.disabled = state.saving;
@@ -250,7 +251,17 @@ function galleryView(card) {
   all.rel = "noopener";
   all.dataset.key = "all-maps";
   all.append(icon("external", { size: 14 }));
-  card.append(dialogFoot([back], [all]));
+  const actions = [all];
+  if (unread) {
+    const retry = button(t("newDomain.tryAgain"), () => {
+      Object.assign(state, { error: null, galleryFailed: false });
+      render();
+      void loadGallery();
+    }, "btn", "retry");
+    retry.dataset.autofocus = "";
+    actions.push(retry);
+  }
+  card.append(dialogFoot([back], actions));
 }
 
 /** A new domain from a map file's text: the app checks it, and says in words what is wrong with one it refuses. */
@@ -428,6 +439,7 @@ function draw() {
   root.hidden = !state.open;
   root.classList.toggle("first", state.first);
   // With no domains yet this is the page itself, never a dialog: no veil, no trap, nothing behind it to quiet.
+  root.setAttribute("role", state.first ? "main" : "dialog");
   showDialog(root, state.open && !state.first, { close: leave, submit: () => void submit() });
   root.replaceChildren();
   if (!state.open) return;
