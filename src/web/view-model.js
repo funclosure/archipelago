@@ -233,39 +233,51 @@ export const HINTS = {
   unexplored: t("viewModel.hintUnexplored"),
 };
 
-/** The strip's cells for a snapshot in a lens: `[{ label, value, hint }]`. */
+/**
+ * The strip's cells for a snapshot in a lens: `[{ key, label, value, hint, parts?, empty? }]`. `key` names the cell
+ * whatever its label says (the page keeps a cell's element by it). `parts` is what a cell lists, in order, as
+ * `{ name, slug? }`: one with a slug is an island at this scale, so the page can make its name the way to it; a
+ * strait has none. `value` is the same list as one line. `empty` marks a value that says there is nothing to list.
+ */
 export function stripItems(s, lens = "judge") {
-  const nameOf = (slug) => s.islands.find((i) => i.slug === slug)?.name ?? slug;
+  const part = (slug) => {
+    const island = s.islands.find((i) => i.slug === slug);
+    return island ? { slug, name: island.name } : { name: slug };
+  };
+  const listed = (key, label, hint, parts, none) =>
+    parts.length ? { key, label, value: parts.map((p) => p.name).join(" · "), hint, parts } : { key, label, value: none, hint, empty: true };
   const items = [];
   if (s.harbour) {
     const h = s.islands.find((i) => i.slug === s.harbour);
     const charted = Boolean(h && h.verdict);
-    items.push({ label: charted ? t("viewModel.homePort") : t("viewModel.setOutFrom"), value: nameOf(s.harbour), hint: charted ? HINTS.homePort : HINTS.harbour });
+    items.push(listed("harbour", charted ? t("viewModel.homePort") : t("viewModel.setOutFrom"), charted ? HINTS.homePort : HINTS.harbour, [part(s.harbour)]));
   }
   if (lens === "mentor") {
     const total = s.islands.reduce((n, i) => n + (i.landmarks?.total ?? 0), 0);
     const explored = s.islands.reduce((n, i) => n + (i.landmarks?.explored ?? 0), 0);
-    items.push({ label: t("viewModel.explored"), value: total ? t("viewModel.exploredCount", { explored, total }) : t("viewModel.noLandmarks"), hint: HINTS.explored });
-    const fresh = s.islands.filter((i) => !(i.landmarks?.explored > 0)).slice(0, 4).map((i) => i.name);
-    items.push({ label: t("viewModel.notYetExplored"), value: fresh.length ? fresh.join(" · ") : t("viewModel.noneAtScale"), hint: HINTS.unexplored });
+    items.push(total
+      ? { key: "explored", label: t("viewModel.explored"), value: t("viewModel.exploredCount", { explored, total }), hint: HINTS.explored }
+      : { key: "explored", label: t("viewModel.explored"), value: t("viewModel.noLandmarks"), hint: HINTS.explored, empty: true });
+    const fresh = s.islands.filter((i) => !(i.landmarks?.explored > 0)).slice(0, 4).map((i) => ({ slug: i.slug, name: i.name }));
+    items.push(listed("unexplored", t("viewModel.notYetExplored"), HINTS.unexplored, fresh, t("viewModel.noneAtScale")));
   } else {
-    const open = s.nearestOpenWater.slice(0, 4).map(nameOf);
-    items.push({ label: t("viewModel.nearestOpenWater"), value: open.length ? open.join(" · ") : t("viewModel.noneAtScale"), hint: HINTS.openWater });
-    const reefs = s.reefs.map((r) => (r.startsWith("island:") ? nameOf(r.slice(7)) : r.startsWith("strait:") ? t("viewModel.strait", { name: r.slice(7) }) : r));
-    items.push({ label: t("viewModel.reefs"), value: reefs.length ? reefs.join(" · ") : t("viewModel.noneCharted"), hint: HINTS.reefs });
+    items.push(listed("openWater", t("viewModel.nearestOpenWater"), HINTS.openWater, s.nearestOpenWater.slice(0, 4).map(part), t("viewModel.noneAtScale")));
+    const reefs = s.reefs.map((r) => (r.startsWith("island:") ? part(r.slice(7)) : { name: r.startsWith("strait:") ? t("viewModel.strait", { name: r.slice(7) }) : r }));
+    items.push(listed("reefs", t("viewModel.reefs"), HINTS.reefs, reefs, t("viewModel.noneCharted")));
   }
   return items;
 }
 
 /**
  * The dock at the map's bottom right: an icon each for the two conversations that are not about one island,
- * `[{ action, label, pending }]`; the label shows on hover. The mentor's guide (where to begin) at the top of a
- * charted domain, then the cartographer at this scale, whose label names a pending sketch when there is one.
+ * `[{ action, label, pending, key }]`; the label shows on hover or focus, and `key` is the key that opens it from
+ * the bare map. The mentor's guide (where to begin) at the top of a charted domain, then the cartographer at this
+ * scale, whose label names a pending sketch when there is one.
  */
 export function dockItems(s) {
   const items = [];
-  if (!s.scale?.path?.length && s.islands.length) items.push({ action: "guide", label: t("viewModel.dockGuide"), pending: false });
+  if (!s.scale?.path?.length && s.islands.length) items.push({ action: "guide", label: t("viewModel.dockGuide"), pending: false, key: "g" });
   const sketch = s.sketch ? sketchSummary(s.sketch.body, s.islands) : null;
-  items.push({ action: "chart", label: sketch ? t("viewModel.dockSketch", { summary: sketch }) : t("viewModel.dockChart"), pending: Boolean(sketch) });
+  items.push({ action: "chart", label: sketch ? t("viewModel.dockSketch", { summary: sketch }) : t("viewModel.dockChart"), pending: Boolean(sketch), key: "c" });
   return items;
 }

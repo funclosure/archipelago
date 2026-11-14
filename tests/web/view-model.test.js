@@ -94,25 +94,47 @@ test("stripItems: harbour, open water, reefs, and the cartographer, each with a 
   expect(plain.every((i) => typeof i.hint === "string" && i.hint.length > 20)).toBe(true);
 
   const charted = stripItems({ ...base, harbour: "caching", nearestOpenWater: [], reefs: ["island:db", "strait:caching~db"], sketch: null });
-  expect(charted[0]).toEqual({ label: "Home port", value: "caching", hint: HINTS.homePort });
+  expect(charted[0]).toEqual({ key: "harbour", label: "Home port", value: "caching", hint: HINTS.homePort, parts: [{ slug: "caching", name: "caching" }] });
   expect(charted[1].value).toBe("none at this scale");
   expect(charted[2].value).toBe("db · strait caching~db");
-  expect(stripItems({ ...base, harbour: "queues", nearestOpenWater: [], reefs: [], sketch: null })[0]).toEqual({ label: "Set out from", value: "queues", hint: HINTS.harbour });
+  expect(stripItems({ ...base, harbour: "queues", nearestOpenWater: [], reefs: [], sketch: null })[0]).toEqual({ key: "harbour", label: "Set out from", value: "queues", hint: HINTS.harbour, parts: [{ slug: "queues", name: "queues" }] });
+});
 
+test("stripItems: a cell keeps its key whatever its label, lists islands as parts the page can open, and marks a value that says there is nothing", () => {
+  const verdict = { state: "settled", confidence: 0.8 };
+  const named = (slug, name, v = null) => ({ ...island(slug, v), name });
+  const base = snapshot([named("caching", "Caching", verdict), named("queues", "Queues"), named("db", "Databases")]);
+  const s = { ...base, harbour: "caching", nearestOpenWater: ["queues", "db"], reefs: ["island:db", "strait:caching~db", "gone"], sketch: null };
+  const cells = stripItems(s);
+  expect(cells.map((c) => c.key)).toEqual(["harbour", "openWater", "reefs"]);
+  // the harbour's cell is the same cell before and after it is charted, though its label changes
+  expect(stripItems({ ...s, islands: s.islands.map((i) => ({ ...i, verdict: null })) })[0]).toMatchObject({ key: "harbour", label: "Set out from" });
+  expect(cells[1].parts).toEqual([{ slug: "queues", name: "Queues" }, { slug: "db", name: "Databases" }]);
+  expect(cells[1].value).toBe("Queues · Databases");
+  // a reef on an island leads to the island; a strait, or anything else, is only words
+  expect(cells[2].parts).toEqual([{ slug: "db", name: "Databases" }, { name: "strait caching~db" }, { name: "gone" }]);
+  expect(cells.some((c) => c.empty)).toBe(false);
+  // a slug that is no island at this scale is named, never linked
+  expect(stripItems({ ...s, nearestOpenWater: ["elsewhere"] })[1].parts).toEqual([{ name: "elsewhere" }]);
+
+  const bare = stripItems({ ...base, harbour: null, nearestOpenWater: [], reefs: [], sketch: null });
+  expect(bare.map((c) => [c.key, c.value, c.empty, c.parts])).toEqual([["openWater", "none at this scale", true, undefined], ["reefs", "none charted", true, undefined]]);
+  // at most four islands are named, nearest first
+  expect(stripItems({ ...s, nearestOpenWater: ["queues", "db", "caching", "queues", "db"] })[1].parts).toHaveLength(4);
 });
 
 test("dockItems: the guide at the top of a charted domain, then the cartographer, naming a pending sketch", () => {
   const base = { ...snapshot([island("caching"), island("queues"), island("db")]), harbour: null, nearestOpenWater: [], reefs: [], sketch: null };
   expect(dockItems(base)).toEqual([
-    { action: "guide", label: "Not sure where to begin? Ask the mentor", pending: false },
-    { action: "chart", label: "Ask the cartographer to sketch or change", pending: false },
+    { action: "guide", label: "Not sure where to begin? Ask the mentor", pending: false, key: "g" },
+    { action: "chart", label: "Ask the cartographer to sketch or change", pending: false, key: "c" },
   ]);
   // The guide is the domain's: offered at the top scale only, and only once there are islands.
   expect(dockItems({ ...base, scale: { path: [{ slug: "caching", name: "Caching" }] } }).map((i) => i.action)).toEqual(["chart"]);
   expect(dockItems({ ...base, islands: [] }).map((i) => i.action)).toEqual(["chart"]);
   const body = { islands: [{ slug: "q", name: "Queues", summary: "s", landmarks: [] }], straits: [{ from: "q", to: "db" }], updates: [], harbour: undefined };
   const sketched = dockItems({ ...base, sketch: { id: 1, body, messageId: null } });
-  expect(sketched[1]).toEqual({ action: "chart", label: "Sketch to approve · 1 island · 1 strait", pending: true });
+  expect(sketched[1]).toEqual({ action: "chart", label: "Sketch to approve · 1 island · 1 strait", pending: true, key: "c" });
 });
 
 test("a landmark is lit in the judge's lens by the judge, in the mentor's by being explored", () => {
@@ -158,9 +180,9 @@ test("stripItems in the mentor lens counts explored landmarks and names islands 
   };
   const items = stripItems(s, "mentor");
   expect(items.map((i) => i.label)).toEqual(["Explored", "Not yet explored"]);
-  expect(items[0]).toEqual({ label: "Explored", value: "2 of 8 landmarks", hint: HINTS.explored });
-  expect(items[1]).toEqual({ label: "Not yet explored", value: "queues · db", hint: HINTS.unexplored });
-  expect(stripItems({ ...s, islands: [island("x")] }, "mentor")[0].value).toBe("no landmarks yet");
+  expect(items[0]).toEqual({ key: "explored", label: "Explored", value: "2 of 8 landmarks", hint: HINTS.explored });
+  expect(items[1]).toEqual({ key: "unexplored", label: "Not yet explored", value: "queues · db", hint: HINTS.unexplored, parts: [{ slug: "queues", name: "queues" }, { slug: "db", name: "db" }] });
+  expect(stripItems({ ...s, islands: [island("x")] }, "mentor")[0]).toMatchObject({ value: "no landmarks yet", empty: true });
   expect(stripItems(s).map((i) => i.label)).toEqual(["Nearest open water", "Reefs"]); // the judge's lens is unchanged
 });
 
