@@ -176,6 +176,6 @@ export function renderGuideContext(ctx: GuideContext): string {
 
 /** The guide's thread as the turn's prompt. */
 export function renderGuideThreadPrompt(thread: ThreadMessage[], asks: Ask[] = []): string {
-  if (thread.length === 0) return "Open the guide: welcome the reader to this map in a line, then ask where they stand.";
-  return [...renderReplay(thread, asks), "", "Continue as the mentor."].join("\n");
+  if (thread.length === 0) return "Open the guide: welcome the reader to this map in a line, then ask where they stand in one question (one sentence, one question mark).";
+  return [...renderReplay(thread, asks), "", "Continue as the mentor: every tool call first, then the reply, which asks at most one question (one sentence, one question mark)."].join("\n");
 }
