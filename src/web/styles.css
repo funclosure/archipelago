@@ -185,7 +185,9 @@ kbd { display: inline-block; box-sizing: border-box; min-width: 18px; padding: 0
 #map.hover { cursor: pointer; }
 
 /* ---- the header over the map (chrome.js): bare words on the water, never a bar ---- */
-.chrome { position: fixed; left: var(--outline-w); right: 0; display: flex; padding: 18px var(--sp-5) var(--sp-4); pointer-events: none; transition: left var(--t-med) var(--ease), right var(--t-med) var(--ease); }
+/* Its left edge eases with the outline's width. Its right edge does not ease: the pane arrives and leaves at its
+   own edge at once, and the lens at the header's right end must be in its corner at once, never slide to it. */
+.chrome { position: fixed; left: var(--outline-w); right: 0; display: flex; padding: 18px var(--sp-5) var(--sp-4); pointer-events: none; transition: left var(--t-med) var(--ease); }
 body.pane-open .chrome { right: var(--pane-w); }
 .top { top: 0; }
 /* The wash: the sea's own colour behind the header, thinning out below it. Whatever the reader pans up under the
