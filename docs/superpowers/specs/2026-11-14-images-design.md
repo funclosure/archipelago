@@ -119,7 +119,10 @@ Conformance gets one scripted turn with an image: a B-tree lookup drawn as a PNG
 
 - **The proxy** (private `archipelago-proxy`) refused requests over `MAX_BODY = 512 KB`, which one screenshot can approach. Raised to 8 MB in that repo (archipelago-proxy #8), shipped first. Anthropic's own limit is 32 MB.
 - **Cost.** An image costs about (w × h) / 750 tokens: a 1568 × 980 screenshot is about 2k tokens, every turn it stays in view. The budget of four bounds it. No change to pricing; the foot's balance already shows what a turn spent.
-- **Privacy and terms.** `privacy.html` says images are sent to the model provider with the conversation and kept only in the reader's browser (hosted) or database (local). The proxy stores none, only its ledger. Bump `updated` on both pages (CLAUDE.md: change the page with the behaviour).
+- **Privacy and terms** (done 2026-11-14, both languages):
+  - `privacy.html` says images stay in the browser with the conversations, and that the newest few in a conversation go to the model with a turn (older and removed ones do not). The ledger never holds an image.
+  - `terms.html` says images are sent with messages, and adds one line to acceptable use: attach only images you have the right to share, and none showing other people's private information.
+  - `updated` on both pages is 14 November 2026.
 - **CSP.** No change: `img-src 'self' data: blob:` already covers it, and nothing loads from elsewhere.
 
 ## Out of scope for v1
