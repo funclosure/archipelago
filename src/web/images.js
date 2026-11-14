@@ -6,6 +6,8 @@ import { app, api, refresh } from "./app.js";
 import { request } from "./transport.js";
 import { registerRegion, region, setRegion } from "./keys.js";
 import { t } from "./i18n.js";
+import { icon } from "./icons.js";
+import { tip } from "./tip.js";
 import { IMAGE_BYTES_MAX, PRUNE_AGES, QUALITY, QUALITY_LOW, admit, fitWithin, formatBytes, isStorageFull, keepAsIs, thumbBox } from "./image-model.js";
 
 function el(tag, className, text) {
@@ -238,11 +240,13 @@ export function trayEl(tray) {
     fig.append(img);
     if (item.status === "preparing" || item.status === "uploading") fig.append(el("span", "tray-state", t(item.status === "preparing" ? "images.preparing" : "images.uploading")));
     if (item.status === "failed") {
-      fig.title = item.error;
+      tip(fig, item.error);
       fig.append(el("span", "tray-state", t("images.failed")));
     }
-    const x = button("×", () => tray.remove(item.key), "tray-x");
+    const x = button(null, () => tray.remove(item.key), "tray-x");
+    x.dataset.fk = `tray-x-${item.key}`;
     x.setAttribute("aria-label", t("images.trayRemove", { name: item.name || t("images.alt") }));
+    x.append(icon("close", { size: 10 }));
     fig.append(x);
     box.append(fig);
   }
@@ -252,31 +256,15 @@ export function trayEl(tray) {
   return box;
 }
 
-/** A paper clip, as SVG nodes. */
-function clipIcon() {
-  const ns = "http://www.w3.org/2000/svg";
-  const svg = document.createElementNS(ns, "svg");
-  svg.setAttribute("viewBox", "0 0 20 20");
-  svg.setAttribute("aria-hidden", "true");
-  const path = document.createElementNS(ns, "path");
-  path.setAttribute("d", "M13.5 6.5 7.8 12.2a1.6 1.6 0 0 0 2.3 2.3l6-6a3.2 3.2 0 0 0-4.5-4.5l-6.2 6.2a4.8 4.8 0 0 0 6.8 6.8l5-5");
-  path.setAttribute("fill", "none");
-  path.setAttribute("stroke", "currentColor");
-  path.setAttribute("stroke-width", "1.5");
-  path.setAttribute("stroke-linecap", "round");
-  path.setAttribute("stroke-linejoin", "round");
-  svg.append(path);
-  return svg;
-}
-
 /** The attach button beside Send: a file picker for images (a phone offers its camera too). */
 export function attachButton(tray, disabled = false) {
-  const b = el("button", "btn ghost attach");
+  const b = el("button", "btn quiet icon attach");
   b.type = "button";
-  b.title = t("images.attach");
+  b.dataset.fk = "attach";
   b.setAttribute("aria-label", t("images.attach"));
+  tip(b, t("images.attach"));
   b.disabled = disabled;
-  b.append(clipIcon());
+  b.append(icon("clip"));
   b.addEventListener("click", () => {
     const input = el("input");
     input.type = "file";

@@ -197,6 +197,8 @@ function onKeydown(e) {
   }
   if (isTyping(e.target)) return; // the field owns its keys
   if (e.metaKey || e.ctrlKey || e.altKey) return; // browser shortcuts stay the browser's
+  // A control in the pane that holds the keyboard (← and → walk them) keeps its own Enter and Space: they press it.
+  if ((e.key === "Enter" || e.key === " ") && e.target?.closest?.("#pane :is(button, [role='button'], summary)")) return;
   if (e.key === "?") {
     e.preventDefault();
     toggleSheet();

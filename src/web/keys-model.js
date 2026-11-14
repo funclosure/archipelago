@@ -84,11 +84,11 @@ export function moveCursor(rows, cursorSlug, key) {
 
 const k = (key) => t(`keysModel.${key}`);
 const EVERYWHERE = [["Tab", k("nextRegion")], ["⇧Tab", k("previousRegion")], ["[", k("outlineKey")], ["/", k("answer")], ["b", k("boardKey")], ["m", k("mode")], ["t", k("theme")], ["?", k("keys")], ["Esc", k("back")]];
-const CHART_KEYS = { title: k("cartographer"), keys: [["↵ /", k("answer")], ["l", k("startSketch")], ["⌘↵", k("approveSketch")], ["↑ ↓", k("scroll")], ["Esc", k("close")]] };
+const CHART_KEYS = { title: k("cartographer"), keys: [["↵ /", k("answer")], ["l", k("startSketch")], ["⌘↵", k("approveSketch")], ["g", k("followPointer")], ["↑ ↓", k("scroll")], ["← →", k("controls")], ["Esc", k("close")]] };
 const REGION_KEYS = {
   outline: { title: k("outline"), keys: [["↓ j", k("move")], ["↑ k", k("move")], ["↵", k("select")], ["→ ←", k("expandCollapse")], ["Home End", k("firstLast")], ["n", k("newDomain")]] },
   map: { title: k("map"), keys: [["↵", k("select")], ["← → ↑ ↓", k("pan")], ["+ −", k("zoom")], ["0", k("home")], ["Esc", k("deselect")], [k("doubleClickWater"), k("nameSea")], ["Del", k("removeSea")], [k("shiftClick"), k("gather")], [k("shiftDragWater"), k("gatherBox")], [k("dragGathered"), k("moveTogether")]] },
-  pane: { title: k("pane"), keys: [["↵ /", k("answer")], ["l", k("landfall")], ["n", k("note")], ["1–4", k("pickOption")], ["c", k("confirmReef")], ["d", k("dispute")], ["↑ ↓", k("scroll")], ["⌘↵", k("send")]] },
+  pane: { title: k("pane"), keys: [["↵ /", k("answer")], ["l", k("landfall")], ["1–4", k("pickOption")], ["c", k("confirmReef")], ["d", k("dispute")], ["s", k("sailCloser")], ["g", k("followPointer")], ["n", k("note")], ["r", k("retry")], ["↑ ↓", k("scroll")], ["← →", k("controls")], ["⌘↵", k("send")]] },
   board: { title: k("board"), keys: [["↓ j", k("move")], ["↑ k", k("move")], ["↵", k("edit")], ["⇧J ⇧K", k("moveCard")], ["d n c p", k("addCard")], ["x", k("remove")], ["⌘↵", k("save")], ["b", k("mapKey")]] },
 };
 const EVERYWHERE_SECTION = { title: k("everywhere"), keys: EVERYWHERE };

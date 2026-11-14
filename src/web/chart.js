@@ -1,20 +1,26 @@
 // The cartographer's pane: one thread per scale, the pending sketch as a card, and the turn in flight. The same pane
 // holds the guide (`mode: "guide"`): the mentor before any island, one thread per domain, whose replies carry
-// "Sail to" cards instead of a sketch. card.js owns #pane and hands it over while either is open.
+// "Sail to" cards instead of a sketch. card.js owns #pane and hands it over while either is open. Head, log and foot
+// are the island pane's own parts (pane-parts.js): the same composer, the same notices, the same redraw that keeps
+// what has not changed.
 import { app, api, refresh, frameSelection } from "./app.js";
 import { streamPost } from "./stream.js";
-import { renderMarkdown } from "./markdown.js";
+import { renderMarkdown, markdownBlocks } from "./markdown.js";
 import { select } from "./interactions.js";
-import { isImeKey } from "./keys-model.js";
 import { chartOpening, sketchRows, sketchSummary } from "./chart-model.js";
 import { thinkingLine } from "./progress-model.js";
 import { thinkingEl } from "./thinking.js";
 import { systemText } from "./thread.js";
 import { t } from "./i18n.js";
-import { modelEl } from "./model-label.js";
-import { attachButton, createTray, messageImagesEl, pastedImages, trayEl } from "./images.js";
+import { modelEl, modelSig } from "./model-label.js";
+import { createTray, messageImagesEl } from "./images.js";
+import { keyedChildren } from "./keep.js";
+import { icon } from "./icons.js";
+import { tip } from "./tip.js";
+import { toastError } from "./toast.js";
+import { canSend, withRestored } from "./pane-model.js";
+import { button, composerEl, el, eventEl, failedEl, failureWords, footMetaEl, keepFocus, logFollower, noticeEl, personaGlyph, roveFocus, skeletonEl, syncAnswer } from "./pane-parts.js";
 
-const STICK_PX = 40;
 const LOG_STEP = 80;
 const SCROLL_BY = {
   ArrowDown: () => LOG_STEP,
@@ -46,17 +52,25 @@ let loadGen = 0;
 let turnAbort = null;
 let liveFrame = 0;
 let composing = false;
+let logGen = 0;       // bumped when every reply must be drawn again (a theme change)
 let rerender = () => {};
 let sail = () => {};
+let gripEl = null;    // the pane's grip is card.js's; the cartographer's pane resizes the same way
+const follow = logFollower();
 /** The images attached to the draft in this pane's answer box (a syllabus for the cartographer, a screenshot for the guide). */
 const tray = createTray(() => rerender());
 /** The tray images dropped on the pane go to, while this pane shows (card.js owns the drop). */
 export const chartTray = () => tray;
 
-/** card.js passes its render (it owns the pane) and how to sail from a guide's card (it owns the island's pane). */
-export function installChart({ render, sail: sailWith }) {
+/** card.js passes its render (it owns the pane), how to sail from a guide's card (it owns the island's pane), and the pane's grip. */
+export function installChart({ render, sail: sailWith, grip }) {
   rerender = render;
   if (sailWith) sail = sailWith;
+  if (grip) gripEl = grip;
+  document.addEventListener("theme", () => {
+    logGen++; // a diagram in a reply is drawn again in the new colours
+    if (chart.open) rerender();
+  });
 }
 
 export const isChartOpen = () => chart.open;
@@ -108,21 +122,6 @@ export function stopChartTurn() {
   return true;
 }
 
-function el(tag, className, text) {
-  const e = document.createElement(tag);
-  if (className) e.className = className;
-  if (text !== undefined) e.textContent = text;
-  return e;
-}
-
-function button(label, onClick, className = "btn") {
-  const b = el("button", className, label);
-  b.type = "button";
-  if (onClick) b.addEventListener("click", onClick);
-  return b;
-}
-
-const atBottom = (log) => log.scrollHeight - log.scrollTop - log.clientHeight < STICK_PX;
 const scaleQuery = () => (chart.scale ? `&island=${encodeURIComponent(chart.scale)}` : "");
 const scaleName = () => app.snapshot?.scale.path.at(-1)?.name ?? app.snapshot?.domain.name ?? "";
 
@@ -144,8 +143,15 @@ async function load() {
   } catch (error) {
     if (stale()) return;
     chart.deciding = false;
-    chart.loadError = error.message;
+    chart.loadError = failureWords(error);
   }
+  rerender();
+}
+
+/** Reads the thread again after a load that failed. */
+function retryLoad() {
+  chart.version = null;
+  chart.loadError = null;
   rerender();
 }
 
@@ -159,8 +165,13 @@ async function runTurn(message, sent = []) {
   const abort = new AbortController();
   turnAbort = abort;
   const images = sent.map((item) => item.image);
-  if (message || images.length) chart.messages = [...chart.messages, { id: `local-${Date.now()}`, role: "you", kind: "text", body: message ?? "", images: images.map((i) => ({ ...i, removed: false })) }];
+  const said = Boolean(message) || images.length > 0;
+  if (said) chart.messages = [...chart.messages, { id: `local-${Date.now()}`, role: "you", kind: "text", body: message ?? "", images: images.map((i) => ({ ...i, removed: false })) }];
   rerender();
+  if (said) {
+    follow.follow(); // sending is a request to watch the reply arrive
+    follow.toEnd();
+  }
   try {
     const body = { domain: app.domain, mode: chart.mode, ...(scale && !guiding() ? { island: scale } : {}), ...(message ? { message } : {}), ...(images.length ? { images: images.map((i) => i.id) } : {}) };
     await streamPost("/api/probe", body, (e) => {
@@ -179,10 +190,14 @@ async function runTurn(message, sent = []) {
   } catch (error) {
     if (turnAbort === abort) turnAbort = null;
     if (!mine()) return;
-    if (error.aborted) chart.stopped = true;
-    else chart.error = error.message;
     // Refused or stopped before the stream opened: the server stored nothing, so the words go back in the box.
-    if (message && !error.midStream) chart.draft = message;
+    const back = Boolean(message) && !error.midStream;
+    if (error.aborted) chart.stopped = true;
+    else {
+      const words = failureWords(error);
+      chart.error = back && words === t("paneParts.offline") ? t("paneParts.offlineKept") : words;
+    }
+    if (back) chart.draft = withRestored(chart.draft, message);
     if (sent.length && !error.midStream) tray.restore(sent);
   }
   if (turnAbort === abort) turnAbort = null;
@@ -194,6 +209,12 @@ async function runTurn(message, sent = []) {
   rerender();
   void refresh(); // a proposed sketch draws as drafts on the map in the same beat
   focusChartAnswer();
+}
+
+/** Runs a failed turn again: the words given back to the box if there are any, else the thread as it stands. */
+function retryTurn() {
+  if (chart.inFlight) return;
+  if (!chartSend({ approve: false })) void runTurn(null);
 }
 
 /** Approves or discards a sketch at the open scale, or at the map's scale when the bottom card asks. */
@@ -218,7 +239,8 @@ export async function decideSketch(sketchId, action) {
     await refresh();
   } catch (error) {
     chart.deciding = false;
-    chart.error = error.message;
+    // Not a line in the conversation: the button that was pressed is still there, on the card or on the map.
+    toastError(error, t(action === "approve" ? "chart.approveWhat" : "chart.discardWhat"));
     rerender();
   }
 }
@@ -237,20 +259,20 @@ function renderLive() {
   const pane = document.getElementById("pane");
   const live = pane.querySelector("#live");
   const progress = pane.querySelector("#progress");
-  const log = pane.querySelector(".log");
-  if (!live || !progress || !log) return;
-  const stuck = atBottom(log);
+  if (!live || !progress) return;
+  const stuck = follow.following;
   if (chart.inFlight && !chart.live) {
     live.replaceChildren(thinkingEl(thinkingLine(speaker(), chart.progress)));
   } else if (chart.live) {
-    live.replaceChildren(renderMarkdown(chart.live, { lead: true }));
+    // Block by block: one that has not changed keeps its element, so only the block being written is drawn again.
+    keyedChildren(live, markdownBlocks(chart.live, { lead: true }).map((b, i) => ({ key: i, sig: b.sig, build: b.build })));
   } else {
     live.replaceChildren();
   }
   live.hidden = !(chart.live || chart.inFlight);
   progress.textContent = chart.progress && chart.live ? `${thinkingLine(speaker(), chart.progress)}…` : "";
   progress.hidden = !progress.textContent;
-  if (stuck) log.scrollTop = log.scrollHeight;
+  if (stuck) follow.toEnd();
 }
 
 export function focusChartAnswer() {
@@ -263,54 +285,57 @@ export function focusChartAnswer() {
 
 // ---- the pane ----
 
-function guideHeadEl() {
+/** Whether there is a thread to draw: it has loaded, or it has words in hand. */
+const ready = () => chart.loaded || chart.inFlight || chart.messages.length > 0;
+const pendingSummary = () => (chart.sketch ? sketchSummary(chart.sketch.body, app.snapshot?.islands ?? []) : null);
+
+/** Everything the head is drawn from: it is drawn again only when this changes, so its Close button keeps the keyboard. */
+function headSig() {
+  return JSON.stringify([chart.mode, chart.scale, scaleName(), app.snapshot?.domain.name ?? "", guiding() ? null : pendingSummary()]);
+}
+
+/** The head: who this is and Close; what it does; then where it works (and, for the cartographer, the sketch waiting). */
+function headEl() {
   const head = el("div", "head");
-  const row = el("div", "row");
-  row.append(el("h2", null, t("chart.guideTitle")));
-  const pills = el("span", "pills");
-  pills.append(el("span", "pill mode mentor", app.snapshot?.domain.name ?? ""));
-  row.append(pills);
-  head.append(row);
-  head.append(el("p", "summary", t("chart.guideSummary")));
+  const titlebar = el("div", "titlebar");
+  const close = button(null, () => closeChart(), "btn quiet icon md");
+  close.append(icon("close"));
+  close.dataset.fk = "close";
+  close.setAttribute("aria-label", t("paneParts.close"));
+  tip(close, t("paneParts.close"), "Esc");
+  titlebar.append(el("h2", null, t(guiding() ? "chart.guideTitle" : "chart.title")), close);
+  head.append(titlebar);
+  head.append(el("p", "summary", t(guiding() ? "chart.guideSummary" : "chart.summary")));
   const sub = el("div", "sub");
-  sub.append(el("span"));
-  const links = el("span", "links");
-  links.append(button(t("chart.close"), () => closeChart(), "link"));
-  sub.append(links);
+  const standing = el("span", "standing");
+  if (guiding()) standing.append(el("span", "pill mode mentor", app.snapshot?.domain.name ?? ""));
+  else {
+    standing.append(el("span", "pill mode cartographer", t(chart.scale ? "chart.isletsOf" : "chart.topOf", { name: scaleName() })));
+    const waiting = pendingSummary();
+    if (waiting) standing.append(el("span", "count", t("chart.toApprove", { summary: waiting })));
+  }
+  sub.append(standing);
   head.append(sub);
   return head;
 }
 
-/** The guide's card: sail in the lens it suggests, or the other one; in the mentor's, the question goes along. */
-function guideSailEl(pointer) {
+/** The guide's card: sail in the lens it suggests, or the other one; in the mentor's, the question goes along. `latest` is the one `g` follows. */
+function guideSailEl(pointer, latest) {
   const lens = pointer.lens ?? "mentor";
   const box = el("div", `sail ${lens}`);
   const other = lens === "mentor" ? "judge" : "mentor";
-  const go = button(t(lens === "mentor" ? "chart.sailMentor" : "chart.sailKeeper", { name: pointer.island.name }), () => sail(pointer, lens), "sail-go");
-  box.append(go, el("div", "sail-why", pointer.why));
+  box.append(el("div", "sail-why", pointer.why));
   if (lens === "mentor" && pointer.question) box.append(el("div", "sail-carry", t("chart.sailCarries")));
-  const alt = button(t(other === "mentor" ? "chart.orMentor" : "chart.orKeeper"), () => sail(pointer, other), "link sail-alt");
-  box.append(alt);
+  const row = el("div", "sail-row");
+  const go = button(null, () => sail(pointer, lens), "btn md sail-go");
+  go.append(icon("arrow-right", { size: 14 }), el("span", null, t(lens === "mentor" ? "chart.sailMentor" : "chart.sailKeeper", { name: pointer.island.name })));
+  go.dataset.fk = `sail-${pointer.id}`;
+  if (latest) tip(go, t("chart.sailTip"), "g");
+  const alt = button(t(other === "mentor" ? "chart.orMentor" : "chart.orKeeper"), () => sail(pointer, other), "btn quiet md sail-alt");
+  alt.dataset.fk = `sail-alt-${pointer.id}`;
+  row.append(go, alt);
+  box.append(row);
   return box;
-}
-
-function headEl() {
-  if (guiding()) return guideHeadEl();
-  const head = el("div", "head");
-  const row = el("div", "row");
-  row.append(el("h2", null, t("chart.title")));
-  const pills = el("span", "pills");
-  pills.append(el("span", "pill mode cartographer", t(chart.scale ? "chart.isletsOf" : "chart.topOf", { name: scaleName() })));
-  row.append(pills);
-  head.append(row);
-  head.append(el("p", "summary", t("chart.summary")));
-  const sub = el("div", "sub");
-  sub.append(el("span", null, chart.sketch ? t("chart.toApprove", { summary: sketchSummary(chart.sketch.body, app.snapshot?.islands ?? []) }) : ""));
-  const links = el("span", "links");
-  links.append(button(t("chart.close"), () => closeChart(), "link"));
-  sub.append(links);
-  head.append(sub);
-  return head;
 }
 
 function sketchCard(sketch) {
@@ -343,9 +368,11 @@ function sketchCard(sketch) {
   }
   if (rows.harbour) card.append(el("div", "sec", t("chart.harbourOf", { name: rows.harbour })));
   const actions = el("div", "actions");
-  const approve = button(t("chart.approve"), () => void decideSketch(sketch.id, "approve"));
+  const approve = button(t("chart.approve"), () => void decideSketch(sketch.id, "approve"), "btn md");
   approve.id = "approve-sketch";
-  const discard = button(t("chart.discard"), () => void decideSketch(sketch.id, "discard"), "btn ghost");
+  tip(approve, t("chart.approveTip"), "⌘↵");
+  const discard = button(t("chart.discard"), () => void decideSketch(sketch.id, "discard"), "btn ghost md");
+  discard.dataset.fk = "discard-sketch";
   approve.disabled = discard.disabled = chart.deciding || chart.inFlight;
   actions.append(approve, discard);
   card.append(actions);
@@ -353,110 +380,120 @@ function sketchCard(sketch) {
 }
 
 function messageEl(m) {
-  if (m.kind === "system") return el("div", "msg system", systemText(m.body));
+  if (m.kind === "system") {
+    const { row, body } = eventEl("note");
+    body.append(el("span", "event-text", systemText(m.body)));
+    return row;
+  }
   const box = el("div", `msg ${m.role === "you" ? "you" : speaker()}`);
   if (m.images?.length) box.append(messageImagesEl(m.images));
   if (m.body || !m.images?.length) box.append(renderMarkdown(m.body, m.role === "you" ? {} : { lead: true }));
   return box;
 }
 
-function logEl() {
-  const log = el("div", "log");
-  if (!chart.loaded) {
-    log.append(el("p", chart.loadError ? "error" : "muted", chart.loadError ?? t("chart.loading")));
-    return log;
+/** Before the first words: what this pane is for, and the button that starts it (where there is one). */
+function openingEl() {
+  const opening = guiding() ? { text: t("chart.guideOpening"), action: t("chart.guideStart") } : chartOpening(app.snapshot);
+  const box = el("div", `briefing ${speaker()}`);
+  box.append(personaGlyph(speaker()), el("p", "lede", opening.text));
+  if (opening.action) {
+    const b = button(opening.action, () => void runTurn(null), "btn xl start");
+    b.id = "landfall";
+    tip(b, t("chart.startTip"), "l");
+    box.append(b);
   }
-  if (chart.loadError) log.append(el("p", "muted", t("chart.refreshFailed", { error: chart.loadError })));
+  return box;
+}
+
+/** The log's children, in order. A keyed entry (a message, the sketch, a notice) keeps its element until its content changes. */
+function logEntries() {
+  const out = [];
+  if (!ready()) {
+    if (chart.loadError) out.push({ key: "failed", sig: chart.loadError, build: () => failedEl(t("paneParts.loadFailed"), chart.loadError, retryLoad) });
+    else out.push({ key: "skeleton", sig: "", build: skeletonEl });
+    return out;
+  }
   if (chart.messages.length === 0 && !chart.inFlight && app.snapshot) {
-    const opening = guiding() ? { text: t("chart.guideOpening"), action: t("chart.guideStart") } : chartOpening(app.snapshot);
-    const empty = el("div", "empty");
-    empty.append(el("p", "muted", opening.text));
-    if (opening.action) {
-      const b = button(opening.action, () => void runTurn(null));
-      b.id = "landfall";
-      empty.append(b);
-    }
-    log.append(empty);
+    out.push({ key: "opening", sig: JSON.stringify([chart.mode, chart.scale, app.snapshot.islands.length, scaleName()]), build: openingEl });
   }
+  const names = (app.snapshot?.islands ?? []).map((i) => [i.slug, i.name]);
+  const sketchEntry = () => out.push({ key: `sketch:${chart.sketch.id}`, sig: JSON.stringify([chart.sketch, chart.deciding, chart.inFlight, names]), build: () => sketchCard(chart.sketch) });
+  const lastPointer = chart.pointers.at(-1)?.id ?? null;
   let placed = false;
   for (const m of chart.messages) {
-    log.append(messageEl(m));
-    for (const p of chart.pointers) if (p.messageId === m.id) log.append(guideSailEl(p));
+    out.push({ key: `m:${m.id}`, sig: JSON.stringify([logGen, m, speaker()]), build: () => messageEl(m) });
+    for (const p of chart.pointers) {
+      if (p.messageId === m.id) out.push({ key: `sail:${p.id}`, sig: JSON.stringify([p, p.id === lastPointer]), build: () => guideSailEl(p, p.id === lastPointer) });
+    }
     if (chart.sketch && chart.sketch.messageId === m.id) {
-      log.append(sketchCard(chart.sketch));
+      sketchEntry();
       placed = true;
     }
   }
-  if (chart.sketch && !placed) log.append(sketchCard(chart.sketch)); // proposed in a turn whose reply was not kept
-  const live = el("div", `msg ${speaker()}`);
-  live.id = "live";
-  live.hidden = true;
-  const progress = el("div", "progress");
-  progress.id = "progress";
-  progress.hidden = true;
-  log.append(live, progress);
-  if (chart.stopped) log.append(el("div", "stopped", t("chart.stopped")));
-  if (chart.error) log.append(el("div", "error", chart.error));
+  if (chart.sketch && !placed) sketchEntry(); // proposed in a turn whose reply was not kept
+  // The reply as it streams: kept across redraws, so its blocks are not drawn again mid-reply.
+  out.push({ key: "live", sig: speaker(), build: () => {
+    const live = el("div", `msg ${speaker()}`);
+    live.id = "live";
+    live.hidden = true;
+    return live;
+  } });
+  out.push({ key: "progress", sig: "", build: () => {
+    const progress = el("div", "progress");
+    progress.id = "progress";
+    progress.hidden = true;
+    return progress;
+  } });
+  if (chart.stopped) out.push({ key: "stopped", sig: "", build: () => noticeEl(t("paneParts.stopped"), { alert: false }) });
+  if (chart.error) out.push({ key: "turn-error", sig: chart.error, build: () => noticeEl(chart.error, { action: { label: t("paneParts.tryAgain"), run: retryTurn, keys: "r" } }) });
+  // The words above are the last good ones; only reading them again failed.
+  if (chart.loadError) out.push({ key: "stale", sig: chart.loadError, build: () => noticeEl(t("paneParts.refreshFailed", { why: chart.loadError }), { action: { label: t("paneParts.retry"), run: retryLoad, keys: "r" } }) });
+  return out;
+}
+
+/** The log, drawn into the one already on the page when it is this thread's, so what has not changed keeps its element. */
+function logEl(prev = null) {
+  const of = `chart:${chart.mode}/${chart.scale ?? ""}`;
+  const log = prev && prev.dataset.thread === of ? prev : el("div", "log");
+  follow.adopt(log);
+  log.dataset.thread = of;
+  keyedChildren(log, logEntries());
+  follow.watch();
   return log;
+}
+
+/** Everything the foot is drawn from but the draft's words, which live in the box. */
+function footSig() {
+  return JSON.stringify([chart.mode, ready(), chart.deciding, chartTurning(), Boolean(chart.sketch), tray.items.map((i) => [i.key, i.status]), tray.notice, modelSig()]);
 }
 
 function footEl() {
   const foot = el("div", "foot");
-  const form = el("form");
-  form.id = "answer-form";
-  const ta = el("textarea");
-  ta.id = "answer";
-  ta.rows = 1;
-  ta.disabled = !chart.loaded || chart.deciding;
-  ta.placeholder = t(guiding() ? "chart.guidePlaceholder" : chart.sketch ? "chart.placeholderSketch" : "chart.placeholder");
-  ta.value = chart.draft;
-  ta.addEventListener("input", () => {
-    chart.draft = ta.value;
-    ta.style.height = "auto";
-    ta.style.height = `${ta.scrollHeight}px`;
-  });
-  ta.addEventListener("compositionstart", () => (composing = true));
-  ta.addEventListener("compositionend", () => {
-    composing = false;
-    chart.draft = ta.value;
-  });
-  ta.addEventListener("keydown", (e) => {
-    if (isImeKey(e)) return;
-    if (e.key === "Enter" && !e.shiftKey && !e.metaKey) {
-      e.preventDefault();
-      form.requestSubmit();
-    }
-  });
-  ta.addEventListener("paste", (e) => {
-    const files = pastedImages(e);
-    if (files.length) tray.add(files);
-  });
-  form.append(ta, attachButton(tray, ta.disabled));
-  if (chart.inFlight && turnAbort) {
-    const stop = button(t("chart.stop"), () => stopChartTurn(), "btn ghost");
-    stop.id = "stop";
-    form.append(stop);
-  } else {
-    const send = button(t("chart.send"), null, `btn send ${speaker()}`);
-    send.type = "submit";
-    send.disabled = ta.disabled || tray.busy();
-    form.append(send);
-  }
-  form.addEventListener("submit", (e) => {
-    e.preventDefault();
-    const body = ta.value.trim();
-    if ((!body && tray.ready().length === 0) || chart.inFlight || tray.busy()) return;
-    chart.draft = "";
-    void runTurn(body, tray.take());
-  });
-  const shelf = trayEl(tray);
-  if (shelf) foot.append(shelf);
-  foot.append(form);
-  const meta = el("div", "meta");
-  meta.append(el("span", null, t(chart.inFlight ? "chart.metaStop" : chart.sketch ? "chart.metaSketch" : "chart.metaSend")));
-  const model = modelEl();
-  if (model) meta.append(model);
-  foot.append(meta);
+  const streaming = chartTurning();
+  foot.append(composerEl({
+    value: chart.draft,
+    placeholder: t(guiding() ? "chart.guidePlaceholder" : chart.sketch ? "chart.placeholderSketch" : "chart.placeholder"),
+    disabled: !ready() || chart.deciding,
+    tray,
+    action: streaming ? "stop" : "send",
+    onInput(value) {
+      chart.draft = value;
+    },
+    onCompose(on) {
+      composing = on;
+      if (!on) setTimeout(() => !composing && rerender(), 0); // a redraw held back while the word was composed
+    },
+    onStop: () => stopChartTurn(),
+    onSubmit(body) {
+      if ((!body && tray.ready().length === 0) || chart.inFlight || tray.busy()) return;
+      chart.draft = "";
+      void runTurn(body, tray.take());
+    },
+  }));
+  const hint = streaming
+    ? { typing: t("paneParts.hintStop") }
+    : { typing: t(chart.sketch && !guiding() ? "chart.metaSketch" : "paneParts.hintSend"), idle: t("paneParts.hintWrite") };
+  foot.append(footMetaEl(hint, [modelEl()]));
   return foot;
 }
 
@@ -466,47 +503,60 @@ export function renderChart(pane) {
   const scale = app.scale ?? null;
   if (!guiding() && chart.scale !== scale) reset(scale); // the breadcrumb or the outline moved the map: the cartographer follows (the guide is the domain's)
   if (chart.version !== app.version) void load();
-  const hadFocus = document.activeElement?.id === "answer";
-  const caret = hadFocus ? [document.activeElement.selectionStart, document.activeElement.selectionEnd] : null; // a repaint never moves it
-  const prevLog = pane.querySelector(".log");
-  const stuck = !prevLog || atBottom(prevLog);
+  const prevLog = pane.querySelector(":scope > .log");
   const prevTop = prevLog ? prevLog.scrollTop : 0;
   pane.hidden = false;
-  pane.replaceChildren(headEl(), logEl(), footEl());
+  pane.dataset.lens = speaker(); // the pane's accent: the lamp for the cartographer, the mentor's teal for the guide
+  // Each part is drawn again only when what it is drawn from changed, and the keyboard stays where it was.
+  keepFocus(pane, () => {
+    keyedChildren(pane, [
+      ...(gripEl ? [{ key: "grip", sig: "", build: gripEl }] : []),
+      { key: "chart-head", sig: headSig(), build: headEl },
+      { build: () => logEl(prevLog) },
+      { key: "chart-foot", sig: footSig(), build: footEl },
+    ]);
+  });
+  syncAnswer(pane.querySelector("#answer-form"), chart.draft, tray); // the page changed the draft itself: words given back by a failed send
   renderLive();
-  const log = pane.querySelector(".log");
-  log.scrollTop = stuck ? log.scrollHeight : prevTop;
-  if (hadFocus) focusChartAnswer();
-  if (caret) pane.querySelector("#answer")?.setSelectionRange(caret[0], caret[1]);
+  const log = pane.querySelector(":scope > .log");
+  if (log !== prevLog || follow.following) follow.toEnd();
+  else log.scrollTop = prevTop;
 }
 
 /** The pane region's keys while the cartographer is open. Returns whether the key was used. */
 export function chartKey(e) {
-  const log = document.getElementById("pane")?.querySelector(".log");
+  const pane = document.getElementById("pane");
+  const log = pane?.querySelector(".log");
   if (log && Object.hasOwn(SCROLL_BY, e.key)) {
     log.scrollBy(0, SCROLL_BY[e.key](log));
     return true;
   }
+  // ← and → walk the pane's controls (Tab is the regions'), mid-turn too: Stop is one of them.
+  if (e.key === "ArrowRight" || e.key === "ArrowLeft") return roveFocus(pane, e.key === "ArrowRight" ? 1 : -1);
+  const click = (sel) => {
+    const found = [...pane.querySelectorAll(sel)];
+    const b = found[found.length - 1]; // the latest, where the thread holds several
+    if (!b || b.disabled) return false;
+    b.click();
+    return true;
+  };
+  if (e.key === "g") return click(".log .sail-go"); // follow the guide's pointer
   if (chart.inFlight) return false;
   if (e.key === "Enter") return focusChartAnswer();
-  if (e.key === "l") {
-    const start = document.getElementById("pane")?.querySelector("#landfall");
-    if (!start) return false;
-    start.click();
-    return true;
-  }
+  if (e.key === "r") return click("[data-fk='retry']");
+  if (e.key === "l") return click("#landfall");
   return false;
 }
 
-/** ⌘↵ in the cartographer: approves the pending sketch, else sends what is in the box. */
-export function chartSend() {
-  if (!guiding() && chart.sketch && !chart.inFlight && !chart.deciding) {
+/** ⌘↵ in the cartographer: approves the pending sketch, else sends what is in the box. `approve: false` only sends. */
+export function chartSend({ approve = true } = {}) {
+  if (approve && !guiding() && chart.sketch && !chart.inFlight && !chart.deciding) {
     void decideSketch(chart.sketch.id, "approve");
     return true;
   }
   const form = document.getElementById("pane")?.querySelector("#answer-form");
   const ta = document.getElementById("pane")?.querySelector("#answer");
-  if (!form || !ta || ta.disabled || !ta.value.trim()) return false;
+  if (!form || !ta || chart.inFlight || !canSend({ text: ta.value, images: tray.ready().length, busy: tray.busy(), disabled: ta.disabled })) return false;
   form.requestSubmit();
   return true;
 }
