@@ -489,16 +489,21 @@ function drawSketchingHere(now) {
 
 const RETRY_MS = 3000;
 
+/** Hosted: another tab holds the database. Not a failure to explain: the header offers to move it here (hosted.js). */
+function elsewhere(error) {
+  if (error?.code !== "another-tab") return false;
+  clearNote();
+  anotherTab(document.getElementById("breadcrumb"));
+  return true;
+}
+
 /**
  * Nothing to draw without the server (or, hosted, without the browser's storage): say why where the map would be.
  * This is before the page is set up, so trying again is loading it again; `probe`, when the caller has one, is the
  * read that failed, asked again every few seconds so the page comes back by itself.
  */
 function failedToStart(error, probe = null) {
-  if (error.code === "another-tab") {
-    clearNote();
-    return anotherTab(document.getElementById("breadcrumb"));
-  }
+  if (elsewhere(error)) return;
   console.error(error);
   app.connected = false;
   renderStatus();
@@ -520,6 +525,7 @@ function failedToStart(error, probe = null) {
  * poll, which keeps asking and draws the chart the moment it comes.
  */
 function firstReadFailed(error) {
+  if (elsewhere(error)) return;
   console.error(error);
   app.connected = false;
   renderStatus();
