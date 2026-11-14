@@ -129,7 +129,8 @@ export function renderStatus() {
 
 // ---- the strip, and the one hint card its cells share ----
 
-const hint = { key: null, pinned: false, timer: 0, closedAt: 0, box: null };
+const hint = { key: null, pinned: false, timer: 0, closedAt: 0, box: null, still: null };
+const STILL_PX = 4; // a pointer within this of where it pressed has not moved
 let cells = new Map(); // key → the item each cell on the page was drawn from
 let lit = null; // the island name under the pointer or the keyboard, while it lights its island on the map
 
@@ -152,9 +153,10 @@ function linkEl(item, part) {
   a.tabIndex = 0;
   a.dataset.slug = part.slug;
   a.dataset.at = `link:${item.key}:${part.slug}`;
-  a.addEventListener("click", () => {
+  a.addEventListener("click", (e) => {
     closeHint();
-    hint.closedAt = 0; // the pane opens and the strip may move under the pointer: whatever cell lands there waits its beat
+    // The pane opens and the strip moves under a pointer that has not moved: no cell that lands there may take that for a rest.
+    hint.still = { x: e.clientX, y: e.clientY };
     void select(part.slug);
   });
   a.addEventListener("pointerenter", () => light(a, true));
@@ -185,7 +187,10 @@ function cellEl(item) {
     if (!e.target.closest(".strip-link")) toggleHint(item.key);
   });
   cell.addEventListener("pointerenter", (e) => {
-    if (e.pointerType === "mouse") restOn(item.key);
+    if (e.pointerType !== "mouse") return;
+    if (hint.still && Math.hypot(e.clientX - hint.still.x, e.clientY - hint.still.y) < STILL_PX) return; // the cell came to the pointer
+    hint.still = null;
+    restOn(item.key);
   });
   cell.addEventListener("pointerleave", () => leave(item.key));
   cell.addEventListener("focusout", (e) => {
@@ -494,6 +499,9 @@ export function installChrome() {
   document.addEventListener("pointerdown", (e) => {
     if (hint.key !== null && !(e.target instanceof Element && e.target.closest(".strip-item, .strip-hint"))) closeHint();
   }, true);
+  document.addEventListener("pointermove", (e) => {
+    if (hint.still && Math.hypot(e.clientX - hint.still.x, e.clientY - hint.still.y) >= STILL_PX) hint.still = null; // it moved: hover means hover again
+  }, { passive: true });
   const strip = document.getElementById("strip");
   strip.addEventListener("scroll", () => hint.key !== null && drawHint(), { passive: true }); // a phone's strip scrolls sideways
   new ResizeObserver(() => hint.key !== null && drawHint()).observe(strip); // the strip wrapped, or the pane changed its room
