@@ -5,6 +5,7 @@ import { runTool, type TurnDeps } from "./tools.ts";
 import { personaFor, type Persona, type ToolName } from "./persona.ts";
 import { TOOL_SHAPES, toolDescriptionsFor } from "./tool-specs.ts";
 import { SDK_DEFAULT_MODEL, type JudgeRunner } from "./runner.ts";
+import { claudeContent, onlyText, promptParts, type PromptPart } from "./prompt-images.ts";
 
 export const DEFAULT_MODEL = SDK_DEFAULT_MODEL;
 const SERVER = "archipelago";
@@ -52,13 +53,26 @@ function toolsFor(sdk: Sdk, deps: TurnDeps, persona: Persona): SdkMcpToolDefinit
 }
 
 /** One stateless turn on the Agent SDK, through ANTHROPIC_API_KEY when it is set and the user's Claude Code login otherwise, as the turn's persona. */
+/** One user message as the SDK's streaming input: it reads it, answers, and the turn ends when this generator does. */
+async function* oneMessage(content: ReturnType<typeof claudeContent>) {
+  yield { type: "user" as const, message: { role: "user" as const, content: content as never }, parent_tool_use_id: null };
+}
+
+/**
+ * The thread as the SDK's prompt: a string when it is text alone, as before; with the reader's images, one user
+ * message of Claude content blocks, which only the SDK's streaming input takes.
+ */
+export function sdkPrompt(parts: PromptPart[]) {
+  return onlyText(parts) ?? oneMessage(claudeContent(parts));
+}
+
 export const sdkRunner: JudgeRunner = async ({ dbPath, domain, island, mode = "judge", demoSteps, emit, signal }) => {
   const sdk = await loadSdk();
   const persona = personaFor(mode);
   const deps: TurnDeps = { dbPath, domain, island, mode, demoSteps };
   const context = persona.buildContext(deps);
   const systemPrompt = `${readProtocol(persona)}\n\n${persona.renderContext(context)}`;
-  const prompt = persona.renderThreadPrompt(context.thread, context.asks);
+  const prompt = sdkPrompt(promptParts(persona.renderThreadPrompt(context.thread, context.asks), context.images));
 
   const server = sdk.createSdkMcpServer({ name: SERVER, version: "0.1.0", tools: toolsFor(sdk, deps, persona) });
 

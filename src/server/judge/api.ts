@@ -5,6 +5,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { ArchipelagoError } from "../../core/errors.ts";
 import { createModelRunner, type ModelAdapter, type StepEnd, type ToolBox, type TurnRequest } from "./loop.ts";
 import { API_DEFAULT_MODEL, type JudgeRunner } from "./runner.ts";
+import { claudeContent } from "./prompt-images.ts";
 
 export type { ToolBox } from "./loop.ts";
 
@@ -57,7 +58,7 @@ export function requestFor(request: TurnRequest, effort: Effort): Params {
     ],
     // Inputs stream as generated; the tool functions validate them.
     tools: request.tools.map((t) => ({ name: t.name, description: t.description, input_schema: t.schema, eager_input_streaming: true })),
-    messages: [{ role: "user", content: request.prompt }],
+    messages: [{ role: "user", content: claudeContent(request.prompt) }],
     cache_control: { type: "ephemeral" },
     output_config: { effort },
     betas: [FALLBACK_BETA],

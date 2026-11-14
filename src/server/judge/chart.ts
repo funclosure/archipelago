@@ -16,6 +16,7 @@ import { listSeas } from "../../core/repositories/seaRepository.ts";
 import { seaMembers } from "../../core/seas.ts";
 import { NOTE_MAX } from "../../core/validators.ts";
 import { indent, renderDescription, renderReplay, stateOf } from "./context.ts";
+import { threadWithImages, type PromptImage, type ThreadMessage } from "./prompt-images.ts";
 
 /** Where a cartographer turn reads and writes: a domain, and the island whose islets it sketches (absent: the top scale). */
 export type ChartDeps = { dbPath?: string; domain: string; island?: string };
@@ -48,7 +49,10 @@ export type ChartContext = {
   /** How many new islands the next sketch may add here. */
   limits: readonly [number, number];
   pending: Sketch | null;
-  thread: Message[];
+  /** The cartographer's thread at this scale, with the reader's images. */
+  thread: ThreadMessage[];
+  /** The reader's images this turn shows whole (a syllabus, a table of contents), as base64. */
+  images: PromptImage[];
   /** The cartographer never asks with options; kept so the runners treat every persona alike. */
   asks: Ask[];
 };
@@ -101,7 +105,7 @@ export function buildChartContext(db: Database, domainSlug: string, islandSlug?:
     slugs: listIslandSlugs(db, domain.id),
     limits: SKETCH_LIMITS[island ? "islets" : "top"][siblings.length === 0 ? "first" : "more"],
     pending: pendingSketch(db, domain.id, parentId),
-    thread: listScaleMessages(db, domain.id, parentId),
+    ...threadWithImages(db, domain.id, listScaleMessages(db, domain.id, parentId)),
     asks: [],
   };
 }
@@ -174,7 +178,7 @@ export function renderChartContext(ctx: ChartContext): string {
 }
 
 /** The cartographer's thread as the turn's prompt. An empty thread is a new domain or a sail-closer. */
-export function renderChartThreadPrompt(thread: Message[], asks: Ask[] = []): string {
+export function renderChartThreadPrompt(thread: ThreadMessage[], asks: Ask[] = []): string {
   if (thread.length === 0) return "Sketch this scale.";
   return [...renderReplay(thread, asks), "", "Continue as the cartographer."].join("\n");
 }

@@ -17,6 +17,7 @@ import { seaMembers } from "../../core/seas.ts";
 import { islandModes, type Ask, type Island, type Message, type VerdictState } from "../../core/types.ts";
 import { pointToInputSchema } from "../../core/validators.ts";
 import { indent, renderDescription, renderLearner, renderReplay, stateOf, type LearnerView } from "./context.ts";
+import { threadWithImages, type PromptImage, type ThreadMessage } from "./prompt-images.ts";
 
 export type GuideDeps = { dbPath?: string; domain: string };
 
@@ -39,7 +40,10 @@ export type GuideContext = {
   islands: GuideIsland[];
   straits: { a: string; b: string; name: string | null }[];
   seas: { name: string; islands: string[] }[];
-  thread: Message[];
+  /** The guide thread, with the reader's images. */
+  thread: ThreadMessage[];
+  /** The reader's images this turn shows whole, as base64. */
+  images: PromptImage[];
   /** The guide never asks with options; kept so the runners treat every persona alike. */
   asks: Ask[];
 };
@@ -100,7 +104,7 @@ export function buildGuideContext(db: Database, domainSlug: string): GuideContex
     }),
     straits: listStraits(db, domain.id, null).map((s) => ({ a: getIslandById(db, s.fromIslandId)!.slug, b: getIslandById(db, s.toIslandId)!.slug, name: s.name })),
     seas: seas.map((s) => ({ name: s.name, islands: members.get(s.id) ?? [] })),
-    thread: listGuideMessages(db, domain.id),
+    ...threadWithImages(db, domain.id, listGuideMessages(db, domain.id)),
     asks: [],
   };
 }
@@ -121,8 +125,8 @@ export function suggestIsland(deps: GuideDeps, input: unknown): { island: string
   return withDb(deps.dbPath, (db) => {
     const domain = requireDomain(db, deps.domain);
     const target = requireIsland(db, domain.id, parsed.island);
-    const question = parsed.carry ? (listGuideMessages(db, domain.id).findLast((m) => m.role === "you" && m.kind === "text")?.body ?? null) : null;
-    if (parsed.carry && question === null) throw new ArchipelagoError("carry takes the reader's latest message, and there is none yet");
+    const question = parsed.carry ? listGuideMessages(db, domain.id).findLast((m) => m.role === "you" && m.kind === "text")?.body || null : null;
+    if (parsed.carry && question === null) throw new ArchipelagoError("carry takes the reader's latest message, and it has no words (none yet, or images alone)");
     addPointer(db, { domainId: domain.id, islandId: null, targetIslandId: target.id, why: parsed.why, question, lens: parsed.lens });
     return {
       island: target.slug,
@@ -170,7 +174,7 @@ export function renderGuideContext(ctx: GuideContext): string {
 }
 
 /** The guide's thread as the turn's prompt. */
-export function renderGuideThreadPrompt(thread: Message[], asks: Ask[] = []): string {
+export function renderGuideThreadPrompt(thread: ThreadMessage[], asks: Ask[] = []): string {
   if (thread.length === 0) return "Open the guide: welcome the reader to this map in a line, then ask where they stand.";
   return [...renderReplay(thread, asks), "", "Continue as the mentor."].join("\n");
 }

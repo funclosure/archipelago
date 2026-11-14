@@ -13,6 +13,7 @@ import { NOTE_MAX } from "../../core/validators.ts";
 import { CHARTED_PREFIX } from "./tools.ts";
 import { buildSnapshot } from "../../core/view-model.ts";
 import type { Ask, BoardCard, Landmark, LooseEnd, Message, MessageMode, MessageRole, ReefProposal, Verdict, VerdictState } from "../../core/types.ts";
+import { imageLine, threadWithImages, type PromptImage, type ThreadMessage } from "./prompt-images.ts";
 
 /** What the mentor knows about the reader beyond this island. */
 export type LearnerView = { note: string; ground: GroundItem[]; reefs: ReefClaim[] };
@@ -34,8 +35,10 @@ export type JudgeContext = {
   }[];
   nearestOpenWater: string[];
   pendingReefs: { id: number; proposal: ReefProposal }[];
-  /** This mode's thread only: the judge never sees the mentor's, nor the mentor the judge's. */
-  thread: Message[];
+  /** This mode's thread only: the judge never sees the mentor's, nor the mentor the judge's. With the reader's images. */
+  thread: ThreadMessage[];
+  /** The reader's images this turn shows whole (the thread's newest few), as base64. */
+  images: PromptImage[];
   landmarks: Landmark[];
   /** Asks attached to this thread's messages, plus any not attached yet. */
   asks: Ask[];
@@ -74,7 +77,7 @@ export function buildJudgeContext(db: Database, domainSlug: string, islandSlug: 
     };
   });
   const parent = island.parentId === null ? null : getIslandById(db, island.parentId)!;
-  const thread = listMessages(db, island.id, mode);
+  const { thread, images } = threadWithImages(db, domain.id, listMessages(db, island.id, mode));
   const inThread = new Set(thread.map((m) => m.id));
   const pendingReefs = thread
     .filter((m) => m.kind === "reef_proposal")
@@ -91,6 +94,7 @@ export function buildJudgeContext(db: Database, domainSlug: string, islandSlug: 
     nearestOpenWater: buildSnapshot(db, domain.slug, parent ? parent.slug : null).nearestOpenWater,
     pendingReefs,
     thread,
+    images,
     landmarks: listLandmarks(db, island.id),
     asks: listAsks(db, island.id).filter((a) => a.messageId === null || inThread.has(a.messageId)),
     board: listCards(db, island.id),
@@ -104,11 +108,12 @@ export function buildJudgeContext(db: Database, domainSlug: string, islandSlug: 
 /**
  * Reader text messages after the last `charted as …` line: a re-probe starts its own four answers.
  * A verdict written outside the thread (the CLI repair path) leaves no such line, so when `verdictAt`
- * is given only answers newer than it count.
+ * is given only answers newer than it count. A message of images alone is no answer: an image is never
+ * evidence, and the Keeper asks for the words, so it spends none of the four.
  */
 export function roundOf(thread: Message[], verdictAt: string | null = null): number {
   const last = thread.findLast((m) => m.kind === "system" && m.body.startsWith(CHARTED_PREFIX));
-  return thread.filter((m) => m.role === "you" && m.kind === "text" && (!last || m.id > last.id) && (!verdictAt || m.createdAt > verdictAt)).length;
+  return thread.filter((m) => m.role === "you" && m.kind === "text" && m.body.trim() !== "" && (!last || m.id > last.id) && (!verdictAt || m.createdAt > verdictAt)).length;
 }
 
 export const stateOf = (state: VerdictState | null) => state ?? "open water";
@@ -276,7 +281,7 @@ export function renderDemoSteps(ctx: JudgeContext): string[] {
 const SPEAKER: Record<MessageRole, string> = { you: "Reader", judge: "Judge", mentor: "Mentor", cartographer: "Cartographer" };
 
 /** The stored thread as transcript lines. Stateless: the model sees the whole thread every turn. */
-export function renderReplay(thread: Message[], asks: Ask[]): string[] {
+export function renderReplay(thread: ThreadMessage[], asks: Ask[]): string[] {
   return thread.map((m) => {
     if (m.kind === "system") return `[map] ${indent(m.body)}`;
     if (m.kind === "reef_proposal") {
@@ -284,7 +289,9 @@ export function renderReplay(thread: Message[], asks: Ask[]): string[] {
       return `[reef proposal #${m.id}, ${p.status}] ${p.claim} — ${p.consequence}`;
     }
     const ask = asks.find((a) => a.messageId === m.id);
-    const line = `${SPEAKER[m.role]}: ${indent(m.body)}`;
+    // A message of images alone has no words: its line is the speaker, then one line per image.
+    const said = m.body ? `${SPEAKER[m.role]}: ${indent(m.body)}` : `${SPEAKER[m.role]}:`;
+    const line = m.images?.length ? [said, ...m.images.map(imageLine)].join("\n") : said;
     if (!ask) return line;
     // The markers sit at column 0: a reader's indented continuation lines (see `indent`) can never forge them.
     const markers = [`[options] ${ask.options.join(" | ")}`];

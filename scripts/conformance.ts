@@ -1,10 +1,10 @@
 // `bun run conformance [--judge api|openai|stub] [--models a,b] [--json file] [--verbose]`: a fixed script of
 // persona turns, run on a throwaway database through the real route (`handleApiRequest`), against whichever model the
 // environment names (as `archipelago serve --judge …` reads it), then checked against the protocols' hard rules. It
-// spends real money on a real model: thirteen turns per model. A FAIL is a rule the page depends on (a tool call
+// spends real money on a real model: fourteen turns per model. A FAIL is a rule the page depends on (a tool call
 // that went wrong, a slug in the reply, TeX, the wrong language, two questions); a WARN is judgement the protocol
 // asks for but a good model may skip on a given turn (proposing the reef). The exit code is 1 when anything failed.
-import { mkdtempSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { openDatabase } from "../src/core/db.ts";
@@ -41,6 +41,10 @@ export type Turn = {
   point?: string;
   /** Words of which the reply should carry at least one (WARN otherwise): the probe went where an open loose end is. */
   about?: string[];
+  /** Images the reader attaches to this message: files in scripts/fixtures/. */
+  images?: string[];
+  /** The turn may light no landmark and decide nothing (FAIL otherwise): an image is never evidence. */
+  lightsNothing?: boolean;
 };
 
 // ---- pure checks (tests/server/conformance.test.ts) ----
@@ -98,6 +102,9 @@ export type Observed = {
   decided: boolean;
   /** Islands this turn's pointers name. */
   pointed?: string[];
+  /** Landmarks this turn lit, and whether it wrote a verdict or proposed a reef. */
+  lit?: string[];
+  decidedNow?: boolean;
 };
 
 export function checkTurn(turn: Turn, seen: Observed): Check[] {
@@ -134,6 +141,10 @@ export function checkTurn(turn: Turn, seen: Observed): Check[] {
   }
   if (turn.about && !turn.about.some((w) => prose(seen.reply).toLowerCase().includes(w.toLowerCase()))) out.push({ level: "warn", say: `did not touch ${turn.about.join(" / ")}` });
   if (turn.decided && !seen.decided) out.push({ level: "fail", say: "no verdict or reef by the fourth answer" });
+  if (turn.lightsNothing) {
+    if (seen.lit?.length) out.push({ level: "fail", say: `lit ${seen.lit.join(", ")} from an image` });
+    if (seen.decidedNow) out.push({ level: "fail", say: "decided from an image" });
+  }
   return out;
 }
 
@@ -184,6 +195,11 @@ export const SCRIPT: Turn[] = [
   {
     id: "judge: answer clears it", mode: "judge", domain: DOMAIN, island: "caching", lang: "zh", hope: ["loose_end"],
     message: "TTL 只決定資料最多可以舊多久，不保證新鮮；資料庫寫入成功後要主動刪掉快取裡的那個 key，下一次讀取 miss 才會從資料庫拿到新值。",
+  },
+  {
+    // An image alone, on Indexes, whose opening question is still unanswered: the Keeper reads it, lights nothing,
+    // and asks for the words (in the page's language, since the message has none).
+    id: "judge: an answer as an image alone", mode: "judge", domain: DOMAIN, island: "indexes", lang: "zh", images: ["b-tree-lookup.png"], lightsNothing: true,
   },
   { id: "cartographer: first sketch", mode: "cartographer", domain: FRESH, lang: "zh", require: ["propose_sketch"], questions: 2 },
 ];
@@ -241,13 +257,25 @@ async function runTurn(dbPath: string, ctx: Parameters<typeof handleApiRequest>[
   refusals.length = 0;
   const read = openDatabase(dbPath);
   const before = (read.query("select coalesce(max(id), 0) as m from messages").get() as Row).m as number;
+  const verdictsBefore = (read.query("select coalesce(max(id), 0) as m from verdicts").get() as Row).m as number;
   read.close();
+  // The reader's images go up first, as the page sends them, then ride on the message.
+  const images: number[] = [];
+  for (const file of turn.images ?? []) {
+    const data = readFileSync(new URL(`./fixtures/${file}`, import.meta.url)).toString("base64");
+    const up = await handleApiRequest(
+      new Request("http://127.0.0.1/api/images", { method: "POST", headers: { "content-type": "application/json", host: "127.0.0.1" }, body: JSON.stringify({ domain: turn.domain, data }) }),
+      ctx,
+    );
+    if (!up.ok) throw new Error(`could not upload ${file}: ${await up.text()}`);
+    images.push(((await up.json()) as { image: { id: number } }).image.id);
+  }
   const started = Date.now();
   const res = await handleApiRequest(
     new Request("http://127.0.0.1/api/probe", {
       method: "POST",
       headers: { "content-type": "application/json", host: "127.0.0.1" },
-      body: JSON.stringify({ domain: turn.domain, mode: turn.mode, ...(turn.island ? { island: turn.island } : {}), ...(turn.message ? { message: turn.message } : {}) }),
+      body: JSON.stringify({ domain: turn.domain, mode: turn.mode, ...(turn.island ? { island: turn.island } : {}), ...(turn.message ? { message: turn.message } : {}), ...(images.length ? { images } : {}) }),
     }),
     ctx,
   );
@@ -279,7 +307,12 @@ async function runTurn(dbPath: string, ctx: Parameters<typeof handleApiRequest>[
     const islandSlugs = (db.query("select i.slug from islands i join domains d on d.id = i.domain_id where d.slug = ?").all(turn.domain) as Row[]).map((r) => r.slug as string);
     const verdict = db.query("select 1 from verdicts where target_type = 'island' and target_id = ? limit 1").get(island.id);
     const reef = db.query("select 1 from messages where island_id = ? and kind = 'reef_proposal' limit 1").get(island.id);
-    return { seen: { reply, tools, error: failed, slugs: [...landmarks.map((l) => l.slug), ...islandSlugs], quotes, refused, decided: Boolean(verdict || reef), pointed }, ms };
+    const lit = landmarks.filter((l) => l.evidence && l.mid > before).map((l) => l.slug as string);
+    const decidedNow = Boolean(
+      db.query("select 1 from verdicts where target_type = 'island' and target_id = ? and id > ? limit 1").get(island.id, verdictsBefore) ||
+        db.query("select 1 from messages where island_id = ? and kind = 'reef_proposal' and id > ? limit 1").get(island.id, before),
+    );
+    return { seen: { reply, tools, error: failed, slugs: [...landmarks.map((l) => l.slug), ...islandSlugs], quotes, refused, decided: Boolean(verdict || reef), pointed, lit, decidedNow }, ms };
   } finally {
     db.close();
   }
