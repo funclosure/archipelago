@@ -18,7 +18,7 @@ import { LANGUAGES, language, setLanguage, t } from "./i18n.js";
 
 // ---- DOM ----
 
-const state = { rail: false, width: outlineWidth(null), expanded: new Set(), menuOpen: false, themesOpen: false, languagesOpen: false, domains: null, cursor: null, cursorCleared: false };
+const state = { rail: false, width: outlineWidth(null), expanded: new Set(), menuOpen: false, menuArriving: false, themesOpen: false, languagesOpen: false, domains: null, cursor: null, cursorCleared: false };
 let root = null;
 let peek = null;
 
@@ -187,6 +187,7 @@ async function toggleMenu() {
     }
   }
   setTimeout(() => document.addEventListener("click", closeMenu, { once: true }), 0);
+  state.menuArriving = true; // the entrance plays on this draw only, never when the open menu is drawn again
   render();
 }
 
@@ -247,7 +248,8 @@ function headerEl(outline) {
   tog.setAttribute("aria-label", tog.title.trim());
   head.append(tog);
   if (state.menuOpen && state.domains) {
-    const menu = el("div", "menu");
+    const menu = el("div", state.menuArriving ? "menu arrive" : "menu");
+    state.menuArriving = false;
     for (const d of state.domains) {
       const item = button(d.name, () => {
         const url = new URL(location.href);
