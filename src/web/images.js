@@ -403,6 +403,8 @@ async function removeShown() {
     urls.delete(image.id);
     viewer.removing = false;
     closeViewer();
+    // The thumbnail that opened the viewer is about to go with its image, so the pane itself keeps the keyboard.
+    document.getElementById("pane")?.focus({ preventScroll: true });
     void refresh(); // the thread comes back with the mark where the image was
   } catch (error) {
     viewer.removing = false;
