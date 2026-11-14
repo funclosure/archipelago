@@ -18,7 +18,7 @@ import { renderCta } from "./cta.js";
 import { select } from "./interactions.js";
 import { registerRegion, region } from "./keys.js";
 import { isImeKey } from "./keys-model.js";
-import { chartKey, chartSend, chartTurning, closeChart, decideSketch, dropChart, focusChartAnswer, installChart, isChartOpen, openChart, renderChart, stopChartTurn } from "./chart.js";
+import { chartKey, chartSend, chartTurning, closeChart, decideSketch, dropChart, focusChartAnswer, installChart, isChartOpen, openChart, openGuide, renderChart, stopChartTurn } from "./chart.js";
 
 const pane = document.getElementById("pane");
 const STICK_PX = 40;            // within this of the bottom, the log follows new content
@@ -155,7 +155,7 @@ export function installCard() {
   }
   app.listeners.add(() => render());
   loadHighlighter(() => render());
-  installChart({ render: () => render() });
+  installChart({ render: () => render(), sail: (pointer, lens) => void sailFromGuide(pointer, lens) });
   registerRegion("pane", {
     focusAnswer: () => (isChartOpen() ? focusChartAnswer() : focusAnswer()),
     turning: () => (isChartOpen() ? chartTurning() : thread.inFlight && turnAbort !== null),
@@ -727,6 +727,14 @@ async function sailTo(pointer) {
   await select(pointer.island.slug);
 }
 
+/** Sails from the guide's card: the lens it suggests (or the reader's pick), and in the mentor's, the question it carries. */
+async function sailFromGuide(pointer, lens) {
+  setMode(lens);
+  carry = lens === "mentor" && pointer.question ? { slug: pointer.island.slug, question: pointer.question, from: t("card.fromGuide") } : null;
+  if (pointer.island.scale !== app.scale) await setScale(pointer.island.scale);
+  await select(pointer.island.slug);
+}
+
 /** What a persona reply's fences pin with: the reader's card, marked as pinned from this persona's reply. */
 function pinFor(role) {
   return { add: (card) => pinFromReply({ ...card, from: role }), has: isPinned };
@@ -1010,6 +1018,7 @@ function ctaModel(island) {
       setMode(mode);
       void select(slug);
     },
+    onGuide: () => openGuide(),
     onConfirm: () => {
       const p = logItems(thread.messages, island).find((i) => i.kind === "reef_proposal" && i.proposal.status === "pending");
       if (p) void answerReef(island.slug, p.id, "confirm");

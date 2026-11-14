@@ -232,6 +232,7 @@ export const HINTS = {
   explored: t("viewModel.hintExplored"),
   unexplored: t("viewModel.hintUnexplored"),
   cartographer: t("viewModel.hintCartographer"),
+  guide: t("viewModel.hintGuide"),
 };
 
 /** The strip's cells for a snapshot in a lens: `[{ label, value, hint }]`. */
@@ -255,6 +256,8 @@ export function stripItems(s, lens = "judge") {
     const reefs = s.reefs.map((r) => (r.startsWith("island:") ? nameOf(r.slice(7)) : r.startsWith("strait:") ? t("viewModel.strait", { name: r.slice(7) }) : r));
     items.push({ label: t("viewModel.reefs"), value: reefs.length ? reefs.join(" · ") : t("viewModel.noneCharted"), hint: HINTS.reefs });
   }
+  // At the top of a charted domain, the mentor's guide: where to begin, without picking an island first.
+  if (!s.scale?.path?.length && s.islands.length) items.push({ label: t("viewModel.whereToBegin"), value: t("viewModel.askTheMentor"), hint: HINTS.guide, action: "guide" });
   // The last cell opens the cartographer at this scale; it names a pending sketch when there is one.
   const sketch = s.sketch ? sketchSummary(s.sketch.body, s.islands) : null;
   items.push({ label: t("viewModel.cartographer"), value: sketch ? t("viewModel.sketchToApprove", { summary: sketch }) : t("viewModel.askToSketch"), hint: HINTS.cartographer, action: "chart" });

@@ -20,6 +20,9 @@ const DESCRIPTIONS: Record<ToolName, string> = {
   point_to:
     "Point the reader at another island of this domain when their words belong there more than here: a link to sail there appears under your reply and carries their latest message as the question to take along. island: its slug, from the islands elsewhere in your context (never this island). why: one line in the reader's language on what that island holds for them.",
   chart_context: "This scale: the islands and straits here, at island scale the island's landmarks, board, and two threads, every slug taken in the domain, how many islands the next sketch may add, the pending sketch, and your thread. Read fresh.",
+  guide_context: "The whole domain at its top scale: each island with its summary, landmarks, harbour, verdict, how far the reader has gone there and with whom, its islets; the straits and seas; who the reader is; and your thread. Read fresh.",
+  suggest_island:
+    "Suggest where the reader should start: a card to sail there appears under your reply. island: the slug of any island or islet in your context. why: one line in the reader's language on what it holds for them. lens: mentor (to learn it, nothing graded) or judge (the Keeper, to be tested on what they already know). carry: true to take the reader's latest message along as their first question to the mentor, only when it is a question about that island.",
   propose_sketch: "Propose a sketch at this scale: new islands (slug, name, one-line summary, 4–6 landmarks each, every landmark with 2–5 terms: the words a reply uses for it), straits between islands at this scale, an optional harbour, name or summary updates to islands already here, seas (a name on the water over the islands it groups; new seas only, each island in at most one), and, when the context says the domain's name is provisional, the domain's name (top scale only) with its ASCII kebab-case slug. It replaces any pending sketch. Nothing reaches the map until the reader approves it there.",
 };
 
@@ -78,6 +81,8 @@ export const TOOL_SHAPES: Record<ToolName, z.ZodRawShape> = {
   },
   point_to: { island: z.string(), why: z.string() },
   chart_context: {},
+  guide_context: {},
+  suggest_island: { island: z.string(), why: z.string(), lens: z.enum(["mentor", "judge"]), carry: z.boolean().optional() },
   propose_sketch: {
     islands: z
       .array(z.object({ slug: z.string(), name: z.string(), summary: z.string(), landmarks: z.array(z.object({ slug: z.string(), name: z.string(), terms: z.array(z.string()).max(8).optional() })).min(4).max(6) }))

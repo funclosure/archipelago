@@ -46,7 +46,7 @@ test("the worker imports nothing from Bun or Node and never bundles the Agent SD
 
 test("the worker carries the protocols, and the API client set up for a browser", () => {
   const worker = readFileSync(join(out, "worker.js"), "utf8");
-  for (const file of ["PROTOCOL.md", "MENTOR.md", "CARTOGRAPHER.md"]) {
+  for (const file of ["PROTOCOL.md", "MENTOR.md", "CARTOGRAPHER.md", "GUIDE.md"]) {
     const firstLine = readFileSync(join(import.meta.dir, "../../src/server/judge", file), "utf8").split("\n")[0]!;
     expect(worker).toContain(firstLine);
   }

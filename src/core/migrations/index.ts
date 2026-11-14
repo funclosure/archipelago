@@ -21,6 +21,7 @@ import m0017 from "./0017_loose_ends.sql" with { type: "text" };
 import m0018 from "./0018_pointers.sql" with { type: "text" };
 import m0019 from "./0019_board_demo_pins.sql" with { type: "text" };
 import m0020 from "./0020_board_order.sql" with { type: "text" };
+import m0021 from "./0021_guide.sql" with { type: "text" };
 
 export const MIGRATIONS: readonly { version: string; sql: string }[] = [
   { version: "0001_initial", sql: m0001 },
@@ -43,4 +44,5 @@ export const MIGRATIONS: readonly { version: string; sql: string }[] = [
   { version: "0018_pointers", sql: m0018 },
   { version: "0019_board_demo_pins", sql: m0019 },
   { version: "0020_board_order", sql: m0020 },
+  { version: "0021_guide", sql: m0021 },
 ];

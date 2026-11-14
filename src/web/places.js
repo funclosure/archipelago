@@ -3,7 +3,7 @@
 // the pane, the board is the board. places-model.js decides; this module stamps `body[data-place]` (styles.css
 // shows and hides by it), draws the bar, and keeps the board in step. On a wider screen it does nothing.
 import { app, reframe, frameSelection } from "./app.js";
-import { isChartOpen } from "./chart.js";
+import { isChartOpen, isGuideOpen } from "./chart.js";
 import { boardOpen, boardCount, openBoard, closeBoard } from "./board.js";
 import { nextPlace, settle, tabsEnabled, PLACES } from "./places-model.js";
 import { t } from "./i18n.js";
@@ -43,7 +43,7 @@ function icon(name) {
 }
 
 function label(name) {
-  if (name === "island") return isChartOpen() && !app.selected ? t("places.cartographer") : t("places.island");
+  if (name === "island") return isChartOpen() && !app.selected ? t(isGuideOpen() ? "places.guide" : "places.cartographer") : t("places.island");
   if (name === "board") return app.selected && boardCount() ? t("places.boardCount", { n: boardCount() }) : t("places.board");
   return t(`places.${name}`);
 }

@@ -54,6 +54,11 @@ export function listScaleMessages(db: Database, domainId: number, islandId: numb
     .all(domainId, islandId);
 }
 
+/** The domain's guide thread: the mentor before any island, on where to start. */
+export function listGuideMessages(db: Database, domainId: number): Message[] {
+  return db.query<Message, [number]>(`select ${COLS} from messages where domain_id = ? and mode = 'guide' and island_id is null order by id`).all(domainId);
+}
+
 export function getMessage(db: Database, id: number): Message | null {
   return db.query<Message, [number]>(`select ${COLS} from messages where id = ?`).get(id) ?? null;
 }

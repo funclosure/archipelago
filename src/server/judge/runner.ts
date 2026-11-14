@@ -13,7 +13,7 @@ export type JudgeTurn = {
   domain: string;
   /** The island; for the cartographer the scale, absent at the domain's top scale. */
   island?: string;
-  /** Whose turn: the judge's (default), the mentor's, or the cartographer's. Picks the persona and the thread. */
+  /** Whose turn: the judge's (default), the mentor's, the cartographer's, or the guide's. Picks the persona and the thread. */
   mode?: MessageMode;
   /** What the demos printed as the reader used them since their last message; the mentor's context lists them. */
   demoSteps?: string[];

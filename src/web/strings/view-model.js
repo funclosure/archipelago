@@ -23,6 +23,9 @@ export default {
     cartographer: "Cartographer",
     sketchToApprove: "sketch to approve · {summary}",
     askToSketch: "ask to sketch or change",
+    whereToBegin: "Where to begin",
+    askTheMentor: "ask the mentor",
+    hintGuide: "Not sure which island to start on? Tell the mentor what you know and what you want, and it points you at one, to learn it or to be tested on it.",
   },
   "zh-TW": {
     hintHarbour: "港口：在這個層級從哪裡出發。由製圖師設定，地圖上以錨標示。",
@@ -47,5 +50,8 @@ export default {
     cartographer: "製圖師",
     sketchToApprove: "待採用的草圖 · {summary}",
     askToSketch: "請它繪製或修改",
+    whereToBegin: "從哪裡開始",
+    askTheMentor: "問領航員",
+    hintGuide: "不確定從哪座島開始？告訴領航員你懂多少、想做什麼，它會帶你到一座島：可以學，也可以接受考驗。",
   },
 };
