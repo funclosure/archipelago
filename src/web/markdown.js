@@ -8,6 +8,7 @@ import { PLOT_LANGS } from "./plot-model.js";
 import { demoElement } from "./demo.js";
 import { DEMO_LANG } from "./demo-model.js";
 import { pinButton } from "./pin.js";
+import { watchWide } from "./wide.js";
 import { resolveLang } from "./code-model.js";
 import { t } from "./i18n.js";
 
@@ -83,6 +84,7 @@ export function diagramElement(source, { cache = true, pin = null } = {}) {
   box.append(cap);
   const holder = document.createElement("div");
   box.append(holder);
+  watchWide(box, holder); // a drawing wider than its box is drawn smaller, or scrolls and says so
   if (cache && nodeCache.has(source)) {
     holder.append(nodeCache.get(source).cloneNode(true));
     return box;

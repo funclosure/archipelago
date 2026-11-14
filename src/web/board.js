@@ -1,15 +1,19 @@
 // The board: the island's whiteboard over the map area. Cards both sides write. board-model.js holds the pure parts;
 // this module owns #board, #board-toggle, the editor with its live preview, and the board's key handler.
+// Every button here is one of the family's (`.btn` with a size and a variant, styles.css): nothing styles a bare
+// <button> by its place on the board.
 import { app, api } from "./app.js";
 import { renderMarkdown, diagramElement } from "./markdown.js";
-import { codeElement, fillCode } from "./code.js";
+import { codeElement, fillCode, copyButton, canCopy } from "./code.js";
 import { LANGS } from "./code-model.js";
 import { registerRegion, setRegion, region } from "./keys.js";
-import { startAdd, startEdit, canSave, writeOf, moveCard, keepCursor, authorLabel, bylineOf, kindLabel, hintCard, withoutRemoving, stepCard, originOf, isDirty, draftKey, KIND_KEYS, PLAIN } from "./board-model.js";
+import { startAdd, startEdit, canSave, writeOf, moveCard, neighbours, keepCursor, authorLabel, bylineOf, kindLabel, kindName, keyOfKind, hintCard, withoutRemoving, stepCard, afterMove, tabWrap, originOf, isDirty, draftKey, CARD_KINDS, KIND_KEYS, PLAIN } from "./board-model.js";
 import { isFull, setFull } from "./full.js";
-import { demoElement } from "./demo.js";
+import { demoElement, demoTools } from "./demo.js";
 import { syncPins } from "./pin.js";
 import { keyedChildren, patchChildren } from "./keep.js";
+import { icon } from "./icons.js";
+import { tip } from "./tip.js";
 import { t } from "./i18n.js";
 
 const PREVIEW_MS = 500;
@@ -27,9 +31,10 @@ const state = {
   open: false,
   editor: null,     // see startAdd / startEdit in board-model.js
   cursor: null,     // card id under the keyboard cursor
+  near: null,       // { next, prev }: the cards beside the cursor's card when it was removed, so j/k go on from there
   saving: false,
   loadError: null,
-  removing: null,   // { id, kind, timer }: a card taken off the board, deleted for good when its undo runs out
+  removing: null,   // { id, kind, title, slug, timer }: a card taken off the board, deleted for good when its undo runs out
 };
 const UNDO_MS = 7000;
 let loadGen = 0;
@@ -79,10 +84,12 @@ function markSeen() {
   } catch {}
   hint?.remove();
   hint = null;
+  hintFor = null;
   toggle.classList.remove("beckon");
 }
 
-let hint = null; // the first-card hint above the toggle, while it shows
+let hint = null;    // the first-card hint above the toggle, while it shows
+let hintFor = null; // what it says, so a snapshot that changes nothing leaves its buttons alone
 
 /** The first time a persona pins a card, a callout over the toggle says so; it goes for good once the board opens. */
 function renderHint(island) {
@@ -91,6 +98,7 @@ function renderHint(island) {
   if (!card) {
     hint?.remove();
     hint = null;
+    hintFor = null;
     return;
   }
   if (!hint) {
@@ -98,6 +106,8 @@ function renderHint(island) {
     hint.setAttribute("role", "status");
     document.body.append(hint);
   }
+  if (hintFor === card.author) return;
+  hintFor = card.author;
   const author = authorLabel(card.author);
   const text = button("", () => setOpen(true), "say");
   if (matchMedia("(hover: none)").matches) text.textContent = t("board.hintTouch", { author });
@@ -106,9 +116,9 @@ function renderHint(island) {
     const [before, after] = t("board.hint", { author, key: "\u0000" }).split("\u0000");
     text.replaceChildren(before, el("kbd", null, "b"), after);
   }
-  const dismiss = button("×", markSeen, "dismiss");
-  dismiss.setAttribute("aria-label", t("board.hintDismiss"));
-  dismiss.title = t("board.hintDismiss");
+  const dismiss = button("", markSeen, "btn sm quiet icon dismiss");
+  dismiss.append(icon("close", { size: 12 }));
+  tip(dismiss, t("board.hintDismiss"));
   hint.replaceChildren(text, dismiss);
 }
 
@@ -132,11 +142,28 @@ function el(tag, className, text) {
   return e;
 }
 
+/** A button of the family: `className` is its recipe (`btn sm quiet`, `btn md ghost`, …). */
 function button(label, onClick, className = "") {
   const b = el("button", className, label);
   b.type = "button";
   b.addEventListener("click", onClick);
   return b;
+}
+
+/** A square button of one glyph; its tip names it and, if it has one, its key. */
+function iconButton(name, label, onClick, className, keys) {
+  const b = button("", onClick, `btn icon ${className}`);
+  b.append(icon(name, { size: 14 }));
+  tip(b, label, keys);
+  return b;
+}
+
+/** A line of text cut to its box says the rest when the pointer rests on it, and only then. */
+function tipWhenCut(node, text) {
+  node.addEventListener("pointerover", () => {
+    if (node.scrollWidth > node.clientWidth) tip(node, text);
+    else delete node.dataset.tip;
+  });
 }
 
 const post = (write, island = state.slug) =>
@@ -177,6 +204,7 @@ function sync() {
     state.cards = [];
     state.loaded = false;
     state.cursor = null;
+    state.near = null;
     state.editor = null;
     state.version = null;
     state.loadError = null;
@@ -304,17 +332,22 @@ async function remove(id) {
   if (!card) return;
   await flushRemove();
   if (state.editor && state.editor.id === id) state.editor = null;
-  if (state.cursor === id) state.cursor = null;
-  state.removing = { id, kind: card.kind, slug: state.slug, timer: setTimeout(() => void flushRemove(), UNDO_MS) };
+  if (state.cursor === id) {
+    state.near = neighbours(shownCards().map((c) => c.id), id); // j/k go on from the row it leaves
+    state.cursor = null;
+  }
+  state.removing = { id, kind: card.kind, title: card.title ?? null, slug: state.slug, timer: setTimeout(() => void flushRemove(), UNDO_MS) };
   render();
+  document.dispatchEvent(new CustomEvent("board", { detail: {} })); // one card fewer on show: the phone's tab counts them
+  // The Undo line stands where the card stood; a tall card gone may have left that place above the fold.
+  board.querySelector(".column > .undo")?.scrollIntoView({ block: "nearest" });
 }
 
 /** Moves a card one place up or down: at once on the page, then on the server. */
 async function step(id, dir) {
   const moved = stepCard(shownCards(), id, dir);
   if (!moved) return false;
-  const hidden = state.cards.filter((c) => !moved.cards.includes(c)); // the card waiting out its undo keeps its row
-  state.cards = [...moved.cards, ...hidden];
+  state.cards = afterMove(state.cards, id, moved.write.before); // the card waiting out its undo keeps a row, the one the server will give it
   state.cursor = id;
   render();
   scrollCursorIntoView();
@@ -331,12 +364,18 @@ function undoRemove() {
   if (!state.removing) return;
   clearTimeout(state.removing.timer);
   state.cursor = state.removing.id;
+  state.near = null;
   state.removing = null;
   render();
+  document.dispatchEvent(new CustomEvent("board", { detail: {} })); // the card is back on show
+  scrollCursorIntoView();
 }
 
+/** The card waiting out its undo on the board on show, or null. */
+const removingHere = () => (state.removing?.slug === state.slug ? state.removing : null);
+
 /** The cards on show: all of them but the one waiting out its undo. */
-const shownCards = () => withoutRemoving(state.cards, state.removing?.slug === state.slug ? state.removing.id : null);
+const shownCards = () => withoutRemoving(state.cards, removingHere()?.id ?? null);
 
 function setStatus(text, bad = false) {
   if (!editorStatus) return;
@@ -363,35 +402,54 @@ function scrollCursorIntoView() {
   board.querySelector(".card.cur")?.scrollIntoView({ block: "nearest" });
 }
 
-function bodyEl(kind, body, lang, { cache = true } = {}) {
+/** A card's body by kind. `card`: on a card the block drops what the card's own caption already says. */
+function bodyEl(kind, body, lang, { cache = true, card = false } = {}) {
   if (kind === "diagram") return diagramElement(body, { cache });
-  if (kind === "code") return codeElement(lang ?? "text", body, true);
-  if (kind === "demo") return demoElement(body);
+  if (kind === "code") return codeElement(lang ?? "text", body, true, { cap: !card });
+  if (kind === "demo") return demoElement(body, { foldable: !card });
   const div = el("div", "note-body");
   div.append(renderMarkdown(body));
   return div;
 }
 
+/**
+ * A card: one caption row (kind, title, who) over its body. Its controls sit at the row's end and show when the
+ * pointer is on the card, when the keyboard is in it, or when it is the cursor's card (always, on a touch screen):
+ * the block's own tools first (a demo's Reset, Code and Full screen; Copy for code), then the card's (move, edit,
+ * remove). They are laid over the row's end, so showing them moves nothing.
+ */
 function cardEl(card) {
   const box = el("article", `card${card.id === state.cursor ? " cur" : ""}`);
   box.dataset.id = String(card.id);
+  box.dataset.kind = card.kind;
+  const body = bodyEl(card.kind, card.body, card.lang, { card: true });
   const cap = el("div", "cap");
   cap.append(el("span", "kind", kindLabel(card.kind) + (card.lang ? ` · ${card.lang}` : "")));
-  if (card.title) cap.append(el("span", "title", card.title)); // the Keeper may name a card; the reader never has to
+  if (card.title) { // the Keeper may name a card; the reader never has to
+    const title = el("span", "title", card.title);
+    tipWhenCut(title, card.title);
+    cap.append(title);
+  }
   cap.append(el("span", `who ${card.forkedFrom ?? card.author}`, bylineOf(card)));
+  const ctl = el("span", "ctl");
+  const tools = el("span", "tools");
+  if (card.kind === "demo") tools.append(...demoTools(body));
+  else if (card.kind === "code" && canCopy()) tools.append(copyButton(card.body));
   const acts = el("span", "acts");
   // Which arrow is live depends on where the card stands, which changes without the card changing: paintMoves sets it.
-  const up = button("↑", () => void step(card.id, -1), "move up");
-  up.title = t("board.moveUp");
-  up.setAttribute("aria-label", t("board.moveUp"));
-  const down = button("↓", () => void step(card.id, 1), "move down");
-  down.title = t("board.moveDown");
-  down.setAttribute("aria-label", t("board.moveDown"));
-  acts.append(up, down, button(t("board.edit"), () => edit(card)), button(t("board.remove"), () => void remove(card.id)));
-  cap.append(acts);
-  box.append(cap, bodyEl(card.kind, card.body, card.lang));
+  acts.append(
+    iconButton("arrow-up", t("board.moveUp"), () => void step(card.id, -1), "sm quiet move up", "⇧K"),
+    iconButton("arrow-down", t("board.moveDown"), () => void step(card.id, 1), "sm quiet move down", "⇧J"),
+    iconButton("pencil", t("board.edit"), () => edit(card), "sm quiet edit", "↵"),
+    iconButton("trash", t("board.remove"), () => void remove(card.id), "sm quiet remove", "x"),
+  );
+  if (tools.childElementCount) ctl.append(tools);
+  ctl.append(acts);
+  cap.append(ctl);
+  box.append(cap, body);
   box.addEventListener("mousedown", () => {
     state.cursor = card.id;
+    state.near = null;
     paintCursor();
   });
   return box;
@@ -403,13 +461,14 @@ const PLACEHOLDER = {
   code: t("board.placeholderCode"),
   demo: t("board.placeholderDemo"),
 };
-const GROW_MIN = 160;   // px, the writing surface never shrinks below this
-const GROW_MAX = 0.6;   // of the viewport, then it scrolls
+const GROW_MIN = 160;      // px, the writing surface never shrinks below this
+const GROW_MAX = 0.6;      // of the viewport, then it scrolls
+const GROW_STACKED = 0.36; // a demo's code while the running demo is under it, not beside it: both stay in view
 
 /** Sizes a textarea to its content between the bounds, so the writing surface grows with the note instead of scrolling early. */
-function grow(ta) {
+function grow(ta, share = GROW_MAX) {
   ta.style.height = "auto";
-  const max = Math.round(window.innerHeight * GROW_MAX);
+  const max = Math.round(window.innerHeight * share);
   ta.style.height = `${Math.min(max, Math.max(GROW_MIN, ta.scrollHeight))}px`;
   ta.style.overflowY = ta.scrollHeight > max ? "auto" : "hidden";
 }
@@ -433,9 +492,9 @@ function langSelect(ed, onChange) {
   return sel;
 }
 
-/** A two-way segmented switch (Write | Preview); `onPick(name)` runs on change. `labels` says each name on the page. */
+/** A two-way segmented switch (Write | Preview), the family's `.segs`; `onPick(name)` runs on change. `labels` says each name on the page. */
 function tabs(names, current, onPick, labels = {}) {
-  const box = el("div", "tabs");
+  const box = el("div", "segs tabs");
   box.setAttribute("role", "tablist");
   const buttons = names.map((name) => {
     const b = button(labels[name] ?? name, () => {
@@ -454,8 +513,9 @@ function tabs(names, current, onPick, labels = {}) {
 /**
  * A live code block: a transparent textarea over a highlighted mirror with the same metrics, so the reader
  * types into coloured code. The mirror repaints once per input frame and follows the textarea's scroll.
+ * `share()` is how much of the window's height it may take before it scrolls.
  */
-function liveCode(ed, onInput, { lang = () => (ed.lang === PLAIN ? "text" : ed.lang), kind = "code" } = {}) {
+function liveCode(ed, onInput, { lang = () => (ed.lang === PLAIN ? "text" : ed.lang), kind = "code", share = () => GROW_MAX } = {}) {
   const wrap = el("div", "live");
   const pre = document.createElement("pre");
   pre.setAttribute("aria-hidden", "true");
@@ -480,7 +540,7 @@ function liveCode(ed, onInput, { lang = () => (ed.lang === PLAIN ? "text" : ed.l
       const text = ta.value;
       // a trailing newline would collapse in the mirror and leave the caret's line unpainted
       fillCode(code, lang(), text.endsWith("\n") ? `${text} ` : text, false);
-      grow(ta);
+      grow(ta, share());
       follow();
     });
   };
@@ -501,11 +561,14 @@ function liveCode(ed, onInput, { lang = () => (ed.lang === PLAIN ? "text" : ed.l
   return { wrap, ta, paint };
 }
 
+/** A diagram's parse error as the editor shows it: the first lines, which carry the source line and the caret under the fault. */
+const parseError = (e) => String(e && e.message ? e.message : e).split("\n").slice(0, 3).join("\n");
+
 /** Renders a note or diagram body into `preview`; a diagram that does not parse shows its error in `err` and keeps the last render. */
 function renderPreview(ed, preview, err) {
   const seq = ++previewSeq;
   if (!ed.body.trim()) {
-    preview.replaceChildren(el("div", "empty", t("board.nothingToPreview")));
+    preview.replaceChildren(el("div", "nothing", t("board.nothingToPreview")));
     return;
   }
   if (ed.kind === "diagram" && window.mermaid) {
@@ -518,7 +581,7 @@ function renderPreview(ed, preview, err) {
       })
       .catch((e) => {
         if (seq !== previewSeq || state.editor !== ed) return;
-        err.textContent = String(e && e.message ? e.message : e).split("\n").slice(0, 3).join("\n");
+        err.textContent = parseError(e);
         err.hidden = false;
       });
     return;
@@ -527,8 +590,9 @@ function renderPreview(ed, preview, err) {
 }
 
 /**
- * The editor: a head (kind, language for code, Write | Preview for notes and diagrams), a body, and a foot with the
- * actions. Notes and diagrams are written in a plain surface that grows with the text; Preview renders it in place.
+ * The editor: a head (kind, the card's title if it has one, language for code, Write | Preview for notes and
+ * diagrams), a body, and a foot with the actions and their keys. Notes and diagrams are written in a plain surface
+ * that grows with the text; Preview renders it in place. Save is the editor's one filled button.
  */
 function editorEl(ed) {
   const box = el("section", `editor ${ed.kind}`);
@@ -536,21 +600,23 @@ function editorEl(ed) {
   box.setAttribute("aria-label", t(ed.id === null ? "board.ariaNew" : "board.ariaEdit", { kind: kindLabel(ed.kind) }));
   const head = el("div", "ehead");
   head.append(el("span", "kind", ed.id === null ? t("board.newKind", { kind: kindLabel(ed.kind) }) : kindLabel(ed.kind)));
+  const title = ed.id === null ? null : state.cards.find((c) => c.id === ed.id)?.title;
+  if (title) head.append(el("span", "title", title)); // the card being edited keeps its name over the editor
   const body = el("div", "ebody");
   const foot = el("div", "efoot");
-  const save = button(t("board.save"), () => void saveEditor(), "primary");
-  foot.append(save, button(t("board.cancel"), cancelEditor));
-  if (ed.id !== null) foot.append(button(t("board.remove"), () => void remove(ed.id), "danger"));
-  const hint = el("span", "hint");
-  hint.append(el("kbd", null, "⌘↵"), t("board.hintSave"), el("kbd", null, "esc"), t("board.hintCancel"));
+  const save = button("", () => void saveEditor(), "btn md save");
+  save.append(t("board.save"), el("kbd", null, "⌘↵"));
+  const cancel = button("", cancelEditor, "btn md ghost");
+  cancel.append(t("board.cancel"), el("kbd", null, "Esc"));
   const status = el("span", "status");
-  foot.append(hint, status);
+  foot.append(save, cancel, status);
+  if (ed.id !== null) foot.append(button(t("board.remove"), () => void remove(ed.id), "btn md quiet danger remove"));
   // Cancel with unsaved changes asks here first. Discard takes the focus: Enter discards, Escape goes back to editing.
   const confirm = el("div", "confirm");
   confirm.hidden = true;
   confirm.setAttribute("role", "alertdialog");
-  const discard = button(t("board.discard"), () => cancelEditor({ sure: true }), "danger");
-  confirm.append(el("span", null, t("board.discardAsk")), discard, button(t("board.keepEditing"), () => cancelEditor()));
+  const discard = button(t("board.discard"), () => cancelEditor({ sure: true }), "btn md danger");
+  confirm.append(el("span", null, t("board.discardAsk")), discard, button(t("board.keepEditing"), () => cancelEditor(), "btn md ghost"));
   editorConfirm = {
     show() {
       confirm.hidden = false;
@@ -574,7 +640,7 @@ function editorEl(ed) {
       state.editor = fresh;
       render();
       editorFocus?.();
-    }));
+    }, "btn sm ghost"));
   }
   const updateSave = () => {
     save.disabled = !canSave(ed) || state.saving;
@@ -587,25 +653,40 @@ function editorEl(ed) {
     const run = () => {
       if (shown === ed.body || state.editor !== ed) return;
       shown = ed.body;
-      preview.replaceChildren(ed.body.trim() ? demoElement(ed.body, { preview: true }) : el("div", "empty", t("board.nothingToPreview")));
+      preview.replaceChildren(ed.body.trim() ? demoElement(ed.body, { preview: true }) : el("div", "nothing", t("board.nothingToPreview")));
     };
+    const split = el("div", "split");
+    // Stacked (a narrow board), the code takes less of the window so the demo under it stays in view.
+    const beside = () => getComputedStyle(split).flexDirection === "row";
     const live = liveCode(ed, () => {
       updateSave();
       clearTimeout(previewTimer);
       previewTimer = setTimeout(run, PREVIEW_MS);
-    }, { lang: () => "html", kind: "demo" });
-    const split = el("div", "split");
+    }, { lang: () => "html", kind: "demo", share: () => (beside() ? GROW_MAX : GROW_STACKED) });
     split.append(live.wrap, preview);
-    const full = button("", () => setFull(box, !isFull(box), drawFull));
+    const full = button("", () => setFull(box, !isFull(box), drawFull), "btn sm quiet");
     const drawFull = () => {
-      full.textContent = t(isFull(box) ? "board.exitFull" : "board.full");
-      full.setAttribute("aria-pressed", String(isFull(box)));
+      const on = isFull(box);
+      full.classList.toggle("icon", !on); // filling the window, the way back is said in words
+      full.replaceChildren(icon(on ? "collapse" : "expand", { size: 14 }), ...(on ? [t("board.exitFull")] : []));
+      full.setAttribute("aria-label", t(on ? "board.exitFull" : "board.full"));
+      full.setAttribute("aria-pressed", String(on));
+      tip(full, t(on ? "board.exitFull" : "board.full"), on ? "Esc" : undefined);
       live.paint(); // the writing surface is sized for the room it has now
     };
     drawFull();
     head.append(el("span", "spacer"), full);
     body.append(split);
-    editorFocus = () => live.ta.focus();
+    let first = ed.id !== null && !editorRestored; // a saved demo opens at its first line, not its last
+    editorFocus = () => {
+      live.ta.focus();
+      if (!first) return;
+      first = false;
+      live.ta.setSelectionRange(0, 0);
+      requestAnimationFrame(() => {
+        live.ta.scrollTop = 0; // after the first paint has sized it
+      });
+    };
     run();
   } else if (ed.kind === "code") {
     const live = liveCode(ed, updateSave);
@@ -636,7 +717,7 @@ function editorEl(ed) {
         if (seq === previewSeq) err.hidden = true;
       }).catch((e) => {
         if (seq !== previewSeq) return;
-        err.textContent = String(e && e.message ? e.message : e).split("\n").slice(0, 3).join("\n");
+        err.textContent = parseError(e);
         err.hidden = false;
       });
     };
@@ -683,37 +764,20 @@ function currentEditor() {
   return editorNode;
 }
 
-/** A 12px cross drawn with two strokes, in the button's colour. */
-function closeIcon() {
-  const NS = "http://www.w3.org/2000/svg";
-  const svg = document.createElementNS(NS, "svg");
-  svg.setAttribute("viewBox", "0 0 12 12");
-  svg.setAttribute("width", "12");
-  svg.setAttribute("height", "12");
-  svg.setAttribute("aria-hidden", "true");
-  for (const d of ["M2 2 L10 10", "M10 2 L2 10"]) {
-    const p = document.createElementNS(NS, "path");
-    p.setAttribute("d", d);
-    p.setAttribute("fill", "none");
-    p.setAttribute("stroke", "currentColor");
-    p.setAttribute("stroke-width", "1.5");
-    p.setAttribute("stroke-linecap", "round");
-    svg.append(p);
+/** Tab in the open editor moves among its own controls and comes round again; Escape is the way out. */
+function editorTab(e) {
+  if (!state.editor || !editorNode || !editorNode.contains(e.target)) return false;
+  const stops = [...editorNode.querySelectorAll("button, textarea, select")].filter((n) => !n.disabled && n.getClientRects().length > 0);
+  const to = tabWrap(stops.length, stops.indexOf(e.target), e.shiftKey);
+  if (to !== null) {
+    e.preventDefault();
+    stops[to].focus();
   }
-  return svg;
-}
-
-/** The way back: a × at the head's right end; the peeked map and the scrim say where it leads. */
-function close() {
-  const b = button("", () => setOpen(false), "close");
-  b.append(closeIcon());
-  b.title = t("board.backTitle");
-  b.setAttribute("aria-label", t("board.back"));
-  return b;
+  return true; // otherwise the browser's own order is right (and a code field keeps Tab for two spaces)
 }
 
 let hideTimer = 0;
-const SLIDE_MS = 200; // a touch over the .18s transition
+const SLIDE_MS = 200; // a touch over the sheet's --t-med transition
 
 /** Shows or hides the sheet and its scrim with the slide: unhide, then next frame add `in`; on close, hide after the slide. */
 function setVisible(show) {
@@ -738,13 +802,67 @@ function setVisible(show) {
   }, SLIDE_MS);
 }
 
+/** One add button: the kind, and its key where a key can be pressed. */
+function addButton(kind, className, { chip = false } = {}) {
+  const b = button("", () => add(kind), className);
+  b.dataset.kind = kind;
+  const key = keyOfKind(kind);
+  if (chip) b.append(kindName(kind), el("kbd", null, key));
+  else {
+    b.append(icon("plus", { size: 12 }), kindName(kind));
+    tip(b, t("board.newKind", { kind: kindLabel(kind) }), key);
+  }
+  return b;
+}
+
+let headNode = null; // the sheet's head, kept until what it says changes: a snapshot never takes a button from under the pointer
+let headSig = "";
+
+/** The sheet's head, one row: the island, how many cards, the four adds (each tip names its key), and the way back. */
 function headEl(island) {
+  const n = shownCards().length;
+  const sig = JSON.stringify([island.name, n]);
+  if (headNode && headSig === sig) return headNode;
   const head = el("div", "head");
-  // The adds are one group: when the title leaves no room, they wrap to a second row together, and the × stays top right.
+  const name = el("span", "name", island.name);
+  tipWhenCut(name, island.name);
   const adds = el("span", "adds");
-  adds.append(...["diagram", "note", "code", "demo"].map((kind) => button(t("board.addKind", { kind: kindLabel(kind) }), () => add(kind))));
-  head.append(el("span", "name", island.name), el("span", "count", t("board.cards", { n: shownCards().length })), adds, close());
+  adds.append(...CARD_KINDS.map((kind) => addButton(kind, "btn md ghost")));
+  // The way back: a × at the head's end; the peeked map and the scrim say where it leads.
+  const close = iconButton("close", t("board.back"), () => setOpen(false), "md quiet close", "Esc");
+  head.append(name, el("span", "count", t("board.cards", { n })), adds, close);
+  headNode = head;
+  headSig = sig;
   return head;
+}
+
+/** What each kind is for, in a few words: the empty board's rows. */
+const ABOUT = { diagram: "board.aboutDiagram", note: "board.aboutNote", code: "board.aboutCode", demo: "board.aboutDemo" };
+
+/** An empty board says what a board is for and offers the four kinds, each with what it is and its key. */
+function emptyEl() {
+  const box = el("div", "empty");
+  box.append(el("h3", null, t("board.emptyTitle")), el("p", null, t("board.empty")));
+  const kinds = el("div", "kinds");
+  for (const kind of CARD_KINDS) {
+    const row = button("", () => add(kind), "mi");
+    row.dataset.kind = kind;
+    // The key's cap sits at the row's end. (Not the menu's `.keys` span: that class is also the cheat sheet's root.)
+    row.append(icon("plus", { size: 14 }), el("span", "nm", kindName(kind)), el("span", "grow", t(ABOUT[kind])), el("kbd", null, keyOfKind(kind)));
+    kinds.append(row);
+  }
+  box.append(kinds);
+  return box;
+}
+
+/** A removed card's line, where the card stood, until its undo runs out. */
+function undoEl(gone) {
+  const bar = el("div", "undo");
+  bar.setAttribute("role", "status");
+  const undo = button("", undoRemove, "btn sm ghost");
+  undo.append(t("board.undo"), el("kbd", null, "u"));
+  bar.append(el("span", "said", gone.title ? t("board.removedTitled", { title: gone.title }) : t("board.removed", { kind: kindLabel(gone.kind) })), undo);
+  return bar;
 }
 
 /** The column's children. A card keeps its element until the card changes, so a demo on it keeps running. */
@@ -752,30 +870,28 @@ function columnEntries() {
   const out = [];
   if (state.loadError) out.push({ build: () => el("div", "err-line", state.loadError) });
   if (state.editor && state.editor.id === null) out.push({ build: currentEditor });
-  if (state.removing?.slug === state.slug) {
-    const gone = state.removing;
-    out.push({
-      build: () => {
-        const bar = el("div", "undo");
-        bar.setAttribute("role", "status");
-        bar.append(el("span", null, t("board.removed", { kind: kindLabel(gone.kind) })), button(t("board.undo"), undoRemove));
-        return bar;
-      },
-    });
-  }
-  const cards = shownCards();
-  if (state.loaded && cards.length === 0 && !state.editor) out.push({ build: () => el("div", "empty", t("board.empty")) });
-  for (const card of cards) {
-    if (state.editor && state.editor.id === card.id) out.push({ build: currentEditor });
+  const gone = removingHere();
+  if (state.loaded && shownCards().length === 0 && !state.editor && !gone) out.push({ key: "empty", sig: String(drawGen), build: emptyEl });
+  for (const card of state.cards) {
+    if (gone && gone.id === card.id) out.push({ key: "undo", sig: String(gone.id), build: () => undoEl(gone) }); // in the card's own row
+    else if (state.editor && state.editor.id === card.id) out.push({ build: currentEditor });
     else out.push({ key: card.id, sig: JSON.stringify([drawGen, card]), build: () => cardEl(card) });
   }
   return out;
 }
 
+let toggleSig = null;
+
 function render() {
   const island = app.snapshot && state.slug ? app.snapshot.islands.find((i) => i.slug === state.slug) ?? null : null;
   toggle.hidden = !island || state.open;
-  if (island) toggle.replaceChildren(el("span", null, t("board.toggle", { n: shownCards().length })), el("kbd", null, "b"));
+  if (island) {
+    const n = shownCards().length;
+    if (toggleSig !== n) {
+      toggleSig = n;
+      toggle.replaceChildren(icon("board", { size: 14 }), el("span", null, t("board.toggle", { n })), el("kbd", null, "b"));
+    }
+  }
   renderHint(island);
   const show = Boolean(island) && state.open;
   if (!show) {
@@ -795,6 +911,7 @@ function render() {
   keyedChildren(column, columnEntries());
   paintCursor();
   paintMoves();
+  board.classList.toggle("editing", Boolean(state.editor)); // one lamp ring at a time: the editor's
   if (!state.editor) {
     editorNode = null;
     editorFor = null;
@@ -820,11 +937,13 @@ export function installBoard() {
     close: () => setOpen(false),
     cancelEditor,
     save: () => (state.editor ? (void saveEditor(), true) : false),
+    tab: editorTab,
     onKey(e) {
       if (state.editor) return false; // the fields own their keys; Escape and ⌘↵ are handled by keys.js
-      const moved = moveCard(shownCards().map((c) => c.id), state.cursor, e.key);
+      const moved = moveCard(shownCards().map((c) => c.id), state.cursor, e.key, state.near);
       if (moved !== null) {
         state.cursor = moved;
+        state.near = null;
         paintCursor();
         scrollCursorIntoView();
         return true;
@@ -848,6 +967,10 @@ export function installBoard() {
         case "x":
           if (state.cursor === null) return false;
           void remove(state.cursor);
+          return true;
+        case "u": // the card just removed comes back, while its Undo line stands
+          if (!removingHere()) return false;
+          undoRemove();
           return true;
         default:
           return false;

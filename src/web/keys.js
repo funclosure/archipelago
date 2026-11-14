@@ -197,6 +197,7 @@ function onKeydown(e) {
     return;
   }
   if (e.key === "Tab" && !e.metaKey && !e.ctrlKey && !e.altKey) { // ⌘⇥ and friends stay the browser's
+    if (handlers.board?.tab?.(e)) return; // the board's open editor keeps Tab among its own controls, buttons included
     if (isTyping(e.target) && e.target.closest("#board .editor, #about")) return; // these fields keep the browser's Tab order
     e.preventDefault();
     setRegion(step(current, e.shiftKey));

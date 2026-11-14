@@ -12,8 +12,6 @@ export default {
     unfold: "Open the demo",
     full: "Full screen",
     exitFull: "Exit full screen",
-    fullTitle: "Fill the window with the demo; it keeps its state",
-    exitFullTitle: "Back to where it was (Esc)",
   },
   "zh-TW": {
     caption: "互動示範",
@@ -27,7 +25,5 @@ export default {
     unfold: "展開示範",
     full: "全螢幕",
     exitFull: "離開全螢幕",
-    fullTitle: "讓示範占滿視窗；目前的狀態會保留",
-    exitFullTitle: "回到原本的位置（Esc）",
   },
 };

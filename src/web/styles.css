@@ -676,60 +676,93 @@ body.outline-resizing :is(.outline, .chrome, .map-focus, .board-scrim, .board, .
 .pane.resizing { transition: none; user-select: none; }
 .pane-width { position: fixed; top: 8px; right: calc(var(--pane-w) - 12px); transform: translateX(100%); font-size: var(--fs-micro); letter-spacing: var(--track-caps); text-transform: uppercase; color: var(--muted); z-index: 4; pointer-events: none; }
 
-/* ---- diagrams ---- */
-.diagram { margin: 6px 0 8px; padding: 10px 8px; background: var(--water); border: 1px solid var(--line); border-radius: 8px; overflow-x: auto; }
-.diagram svg { max-width: none; height: auto; display: block; margin: 0 auto; }
-.diagram .cap { display: flex; justify-content: space-between; align-items: center; font-size: var(--fs-micro); color: var(--muted); text-transform: uppercase; letter-spacing: var(--track-caps); margin-bottom: 6px; }
+/* ---- blocks: a diagram, a plot, a demo, a piece of code. In a reply each is one box with one caption row; on a
+   board card the card is the box and its caption the row (the board's rules, below), so the block drops its own.
+   The buttons of a caption row are the family's small quiet ones (.btn.sm.quiet), the same in both places. ---- */
+.diagram, .plot, .demo, .codeblock { position: relative; margin: var(--sp-15) 0 var(--sp-2); padding: var(--sp-15) var(--sp-3) var(--sp-3); background: var(--water); border: 1px solid var(--line); border-radius: var(--r-md); }
+/* the caption row: a small capitals label at the left, the block's actions at the right, their labels ending on the content's edge */
+:is(.diagram, .plot, .codeblock) > .cap, .demo > .bar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-05); min-height: var(--h-sm); margin: 0 calc(-1 * var(--sp-15)) var(--sp-1) 0; }
+:is(.diagram, .plot, .codeblock) > .cap, .demo > .bar > .cap { font: var(--fw-medium) var(--fs-micro)/var(--lh-tight) var(--font-ui); letter-spacing: var(--track-caps); text-transform: uppercase; color: var(--muted); }
+:is(.diagram, .plot, .codeblock) > .cap .btn { letter-spacing: normal; text-transform: none; }
+:is(.diagram, .codeblock) > .cap > :is(.pin, .acts) { margin-left: auto; }
+.codeblock > .cap > .acts { display: inline-flex; align-items: center; gap: var(--sp-05); }
+:is(.demo > .bar, .codeblock > .cap, .diagram > .cap) .btn { white-space: nowrap; }
+:is(.demo > .bar, .codeblock > .cap, .diagram > .cap) .btn[hidden] { display: none; } /* the family's .btn sets a display, which outbids the hidden attribute */
+/* Code open, or the window filled: the button that did it stays lit in the neutral selected fill, never the lamp */
+.demo > .bar .btn:is([aria-expanded="true"], [aria-pressed="true"]) { background: var(--selected); color: var(--text); }
+/* On the board already: a statement with a tick, nothing to press */
+.pin.on:disabled { opacity: 1; color: var(--muted); }
 
-.plot { margin: 6px 0 8px; padding: 10px 8px; background: var(--water); border: 1px solid var(--line); border-radius: 8px; overflow-x: auto; }
+/* ---- diagrams ---- */
+.diagram > .holder { overflow-x: auto; color: var(--muted); font-size: var(--fs-sm); }
+.diagram > .holder > svg { max-width: none; height: auto; display: block; margin: 0 auto; }
+/* A diagram a little wider than its box is drawn smaller to fit (wide.js); one much wider scrolls, and says so: the
+   side that hides something fades out, and an arrow there moves it along. */
+.diagram.fit > .holder > svg { max-width: 100%; }
+/* (the same fade for a block of code whose long line scrolls it) */
+:is(.diagram > .holder, .codeblock pre)[data-more="end"] { -webkit-mask-image: linear-gradient(to right, black calc(100% - var(--sp-12)), transparent); mask-image: linear-gradient(to right, black calc(100% - var(--sp-12)), transparent); }
+:is(.diagram > .holder, .codeblock pre)[data-more="start"] { -webkit-mask-image: linear-gradient(to left, black calc(100% - var(--sp-12)), transparent); mask-image: linear-gradient(to left, black calc(100% - var(--sp-12)), transparent); }
+:is(.diagram > .holder, .codeblock pre)[data-more="both"] { -webkit-mask-image: linear-gradient(to right, transparent, black var(--sp-12), black calc(100% - var(--sp-12)), transparent); mask-image: linear-gradient(to right, transparent, black var(--sp-12), black calc(100% - var(--sp-12)), transparent); }
+.diagram > .wide-go { --btn-bg: var(--panel); position: absolute; top: calc(50% + var(--go-shift, 11px)); margin-top: calc(var(--h-sm) / -2); display: none; color: var(--text); border-color: var(--line-strong); border-radius: var(--r-full); box-shadow: var(--e-1); }
+.diagram > .wide-go.start { left: var(--sp-2); }
+.diagram > .wide-go.end { right: var(--sp-2); }
+.diagram:is([data-more="start"], [data-more="both"]) > .wide-go.start, .diagram:is([data-more="end"], [data-more="both"]) > .wide-go.end { display: inline-flex; }
+:is(.diagram, .plot) > .holder pre { margin: 0; padding: 0; background: none; overflow-x: auto; white-space: pre; font-size: var(--fs-sm); line-height: var(--lh-body); } /* a drawing that could not be drawn shows its source */
+/* Mermaid lays a diagram out by measuring elements it has only just styled, in a holder of its own on the page. The
+   family's reduced-motion rule gives every element a 1ms transition, so those measurements read the old values and
+   the diagram comes out many times too large. Nothing mermaid draws transitions. */
+[id^="ddiagram-"], [id^="ddiagram-"] *, .diagram > .holder > svg, .diagram > .holder > svg * { transition: none !important; }
+
+/* ---- plots ---- */
+.plot > .holder { overflow-x: auto; color: var(--muted); font-size: var(--fs-sm); }
 .plot svg { display: block; margin: 0 auto; }
-.plot .cap { font-size: var(--fs-micro); color: var(--muted); text-transform: uppercase; letter-spacing: var(--track-caps); margin-bottom: 6px; }
-.plot .error { margin-bottom: 6px; }
-.plot .legend { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 14px; margin-top: 6px; font-size: 12px; color: var(--muted); }
-.plot .legend .item { display: inline-flex; align-items: center; gap: 6px; }
-.demo { margin: 6px 0 8px; padding: 8px; background: var(--water); border: 1px solid var(--line); border-radius: 8px; }
-.demo .bar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; margin-bottom: 6px; }
-.demo .bar .btn, .demo .bar .pin { white-space: nowrap; }
-.demo > .bar > .cap { font-size: var(--fs-micro); color: var(--muted); text-transform: uppercase; letter-spacing: var(--track-caps); margin-right: auto; padding: 0; background: none; border: 0; font-family: inherit; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
-.demo > .bar > .cap::before { content: ""; width: 6px; height: 6px; border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; transform: rotate(45deg) translate(-2px, -2px); transition: transform .15s; }
+.plot .error { margin-bottom: var(--sp-15); }
+.plot .legend { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--sp-1) var(--sp-3); margin-top: var(--sp-15); font-size: var(--fs-sm); color: var(--muted); }
+.plot .legend .item { display: inline-flex; align-items: center; gap: var(--sp-15); }
+.plot .legend .swatch { width: 14px; height: 2px; border-radius: var(--r-full); flex: none; }
+
+/* ---- demos ---- */
+/* the caption folds the demo to its bar: a label that is also a button, as tall as the buttons beside it */
+.demo > .bar > .cap { display: inline-flex; align-items: center; gap: var(--sp-15); min-height: var(--h-sm); margin-right: auto; padding: 0; background: none; border: 0; cursor: pointer; }
+.demo > .bar > .cap::before { content: ""; width: 6px; height: 6px; border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; transform: rotate(45deg) translate(-2px, -2px); transition: transform var(--t-fast) var(--ease); }
 .demo > .bar > .cap:hover { color: var(--text); }
 .demo > .bar > .cap:disabled { cursor: default; color: var(--muted); }
 .demo > .bar > .cap:disabled::before { display: none; }
 .demo.folded > .bar > .cap::before { transform: rotate(-45deg); }
 .demo.folded > :not(.bar) { display: none; }
-.demo.folded .bar { margin-bottom: 0; }
-.demo .bar .btn { padding: 3px 10px; font-size: 11px; }
-.demo iframe { display: block; width: 100%; border: 0; border-radius: 6px; background: transparent; }
-.demo .error { margin-bottom: 6px; }
+.demo.folded { padding-bottom: var(--sp-15); }
+.demo.folded > .bar { margin-bottom: 0; }
+.demo iframe { display: block; width: 100%; border: 0; border-radius: var(--r-sm); background: transparent; }
+.demo .error { margin-bottom: var(--sp-15); }
 /* Full screen: the box fills the window from the top layer (a popover), in place, so the frame never reloads. */
-.demo.full { position: fixed; inset: 0; width: auto; height: auto; max-width: none; max-height: none; margin: 0; padding: 12px 16px; border: 0; border-radius: 0; background: var(--panel); color: var(--text); display: flex; flex-direction: column; overflow: hidden; }
+.demo.full { position: fixed; inset: 0; width: auto; height: auto; max-width: none; max-height: none; margin: 0; padding: var(--sp-3) var(--sp-4); border: 0; border-radius: 0; box-shadow: none; background: var(--panel); color: var(--text); display: flex; flex-direction: column; overflow: hidden; }
+.demo.full > .bar { margin-right: 0; }
 .demo.full > iframe { flex: 1 1 auto; min-height: 0; height: auto !important; }
 .demo.full > .codeblock { flex: 0 1 auto; overflow: auto; }
 .demo.full > .out { flex: 0 0 auto; }
-.demo .out { margin-top: 6px; max-height: 120px; overflow-y: auto; font-family: var(--font-mono); font-size: 12px; color: var(--text-2); border-top: 1px solid var(--line); padding-top: 6px; }
+.demo .out { margin-top: var(--sp-15); max-height: 120px; overflow-y: auto; font: var(--fs-sm)/var(--lh-body) var(--font-mono); color: var(--text-2); border-top: 1px solid var(--line); padding-top: var(--sp-15); }
 .demo .out .line[data-level="warn"], .demo .out .line[data-level="error"] { color: var(--reef); }
-.demo .codeblock { margin: 0 0 6px; }
+/* a demo's code is part of the demo: no second box inside it, only a rule under it */
+.demo > .codeblock { margin: 0 0 var(--sp-2); padding: 0 0 var(--sp-2); background: none; border: 0; border-bottom: 1px solid var(--line); border-radius: 0; box-shadow: none; }
 .demo .codeblock pre { max-height: 320px; overflow: auto; }
-.plot .legend .swatch { width: 14px; height: 2px; border-radius: 1px; flex: none; }
 
 /* ---- code blocks ---- */
-.codeblock { margin: 6px 0 8px; padding: 8px 10px 10px; background: var(--water); border: 1px solid var(--line); border-radius: 8px; }
-.codeblock .cap { display: flex; justify-content: space-between; align-items: center; font-size: var(--fs-micro); color: var(--muted); text-transform: uppercase; letter-spacing: var(--track-caps); margin-bottom: 6px; }
-.codeblock .cap .acts { display: inline-flex; gap: 14px; }
-.pin { font: inherit; letter-spacing: inherit; text-transform: inherit; color: var(--muted); background: none; border: 0; padding: 0; cursor: pointer; }
-.pin:hover:not(:disabled) { color: var(--lamp); }
-.pin:disabled { cursor: default; opacity: .8; }
-.demo .bar .pin { font-size: var(--fs-micro); text-transform: uppercase; letter-spacing: var(--track-caps); margin-right: 6px; }
-.codeblock .copy { font: inherit; letter-spacing: inherit; text-transform: inherit; color: var(--muted); background: none; border: 0; padding: 0; cursor: pointer; }
-.codeblock .copy:hover { color: var(--lamp); }
-.msg .codeblock pre { margin: 0; padding: 0; background: none; overflow-x: auto; white-space: pre; font-size: 12px; line-height: 1.5; }
-.msg .codeblock code { color: var(--code-fg); }
+:is(.msg, .board) .codeblock pre { margin: 0; padding: 0; background: none; overflow-x: auto; white-space: pre; tab-size: 2; font-size: var(--fs-sm); line-height: var(--lh-body); }
+:is(.msg, .board) .codeblock code { padding: 0; background: none; font-size: inherit; color: var(--code-fg); }
 .tok-keyword { color: var(--code-keyword); }
 .tok-string { color: var(--code-string); }
 .tok-comment { color: var(--code-comment); }
 .tok-type { color: var(--code-type); }
 .tok-number { color: var(--code-number); }
 .tok-i { font-style: italic; }
+
+/* ---- plates: on the paper themes (chart, vellum) a block is drawn as the films draw an idea, a small engraved
+   plate: an ink edge and a hairline rule set just inside it. One box, never a second box inside it: the rule is a
+   shadow of the box itself, with the box's own ground between it and the edge. The dark themes keep the plain box:
+   there a second light line reads as a double border, not as engraving. ---- */
+:root:is([data-theme="chart"], [data-theme="vellum"]) .msg > :is(.diagram, .plot, .demo:not(.full), .codeblock) { border-color: var(--line-03); box-shadow: inset 0 0 0 3px var(--water), inset 0 0 0 4px var(--line); }
+:lang(zh) .demo > .bar > .cap { letter-spacing: .02em; }
+:lang(zh) :is(:is(.diagram, .plot, .codeblock) > .cap, .demo > .bar > .cap) { font-size: var(--fs-xs); }
 
 /* ---- choices under a judge message ---- */
 .choices { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
@@ -778,100 +811,177 @@ body.pane-open .keys { right: var(--pane-w); }
 .keys-card kbd { min-width: 28px; }
 
 /* ---- board ---- */
-.board-scrim { position: fixed; top: 0; bottom: 0; left: var(--outline-w); right: 0; background: var(--scrim); z-index: 2; opacity: 0; transition: opacity .18s ease, left .18s ease; }
+.board-scrim { position: fixed; top: 0; bottom: 0; left: var(--outline-w); right: 0; background: var(--scrim); z-index: var(--z-panel); opacity: 0; transition: opacity var(--t-med) var(--ease), left var(--t-med) var(--ease); }
 .board-scrim.in { opacity: 1; }
 body.pane-open .board-scrim { right: var(--pane-w); }
 .board-scrim[hidden] { display: none; }
 /* a sheet: the breadcrumb and the strip stay in view above it, so the map is visibly still there */
-.board { position: fixed; top: 100px; bottom: 0; left: var(--outline-w); right: 0; background: var(--water); z-index: 2;
-  border-top: 1px solid var(--line); border-radius: 14px 14px 0 0; box-shadow: 0 -12px 40px var(--shadow); clip-path: inset(-60px 0 0 0); /* the shadow shows above the sheet only, never down its sides */
+.board { position: fixed; top: 100px; bottom: 0; left: var(--outline-w); right: 0; background: var(--water); z-index: var(--z-panel);
+  border-top: 1px solid var(--line); border-radius: var(--r-lg) var(--r-lg) 0 0; box-shadow: 0 -12px 40px var(--shadow); clip-path: inset(-60px 0 0 0); /* the shadow shows above the sheet only, never down its sides */
   display: flex; flex-direction: column; overflow: hidden; container-type: inline-size;
-  transform: translateY(24px); opacity: 0; transition: transform .18s ease, opacity .18s ease, left .18s ease; }
+  transform: translateY(24px); opacity: 0; transition: transform var(--t-med) var(--ease), opacity var(--t-med) var(--ease), left var(--t-med) var(--ease); }
 .board.in { transform: none; opacity: 1; }
 body.pane-open .board { right: var(--pane-w); }
 .board[hidden] { display: none; }
-@media (prefers-reduced-motion: reduce) { .board, .board-scrim { transition: none; } }
 .board:focus { outline: none; }
-.board .head { position: relative; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; padding: 12px 56px 12px 20px; border-bottom: 1px solid var(--line); }
-.board .head .name { font-family: Georgia, serif; font-size: 16px; line-height: 26px; min-width: 0; }
-.board .head .count { color: var(--muted); font-size: 12px; line-height: 26px; white-space: nowrap; flex-grow: 1; }
-.board .head .adds { display: flex; gap: 10px; }
-.board .head button { height: 26px; padding: 0 10px; display: inline-flex; align-items: center; justify-content: center; line-height: 1; white-space: nowrap; flex: none; }
-.board .head .close { position: absolute; top: 12px; right: 20px; width: 26px; padding: 0; }
-.board .head .close svg { display: block; }
-.board button { background: transparent; border: 1px solid var(--line-03); color: var(--text); border-radius: 999px; padding: 5px 12px; font: 12px/1.3 system-ui, sans-serif; cursor: pointer; text-align: left; }
-.board button:hover { border-color: var(--lamp); color: var(--lamp); }
-.board button.primary { background: var(--lamp); color: var(--on-accent); border-color: var(--lamp); }
-.board button.primary:hover { color: var(--on-accent); }
-.board button.danger { border-color: var(--reef); color: var(--reef); }
-.board button.danger:hover { background: var(--reef); color: var(--on-accent); }
-.board button:disabled { opacity: .5; cursor: default; }
-.board .column { flex: 1; overflow-y: auto; padding: 16px 20px 80px; }
-.board .column > * { max-width: 760px; margin: 0 auto 12px; }
-.board .empty { display: block; color: var(--muted); text-align: center; padding: 48px 0; font-family: Georgia, serif; }
-.board .err-line { color: var(--reef); text-align: center; font-size: 12px; }
-.board .card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; }
-.board .card.cur { box-shadow: inset 0 0 0 1px var(--lamp); }
-.board .card > .cap { display: flex; align-items: baseline; gap: 10px; margin-bottom: 6px; font-size: 11px; }
-.board .card > .cap .kind { text-transform: uppercase; letter-spacing: var(--track-caps); color: var(--muted); }
-.board .card > .cap .title { font-family: Georgia, serif; font-size: 14px; color: var(--text); }
-.board .card > .cap .who { color: var(--lamp); }
+/* the head, one row: the island, how many cards, the four adds, the way back. Narrow, the count goes first; narrower
+   still (a phone), the adds take a row of their own under the name. */
+.board .head { display: flex; align-items: center; gap: var(--sp-2); box-sizing: border-box; min-height: var(--sp-12); padding: var(--sp-2) var(--sp-3) var(--sp-2) var(--sp-5); border-bottom: 1px solid var(--line); }
+.board .head .name { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: var(--fs-lg)/var(--lh-ui) var(--font-serif); }
+.board .head .count { flex: 1 0 auto; color: var(--muted); font-size: var(--fs-sm); white-space: nowrap; }
+.board .head .adds { display: flex; flex: none; gap: var(--sp-1); margin-left: auto; }
+.board .head .adds .btn { padding-left: var(--sp-2); }
+.board .head .adds .btn .ic { color: var(--muted); }
+.board .head .close { flex: none; }
+@container (max-width: 640px) { .board .head .count { display: none; } }
+@container (max-width: 500px) {
+  .board .head { flex-wrap: wrap; row-gap: var(--sp-2); padding-right: var(--sp-2); }
+  .board .head .name { flex: 1 1 0; }
+  .board .head .close { order: 1; }
+  .board .head .adds { order: 2; flex: 1 0 100%; margin-left: 0; }
+}
+/* the column: one rhythm between its cards, and cards and editors share both edges */
+.board .column { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: var(--sp-3); padding: var(--sp-4) var(--sp-5) 80px; }
+.board .column > * { flex: none; box-sizing: border-box; width: 100%; max-width: 784px; margin: 0 auto; }
+.board .err-line { color: var(--reef); text-align: center; font-size: var(--fs-sm); }
+/* an empty board says what a board is for and offers the four kinds */
+.board .empty { display: grid; justify-items: center; gap: var(--sp-3); padding: 10vh 0 0; text-align: center; }
+.board .empty h3 { margin: 0; font: 400 var(--fs-xl)/var(--lh-ui) var(--font-serif); color: var(--text); }
+.board .empty p { margin: 0; max-width: 48ch; color: var(--muted); font-size: var(--fs-md); line-height: var(--lh-body); text-wrap: balance; }
+:lang(zh) .board .empty p { max-width: 30em; }
+.board .empty .kinds { display: grid; gap: 1px; width: min(400px, 100%); margin-top: var(--sp-2); padding: var(--sp-1); box-sizing: border-box; background: var(--panel); border: 1px solid var(--line); border-radius: var(--r-md); text-align: left; }
+.board .empty .kinds .nm { flex: none; min-width: 64px; font-weight: var(--fw-medium); }
+.board .empty .kinds .grow { color: var(--muted); }
+.board .empty .kinds kbd { flex: none; margin-left: auto; }
+:lang(zh) .board .empty .kinds .nm { min-width: 5em; }
+/* a card: one surface, one caption row, then its body */
+.board .card { --ctl: 0; --rule: transparent; position: relative; background: var(--panel); border: 1px solid var(--line); border-radius: var(--r-md); padding: var(--sp-2) var(--sp-3) var(--sp-3);
+  box-shadow: inset 0 0 0 3px var(--panel), inset 0 0 0 4px var(--rule); transition: border-color var(--t-fast) var(--ease); }
+/* the keyboard's place: the cursor's card wears the lamp on its edge (one at a time: an open editor takes it) */
+.board .card.cur { border-color: var(--lamp); }
+.board.editing .card.cur { border-color: var(--line); }
+/* Plates: on the paper themes a card that draws something (a diagram, a demo, code) is an engraved plate, as in the
+   films: an ink edge and a hairline rule just inside it. A note is a page of prose and stays plain. Looked at in the
+   dark themes too, where a second light line read as a double border, so they keep the plain card. */
+:root:is([data-theme="chart"], [data-theme="vellum"]) .board .card:not([data-kind="note"]) { --rule: var(--line); border-color: var(--line-03); }
+:root:is([data-theme="chart"], [data-theme="vellum"]) .board .card.cur:not([data-kind="note"]) { border-color: var(--lamp); }
+:root:is([data-theme="chart"], [data-theme="vellum"]) .board.editing .card.cur:not([data-kind="note"]) { border-color: var(--line-03); }
+.board .card > .cap { position: relative; display: flex; align-items: center; gap: var(--sp-2); min-height: var(--h-sm); margin-bottom: var(--sp-2); }
+.board .card > .cap .kind { flex: none; white-space: nowrap; font-size: var(--fs-micro); font-weight: var(--fw-medium); text-transform: uppercase; letter-spacing: var(--track-caps); color: var(--muted); }
+.board .card > .cap .title { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: var(--fs-read)/var(--lh-ui) var(--font-serif); color: var(--text); }
+/* who: a persona's card is signed in its colour (the Keeper's lamp, the mentor's teal); the reader's own is plain */
+.board .card > .cap .who { flex: none; white-space: nowrap; font-size: var(--fs-xs); color: var(--lamp); }
 .board .card > .cap .who.mentor { color: var(--explore); }
-.board .card > .cap .acts { margin-left: auto; display: flex; gap: 6px; }
-.board .card > .cap .acts button { padding: 2px 8px; font-size: 11px; }
-.board .card > .cap .acts button.move { padding: 2px 6px; min-width: 24px; }
-.board .card .diagram, .board .card .codeblock, .board .card .plot { margin: 0; }
-.board .note-body { display: block; }
+.board .card > .cap .who.you { color: var(--muted); }
+:lang(zh) :is(.board .card > .cap .kind, .board .editor .ehead .kind) { font-size: var(--fs-xs); }
+/* The card's controls: quiet until wanted. They show while the pointer is on the card, while the keyboard is in it,
+   and on the cursor's card; always where there is no pointer to hover with. They lie over the caption's end on the
+   card's own ground, so showing them moves nothing and a long title is cut only while they are up. */
+.board .card:is(:hover, :focus-within, .cur) { --ctl: 1; }
+@media (hover: hover) { .board.editing .card.cur:not(:hover, :focus-within) { --ctl: 0; } } /* while an editor is open the cursor's card is as quiet as the rest */
+@media (hover: none) { .board .card { --ctl: 1; } }
+.board .card > .cap .ctl { position: absolute; top: 0; bottom: 0; right: calc(-1 * var(--sp-1)); display: flex; align-items: center; gap: var(--sp-05); padding-left: var(--sp-6);
+  background: linear-gradient(to right, transparent, var(--panel) var(--sp-5)); opacity: var(--ctl); transition: opacity var(--t-fast) var(--ease); }
+.board .card > .cap :is(.tools, .acts) { display: flex; align-items: center; gap: var(--sp-05); }
+.board .card > .cap .tools::after { content: ""; width: 1px; height: var(--sp-3); margin: 0 var(--sp-1); background: var(--line-strong); }
+.board .card > .cap .ctl .btn:is([aria-expanded="true"], [aria-pressed="true"]) { background: var(--selected); color: var(--text); }
+.board .card > .cap .acts .remove:hover:not(:disabled) { color: var(--reef); }
+/* with no pointer the controls are always up, so they take their own room at the row's end */
+@media (hover: none) { .board .card > .cap .ctl { position: static; margin-left: auto; padding-left: 0; background: none; } }
+/* a narrow board (a phone, a small window): kind, who and the card's actions on one row, the title and the block's tools under it */
+@container (max-width: 520px) {
+  .board .card > .cap { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; grid-template-areas: "kind who acts" "title title tools"; column-gap: var(--sp-2); }
+  .board .card > .cap .kind { grid-area: kind; }
+  .board .card > .cap .who { grid-area: who; overflow: hidden; text-overflow: ellipsis; }
+  .board .card > .cap .title { grid-area: title; white-space: normal; padding: var(--sp-05) 0; }
+  .board .card > .cap .ctl { display: contents; }
+  .board .card > .cap :is(.tools, .acts) { opacity: var(--ctl); transition: opacity var(--t-fast) var(--ease); }
+  .board .card > .cap .acts { grid-area: acts; margin-right: calc(-1 * var(--sp-1)); }
+  .board .card > .cap .tools { grid-area: tools; justify-self: end; margin-right: calc(-1 * var(--sp-1)); }
+  .board .card > .cap .tools::after { content: none; }
+}
+/* a card is one surface with one caption: the block in it drops its own box and its own name, and its tools sit in
+   the card's caption (a demo's own bar comes back only while it fills the window, to hold the way out) */
+.board .card > :is(.diagram, .plot, .codeblock, .demo:not(.full)) { margin: 0; padding: 0; background: none; border: 0; border-radius: 0; box-shadow: none; }
+.board .card > .diagram { --go-shift: 0px; }
+.board .card > .diagram > .cap, .board .card > .demo > .bar > .cap { display: none; }
+.board .card > .demo:not(.full) > .bar { display: none; }
+.board .card > .demo.full > .bar { justify-content: flex-end; }
+/* a note reads as the conversation does: the same face and reading size, a comfortable measure */
+.board .note-body { display: block; font: var(--fs-read)/var(--lh-read) var(--font-text); color: var(--text); overflow-wrap: anywhere; }
 .board .note-body > :first-child { margin-top: 0; }
-/* the editor: a card being written. Head (kind, language, Write | Preview), body, foot (actions, hint, status). */
-.board .editor { position: relative; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 0; display: flex; flex-direction: column; overflow: hidden; outline: none; }
-/* the lamp ring is drawn over the editor's parts, so a part with its own background never breaks it */
-.board .editor::after { content: ""; position: absolute; inset: 0; border-radius: 9px; box-shadow: inset 0 0 0 1px var(--lamp-ring); pointer-events: none; }
-.board .editor.full::after { content: none; }
-.board .editor .ehead { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-bottom: 1px solid var(--line); font-size: 11px; }
-.board .editor .ehead .kind { text-transform: uppercase; letter-spacing: var(--track-caps); color: var(--lamp); }
+.board .note-body > :last-child { margin-bottom: 0; }
+.board .note-body :is(p, ul, ol, blockquote) { margin: 0 0 var(--sp-2); max-width: 68ch; }
+.board .note-body :is(ul, ol) { padding-left: var(--sp-5); }
+.board .note-body li + li { margin-top: var(--sp-05); }
+.board .note-body :is(h1, h2, h3) { margin: var(--sp-4) 0 var(--sp-1); font-weight: var(--fw-semibold); line-height: var(--lh-ui); }
+.board .note-body h1 { font-size: var(--fs-xl); }
+.board .note-body h2 { font-size: var(--fs-lg); }
+.board .note-body h3 { font-size: 1em; }
+.board .note-body blockquote { padding: 0 0 0 var(--sp-3); border-left: 2px solid var(--line-03); color: var(--muted); }
+.board .note-body blockquote p { margin: 0; }
+.board .note-body :not(pre) > code { padding: 1px var(--sp-1); background: var(--water); border-radius: var(--r-xs); font-size: .85em; }
+.board .note-body > pre { margin: 0 0 var(--sp-2); padding: var(--sp-2) var(--sp-3); background: var(--water); border-radius: var(--r-sm); overflow-x: auto; font-size: var(--fs-sm); }
+:lang(zh) .board .note-body { line-height: 1.9; letter-spacing: .02em; }
+:lang(zh) .board .note-body :is(p, ul, ol, blockquote) { max-width: 36em; }
+/* the editor: a card being written. Head (kind, the card's name, language, Write | Preview), body, foot (Save, Cancel,
+   status, Remove). One writing surface, the card's own ground, for every kind. The lamp is spent once, on Save; the
+   frame wears the family's field focus (the lamp's line and a halo) while the keyboard is in it. */
+.board .editor { position: relative; background: var(--panel); border: 1px solid var(--line-strong); border-radius: var(--r-md); padding: 0; display: flex; flex-direction: column; overflow: hidden; outline: none;
+  transition: border-color var(--t-fast) var(--ease), box-shadow var(--t-fast) var(--ease); }
+.board .editor:focus-within { border-color: var(--lamp); box-shadow: 0 0 0 3px var(--lamp-tint); }
+.board .column > .editor.demo:not(.full) { max-width: 1180px; } /* room for code beside the running demo wherever the board has it */
+.board .editor .ehead { display: flex; align-items: center; gap: var(--sp-2); min-height: var(--sp-10); box-sizing: border-box; padding: var(--sp-15) var(--sp-3) var(--sp-15) var(--sp-4); border-bottom: 1px solid var(--line); }
+.board .editor .ehead .kind { flex: none; white-space: nowrap; font-size: var(--fs-micro); font-weight: var(--fw-medium); text-transform: uppercase; letter-spacing: var(--track-caps); color: var(--muted); }
+.board .editor .ehead .title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: var(--fs-read)/var(--lh-ui) var(--font-serif); color: var(--text); }
 .board .editor .ehead .spacer { flex: 1; }
-.board .editor .ehead select { background: var(--water); color: var(--text); border: 1px solid var(--line); border-radius: 6px; padding: 2px 6px; font: 11px system-ui, sans-serif; }
-.board .editor .ehead select:focus { outline: none; border-color: var(--lamp); }
-.board .editor .tabs { display: inline-flex; border: 1px solid var(--line-03); border-radius: 999px; padding: 2px; gap: 2px; }
-.board .editor .tabs .tab { height: 20px; padding: 0 10px; border: 0; border-radius: 999px; font-size: 11px; color: var(--muted); }
-.board .editor .tabs .tab:hover { color: var(--text); }
-.board .editor .tabs .tab[aria-selected="true"] { background: var(--lamp); color: var(--on-accent); }
-.board .editor .ebody { background: var(--water); }
-.board .editor .write { display: block; width: 100%; box-sizing: border-box; min-height: 160px; margin: 0; padding: 12px 14px; border: 0; background: transparent; color: var(--text); resize: none; outline: none; overflow-y: hidden;
-  font: 14px/1.6 system-ui, -apple-system, sans-serif; }
-.board .editor.diagram .write { font: 12px/1.5 var(--font-mono); white-space: pre; overflow-x: auto; }
-.board .editor .write::placeholder { color: var(--muted); }
+.board .editor .ehead select { flex: none; height: var(--h-sm); padding: 0 var(--sp-15); background: var(--water); color: var(--text); border: 1px solid var(--line-strong); border-radius: var(--r-sm); font: var(--fs-sm)/1 var(--font-ui); }
+.board .editor .ehead .btn:is([aria-pressed="true"]) { background: var(--selected); color: var(--text); }
+/* Write | Preview: the family's segmented control, its chosen side in the neutral fill */
+.board .editor .tabs { --seg-fill: var(--selected); }
+.board .editor .tabs > [aria-selected="true"] { color: var(--text); }
+.board .editor .tabs > .tab { min-height: var(--h-sm); } /* a full 24px to click */
+.board .editor .write { display: block; width: 100%; box-sizing: border-box; min-height: 160px; margin: 0; padding: var(--sp-3) var(--sp-4); border: 0; border-radius: 0; background: transparent; color: var(--text); resize: none; outline: none; overflow-y: hidden;
+  font: var(--fs-read)/var(--lh-read) var(--font-text); }
+:lang(zh) .board .editor.note .write { line-height: 1.9; letter-spacing: .02em; }
+.board .editor.diagram .write { font: var(--fs-sm)/var(--lh-body) var(--font-mono); white-space: pre; overflow-x: auto; tab-size: 2; }
+.board .editor .write::placeholder { color: var(--muted); opacity: 1; }
 .board .editor :is(.write, textarea):focus-visible { box-shadow: none; }
 .board .editor .write[hidden], .board .editor .preview[hidden] { display: none; }
-.board .editor .preview { padding: 12px 14px; min-height: 160px; box-sizing: border-box; }
-.board .editor .preview .empty { padding: 48px 0; }
-.board .editor .preview .note-body > :first-child { margin-top: 0; }
-.board .editor .preview .diagram { margin: 0; }
-.board .editor .err { color: var(--reef); font-size: 12px; white-space: pre-wrap; padding: 6px 14px 10px; border-top: 1px solid var(--reef-tint); }
-.board .editor .efoot { display: flex; gap: 6px; align-items: center; padding: 8px 12px; border-top: 1px solid var(--line); }
+.board .editor .preview { padding: var(--sp-3) var(--sp-4); min-height: 160px; box-sizing: border-box; }
+.board .editor .preview .nothing { padding: var(--sp-10) 0; color: var(--muted); font-size: var(--fs-md); text-align: center; }
+/* a preview is the card's body as it will stand: no box and no second caption inside the editor */
+.board .editor .preview > :is(.diagram, .demo:not(.full)) { margin: 0; padding: 0; background: none; border: 0; border-radius: 0; box-shadow: none; --go-shift: 0px; }
+.board .editor .preview > .diagram > .cap { display: none; }
+.board .editor .preview > .demo > .bar { justify-content: flex-end; }
+/* a diagram's parse error is set like its source, so the caret under the fault stands under the fault */
+.board .editor .err { padding: var(--sp-2) var(--sp-4); border-top: 1px solid var(--line); color: var(--reef); font: var(--fs-sm)/var(--lh-body) var(--font-mono); white-space: pre; overflow-x: auto; }
+.board .editor .err[hidden] { display: none; }
+.board .editor :is(.efoot, .confirm) { display: flex; align-items: center; gap: var(--sp-2); padding: var(--sp-2) var(--sp-3); border-top: 1px solid var(--line); }
 .board .editor .efoot[hidden], .board .editor .confirm[hidden], .board .editor .restored[hidden] { display: none; }
-.board .editor .confirm { display: flex; gap: 8px; align-items: center; padding: 8px 12px; border-top: 1px solid var(--reef-tint); font-size: 12px; color: var(--text); }
-.board .editor .confirm > span { margin-right: auto; }
-.board .editor .restored { display: flex; gap: 10px; align-items: center; justify-content: space-between; padding: 6px 12px; border-bottom: 1px solid var(--line); font-size: 12px; color: var(--text-2); }
-.board .editor .restored button { padding: 2px 8px; font-size: 11px; }
-.board .editor .efoot .hint { margin-left: auto; color: var(--muted); font-size: 11px; }
-.board .editor .efoot .hint kbd { margin: 0 2px; }
-.board .editor .efoot .status { color: var(--muted); font-size: 12px; margin-left: 8px; }
+.board .editor .efoot .remove { margin-left: auto; }
+.board .editor .efoot .status { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); font-size: var(--fs-sm); }
 .board .editor .efoot .status.bad { color: var(--reef); }
 .board .editor .efoot .status:empty { display: none; }
+.board .editor .confirm { font-size: var(--fs-md); color: var(--text); }
+.board .editor .confirm > span { margin-right: auto; }
+.board .editor .restored { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); padding: var(--sp-15) var(--sp-3) var(--sp-15) var(--sp-4); border-bottom: 1px solid var(--line); font-size: var(--fs-sm); color: var(--text-2); }
+/* a button that says its key carries it as a cap; on Save's lamp fill the cap takes the label's colour */
+.board :is(.efoot, .undo) .btn kbd { margin-right: calc(-1 * var(--sp-1)); }
+.board .efoot .btn.save kbd { background: transparent; border-color: color-mix(in oklab, var(--on-accent) 45%, transparent); color: var(--on-accent); }
+@media (hover: none) { .board :is(.efoot, .undo, .empty) kbd { display: none; } } /* no keyboard to press them on */
 /* the live code block: a transparent textarea over the highlighted mirror, same metrics */
-.board .live { position: relative; background: var(--panel); }
-.board .live pre, .board .live textarea { margin: 0; padding: 12px 14px; font: 12px/1.5 var(--font-mono); white-space: pre; tab-size: 2; box-sizing: border-box; }
-.board .live textarea { position: relative; display: block; width: 100%; min-height: 160px; border: 0; background: transparent; color: transparent; caret-color: var(--text); resize: none; overflow: auto; outline: none; }
+.board .live { position: relative; }
+.board .live pre, .board .live textarea { margin: 0; padding: var(--sp-3) var(--sp-4); font: var(--fs-sm)/var(--lh-body) var(--font-mono); letter-spacing: 0; white-space: pre; tab-size: 2; box-sizing: border-box; }
+.board .live textarea { position: relative; display: block; width: 100%; min-height: 160px; border: 0; border-radius: 0; background: transparent; color: transparent; caret-color: var(--text); resize: none; overflow: auto; outline: none; }
+.board .live textarea::placeholder { color: var(--muted); opacity: 1; }
 .board .live pre { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
 .board .live code { color: var(--code-fg); }
 /* the demo editor: code and the running demo, stacked in a narrow board and side by side in a wide one */
 .board .editor.demo { container-type: inline-size; }
 .board .editor.demo .split { display: flex; flex-direction: column; }
 .board .editor.demo .split > .live { border-bottom: 1px solid var(--line); }
-.board .editor.demo .split > .preview { min-height: 120px; padding: 8px; }
-.board .editor.demo .split > .preview .demo { margin: 0; }
+.board .editor.demo .split > .preview { min-height: 120px; padding: var(--sp-2) var(--sp-3) var(--sp-3); }
 @container (min-width: 820px) {
   .board .editor.demo .split { flex-direction: row; align-items: stretch; }
   .board .editor.demo .split > .live { flex: 1 1 50%; min-width: 0; border-bottom: 0; border-right: 1px solid var(--line); }
@@ -884,29 +994,29 @@ body.pane-open .board { right: var(--pane-w); }
 .board .editor.full .split > .live textarea { height: 100% !important; overflow: auto !important; }
 .board .editor.full .split > .preview { overflow: auto; }
 @container (max-width: 819px) { .board .editor.full .split > .live { flex: 0 0 45%; } .board .editor.full .split > .preview { flex: 1 1 auto; } }
-/* a removed card's undo, until it runs out */
-.board .undo { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 12px; background: var(--panel); border: 1px dashed var(--line); border-radius: 10px; color: var(--text-2); font-size: 12px; }
-/* a card is one surface with one caption: the fence inside it drops its own box and its own name */
-.board .card .demo, .board .card .diagram { background: none; border: 0; padding: 0; }
-.board .card .demo > .bar > .cap, .board .card .diagram > .cap { display: none; }
-.board .card .demo > .bar { justify-content: flex-end; }
-.board-toggle { position: fixed; right: 16px; bottom: 16px; z-index: 2; display: flex; gap: 8px; align-items: center; background: var(--panel); border: 1px solid var(--line); color: var(--text);
-  border-radius: 999px; padding: 6px 12px; font: 12px system-ui, sans-serif; cursor: pointer; box-shadow: 0 8px 24px var(--shadow-soft); transition: right .18s ease; }
-body.pane-open .board-toggle { right: calc(var(--pane-w) + 16px); }
-.board-toggle:hover { border-color: var(--lamp); color: var(--lamp); }
+/* a removed card's line, in the card's own row, until its undo runs out */
+.board .undo { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); min-height: var(--sp-10); padding: var(--sp-15) var(--sp-2) var(--sp-15) var(--sp-4); border: 1px dashed var(--line-strong); border-radius: var(--r-md); color: var(--text-2); font-size: var(--fs-md); }
+.board .undo .said { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* the toggle: a pill at the map's corner that opens the island's board, with its count and its key */
+.board-toggle { position: fixed; right: var(--sp-4); bottom: var(--sp-4); z-index: var(--z-panel); display: flex; align-items: center; gap: var(--sp-2); box-sizing: border-box; height: var(--h-lg); padding: 0 var(--sp-2) 0 var(--sp-3);
+  background: var(--panel); border: 1px solid var(--line); border-radius: var(--r-full); color: var(--text); font: var(--fw-medium) var(--fs-sm)/1 var(--font-ui); cursor: pointer; box-shadow: var(--e-2);
+  transition: right var(--t-med) var(--ease), background-color var(--t-fast) var(--ease), border-color var(--t-fast) var(--ease); }
+body.pane-open .board-toggle { right: calc(var(--pane-w) + var(--sp-4)); }
+.board-toggle .ic { color: var(--muted); }
+.board-toggle:hover { background: color-mix(in oklab, var(--panel) 90%, var(--text)); border-color: var(--line-strong); }
+.board-toggle:active { background: color-mix(in oklab, var(--panel) 82%, var(--text)); }
 .board-toggle[hidden] { display: none; }
 /* the first-card hint: a callout over the toggle, pointing down at it, until the reader opens a board once */
-.board-toggle.beckon { border-color: var(--lamp); color: var(--lamp); animation: beckon 2.4s ease-in-out infinite; }
-@keyframes beckon { 50% { box-shadow: 0 0 0 6px color-mix(in oklab, var(--lamp) 22%, transparent), 0 8px 24px var(--shadow-soft); } }
-.board-hint { position: fixed; right: 16px; bottom: 60px; z-index: 2; display: flex; align-items: flex-start; gap: 4px; max-width: 260px;
-  background: var(--panel); border: 1px solid var(--lamp); border-radius: 10px; padding: 8px 6px 8px 12px; box-shadow: 0 8px 24px var(--shadow-soft); transition: right .18s ease; }
+.board-toggle.beckon { border-color: var(--lamp); animation: beckon 2.4s ease-in-out infinite; }
+@keyframes beckon { 50% { box-shadow: 0 0 0 6px color-mix(in oklab, var(--lamp) 22%, transparent), var(--e-2); } }
+.board-hint { position: fixed; right: var(--sp-4); bottom: calc(var(--sp-4) + var(--h-lg) + var(--sp-3)); z-index: var(--z-panel); display: flex; align-items: flex-start; gap: var(--sp-1); max-width: 280px; box-sizing: border-box;
+  background: var(--panel); border: 1px solid var(--lamp); border-radius: var(--r-md); padding: var(--sp-2) var(--sp-1) var(--sp-2) var(--sp-3); box-shadow: var(--e-2); transition: right var(--t-med) var(--ease); }
 .board-hint::after { content: ""; position: absolute; right: 28px; bottom: -6px; width: 10px; height: 10px; background: var(--panel);
   border-right: 1px solid var(--lamp); border-bottom: 1px solid var(--lamp); transform: rotate(45deg); }
-body.pane-open .board-hint { right: calc(var(--pane-w) + 16px); }
-.board-hint .say { background: none; border: 0; padding: 0; color: var(--text); font: 13px/1.4 system-ui, sans-serif; text-align: left; cursor: pointer; }
-.board-hint .say:hover { color: var(--lamp); }
-.board-hint .dismiss { background: none; border: 0; color: var(--muted); font-size: 16px; line-height: 1; padding: 0 4px; cursor: pointer; }
-.board-hint .dismiss:hover { color: var(--text); }
+body.pane-open .board-hint { right: calc(var(--pane-w) + var(--sp-4)); }
+.board-hint .say { background: none; border: 0; padding: var(--sp-05) 0; color: var(--text); font: var(--fs-md)/var(--lh-ui) var(--font-ui); text-align: left; cursor: pointer; border-radius: var(--r-xs); }
+.board-hint .say:hover { text-decoration: underline; text-decoration-color: var(--line-strong); text-underline-offset: 3px; }
+.board-hint .dismiss { flex: none; }
 body.empty .board-hint { display: none; }
 @media (prefers-reduced-motion: reduce) { .board-toggle.beckon { animation: none; } }
 
@@ -1144,9 +1254,7 @@ body.empty .outline, body.empty .chrome, body.empty #map-focus, body.empty #boar
   .board, body.pane-open .board { top: 0; left: 0; right: 0; bottom: var(--places-h); border-radius: 0; z-index: 4; }
   .board-scrim, body.pane-open .board-scrim { left: 0; right: 0; }
   .board-toggle, .board-hint { display: none; }
-  .board .column { padding: 12px 12px 40px; }
-  .board .card > .cap { flex-wrap: wrap; row-gap: 4px; }
-  .board .card > .cap .title { flex-basis: 100%; order: 3; }
+  .board .column { padding: var(--sp-3) var(--sp-3) var(--sp-10); } /* a card's caption takes two rows here by the board's own width (its container rule) */
   .keys, body.pane-open .keys { left: 0; right: 0; }
   .about { left: 12px; right: 12px; top: 64px; }
   .about-card { width: auto; }

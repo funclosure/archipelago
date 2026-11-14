@@ -39,9 +39,11 @@ import places from "./places.js";
 import images from "./images.js";
 import toast from "./toast.js";
 import palette from "./palette.js";
+import wide from "./wide.js";
 export const TABLES = {
   toast,
   palette,
+  wide,
   places,
   images,
   about,
