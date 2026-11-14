@@ -593,7 +593,7 @@ body.outline-resizing :is(.outline, .chrome, .map-focus, .board-scrim, .board, .
 .diagram > .wide-go.start { left: var(--sp-2); }
 .diagram > .wide-go.end { right: var(--sp-2); }
 .diagram:is([data-more="start"], [data-more="both"]) > .wide-go.start, .diagram:is([data-more="end"], [data-more="both"]) > .wide-go.end { display: inline-flex; }
-:is(.diagram, .plot) pre { margin: 0; padding: 0; background: none; overflow-x: auto; white-space: pre; font-size: var(--fs-sm); line-height: var(--lh-body); }
+:is(.diagram, .plot) > .holder pre { margin: 0; padding: 0; background: none; overflow-x: auto; white-space: pre; font-size: var(--fs-sm); line-height: var(--lh-body); } /* a drawing that could not be drawn shows its source */
 /* Mermaid lays a diagram out by measuring elements it has only just styled, in a holder of its own on the page. The
    family's reduced-motion rule gives every element a 1ms transition, so those measurements read the old values and
    the diagram comes out many times too large. Nothing mermaid draws transitions. */

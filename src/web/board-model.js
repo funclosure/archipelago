@@ -100,13 +100,28 @@ export function writeOf(editor) {
   return editor.id === null ? { op: "add", kind: editor.kind, ...base } : { op: "update", id: editor.id, ...base };
 }
 
-/** The card id the cursor moves to on `key`, or null when it stays. */
-export function moveCard(ids, cursor, key) {
+/** The cards that stand after and before `id` (null at an end): where the cursor goes on from once `id` is removed. */
+export function neighbours(ids, id) {
+  const i = ids.indexOf(id);
+  if (i < 0) return null;
+  return { next: ids[i + 1] ?? null, prev: i > 0 ? ids[i - 1] : null };
+}
+
+/**
+ * The card id the cursor moves to on `key`, or null when it stays. With no cursor, j/k start at the first card, or,
+ * when the cursor's card was just removed (`near`, from `neighbours`), at the card that stood after it (j) or before
+ * it (k), so the keyboard goes on from where it was.
+ */
+export function moveCard(ids, cursor, key, near = null) {
   if (ids.length === 0) return null;
   const down = key === "ArrowDown" || key === "j";
   const up = key === "ArrowUp" || key === "k";
   const i = ids.indexOf(cursor);
   if (i < 0) {
+    if ((down || up) && near) {
+      const at = (down ? [near.next, near.prev] : [near.prev, near.next]).find((id) => id !== null && ids.includes(id));
+      if (at !== undefined) return at;
+    }
     if (down || up || key === "Home") return ids[0];
     return key === "End" ? ids[ids.length - 1] : null;
   }

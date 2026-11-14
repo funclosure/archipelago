@@ -7,7 +7,7 @@ import { renderMarkdown, diagramElement } from "./markdown.js";
 import { codeElement, fillCode, copyButton, canCopy } from "./code.js";
 import { LANGS } from "./code-model.js";
 import { registerRegion, setRegion, region } from "./keys.js";
-import { startAdd, startEdit, canSave, writeOf, moveCard, keepCursor, authorLabel, bylineOf, kindLabel, kindName, keyOfKind, hintCard, withoutRemoving, stepCard, afterMove, tabWrap, originOf, isDirty, draftKey, CARD_KINDS, KIND_KEYS, PLAIN } from "./board-model.js";
+import { startAdd, startEdit, canSave, writeOf, moveCard, neighbours, keepCursor, authorLabel, bylineOf, kindLabel, kindName, keyOfKind, hintCard, withoutRemoving, stepCard, afterMove, tabWrap, originOf, isDirty, draftKey, CARD_KINDS, KIND_KEYS, PLAIN } from "./board-model.js";
 import { isFull, setFull } from "./full.js";
 import { demoElement, demoTools } from "./demo.js";
 import { syncPins } from "./pin.js";
@@ -31,6 +31,7 @@ const state = {
   open: false,
   editor: null,     // see startAdd / startEdit in board-model.js
   cursor: null,     // card id under the keyboard cursor
+  near: null,       // { next, prev }: the cards beside the cursor's card when it was removed, so j/k go on from there
   saving: false,
   loadError: null,
   removing: null,   // { id, kind, title, slug, timer }: a card taken off the board, deleted for good when its undo runs out
@@ -203,6 +204,7 @@ function sync() {
     state.cards = [];
     state.loaded = false;
     state.cursor = null;
+    state.near = null;
     state.editor = null;
     state.version = null;
     state.loadError = null;
@@ -330,7 +332,10 @@ async function remove(id) {
   if (!card) return;
   await flushRemove();
   if (state.editor && state.editor.id === id) state.editor = null;
-  if (state.cursor === id) state.cursor = null;
+  if (state.cursor === id) {
+    state.near = neighbours(shownCards().map((c) => c.id), id); // j/k go on from the row it leaves
+    state.cursor = null;
+  }
   state.removing = { id, kind: card.kind, title: card.title ?? null, slug: state.slug, timer: setTimeout(() => void flushRemove(), UNDO_MS) };
   render();
   // The Undo line stands where the card stood; a tall card gone may have left that place above the fold.
@@ -358,6 +363,7 @@ function undoRemove() {
   if (!state.removing) return;
   clearTimeout(state.removing.timer);
   state.cursor = state.removing.id;
+  state.near = null;
   state.removing = null;
   render();
   scrollCursorIntoView();
@@ -441,6 +447,7 @@ function cardEl(card) {
   box.append(cap, body);
   box.addEventListener("mousedown", () => {
     state.cursor = card.id;
+    state.near = null;
     paintCursor();
   });
   return box;
@@ -931,9 +938,10 @@ export function installBoard() {
     tab: editorTab,
     onKey(e) {
       if (state.editor) return false; // the fields own their keys; Escape and ⌘↵ are handled by keys.js
-      const moved = moveCard(shownCards().map((c) => c.id), state.cursor, e.key);
+      const moved = moveCard(shownCards().map((c) => c.id), state.cursor, e.key, state.near);
       if (moved !== null) {
         state.cursor = moved;
+        state.near = null;
         paintCursor();
         scrollCursorIntoView();
         return true;

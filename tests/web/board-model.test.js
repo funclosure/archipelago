@@ -1,5 +1,5 @@
 import { test, expect } from "bun:test";
-import { afterMove, tabWrap, kindName, keyOfKind, CARD_KINDS, stepCard, originOf, isDirty, draftKey, DEMO_STARTER, KIND_KEYS, withoutRemoving, startAdd, startEdit, canSave, writeOf, moveCard, keepCursor, authorLabel, bylineOf, hintCard } from "../../src/web/board-model.js";
+import { neighbours, afterMove, tabWrap, kindName, keyOfKind, CARD_KINDS, stepCard, originOf, isDirty, draftKey, DEMO_STARTER, KIND_KEYS, withoutRemoving, startAdd, startEdit, canSave, writeOf, moveCard, keepCursor, authorLabel, bylineOf, hintCard } from "../../src/web/board-model.js";
 
 test("startAdd and startEdit build editors without a title; lang lives only on code cards", () => {
   expect(startAdd("note")).toEqual({ id: null, kind: "note", body: "", lang: null });
@@ -33,6 +33,21 @@ test("moveCard walks the ids with j/k and arrows, clamps at the ends, and starts
   expect(moveCard(ids, 8, "Home")).toBe(4);
   expect(moveCard(ids, 8, "x")).toBeNull();
   expect(moveCard([], null, "j")).toBeNull();
+});
+
+test("after a remove the cursor goes on from where the card stood", () => {
+  const ids = [4, 8, 15, 16];
+  const near = neighbours(ids, 8); // the cursor's card, about to be removed
+  expect(near).toEqual({ next: 15, prev: 4 });
+  const left = [4, 15, 16];
+  expect(moveCard(left, null, "j", near)).toBe(15);
+  expect(moveCard(left, null, "k", near)).toBe(4);
+  expect(moveCard(left, null, "Home", near)).toBe(4);
+  expect(neighbours(ids, 16)).toEqual({ next: null, prev: 15 });
+  expect(moveCard([4, 8, 15], null, "j", neighbours(ids, 16))).toBe(15); // the last card removed: only what stood before it
+  expect(moveCard([4], null, "j", { next: 99, prev: 98 })).toBe(4); // both gone meanwhile: the first card, as with no memory
+  expect(neighbours(ids, 99)).toBeNull();
+  expect(moveCard(left, 15, "j", near)).toBe(16); // a cursor in place ignores it
 });
 
 test("keepCursor keeps a cursor whose card is still there", () => {
