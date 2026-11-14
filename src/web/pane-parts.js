@@ -6,10 +6,11 @@ import { icon } from "./icons.js";
 import { tip } from "./tip.js";
 import { isImeKey, isTyping } from "./keys-model.js";
 import { failureKind } from "./toast-model.js";
-import { canSend, followsAfterScroll, stepFocus } from "./pane-model.js";
+import { canSend, enterSends, followsAfterScroll, stepFocus } from "./pane-model.js";
 import { attachButton, pastedImages, trayEl } from "./images.js";
 
 const STICK_PX = 40; // within this of the bottom, a scroll by the reader still means "follow"
+const noHover = typeof matchMedia === "function" ? matchMedia("(hover: none)") : null; // a touch screen: its keyboard has no Shift-Enter
 
 export function el(tag, className, text) {
   const e = document.createElement(tag);
@@ -92,7 +93,7 @@ export function composerEl({ value = "", placeholder = "", disabled = false, tra
   });
   ta.addEventListener("keydown", (e) => {
     if (isImeKey(e)) return; // Enter picking a Zhuyin candidate is the input method's, never a send
-    if (e.key === "Enter" && !e.shiftKey && !e.metaKey) {
+    if (enterSends(e, Boolean(noHover?.matches))) {
       e.preventDefault();
       form.requestSubmit();
     }
@@ -137,11 +138,13 @@ export function composerEl({ value = "", placeholder = "", disabled = false, tra
 
 /**
  * The line under the answer box: on the left what the keys do (one sentence while the box has the keyboard,
- * another while it does not), on the right whatever the pane adds (the model, Read aloud).
+ * another while it does not), on the right whatever the pane adds (the model, Read aloud). A hint is taken to name
+ * keys, and is not shown on a touch screen, which has none of them; `words: true` marks one that says something
+ * else (where a reef is confirmed), which shows everywhere.
  */
-export function footMetaEl({ typing, idle = typing }, right = []) {
+export function footMetaEl({ typing, idle = typing, words = false }, right = []) {
   const meta = el("div", "meta");
-  const hint = el("span", "hint");
+  const hint = el("span", words ? "hint" : "hint keys-hint");
   if (idle === typing) hint.textContent = typing;
   else hint.append(el("span", "when-idle", idle), el("span", "when-typing", typing));
   meta.append(hint);
@@ -158,8 +161,9 @@ export function footMetaEl({ typing, idle = typing }, right = []) {
 
 /**
  * One row of a thread's trail: a mark in the margin, then what happened. `kind` is its class (lit, explored, reef,
- * loose, board, model, note); `key` links it to the reader's words it rests on and to the landmark's chip, which
- * light together under the pointer (`lightLandmark` in card.js). Returns the row and the body to fill.
+ * loose, board-line, model, note; never a class the page gives a meaning of its own, such as `board`); `key` links
+ * it to the reader's words it rests on and to the landmark's chip, which light together under the pointer
+ * (`lightLandmark` in card.js). Returns the row and the body to fill.
  */
 export function eventEl(kind, glyph = null, key = null, tag = "div") {
   const row = el(tag, `event ${kind}`);

@@ -1,5 +1,5 @@
 import { test, expect } from "bun:test";
-import { canSend, withRestored, withoutStored, stepFocus, followsAfterScroll } from "../../src/web/pane-model.js";
+import { canSend, withRestored, withoutStored, stepFocus, followsAfterScroll, enterSends } from "../../src/web/pane-model.js";
 
 test("Send has something to send only with words or a ready image, in a box that takes them", () => {
   expect(canSend({ text: "", images: 0 })).toBe(false);
@@ -64,4 +64,12 @@ test("← and → walk a pane's controls, and step into the log only where it is
   expect(stepFocus([head, hidden, hidden, foot], 3, -1)).toBe(0);
   expect(stepFocus([hidden, hidden], -1, 1)).toBe(-1);
   expect(stepFocus([], -1, 1)).toBe(-1);
+});
+
+test("Enter sends where there are keys to say otherwise; under a finger Return is a new line and only Send sends", () => {
+  expect(enterSends({ key: "Enter" })).toBe(true);
+  expect(enterSends({ key: "Enter", shiftKey: true })).toBe(false); // a new line
+  expect(enterSends({ key: "Enter", metaKey: true })).toBe(false); // the page's own ⌘↵
+  expect(enterSends({ key: "a" })).toBe(false);
+  expect(enterSends({ key: "Enter" }, true)).toBe(false); // a phone's keyboard has no Shift-Enter
 });

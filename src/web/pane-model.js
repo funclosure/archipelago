@@ -6,6 +6,15 @@ export function canSend({ text = "", images = 0, busy = false, disabled = false 
 }
 
 /**
+ * Whether a key in the answer box sends the draft. Enter does, where there are keys to say otherwise (Shift-Enter
+ * is a new line, ⌘↵ is the page's own send). On a screen with no pointer to hover with (`touch`: a phone's keyboard
+ * has no Shift-Enter) Return is a new line and only the Send button sends.
+ */
+export function enterSends({ key, shiftKey = false, metaKey = false } = {}, touch = false) {
+  return key === "Enter" && !shiftKey && !metaKey && !touch;
+}
+
+/**
  * The draft after a message that never reached the server comes back to the box. The reader may have typed on while
  * the turn ran, so the returned words go above what is there instead of replacing it.
  */

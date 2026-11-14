@@ -777,7 +777,8 @@ function trailEl(item) {
   }
   if (/^board: (pinned|updated) /.test(item.text)) {
     // A persona's board write happens out of sight when the board is closed: its line opens the board at that card.
-    const { row, body } = eventEl("board board-line", icon("board", { size: 14 }), null, "button");
+    // (Its class is never plain `board`: that is the board's own sheet, fixed over the map, and the row would become one.)
+    const { row, body } = eventEl("board-line", icon("board", { size: 14 }), null, "button");
     row.addEventListener("click", () => openBoard({ latest: true }));
     row.dataset.fk = `board-line-${item.id}`;
     body.append(el("span", "event-text", systemText(item.text)));
@@ -1060,7 +1061,7 @@ function footEl(island) {
   if (pending) form.querySelector("#answer").dataset.reef = "1";
   foot.append(form);
   const role = personaRole(thread.mode);
-  const hint = pending ? { typing: t("card.metaReef") } : streaming ? { typing: t("paneParts.hintStop") } : { typing: t("paneParts.hintSend"), idle: t("paneParts.hintWrite") };
+  const hint = pending ? { typing: t("card.metaReef"), words: true } : streaming ? { typing: t("paneParts.hintStop") } : { typing: t("paneParts.hintSend"), idle: t("paneParts.hintWrite") };
   foot.append(footMetaEl(hint, [canSpeak(role) ? autoReadEl() : null, modelEl()]));
   return foot;
 }
