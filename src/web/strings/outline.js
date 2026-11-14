@@ -1,9 +1,9 @@
 // Strings for outline.js. Keys are camelCase; keep en and zh-TW in step (tests/web/strings.test.js).
 export default {
   en: {
-    switchDomain: "switch domain",
-    expand: "expand the outline  [",
-    collapse: "collapse to a rail  [",
+    switchDomain: "Switch domain",
+    expand: "Expand the outline",
+    collapse: "Collapse to a rail",
     resize: "drag to resize · double-click to reset",
     editDomain: "Edit domain",
     editNamed: "Edit {name}",
@@ -27,8 +27,8 @@ export default {
   },
   "zh-TW": {
     switchDomain: "切換領域",
-    expand: "展開大綱  [",
-    collapse: "收合成側欄  [",
+    expand: "展開大綱",
+    collapse: "收合成側欄",
     resize: "拖曳以調整寬度 · 按兩下還原",
     editDomain: "編輯領域",
     editNamed: "編輯「{name}」",

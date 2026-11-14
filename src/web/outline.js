@@ -13,6 +13,7 @@ import { openImagesSheet } from "./images.js";
 import { mapFileName } from "./map-model.js";
 import { request } from "./transport.js";
 import { LANGUAGES, language, setLanguage, t } from "./i18n.js";
+import { tip } from "./tip.js";
 
 // app.js imports installOutline from here and this file imports app: fine, because nothing below reads app or select at module evaluation.
 
@@ -240,12 +241,11 @@ function headerEl(outline) {
   const head = el("div", "oh");
   const ws = button("", toggleMenu, "ws");
   ws.append(el("span", "name", outline.domain.name), el("span", "chev", "▾"));
-  ws.title = t("outline.switchDomain");
+  tip(ws, t("outline.switchDomain"));
   head.append(ws, el("span", "sp"));
   const tog = button("", toggleRail, "ib");
   tog.append(panelIcon(state.rail));
-  tog.title = t(state.rail ? "outline.expand" : "outline.collapse");
-  tog.setAttribute("aria-label", tog.title.trim());
+  tip(tog, t(state.rail ? "outline.expand" : "outline.collapse"), "[");
   head.append(tog);
   if (state.menuOpen && state.domains) {
     const menu = el("div", state.menuArriving ? "menu arrive" : "menu");

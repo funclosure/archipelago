@@ -26,6 +26,7 @@ import { anotherTab, installHosted, welcomeGate } from "./hosted.js";
 import { modeKey, storedMode, nextMode } from "./mode-model.js";
 import { installLaunch } from "./launch.js";
 import { installPlaces } from "./places.js";
+import "./tip.js"; // tooltips listen at the document; a control only carries data-tip
 
 const canvas = document.getElementById("map");
 const ctx = canvas.getContext("2d");
