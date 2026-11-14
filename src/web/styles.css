@@ -113,13 +113,14 @@ html, body { margin: 0; height: 100%; background: var(--water); color: var(--tex
 
 /* ---- the family: what every control shares (buttons, fields, keys, menus, popovers, dialogs) ---- */
 * { scrollbar-width: thin; scrollbar-color: var(--line-strong) transparent; }
+/* `hidden` means gone, whatever display a class gives the element (a .btn is inline-flex and would otherwise stay). */
+[hidden] { display: none !important; }
 ::selection { background: color-mix(in oklab, var(--lamp) 32%, transparent); }
 /* Feedback under the pointer is quick and small; it never moves the layout. */
 :where(button, a, input, textarea, select, summary, [role="button"], [role="option"], [role="menuitem"]) {
   transition: background-color var(--t-fast) var(--ease), border-color var(--t-fast) var(--ease), color var(--t-fast) var(--ease),
     box-shadow var(--t-fast) var(--ease), opacity var(--t-fast) var(--ease), filter var(--t-fast) var(--ease); }
 :where(button, a, summary, [role="button"]) { -webkit-tap-highlight-color: transparent; }
-@media (prefers-reduced-motion: reduce) { :where(*, *::before, *::after) { transition-duration: 1ms !important; } }
 /* The one focus ring: only for the keyboard, in the lamp's colour, clear of the control's own edge. */
 :where(button, a, input, textarea, select, summary, [role="button"], [role="option"], [role="menuitem"], [role="tab"], [tabindex]):focus-visible { outline: 2px solid var(--lamp); outline-offset: 2px; }
 /* A text field shows focus on its own edge instead: the lamp's line and a soft halo. */
