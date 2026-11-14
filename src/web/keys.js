@@ -181,10 +181,19 @@ function onKeydown(e) {
     return;
   }
   // ⌘K (Ctrl+K off a Mac) opens the command palette from anywhere on the page, a text field included; the dialogs
-  // above are modal and have already returned.
+  // above are modal and have already returned. An open domain menu closes first: two lists must not both be up.
   if (opensPalette(e)) {
     e.preventDefault();
+    if (handlers.outline?.menuOpen?.()) handlers.outline.closeMenu?.();
     openPalette();
+    return;
+  }
+  // The outline's domain menu owns the plain keys while it is open (outline.js: menuKey): nothing reaches the list
+  // behind it, Tab changes no region, no page key fires under it. Escape still runs the ladder, whose menu rung
+  // closes it. A key with ⌘, ⌃ or ⌥ goes on down this function, as a page-wide shortcut should.
+  if (handlers.outline?.menuOpen?.() && !(e.metaKey || e.ctrlKey || e.altKey)) {
+    if (e.key === "Escape") escape(e);
+    else handlers.outline.menuKey?.(e);
     return;
   }
   if (e.key === "Tab" && !e.metaKey && !e.ctrlKey && !e.altKey) { // ⌘⇥ and friends stay the browser's

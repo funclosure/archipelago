@@ -166,20 +166,32 @@ kbd { display: inline-block; box-sizing: border-box; min-width: 18px; padding: 0
 .dialog-card, .keys-card, .viewer-card, .images-card, .about-card, .new-domain-card, .hosted-card { transform: translateY(calc((1 - var(--enter)) * 8px)) scale(calc(.985 + .015 * var(--enter))); }
 .dialog-card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r-lg); box-shadow: var(--e-3); }
 @media (prefers-reduced-motion: reduce) { .pop, .menu, .new-domain, .hosted, .images-sheet, .viewer, .about, .keys { animation: none !important; } }
-/* A menu: rows of one height, a label over a group, a rule between groups, the row's key at its right. */
-.menu { position: absolute; min-width: 220px; box-sizing: border-box; background: var(--panel); border: 1px solid var(--line); border-radius: var(--r-md); box-shadow: var(--e-3);
+/* A menu: rows of one height, a label over a group (.grp > .ml), a rule between groups, the row's key at its right.
+   It stands one step above the panel it opens over (the panel's colour, a little toward white, and a firmer edge),
+   so it reads as raised in the dark themes, where a shadow alone does not show. A row under the pointer is filled;
+   the row the keyboard is on also carries the lamp's line; the chosen one of a set (aria-checked) is marked by a
+   check at its right and a firmer name, never by a fill. */
+.menu { position: absolute; min-width: 220px; box-sizing: border-box; background: color-mix(in oklab, var(--panel) 92%, var(--snow)); border: 1px solid var(--line-strong); border-radius: var(--r-md); box-shadow: var(--e-3);
   padding: var(--sp-1); z-index: 6; display: grid; gap: 1px; transform-origin: top left; }
-.mi { display: flex; align-items: center; gap: var(--sp-2); box-sizing: border-box; width: 100%; min-height: var(--h-md); padding: 3px var(--sp-2); text-align: left; border: 0; border-radius: var(--r-sm);
+.menu .grp { display: grid; gap: 1px; min-width: 0; }
+.mi { display: flex; align-items: center; gap: var(--sp-2); box-sizing: border-box; width: 100%; min-width: 0; min-height: var(--h-md); padding: 3px var(--sp-2); text-align: left; border: 0; border-radius: var(--r-sm);
   background: transparent; color: var(--text); font: var(--fs-md)/1.35 var(--font-ui); cursor: pointer; }
 .mi:hover, .mi:focus-visible { background: var(--hover); outline: none; }
+.mi:focus-visible { box-shadow: inset 0 0 0 1px var(--lamp); }
 .mi:active { background: var(--pressed); }
 .mi.on { background: var(--selected); }
+.mi[aria-checked="true"] > .grow { font-weight: var(--fw-medium); }
 .mi > .grow { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mi > .grow.two { display: grid; } /* a name over a line that tells it from its namesake */
+.mi > .grow.two > * { overflow: hidden; text-overflow: ellipsis; }
+.mi > .grow.two > .desc { font-size: var(--fs-xs); font-weight: 400; color: var(--muted); }
 .mi > .keys, .mi > .cur { margin-left: auto; flex: none; color: var(--muted); font-size: var(--fs-sm); display: inline-flex; gap: 3px; align-items: center; }
-.mi > .ic { flex: none; width: 16px; height: 16px; color: var(--muted); }
+.mi > .keys { position: static; z-index: auto; animation: none; pointer-events: inherit; } /* the cheat sheet's overlay is also .keys: a row's key caps take none of it */
+.mi > .ic { color: var(--muted); }
+.mi > .ic-check { color: var(--text); }
 .mi:disabled { color: var(--muted); cursor: default; background: transparent; }
 .menu .sep { border-top: 1px solid var(--line); margin: var(--sp-1) calc(-1 * var(--sp-1)); }
-.menu .ml { font-size: var(--fs-micro); font-weight: 500; letter-spacing: var(--track-caps); text-transform: uppercase; color: var(--muted); padding: var(--sp-2) var(--sp-2) 2px; }
+.menu .ml { font-size: var(--fs-micro); font-weight: 500; letter-spacing: var(--track-caps); text-transform: uppercase; color: var(--muted); padding: var(--sp-15) var(--sp-2) var(--sp-05); }
 /* ---- command palette (palette.js) ---- */
 /* One field over the page: the card hangs a fifth down the window and its list scrolls inside it. The root fills the
    window from the top layer (a popover), so it is above a demo that fills the window too, and a press on it outside
@@ -556,32 +568,54 @@ button.msg.system.board-line:hover { color: var(--text); }
 
 /* ---- the outline: Linear rows, Shuttle rail ---- */
 .outline { position: fixed; top: 0; left: 0; bottom: 0; width: var(--outline-w); background: var(--panel); border-right: 1px solid var(--line);
-  display: flex; flex-direction: column; z-index: 2; font-size: 13px; line-height: 1.35; transition: width .18s ease; }
-.outline .oh { position: relative; height: 44px; padding: 0 10px 0 12px; border-bottom: 1px solid var(--line); display: flex; align-items: center; gap: 6px; flex: none; }
-.outline .ws { display: flex; align-items: center; gap: 6px; padding: 4px 6px; border: 0; border-radius: 6px; background: transparent; font: inherit; font-weight: 500;
+  display: flex; flex-direction: column; z-index: 2; font-size: var(--fs-md); line-height: var(--lh-ui); transition: width .18s ease; }
+/* The head: the domain's name opens the domain menu; its box starts where the rows' boxes start, its words where theirs do. */
+.outline .oh { position: relative; height: 44px; padding: 0 var(--sp-2); border-bottom: 1px solid var(--line); display: flex; align-items: center; gap: var(--sp-15); flex: none; }
+.outline .ws { display: flex; align-items: center; gap: var(--sp-15); height: var(--h-md); padding: 0 var(--sp-2); border: 0; border-radius: var(--r-sm); background: transparent; font: inherit; font-weight: var(--fw-medium);
   color: var(--text); cursor: pointer; min-width: 0; }
-.outline .ws:hover { background: var(--panel-2); }
+.outline .ws:hover { background: var(--hover); }
+.outline .ws:active { background: var(--pressed); }
+.outline .ws[aria-expanded="true"] { background: var(--selected); } /* the opener stays marked while its menu is open */
 .outline .ws .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.outline .ws .chev { color: var(--muted); font-size: 10px; }
+.outline .ws .ic { color: var(--muted); }
 .outline .sp { flex: 1; }
-.outline .ib { width: 28px; height: 28px; border: 0; background: transparent; color: var(--muted); border-radius: 6px; cursor: pointer; font: 14px system-ui, sans-serif; display: inline-flex; align-items: center; justify-content: center; padding: 0;
-  display: grid; place-items: center; }
-.outline .ib:hover { background: var(--panel-2); color: var(--text); }
-.outline .menu { top: 40px; left: 8px; max-width: calc(100vw - 16px); }
+.outline .oh > .ib { color: var(--muted); }
+/* The domain menu (the family's .menu and .mi): under the head, a little wider than a narrow outline, never taller than the window. */
+.outline .menu { top: 40px; left: var(--sp-2); width: max(calc(100% - 2 * var(--sp-2)), 264px); max-width: min(320px, calc(100vw - 2 * var(--sp-2)));
+  max-height: calc(100dvh - 40px - var(--sp-2) - var(--places-h, 0px)); overflow-y: auto; overscroll-behavior: contain; }
 .outline:has(.menu) { z-index: var(--z-popover); } /* the menu is the outline's child: its own z-index orders it only inside the outline's layer, where the board would cover it */
-.outline .sum { padding: 10px 14px 6px; font-size: 11px; color: var(--muted); }
-.outline .sec { padding: 12px 14px 6px; font-size: var(--fs-micro); letter-spacing: var(--track-caps); text-transform: uppercase; color: var(--muted); }
-:is(.outline, .peek) .list { list-style: none; margin: 0; padding: 0 8px 8px; overflow: auto; flex: 1; }
-:is(.outline, .peek) .list li + li { margin-top: 2px; }
-:is(.outline, .peek) .row { display: flex; align-items: center; gap: 10px; height: 32px; padding: 0 10px 0 8px; border-radius: 6px; cursor: pointer; color: var(--text);
-  user-select: none; }
-:is(.outline, .peek) .row:hover { background: var(--panel-2); }
-:is(.outline, .peek) .row.on { background: var(--lamp-tint); }
-:is(.outline, .peek) .row.islet { height: 28px; font-size: 12.5px; }
-:is(.outline, .peek) .row .tw { width: 14px; height: 14px; border: 0; background: transparent; color: var(--muted); font-size: 9px; border-radius: 4px; flex: none;
+.outline:has(.menu) :is(.list, .dashes, .ft) { pointer-events: none; } /* nothing behind the open menu answers the pointer; a press there only closes it */
+.outline .menu .domains { display: grid; gap: 1px; max-height: calc(8.5 * var(--h-md) + 8px); overflow-y: auto; overscroll-behavior: contain; } /* eight domains and half of the ninth, so it shows there are more; then they scroll */
+.outline .menu .themes { display: grid; gap: 1px; }
+.outline .mi.mi-sub { padding-left: calc(2 * var(--sp-2) + 16px); } /* under its row's words, past the icon */
+/* The current domain's row carries a pencil beside its check, shown on hover or keyboard focus (always on a touch screen). */
+.outline .mi-row { position: relative; display: grid; min-width: 0; }
+.outline .mi-row .mi > .ic-check { margin-left: calc(var(--h-sm) + var(--sp-05)); }
+.outline .mi-row .edit { position: absolute; right: calc(var(--sp-2) + 16px + var(--sp-05)); top: 50%; transform: translateY(-50%); opacity: 0; color: var(--muted); }
+.outline .mi-row:hover .edit, .outline .mi-row:has(:focus-visible) .edit { opacity: 1; }
+@media (hover: none) { .outline .mi-row .edit { opacity: 1; } }
+:lang(zh) .outline .menu .ml { font-size: var(--fs-xs); }
+/* The caption over the list: how much of the domain is charted (or explored, in the mentor's lens). */
+.outline .sum { padding: var(--sp-3) var(--sp-4) var(--sp-15); font-size: var(--fs-xs); color: var(--muted); text-wrap: balance; flex: none; } /* one line at any usual width; a narrow outline wraps it, never cuts it */
+:is(.outline, .peek) .list { list-style: none; margin: 0; padding: 0 var(--sp-2) var(--sp-2); overflow: auto; flex: 1; }
+.outline .list.scrolled { box-shadow: inset 0 1px 0 var(--line); } /* rows have gone up under the caption */
+:is(.outline, .peek) .list li + li { margin-top: var(--sp-05); }
+/* A row: under the pointer it fills, selected it fills a step firmer (neutral: the lamp is the keyboard's), and the
+   keyboard's cursor is the one lamp ring (.cur, under "keyboard focus" below). --depth indents an islet. */
+:is(.outline, .peek) .row { display: flex; align-items: center; gap: var(--sp-2); height: var(--h-lg); padding: 0 var(--sp-2) 0 calc(var(--sp-2) + var(--depth, 0) * var(--sp-5)); border-radius: var(--r-sm); cursor: pointer; color: var(--text);
+  user-select: none; -webkit-user-select: none; }
+:is(.outline, .peek) .row:hover, .peek .row.hot { background: var(--hover); }
+:is(.outline, .peek) .row.on { background: var(--selected); }
+:is(.outline, .peek) .row.on:hover, :is(.outline, .peek) .row:active:not(:has(.tw:active)) { background: var(--pressed); }
+:is(.outline, .peek) .row.islet { height: var(--h-md); }
+/* The twisty is drawn at 14px so the dots stay in their column; its target is the row's height and reaches the row's edge. */
+:is(.outline, .peek) .row .tw { position: relative; box-sizing: border-box; width: 20px; height: 20px; margin: 0 -3px; border: 0; background: transparent; color: var(--muted); border-radius: var(--r-xs); flex: none;
   display: grid; place-items: center; cursor: pointer; padding: 0; }
-:is(.outline, .peek) .row .tw:hover { background: var(--line); color: var(--text); }
+:is(.outline, .peek) .row .tw::after { content: ""; position: absolute; inset: -6px -1px -6px -5px; }
+:is(.outline, .peek) .row .tw:hover { background: var(--hover); color: var(--text); }
+:is(.outline, .peek) .row .tw:active { background: var(--pressed); }
 :is(.outline, .peek) .row .tw.none { visibility: hidden; }
+:is(.outline, .peek) .list.flat .tw { display: none; } /* nothing at this scale has islets: the dots stand on the head's left edge */
 :is(.outline, .peek) .row .dot { width: 8px; height: 8px; border-radius: 50%; flex: none; border: 1px dashed var(--open); box-sizing: border-box; }
 :is(.outline, .peek) .row.islet .dot { width: 6px; height: 6px; }
 :is(.outline, .peek) .row .dot.lit { border-style: solid; border-color: var(--lamp); }
@@ -593,31 +627,43 @@ button.msg.system.board-line:hover { color: var(--text); }
 :is(.outline, .peek) .row .dot.reef { background: var(--sand-fill); border: 0; box-shadow: inset 0 -2px 0 var(--reef); }
 :is(.outline, .peek) .row .name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 :is(.outline, .peek) .row .name.open { color: var(--text-2); }
-:is(.outline, .peek) .row .anchor { color: var(--lamp); font-size: 11px; }
-:is(.outline, .peek) .row .n { font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
-.outline .ft { padding: 8px 14px; border-top: 1px solid var(--line); font-size: 11px; color: var(--muted); display: flex; justify-content: space-between; flex: none; }
+:is(.outline, .peek) .row.on .name { color: var(--text); }
+:is(.outline, .peek) .row .anchor { display: grid; flex: none; color: var(--lamp); } /* the harbour: where the map says to set out from */
+:is(.outline, .peek) .row .n { flex: none; font-size: var(--fs-xs); color: var(--muted); font-variant-numeric: tabular-nums; }
+/* The foot: the two keys worth knowing first, each a quiet button that does what its key does. */
+.outline .ft { padding: var(--sp-15) var(--sp-2); border-top: 1px solid var(--line); display: flex; gap: var(--sp-1); flex: none; }
+.outline .ft .btn { padding: 0 var(--sp-2) 0 var(--sp-15); color: var(--muted); font-weight: 400; font-size: var(--fs-xs); }
 .outline.rail { width: 44px; }
 .outline.rail .oh { padding: 0; justify-content: center; }
-.outline.rail .ws, .outline.rail .sp, .outline.rail .sum, .outline.rail .sec, .outline.rail .list, .outline.rail .ft { display: none; }
-.outline .dashes { display: none; flex: 1; flex-direction: column; justify-content: center; align-items: flex-start; gap: 7px; padding-left: 14px; }
+.outline.rail .ws, .outline.rail .sp, .outline.rail .sum, .outline.rail .list, .outline.rail .ft { display: none; }
+/* The rail: a dash an island, its length and colour the island's state. A dash is drawn 3px tall in a 10px row the
+   width of the rail, so the target is the row and the mark stays a hairline. */
+.outline .dashes { display: none; flex: 1; flex-direction: column; justify-content: center; }
 .outline.rail .dashes { display: flex; }
-/* the outline's grip: its right edge, like the pane's left (outline.js keeps the width) */
+/* the outline's grip: its right edge, like the pane's left (outline.js keeps the width). Under the pointer the whole
+   edge shows as a line, after a moment so crossing it shows nothing; it is the lamp only while it is dragged. */
 .outline .grip { position: absolute; top: 0; bottom: 0; right: -5px; width: 10px; cursor: col-resize; z-index: 3; }
-.outline .grip::after { content: ""; position: absolute; top: 50%; left: 4px; width: 2px; height: 36px; margin-top: -18px; border-radius: 2px; background: transparent; }
-.outline .grip:hover::after, body.outline-resizing .outline .grip::after { background: var(--lamp); }
+.outline .grip::after { content: ""; position: absolute; top: 0; bottom: 0; left: 4px; width: 2px; background: transparent; transition: background-color var(--t-fast) var(--ease); }
+.outline .grip:hover::after { background: var(--line-strong); transition-delay: var(--t-fast); }
+body.outline-resizing .outline .grip::after { background: var(--lamp); transition-delay: 0s; }
 .outline.rail .grip { display: none; }
 body.outline-resizing { user-select: none; cursor: col-resize; }
 body.outline-resizing :is(.outline, .chrome, .map-focus, .board-scrim, .board, .cta, .keys) { transition: none; }
-.outline .dash { height: 3px; border-radius: 2px; background: var(--muted); opacity: .35; width: 14px; cursor: pointer; transition: width .15s, opacity .15s; }
-.outline .dash.lit { opacity: .6; width: 18px; background: var(--lamp); }
-.outline .dash.explored { opacity: .7; width: 18px; background: var(--explore); }
-.outline .dash.done { opacity: .9; width: 22px; background: var(--grass); }
-.outline .dash.on { opacity: 1; width: 26px; background: var(--lamp); }
-.outline .dash.reef { opacity: .9; width: 22px; background: var(--reef); }
-.outline .dash:hover { opacity: 1; }
-.peek { position: fixed; left: 44px; top: 52px; width: 240px; max-height: calc(100vh - 104px); background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
-  border-left: 8px solid transparent; background-clip: padding-box;
-  box-shadow: 0 16px 40px var(--shadow-deep); z-index: 5; display: flex; flex-direction: column; font-size: 13px; overflow: hidden; }
+.outline .dash { position: relative; height: 10px; cursor: pointer; }
+.outline .dash::before { content: ""; position: absolute; left: 14px; top: 0; bottom: 0; margin: auto 0; height: 3px; width: 14px; border-radius: 2px; background: var(--muted); opacity: .35;
+  transition: width var(--t-fast) var(--ease), opacity var(--t-fast) var(--ease); }
+.outline .dash.lit::before { opacity: .6; width: 18px; background: var(--lamp); }
+.outline .dash.explored::before { opacity: .7; width: 18px; background: var(--explore); }
+.outline .dash.done::before { opacity: .9; width: 22px; background: var(--grass); }
+.outline .dash.reef::before { opacity: .9; width: 22px; background: var(--reef); }
+.outline .dash.on::before { opacity: 1; width: 26px; background: var(--text); } /* the selected island: the longest, in the text's own colour (the lamp here means lit) */
+.outline .dash:hover::before { opacity: 1; }
+/* The peek: the list as a card beside the rail, raised like the menu. It is centred on the dashes (the rail under the
+   head), so the pointer goes straight across from a dash to its row, and the strip between the two stays the peek's own. */
+.peek { position: fixed; left: calc(44px + var(--sp-2)); top: 44px; bottom: 0; margin: auto 0; height: fit-content; width: max-content; min-width: 240px; max-width: 360px; max-height: calc(100vh - 44px - 2 * var(--sp-2)); z-index: var(--z-popover);
+  display: flex; flex-direction: column; font-size: var(--fs-md); line-height: var(--lh-ui); background: color-mix(in oklab, var(--panel) 92%, var(--snow)); border-color: var(--line-strong); transform-origin: top left; }
+.peek::before { content: ""; position: absolute; top: 0; bottom: 0; right: 100%; width: calc(var(--sp-2) + 1px); }
+.peek .list { padding-top: var(--sp-2); }
 .peek[hidden] { display: none; }
 
 @media (prefers-reduced-motion: reduce) { .outline, .chrome { transition: none; } }
@@ -715,8 +761,9 @@ body[data-focus="pane"] #pane { box-shadow: inset 1px 0 var(--lamp), -12px 0 32p
 body[data-focus="map"] .map-focus { display: block; }
 body:not([data-focus="map"]) .map-focus { display: none; }
 body[data-focus="map"].pane-open .map-focus { right: var(--pane-w); }
+/* The outline's cursor: the one lamp ring in the list, there only while the keyboard drives it (outline.js gives no row .cur for a pointer). */
 body[data-focus="outline"] :is(.outline, .peek) .row.cur { box-shadow: inset 0 0 0 1px var(--lamp); }
-body[data-focus="outline"] .outline .dash.cur { outline: 1px solid var(--lamp); outline-offset: 2px; }
+body[data-focus="outline"] .outline .dash.cur::before { box-shadow: 0 0 0 2px var(--panel), 0 0 0 3px var(--lamp); }
 
 /* ---- cheat sheet ---- */
 .keys { position: fixed; top: 0; bottom: 0; left: var(--outline-w); right: 0; display: flex; align-items: center; justify-content: center; pointer-events: none; z-index: 6; }
@@ -932,7 +979,6 @@ body.pane-open .dock { display: none; }
 .sketch-card .straits, .sketch-card .update { font-size: 12px; color: var(--text-2); }
 .sketch-card .actions { display: flex; gap: 6px; margin-top: 4px; }
 .crumb.start { color: var(--lamp); text-decoration: underline; }
-.menu .mi.new { color: var(--lamp); }
 
 /* New domain: one field, over a scrim on the map; with no domains yet (.first) it is the whole page. */
 .new-domain { position: fixed; inset: 0; z-index: 6; display: flex; justify-content: center; align-items: flex-start; padding: 8vh 16px 24px; background: var(--scrim); overflow-y: auto; }
@@ -1048,12 +1094,19 @@ body.empty .outline, body.empty .chrome, body.empty #map-focus, body.empty #boar
   .outline { display: none; width: 100vw; bottom: var(--places-h); border-right: 0; z-index: 5; font-size: 15px; transition: none; }
   body[data-place="islands"] .outline { display: flex; }
   .outline .oh { height: 52px; }
-  .outline .ib, .outline .ft > :first-child, .outline .grip { display: none; }
+  .outline .oh > .ib, .outline .ft, .outline .grip { display: none; } /* no rail to fold to and no keys to hint at; the pencil in the menu is not .oh's child, so it stays */
+  .outline .ws { height: var(--h-lg); }
+  .outline .sum { font-size: var(--fs-md); }
   .outline .list .row { height: 46px; gap: 12px; }
   .outline .list .row.islet { height: 40px; font-size: 14px; }
-  .outline .list .row .tw { width: 32px; height: 32px; font-size: 12px; }
+  .outline .list .row .tw { width: 32px; height: 32px; margin: 0 calc(-1 * var(--sp-1)); }
   .outline .list .row .n { font-size: 13px; }
-  .outline .menu { left: 8px; right: 8px; }
+  .outline .menu { left: 8px; right: 8px; width: auto; max-width: none; }
+  .outline .menu .mi { min-height: var(--h-xl); font-size: var(--fs-read); } /* a thumb's row */
+  .outline .menu .mi > .keys { display: none; } /* no keyboard to press them on */
+  .outline .menu .domains { max-height: calc(5.5 * var(--h-xl) + 5px); }
+  .outline .mi-row .edit { width: var(--h-lg); height: var(--h-lg); }
+  .outline .mi-row .mi > .ic-check { margin-left: calc(var(--h-lg) + var(--sp-05)); }
   /* Map: the header is the breadcrumb and one line of cells that scrolls sideways. */
   .chrome { right: 0; padding: 10px 12px; }
   .chrome-stack { width: 100%; min-width: 0; pointer-events: none; }
@@ -1120,22 +1173,11 @@ body.empty .outline, body.empty .chrome, body.empty #map-focus, body.empty #boar
   .new-domain { padding-bottom: calc(var(--places-h, 0px) + 24px); }
 }
 .new-domain-card textarea { resize: vertical; background: var(--water); border: 1px solid var(--line); border-radius: 8px; color: var(--text); padding: 11px 13px; font: inherit; font-size: 14px; line-height: 1.5; }
-.outline .mi.theme-row { display: flex; align-items: center; gap: 8px; }
-.outline .mi.theme-row .cur { margin-left: auto; color: var(--muted); }
-.outline .mi.theme-row .chev { color: var(--muted); font-size: 10px; width: 10px; text-align: center; }
-.outline .mi.sub { padding-left: 20px; }
-.outline .mi-row { position: relative; display: grid; }
-.outline .mi-row .mi { padding-right: 36px; }
-.outline .mi-row .edit { position: absolute; right: 4px; top: 50%; transform: translateY(-50%); opacity: 0; transition: opacity .12s ease; }
-.outline .mi-row:hover .edit, .outline .mi-row:focus-within .edit { opacity: 1; }
-.outline .mi-row .edit:hover { color: var(--lamp); }
-@media (hover: none) { .outline .mi-row .edit { opacity: 1; } }
 
 /* the pane head: the name has the whole width; the pills wrap under it */
 .head .row { flex-wrap: wrap; justify-content: flex-start; row-gap: 6px; }
 .head .row h2 { flex: 1 1 100%; text-wrap: balance; }
 .head .pills { flex-wrap: wrap; }
-.outline .menu .themes { display: grid; gap: 2px; }
 
 /* ---- seas: the field that names one on the water, and the button under a selected name (seas.js) ---- */
 .sea-edit { position: fixed; transform: translate(-50%, -50%); z-index: 3; width: min(300px, 80vw); box-sizing: border-box; background: var(--panel); color: var(--text);
