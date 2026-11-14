@@ -20,6 +20,8 @@ import { select } from "./interactions.js";
 import { registerRegion, region } from "./keys.js";
 import { isImeKey } from "./keys-model.js";
 import { chartKey, chartSend, chartTray, chartTurning, closeChart, decideSketch, dropChart, focusChartAnswer, installChart, isChartOpen, openChart, renderChart, stopChartTurn } from "./chart.js";
+import { toastError } from "./toast.js";
+import { tip } from "./tip.js";
 
 const pane = document.getElementById("pane");
 const STICK_PX = 40;            // within this of the bottom, the log follows new content
@@ -172,6 +174,12 @@ export function installCard() {
     stop: () => (isChartOpen() ? stopChartTurn() : stopTurn()),
     chartOpen: () => isChartOpen(),
     closeChart: () => closeChart(),
+    // The Escape ladder's `loose` rung (keys.js): unfolded loose ends fold before the pane closes.
+    looseOpen: () => looseShown !== undefined && pane.querySelector(".loose-list") !== null,
+    closeLoose: () => {
+      looseShown = undefined;
+      render();
+    },
     send() {
       if (isChartOpen()) return chartSend();
       const form = pane.querySelector("#answer-form");
@@ -580,11 +588,12 @@ function looseListEl(island, ends) {
           headers: { "content-type": "application/json" },
           body: JSON.stringify({ domain: app.domain, island: island.slug, id: e.id }),
         });
-      } catch {
+      } catch (error) {
         dismiss.disabled = false;
+        toastError(error, t("card.looseDismiss")); // a failed dismiss says so
       }
-    }, "loose-dismiss");
-    dismiss.title = t("card.looseDismissTitle");
+    }, "btn ghost sm");
+    tip(dismiss, t("card.looseDismissTitle"));
     item.append(text, dismiss);
     list.append(item);
   }

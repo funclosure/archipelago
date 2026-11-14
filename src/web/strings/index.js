@@ -40,10 +40,12 @@ import images from "./images.js";
 import toast from "./toast.js";
 import palette from "./palette.js";
 import wide from "./wide.js";
+import dialog from "./dialog.js";
 export const TABLES = {
   toast,
   palette,
   wide,
+  dialog,
   places,
   images,
   about,

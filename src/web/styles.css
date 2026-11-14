@@ -165,7 +165,18 @@ kbd { display: inline-block; box-sizing: border-box; min-width: 18px; padding: 0
 @keyframes enter { from { --enter: 0; opacity: 0; } }
 :is(.new-domain, .hosted, .images-sheet, .viewer, .about, .keys):not(.first) { animation: enter var(--t-med) var(--ease); }
 .dialog-card, .keys-card, .viewer-card, .images-card, .about-card, .new-domain-card, .hosted-card { transform: translateY(calc((1 - var(--enter)) * 8px)) scale(calc(.985 + .015 * var(--enter))); }
-.dialog-card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r-lg); box-shadow: var(--e-3); }
+/* A dialog (dialog.js). The shell is its root in index.html: fixed over the page as a veil mixed from the theme's
+   own panel, so the page behind steps back in every theme. The card is top-anchored and centred across: it grows
+   downward and its head never moves when a view changes height; a card taller than the window scrolls the shell.
+   Three widths: 440 by default, .md 580 (a form with room to write), .lg 720 (the cheat sheet). */
+.dialog-shell { position: fixed; inset: 0; z-index: var(--z-dialog); display: flex; justify-content: center; align-items: flex-start; box-sizing: border-box; padding: min(12vh, 96px) var(--sp-4) var(--sp-6);
+  background: color-mix(in oklab, var(--panel) 55%, transparent); overflow-y: auto; overscroll-behavior: contain; }
+.dialog-shell[hidden] { display: none; }
+.dialog-card { --dialog-w: 440px; display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--sp-3); box-sizing: border-box; width: min(var(--dialog-w), 100%); padding: var(--sp-5) var(--sp-6) var(--sp-6);
+  background: var(--panel); border: 1px solid var(--line); border-radius: var(--r-lg); box-shadow: var(--e-3); }
+.dialog-card.md { --dialog-w: 580px; }
+.dialog-card.lg { --dialog-w: 720px; }
+.dialog-card:focus { outline: none; } /* focus rests on the card of a dialog that is only read; it is never a tab stop */
 @media (prefers-reduced-motion: reduce) { .pop, .menu, .new-domain, .hosted, .images-sheet, .viewer, .about, .keys { animation: none !important; } }
 /* A menu: rows of one height, a label over a group (.grp > .ml), a rule between groups, the row's key at its right.
    It stands one step above the panel it opens over (the panel's colour, a little toward white, and a firmer edge),
@@ -867,15 +878,20 @@ body[data-focus="outline"] :is(.outline, .peek) .row.cur { box-shadow: inset 0 0
 body[data-focus="outline"] .outline .dash.cur::before { box-shadow: 0 0 0 2px var(--panel), 0 0 0 3px var(--lamp); }
 
 /* ---- cheat sheet ---- */
-.keys { position: fixed; top: 0; bottom: 0; left: var(--outline-w); right: 0; display: flex; align-items: center; justify-content: center; pointer-events: none; z-index: 6; }
-body.pane-open .keys { right: var(--pane-w); }
-.keys[hidden] { display: none; }
-.keys-card { pointer-events: auto; background: var(--panel); border: 1px solid var(--line); border-radius: var(--r-lg); padding: var(--sp-5) var(--sp-6); box-shadow: var(--e-3); min-width: 360px; }
-.keys-card .lbl { font-size: var(--fs-micro); text-transform: uppercase; letter-spacing: var(--track-caps); color: var(--lamp); margin-bottom: 8px; }
-.keys-card .cols { display: flex; gap: 28px; }
-.keys-card .sec { font-size: var(--fs-micro); letter-spacing: var(--track-caps); text-transform: uppercase; color: var(--muted); margin: 0 0 6px; }
-.keys-card .krow { display: flex; gap: 10px; align-items: baseline; font-size: 12px; line-height: 22px; }
-.keys-card kbd { min-width: 28px; }
+/* The page's map of keys, a dialog like the others (keys.js): every section of where the page is now, in two columns.
+   A row is what a key does, with its caps at the right; keys pressed together sit close, alternatives apart. The
+   section of the region that has the keyboard is named in the lamp. The foot names the command palette's key. */
+.keys-card { gap: var(--sp-4); }
+.keys-card .cols { columns: 2; column-gap: var(--sp-10); }
+.keys-card .ksec { break-inside: avoid; padding-bottom: var(--sp-5); }
+.keys-card .ksec > .eyebrow { margin: 0 0 var(--sp-1); padding-bottom: var(--sp-15); border-bottom: 1px solid var(--line); }
+.keys-card .ksec.here > .eyebrow { color: var(--lamp); }
+.keys-card .klist { list-style: none; margin: 0; padding: 0; }
+.keys-card .krow { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-4); min-height: var(--h-md); font-size: var(--fs-md); line-height: var(--lh-ui); }
+.keys-card .caps { display: inline-flex; flex: none; align-items: center; gap: var(--sp-15); }
+.keys-card .caps.gesture { font-size: var(--fs-sm); color: var(--muted); }
+.keys-card kbd { min-width: 22px; font-size: var(--fs-xs); line-height: 18px; }
+.keys-foot { display: flex; align-items: center; gap: var(--sp-2); margin-top: calc(-1 * var(--sp-5)); padding-top: var(--sp-3); border-top: 1px solid var(--line); font-size: var(--fs-sm); color: var(--muted); }
 
 /* ---- board ---- */
 .board-scrim { position: fixed; top: 0; bottom: 0; left: var(--outline-w); right: 0; background: var(--scrim); z-index: var(--z-panel); opacity: 0; transition: opacity var(--t-med) var(--ease), left var(--t-med) var(--ease); }
@@ -1087,43 +1103,54 @@ body.pane-open .board-hint { right: calc(var(--pane-w) + var(--sp-4)); }
 body.empty .board-hint { display: none; }
 @media (prefers-reduced-motion: reduce) { .board-toggle.beckon { animation: none; } }
 
-/* ---- About you: the learner note ---- */
-.about { position: fixed; top: 72px; left: calc(var(--outline-w) + 16px); z-index: 5; }
-/* the image viewer: one of the reader's images, full size, over everything */
-.viewer { position: fixed; inset: 0; z-index: 8; display: flex; align-items: center; justify-content: center; padding: 24px; }
-.viewer[hidden], .images-sheet[hidden] { display: none; } /* their display would otherwise beat the hidden attribute */
-.viewer-scrim { position: absolute; inset: 0; background: var(--scrim); }
-.viewer-card { position: relative; display: grid; gap: 8px; max-width: min(1568px, 100%); max-height: 100%; background: var(--panel); border: 1px solid var(--line); border-radius: var(--r-lg); padding: 12px; box-shadow: var(--e-3); }
-.viewer-card img { display: block; max-width: 100%; max-height: calc(100vh - 140px); margin: 0 auto; object-fit: contain; border-radius: 6px; }
-.viewer-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; font-size: 12px; color: var(--muted); }
-.viewer-size { font-family: var(--font-mono); }
-.viewer-confirm { color: var(--text); flex: 1; min-width: 12em; }
-.viewer-actions { display: flex; gap: 6px; margin-left: auto; }
-/* Images…: what a domain's images take, and removing old ones */
-.images-sheet { position: fixed; inset: 0; z-index: 7; display: flex; align-items: flex-start; justify-content: center; padding: 12vh 16px 16px; background: var(--scrim); overflow-y: auto; }
-.images-card { width: min(420px, 100%); display: grid; gap: var(--sp-3); background: var(--panel); border: 1px solid var(--line); border-radius: var(--r-lg); padding: var(--sp-5) var(--sp-6); box-shadow: var(--e-3); }
-.images-card .lbl { font-size: var(--fs-micro); text-transform: uppercase; letter-spacing: var(--track-caps); color: var(--muted); }
-.images-card .help { margin: 0; font-size: 13px; }
-.images-card .help.muted { color: var(--muted); font-size: 12px; }
-.images-options { display: grid; gap: 2px; }
-.images-option { display: flex; justify-content: space-between; gap: 12px; text-align: left; border: 0; background: transparent; color: var(--text); font: inherit; font-size: 13px; padding: 7px 8px; border-radius: 6px; cursor: pointer; }
-.images-option:hover:not(:disabled), .images-option.on { background: var(--panel-2); }
-.images-option:disabled { color: var(--muted); cursor: default; }
-.images-option .cur { color: var(--muted); font-size: 12px; }
-.images-confirm { display: grid; gap: 8px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel-2); }
-.images-confirm p { margin: 0; font-size: 13px; }
-.images-card .row { display: flex; gap: 6px; }
-.images-done { margin: 0; font-size: 12px; color: var(--text); }
-.about[hidden] { display: none; }
-.about-card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r-lg); padding: var(--sp-5) var(--sp-6); box-shadow: var(--e-3);
-  width: min(420px, calc(100vw - var(--outline-w) - 32px)); display: grid; gap: 8px; }
-.about-card .lbl { font-size: var(--fs-micro); text-transform: uppercase; letter-spacing: var(--track-caps); color: var(--explore); }
-.about-card .help { margin: 0; font-size: 12px; color: var(--muted); }
-.about-card textarea { resize: vertical; background: var(--water); border: 1px solid var(--line); border-radius: 6px; color: var(--text);
-  padding: 8px 10px; font: inherit; font-size: 13px; line-height: 1.4; }
-.about-card .count { font-size: 11px; color: var(--muted); text-align: right; }
+/* ---- dialogs: what every card shares (dialog.js builds these), then each dialog's own ---- */
+/* The head: the dialog's name as a small capitals label, the close control at the right, its glyph on the card's edge. */
+.dialog-head { display: flex; align-items: center; gap: var(--sp-3); min-height: var(--h-md); }
+.dialog-head > .dialog-close { flex: none; margin-left: auto; margin-right: calc(-1 * var(--sp-15)); }
+.dialog-title { margin: 0; font: 400 var(--fs-2xl)/var(--lh-tight) var(--font-serif); letter-spacing: -.01em; color: var(--text); text-wrap: balance; }
+/* The body: help in the chrome's second voice, a question in the first, an error in the reef's under what it concerns. */
+.dialog-card .help { margin: 0; font-size: var(--fs-md); line-height: 1.55; color: var(--text-2); }
+.dialog-card .help.muted { font-size: var(--fs-sm); color: var(--muted); }
+.dialog-card .confirm { margin: 0; font-size: var(--fs-md); line-height: 1.55; color: var(--text); }
+.dialog-card .error { margin: 0; font-size: var(--fs-sm); line-height: var(--lh-ui); color: var(--reef); }
+.dialog-card a:not(.btn) { color: inherit; text-decoration: underline; text-underline-offset: 3px; }
+.dialog-card a:not(.btn):hover { color: var(--text); }
+.dialog-card a.btn { text-decoration: none; }
+/* A field of the family (.field) under its visible label; a counter or a note sits at the label's right. */
+.dialog-field { display: grid; gap: var(--sp-15); min-width: 0; }
+.dialog-field .label-row { display: flex; align-items: baseline; justify-content: space-between; gap: var(--sp-3); }
+.field-label { font-size: var(--fs-sm); font-weight: var(--fw-medium); color: var(--text-2); }
+.dialog-card .field { display: block; width: 100%; }
+.dialog-card textarea.field { resize: vertical; min-height: var(--h-xl); }
+/* The foot: one order everywhere. At the far left the way back or the door to something destructive (.lead); at the
+   right the secondary actions, then the one main action, last. A destructive confirm is the same foot with .btn.danger
+   last and the question at the left (.ask). The main action's key rides in its button. */
+.dialog-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: var(--sp-2); margin-top: var(--sp-1); }
+.dialog-foot > .lead { display: flex; align-items: center; gap: var(--sp-2); min-width: 0; margin-right: auto; }
+.dialog-foot > .lead:empty { display: none; }
+.dialog-foot .btn { flex: none; white-space: nowrap; }
+.dialog-foot .ask { font-size: var(--fs-md); line-height: var(--lh-ui); color: var(--text); }
+.chord { display: inline-flex; gap: var(--sp-05); }
+.dialog-foot .btn .chord { margin-left: var(--sp-05); }
+.dialog-foot .btn kbd { min-width: 16px; padding: 0 3px; background: transparent; border-color: color-mix(in oklab, currentColor 35%, transparent); color: inherit; }
+@media (hover: none) { .dialog-foot .btn .chord { display: none; } } /* no keyboard under a thumb */
+:lang(zh) .dialog-card .eyebrow { letter-spacing: .02em; font-size: var(--fs-xs); }
+
+/* About you: the learner note */
+.about-card .count { font: var(--fs-xs) var(--font-mono); color: var(--muted); }
 .about-card .count.at-limit { color: var(--reef); }
-.about-card .row { display: flex; gap: 6px; }
+/* The image viewer: one of the reader's images, full size. A lightbox, so the veil is stronger and the card sits in
+   the middle (by its auto margins, never by align-items: a card taller than the window must start at the top). */
+.viewer { z-index: var(--z-viewer); padding: var(--sp-6); background: color-mix(in oklab, var(--panel) 82%, transparent); }
+.viewer-card { width: fit-content; min-width: min(480px, 100%); max-width: min(1568px, 100%); margin: auto; padding: var(--sp-3) var(--sp-4) var(--sp-4); }
+.viewer-card img { display: block; max-width: 100%; max-height: calc(100vh - 176px); margin: 0 auto; object-fit: contain; border-radius: var(--r-sm); }
+.viewer-card .viewer-size { font: var(--fs-xs) var(--font-mono); color: var(--muted); }
+.viewer-card .dialog-foot { min-height: var(--h-xl); margin-top: 0; flex-wrap: nowrap; } /* room for the two lines of the question, so asking it moves nothing */
+/* Images…: what a domain's images take, and a row per way to remove old ones (menu rows of the family) */
+.images-sheet { z-index: var(--z-dialog-top); }
+.images-options { display: grid; gap: 1px; margin: 0 calc(-1 * var(--sp-2)); }
+.images-options > .eyebrow { padding: var(--sp-1) var(--sp-2); }
+.images-option { min-height: var(--h-lg); }
 
 /* The cartographer: its pane reuses the island pane's head, log, and foot; its colour is the lamp's. */
 .pill.mode.cartographer { border-color: var(--lamp); color: var(--lamp); }
@@ -1164,47 +1191,51 @@ body.pane-open .dock { display: none; }
 .crumb.start { color: var(--lamp); text-decoration: underline; }
 .breadcrumb:has(.crumb.start) { flex-wrap: wrap; white-space: normal; } /* a sentence with its one way forward (hosted.js): it may take two lines */
 
-/* New domain: one field, over a scrim on the map; with no domains yet (.first) it is the whole page. */
-.new-domain { position: fixed; inset: 0; z-index: 6; display: flex; justify-content: center; align-items: flex-start; padding: 8vh 16px 24px; background: var(--scrim); overflow-y: auto; }
-.new-domain[hidden] { display: none; }
-.new-domain-card .btn.push { margin-left: auto; }
-.new-domain-card .examples { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: -6px; }
-.new-domain-card .ex-lbl { font-size: 11px; color: var(--muted); margin-right: 2px; }
-.new-domain-card .ex { background: transparent; border: 1px solid var(--line); color: var(--text-2); border-radius: 999px; padding: 4px 10px; font: 12px system-ui, sans-serif; cursor: pointer; }
-.new-domain-card .ex:hover { background: var(--hover); border-color: var(--line-strong); color: var(--text); }
-.new-domain-card .row { align-items: center; margin-top: 4px; }
-.new-domain-card .as-link { background: none; border: 0; padding: 0; width: fit-content; color: var(--text-2); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; font: inherit; font-size: 13px; text-align: left; }
-.new-domain-card .as-link:hover { color: var(--lamp); }
-.new-domain-card textarea.map-text { font: 12px/1.5 var(--font-mono); min-height: 120px; }
-.new-domain-card .other-ai { display: flex; gap: 12px; align-items: center; padding-top: 10px; border-top: 1px solid var(--line); }
+/* New domain: one field, a dialog over the veil; with no domains yet (.first) it is the whole page, not a dialog. */
+.new-domain-card .dialog-title + .help { max-width: 60ch; }
+.new-domain-card #new-domain-name { font: var(--fs-lg)/1.5 var(--font-serif); } /* a domain's name is set in the serif wherever it shows */
+.new-domain-card .sub-lbl { font-size: var(--fs-sm); color: var(--muted); margin-top: var(--sp-1); }
+.new-domain-card .draft-note { display: flex; align-items: center; gap: var(--sp-2); margin-top: calc(-1 * var(--sp-1)); font-size: var(--fs-sm); color: var(--muted); }
+/* examples: each picks a description, so a pill */
+.new-domain-card .examples { display: flex; flex-wrap: wrap; gap: var(--sp-2); align-items: center; margin-top: calc(-1 * var(--sp-1)); }
+.new-domain-card .ex { background: transparent; border: 1px solid var(--line); color: var(--text-2); border-radius: var(--r-full); padding: var(--sp-1) var(--sp-3); font: var(--fs-sm)/var(--lh-ui) var(--font-ui); cursor: pointer; }
+.new-domain-card .ex:hover:not(:disabled) { background: var(--hover); border-color: var(--line-strong); color: var(--text); }
+.new-domain-card .ex:active:not(:disabled) { background: var(--pressed); }
+.new-domain-card .ex:disabled { opacity: .5; cursor: default; }
+/* the import view: a map file's text, and the prompt that has another AI write one */
+.new-domain-card textarea.map-text { font: var(--fs-sm)/1.5 var(--font-mono); min-height: 120px; }
+.new-domain-card .other-ai { display: flex; gap: var(--sp-3); align-items: center; margin-top: var(--sp-1); padding-top: var(--sp-4); border-top: 1px solid var(--line); }
 .new-domain-card .other-ai .btn { flex: none; }
-.new-domain-card .shared-maps { display: flex; flex-direction: column; gap: 8px; max-height: min(52vh, 460px); overflow-y: auto; margin: 0 -4px; padding: 4px; }
-.new-domain-card .shared-map { display: flex; gap: 12px; align-items: flex-start; text-align: left; background: var(--water); border: 1px solid var(--line); border-radius: 10px; padding: 13px 14px; color: var(--text); font: inherit; cursor: pointer; }
-.new-domain-card .shared-map:hover:not(:disabled) { border-color: var(--line-strong); }
+/* A shared map, as a row in the list or a tile under the description: water under the pointer lifts as --hover does
+   on the panel; only the map that was picked wears the lamp; the keyboard's ring is the family's. */
+.new-domain-card .shared-maps { display: flex; flex-direction: column; gap: var(--sp-2); max-height: min(52vh, 460px); overflow-y: auto; margin: 0 calc(-1 * var(--sp-1)); padding: var(--sp-1); }
+.new-domain-card :is(.shared-map, .map-tile) { display: flex; text-align: left; background: var(--water); border: 1px solid var(--line); border-radius: var(--r-md); color: var(--text); font: inherit; cursor: pointer; }
+.new-domain-card :is(.shared-map, .map-tile):hover:not(:disabled) { background: color-mix(in oklab, var(--text) 10%, var(--water)); border-color: var(--line-strong); }
+.new-domain-card :is(.shared-map, .map-tile):active:not(:disabled) { background: color-mix(in oklab, var(--text) 18%, var(--water)); }
+.new-domain-card :is(.shared-map, .map-tile):disabled { cursor: default; opacity: .6; }
+.new-domain-card .shared-map { gap: var(--sp-3); align-items: flex-start; padding: var(--sp-3) var(--sp-4) var(--sp-3) var(--sp-3); }
 .new-domain-card .shared-map.picked { border-color: var(--lamp); box-shadow: 0 0 0 3px var(--lamp-tint); }
-.new-domain-card .shared-map:disabled { cursor: default; opacity: .7; }
-.new-domain-card .shared-map .words { display: grid; gap: 2px; min-width: 0; }
+.new-domain-card .shared-map .words { display: grid; gap: var(--sp-05); min-width: 0; }
 .new-domain-card .shared-map .map-icon { width: 52px; height: 52px; }
 /* A shared map's picture: one island in the water's own tone with a pale coast, its emoji standing on it (map-icon.js). */
 .map-icon { flex: none; overflow: visible; }
 .map-icon .coast { fill: color-mix(in oklab, var(--text) 26%, var(--water)); stroke: var(--line-07); stroke-width: 4; }
 .map-icon .ring { fill: none; stroke: var(--line-03); stroke-width: 2.5; }
 .map-icon text { font-size: 84px; text-anchor: middle; dominant-baseline: central; }
-.new-domain-card .shared-map .nm { font-size: 15px; }
-.new-domain-card .shared-map .ds { font-size: 13px; line-height: 1.5; color: var(--text-2); }
-.new-domain-card .shared-map .mt { font-size: 11px; color: var(--muted); }
-.new-domain-card .as-link.push { margin-left: auto; }
-.new-domain-card .hint { margin-left: auto; font: 11px var(--font-mono); color: var(--muted); }
+.new-domain-card .shared-map .nm { font: var(--fs-read)/var(--lh-ui) var(--font-serif); }
+.new-domain-card .shared-map .ds { font-size: var(--fs-md); line-height: 1.5; color: var(--text-2); }
+.new-domain-card .shared-map .mt { font-size: var(--fs-xs); color: var(--muted); }
 body.empty .outline, body.empty .chrome, body.empty #map-focus, body.empty #board-toggle { display: none; }
 /* Centred by the card's auto margins, never by align-items: a card taller than the window must start at the top, or its head is cut off beyond reach of the scroll. */
-.new-domain.first { background: transparent; padding: 24px 16px; }
-.new-domain.first .new-domain-card { background: transparent; border: 0; box-shadow: none; width: min(600px, 100%); gap: 14px; padding: 0; margin: auto; }
-.new-domain.first .lbl { font-size: 11px; }
-.new-domain.first .title { margin: -6px 0 0; font: 400 34px/1.15 Georgia, serif; letter-spacing: -.01em; color: var(--text); }
-.new-domain.first .help { font-size: 14px; line-height: 1.55; color: var(--text-2); max-width: 54ch; }
-.new-domain.first textarea { font-size: 15px; padding: 12px 14px; background: var(--panel); }
-.new-domain.first .btn { padding: 9px 16px; font-size: 14px; }
-.new-domain-card .art { width: min(360px, 80%); height: auto; margin-bottom: 6px; overflow: visible; }
+.new-domain.first { background: transparent; padding: var(--sp-6) var(--sp-4); }
+.new-domain.first .new-domain-card { --dialog-w: 600px; background: transparent; border: 0; box-shadow: none; gap: var(--sp-3); padding: 0; margin: auto; }
+.new-domain.first .eyebrow { font-size: var(--fs-xs); color: var(--lamp); }
+.new-domain.first .title { margin: calc(-1 * var(--sp-15)) 0 0; font: 400 var(--fs-display)/1.15 var(--font-serif); letter-spacing: -.01em; color: var(--text); }
+.new-domain.first .help { font-size: var(--fs-base); line-height: 1.55; color: var(--text-2); max-width: 54ch; }
+.new-domain.first textarea.field { font-size: var(--fs-read); padding: var(--sp-3) var(--sp-4); background: var(--panel); }
+.new-domain.first .dialog-foot { justify-content: flex-start; }
+.new-domain.first .dialog-foot .btn { min-height: var(--h-xl); padding: var(--sp-2) var(--sp-4); font-size: var(--fs-base); }
+.new-domain-card .art { width: min(360px, 80%); height: auto; margin-bottom: var(--sp-15); overflow: visible; }
 .art .coast { fill: none; stroke: var(--line-07); stroke-width: 2.5; }
 .art .open .coast { stroke: var(--open); stroke-dasharray: 2 6; stroke-linecap: round; }
 .art .sandbar .coast { fill: var(--sand-fill); fill-opacity: .9; }
@@ -1213,56 +1244,44 @@ body.empty .outline, body.empty .chrome, body.empty #map-focus, body.empty #boar
 .art .settled .ring { stroke: var(--on-land); stroke-opacity: .55; }
 .art .sandbar .ring { stroke: var(--on-land); stroke-opacity: .45; }
 .art text { fill: var(--muted); font: italic 15px Georgia, serif; text-anchor: middle; }
-.new-domain-card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r-lg); padding: 26px 28px 24px; box-shadow: var(--e-3);
-  width: min(580px, 100%); box-sizing: border-box; display: grid; gap: 14px; }
-.new-domain-card .lbl { font-size: var(--fs-micro); text-transform: uppercase; letter-spacing: var(--track-caps); color: var(--lamp); }
-.new-domain-card .help { margin: 0; font-size: 13px; line-height: 1.55; color: var(--text-2); max-width: 60ch; }
-.new-domain-card h2.title { margin: -4px 0 -4px; font: 400 24px/1.2 Georgia, serif; letter-spacing: -.01em; color: var(--text); }
-.new-domain-card input { background: var(--water); border: 1px solid var(--line); border-radius: 6px; color: var(--text); padding: 8px 10px; font: inherit; font-size: 14px; }
-.new-domain-card .row { display: flex; gap: 6px; }
-.new-domain-card .error { margin: 0; font-size: 12px; color: var(--reef); }
 
 /* ---- the hosted build: welcome, Your key, import, another tab (src/web/hosted.js) ---- */
-.hosted { position: fixed; inset: 0; z-index: 7; display: flex; align-items: flex-start; justify-content: center; padding: 12vh 16px 16px; background: var(--scrim); overflow-y: auto; }
-.hosted[hidden] { display: none; }
-.hosted.welcome { background: var(--water); }
-.hosted-card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r-lg); padding: var(--sp-5) var(--sp-6); box-shadow: var(--e-3);
-  width: min(460px, 100%); box-sizing: border-box; display: grid; gap: 10px; accent-color: var(--lamp); }
-.hosted-card a { color: var(--lamp); }
-.hosted-card .lbl { font-size: var(--fs-micro); text-transform: uppercase; letter-spacing: var(--track-caps); color: var(--lamp); }
-.hosted-card .lede { margin: 0; font-family: Georgia, serif; font-size: 16px; line-height: 1.45; }
-.hosted-card .help { margin: 0; font-size: 12px; color: var(--muted); }
-.hosted-card .help code { font: 11px var(--font-mono); }
-.hosted-card .error { margin: 0; font-size: 12px; color: var(--reef); }
-.hosted-card .fields { display: grid; gap: 10px; }
-.hosted-card input[type="password"] { background: var(--water); border: 1px solid var(--line); border-radius: 6px; color: var(--text); padding: 8px 10px; font: 14px var(--font-mono); min-width: 0; }
-.hosted-card .providers { display: flex; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
-.hosted-card .provider { position: relative; flex: 1; display: flex; align-items: center; justify-content: center; gap: 4px; padding: 6px 8px; font-size: 13px; cursor: pointer; color: var(--text-2); }
-.hosted-card .provider + .provider { border-left: 1px solid var(--line); }
+/* Dialogs of the family. The welcome gate and the take-over notice are whole pages: solid water, over everything, no entrance. */
+.hosted { z-index: var(--z-dialog-top); }
+.hosted.welcome { z-index: calc(var(--z-viewer) + 1); background: var(--water); animation: none; }
+.hosted-card { accent-color: var(--lamp); }
+.hosted-card .lede { margin: 0; font: var(--fs-lg)/1.45 var(--font-serif); }
+.hosted-card .help code { font: var(--fs-xs) var(--font-mono); }
+.hosted-card .fields { display: grid; gap: var(--sp-3); }
+.hosted-card .fields > .field-label { margin-bottom: calc(-1 * var(--sp-15)); } /* a group's label sits as close as a field's */
+.hosted-card input.field { font-family: var(--font-mono); }
+/* the provider switch: the family's segmented control over a radio group; the chosen one is a neutral fill, a dot says a key is saved */
+.hosted-card .providers { display: flex; --seg-fill: var(--selected); }
+.hosted-card .provider { position: relative; flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: var(--sp-1); min-height: var(--h-md); font-size: var(--fs-md); }
+.hosted-card .provider.on { color: var(--text); }
 .hosted-card .provider input { position: absolute; opacity: 0; pointer-events: none; }
-.hosted-card .provider:has(input:checked) { background: var(--panel-2); color: var(--text); }
-.hosted-card .provider:has(input:focus-visible) { outline: 2px solid var(--lamp); outline-offset: -2px; }
+.hosted-card .provider:has(input:focus-visible) { outline: 2px solid var(--lamp); outline-offset: 2px; }
 .hosted-card .provider .has-key { color: var(--lamp); }
-.hosted-card .models { display: grid; gap: 4px; }
-.hosted-card input.model-id { background: var(--water); border: 1px solid var(--line); border-radius: 6px; color: var(--text); padding: 6px 10px; font: 13px var(--font-mono); min-width: 0; margin-top: 2px; }
-.hosted-card .model { display: grid; grid-template-columns: auto auto 1fr; gap: 8px; align-items: baseline; font-size: 13px; cursor: pointer; }
-.hosted-card .model .note { color: var(--muted); font-size: 12px; }
-.hosted-card .remember { font-size: 12px; color: var(--text-2); cursor: pointer; }
-.hosted-card .row { display: flex; gap: 6px; flex-wrap: wrap; }
-.hosted-card .credit { display: grid; gap: 8px; padding-bottom: 12px; border-bottom: 1px solid var(--line); }
+.hosted-card .models { display: grid; gap: var(--sp-05); margin: 0 calc(-1 * var(--sp-2)); }
+.hosted-card .model { display: grid; grid-template-columns: auto auto 1fr; gap: var(--sp-2); align-items: center; min-height: var(--h-md); padding: var(--sp-05) var(--sp-2); border-radius: var(--r-sm); font-size: var(--fs-md); cursor: pointer; }
+.hosted-card .model:hover { background: var(--hover); }
+.hosted-card .model .note { color: var(--muted); font-size: var(--fs-sm); }
+.hosted-card .remember { display: flex; align-items: center; gap: var(--sp-15); width: fit-content; font-size: var(--fs-sm); color: var(--text-2); cursor: pointer; }
+.hosted-card .row { display: flex; gap: var(--sp-2); flex-wrap: wrap; }
+.hosted-card > .row { margin: calc(-1 * var(--sp-1)) calc(-1 * var(--sp-3)); } /* quiet buttons: their words on the card's edge */
+.hosted-card .credit { display: grid; gap: var(--sp-2); padding-bottom: var(--sp-3); border-bottom: 1px solid var(--line); }
 .hosted-card .credit p { margin: 0; }
-.hosted-card .credit .left { font-family: Georgia, serif; font-size: 20px; line-height: 1.3; color: var(--text); }
-.hosted-card .sect { font-size: var(--fs-micro); text-transform: uppercase; letter-spacing: var(--track-caps); color: var(--muted); margin-top: 4px; }
-.hosted-card .points { margin: 0; padding-left: 16px; display: grid; gap: 6px; line-height: 1.5; }
-.hosted-card .legal-links { margin: 0; padding-top: 10px; border-top: 1px solid var(--line); display: flex; gap: 14px; font-size: 12px; }
-.hosted-card .legal-links a { color: var(--muted); }
-.hosted-card .legal-links a:hover { color: var(--text-2); }
-.hosted-card .more { font-size: 12px; color: var(--muted); }
-.hosted-card .more summary { cursor: pointer; width: fit-content; }
+.hosted-card .credit .left { font: var(--fs-xl)/1.3 var(--font-serif); color: var(--text); }
+.hosted-card .credit .thanks { font-size: var(--fs-md); color: var(--lamp); }
+.hosted-card .points { margin: 0; padding-left: var(--sp-4); display: grid; gap: var(--sp-15); line-height: 1.5; }
+.hosted-card .legal-links { margin: 0; padding-top: var(--sp-3); border-top: 1px solid var(--line); display: flex; gap: var(--sp-4); font-size: var(--fs-sm); }
+.hosted-card .legal-links a { color: var(--muted); text-decoration: none; }
+.hosted-card .legal-links a:hover { color: var(--text-2); text-decoration: underline; }
+.hosted-card .more { font-size: var(--fs-sm); color: var(--muted); }
+.hosted-card .more summary { cursor: pointer; width: fit-content; border-radius: var(--r-xs); }
 .hosted-card .more summary:hover { color: var(--text-2); }
-.hosted-card .more[open] { display: grid; gap: 8px; }
-.hosted-card .credit .thanks { font-size: 13px; color: var(--lamp); }
-.hosted-card .btn.link { background: none; border: 0; padding: 0; color: var(--lamp); text-decoration: underline; cursor: pointer; font: inherit; font-size: 12px; }
+.hosted-card .more > :not(summary) { margin-top: var(--sp-2); }
+.hosted-card .more .help { font-size: var(--fs-sm); color: var(--muted); }
 
 /* ---- phones: one place at a time (places.js stamps body[data-place]) and a bar at the bottom to move between
    them: the islands' list (the outline, full screen), the map, the island's pane, its board ---- */
@@ -1334,33 +1353,33 @@ body.empty .outline, body.empty .chrome, body.empty #map-focus, body.empty #boar
   .board-scrim, body.pane-open .board-scrim { left: 0; right: 0; }
   .board-toggle, .board-hint { display: none; }
   .board .column { padding: var(--sp-3) var(--sp-3) var(--sp-10); } /* a card's caption takes two rows here by the board's own width (its container rule) */
-  .keys, body.pane-open .keys { left: 0; right: 0; }
-  .about { left: 12px; right: 12px; top: 64px; }
-  .about-card { width: auto; }
   .peek { display: none; }
-  .new-domain-card .hint { display: none; }
   .new-domain.first .title { font-size: 28px; }
 }
-.new-domain-card .sub-lbl { font-size: 12px; color: var(--muted); margin-top: 4px; }
-/* The other ways in, under the description: ready-made maps as tiles, then the links. */
-.new-domain-card .other-ways { display: grid; gap: 12px; margin-top: 8px; padding-top: 18px; border-top: 1px solid var(--line); }
+/* The other ways in, under the description: ready-made maps as tiles, then the two ways further (quiet buttons, their words on the card's edge). */
+.new-domain-card .other-ways { display: grid; gap: var(--sp-3); margin-top: var(--sp-2); padding-top: var(--sp-4); border-top: 1px solid var(--line); }
 .new-domain-card .other-ways .sub-lbl { margin-top: 0; }
-.new-domain-card .map-tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
-.new-domain-card .map-tile { display: flex; gap: 9px; align-items: center; text-align: left; background: var(--water); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px 10px 10px; color: var(--text); font: inherit; cursor: pointer; min-height: 72px; }
-.new-domain-card .map-tile .words { display: grid; gap: 4px; min-width: 0; }
+.new-domain-card .map-tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--sp-2); }
+.new-domain-card .map-tile { gap: var(--sp-2); align-items: center; padding: var(--sp-2) var(--sp-3) var(--sp-2) var(--sp-2); min-height: 72px; }
+.new-domain-card .map-tile .words { display: grid; gap: var(--sp-1); min-width: 0; }
 .new-domain-card .map-tile .map-icon { width: 40px; height: 40px; }
-.new-domain-card .map-tile:hover:not(:disabled) { border-color: var(--line-strong); background: color-mix(in oklab, var(--water) 88%, var(--text)); }
-.new-domain-card .map-tile .nm { font-size: 13px; line-height: 1.3; }
-.new-domain-card .map-tile .mt { font-size: 11px; color: var(--muted); }
-.new-domain-card .other-ways .links { display: flex; flex-wrap: wrap; gap: 8px 22px; margin-top: 2px; }
-.new-domain.first .map-tile { background: var(--panel); }
-.new-domain.first .other-ways { margin-top: 10px; }
+.new-domain-card .map-tile .nm { font: var(--fs-base)/var(--lh-tight) var(--font-serif); }
+.new-domain-card .map-tile .mt { font-size: var(--fs-xs); color: var(--muted); }
+.new-domain-card .other-ways .links { display: flex; flex-wrap: wrap; gap: var(--sp-1) var(--sp-2); margin: calc(-1 * var(--sp-1)) calc(-1 * var(--sp-3)); }
+/* on the first-run page the ground is the water itself, so a map stands on the panel's tone */
+.new-domain.first :is(.shared-map, .map-tile) { background: var(--panel); }
+.new-domain.first :is(.shared-map, .map-tile):hover:not(:disabled) { background: color-mix(in oklab, var(--text) 10%, var(--panel)); }
+.new-domain.first :is(.shared-map, .map-tile):active:not(:disabled) { background: color-mix(in oklab, var(--text) 18%, var(--panel)); }
+.new-domain.first .other-ways { margin-top: var(--sp-3); }
+/* Phones: a dialog starts near the top, its veil covers the bar of places too (the bar is inert under a dialog, so
+   it must not look live), and a tall card ends clear of it; the cheat sheet is one column. */
 @media (max-width: 720px) {
-  .new-domain-card { padding: 20px 18px 18px; }
+  .dialog-shell { z-index: var(--z-dialog-top); padding: var(--sp-4) var(--sp-3) calc(var(--places-h, 0px) + var(--sp-6)); }
+  .dialog-card { padding: var(--sp-4) var(--sp-4) var(--sp-5); }
+  .viewer { z-index: var(--z-viewer); padding: var(--sp-3) var(--sp-3) calc(var(--places-h, 0px) + var(--sp-3)); }
   .new-domain-card .map-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .new-domain { padding-bottom: calc(var(--places-h, 0px) + 24px); }
+  .keys-card .cols { columns: 1; }
 }
-.new-domain-card textarea { resize: vertical; background: var(--water); border: 1px solid var(--line); border-radius: 8px; color: var(--text); padding: 11px 13px; font: inherit; font-size: 14px; line-height: 1.5; }
 
 /* the pane head: the name has the whole width; the pills wrap under it */
 .head .row { flex-wrap: wrap; justify-content: flex-start; row-gap: 6px; }
