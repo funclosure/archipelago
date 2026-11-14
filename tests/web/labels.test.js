@@ -78,10 +78,15 @@ test("a name keeps off what the caller says to avoid (a sea's lettering), and la
   // lettering lies across where the name would sit: it goes above instead
   const out = layoutLabels([a], { measure, scale, avoid: [{ x0: -200, x1: 200, y0: rect.y0 + 5, y1: rect.y1 + 30 }] });
   expect(out.get("a").place).toBe("above");
-  // lettering everywhere: the name hides, unless the island is the selection
+  // lettering everywhere: the name does not hide for it (an island's name matters more than a sea's); it sits where it would have
   const sea = [{ x0: -500, x1: 500, y0: -500, y1: 500 }];
-  expect(layoutLabels([a], { measure, scale, avoid: sea }).get("a").hidden).toBe(true);
-  expect(layoutLabels([a], { measure, scale, avoid: sea, focus: "a" }).get("a")).toMatchObject({ hidden: false, place: "below" });
+  expect(layoutLabels([a], { measure, scale, avoid: sea }).get("a")).toMatchObject({ hidden: false, place: "below" });
+  // and lettering never makes a crowded name hide that would otherwise have had a spot beside its coast
+  const crowd = [node("a", 0, 0, "Tools"), node("up", 0, -160), node("down", 0, 160)];
+  const side = [{ x0: 80, x1: 400, y0: -20, y1: 20 }]; // across the spot to the right
+  expect(layoutLabels(crowd, { measure, scale, focus: "up" }).get("a").place).toBe("right");
+  expect(layoutLabels(crowd, { measure, scale, focus: "up", avoid: side }).get("a")).toMatchObject({ hidden: false, place: "left" });
+  expect(layoutLabels(crowd, { measure, scale, focus: "up", avoid: [...side, { x0: -400, x1: -80, y0: -20, y1: 20 }] }).get("a")).toMatchObject({ hidden: false, place: "right" });
   // labelRect follows the island's scale
   const big = labelRect({ ...a, x: 100, y: 50 }, 2, below.get("a"));
   expect(big).toEqual({ x0: 50, x1: 150, y0: 50 + (NAME_Y - CENTRE) * 2, y1: 50 + (NAME_Y - CENTRE + LINE_H) * 2 });

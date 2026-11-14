@@ -73,8 +73,10 @@ function crossesDisc(r, cx, cy, radius) {
 
 /**
  * Lays out every node's name. `nodes` carry x, y (world), radius, name, slug, and draft; `scale(node)` is its box
- * scale (world units per box unit); `avoid` is world rects no name may sit on (the seas' lettering). Returns a Map
- * slug → { lines, place, cx, top (box units), width, height (box units), hidden }; a hidden label is not drawn.
+ * scale (world units per box unit); `avoid` is world rects a name keeps off when it can (the seas' lettering): a
+ * name moves to another spot for them, but never hides for them, since an island's name matters more than a
+ * sea's. Returns a Map slug → { lines, place, cx, top (box units), width, height (box units), hidden }; a hidden
+ * label is not drawn.
  */
 export function layoutLabels(nodes, { measure, scale, focus = null, hover = null, avoid = [] }) {
   const order = [...nodes].sort((a, b) => rank(a) - rank(b) || a.y - b.y || a.x - b.x);
@@ -92,10 +94,11 @@ export function layoutLabels(nodes, { measure, scale, focus = null, hover = null
     const height = lines.length * LINE_H + (node.draft ? DRAFT_H : 0);
     const clear = (r) =>
       !placed.some((p) => overlaps(p, r)) &&
-      !avoid.some((a) => overlaps(a, r)) &&
       !nodes.some((o) => o !== node && crossesDisc(r, o.x, o.y, KEEP_R * scale(o)));
+    const open = (r) => clear(r) && !avoid.some((a) => overlaps(a, r));
     const must = node.slug === focus || node.slug === hover;
-    const place = PLACES.find((p) => clear(rectFor(node, s, width, height, p))) ?? (must ? "below" : undefined);
+    const spot = (test) => PLACES.find((p) => test(rectFor(node, s, width, height, p)));
+    const place = spot(open) ?? spot(clear) ?? (must ? "below" : undefined);
     const hidden = place === undefined;
     const chosen = place ?? "below";
     if (!hidden) placed.push(rectFor(node, s, width, height, chosen));
