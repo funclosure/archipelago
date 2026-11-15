@@ -966,6 +966,18 @@ body.pane-open:has(.board-hint) .cta-card { margin-bottom: 132px; }
 .cta-card .q { font-family: var(--font-serif); font-size: var(--fs-base); line-height: var(--lh-body); text-wrap: pretty; }
 .cta-card .row { display: flex; flex-wrap: wrap; gap: var(--sp-2); margin-top: var(--sp-1); }
 .cta-card .btn.mentor { --btn-bg: var(--explore); }
+.cta-card .btn > .words { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@media (min-width: 721px) {
+  /* One row, one line: on a narrow map the first button gives way (its label cut with an ellipsis; its whole name is
+     its accessible name) and the second keeps its words. */
+  .cta-card { grid-template-columns: minmax(0, 1fr); } /* the card's width, not its longest label, sets the row's */
+  .cta-card .row { flex-wrap: nowrap; }
+  .cta-card .row .btn { flex: 0 1 auto; min-width: 0; }
+  .cta-card .row .btn:last-child:not(:first-child) { flex: none; }
+  /* The lamp's fill is for the one main action of the view. With a pane open, its own main action leads (Explore it,
+     Send, Approve): the card's buttons step down to outlines (the family's .ghost recipe; hover and pressed follow). */
+  body.pane-open .cta-card .btn:not(.ghost) { --btn-bg: transparent; color: var(--text); border-color: var(--line-strong); }
+}
 
 /* ---- keyboard focus ---- */
 #map:focus, #pane:focus, #outline:focus { outline: none; }

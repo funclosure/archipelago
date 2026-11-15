@@ -27,7 +27,8 @@ function press(id) {
 }
 
 function buttonEl(b) {
-  const node = el("button", TONES[b.tone] ?? TONES.ghost, b.label);
+  const node = el("button", TONES[b.tone] ?? TONES.ghost);
+  node.append(el("span", "words", b.label)); // its own box, so a label too long for a narrow map is cut with an ellipsis
   node.type = "button";
   node.dataset.id = b.id;
   if (b.key) node.dataset.key = b.key;
@@ -68,6 +69,12 @@ export function renderCta(model) {
   wrap.setAttribute("aria-label", t("cta.regionLabel"));
   wrap.hidden = false;
   wrap.replaceChildren(card);
+  // A label the narrow map cuts short is whole in its tip, on a line over what the button does (its name has it all).
+  for (const node of row.children) {
+    const words = node.querySelector(".words");
+    const b = view.buttons.find((x) => x.id === node.dataset.id);
+    if (b?.tip && words.scrollWidth > words.clientWidth) tip(node, `${b.label}\n${b.tip}`, b.key, { describe: b.tip });
+  }
   if (held) wrap.querySelector(`button[data-id="${held}"]:not(:disabled)`)?.focus({ preventScroll: true });
 }
 
