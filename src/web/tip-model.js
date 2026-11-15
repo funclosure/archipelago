@@ -4,10 +4,22 @@ export const TIP_DELAY_MS = 450; // the pointer must rest this long before the f
 export const TIP_WARM_MS = 500; // a tip shown this soon after another one hid shows at once
 
 /**
- * A tip's place beside its control, in viewport px. `side` is where it is asked for ("top" or "bottom"); it flips
- * when there is no room, and is kept inside the viewport by `margin`.
+ * A tip's place beside its control, in viewport px. `side` is where it is asked for ("top", "bottom", or "right");
+ * it flips when there is no room, and is kept inside the viewport by `margin`. "right" is for a control in a column
+ * of rows (the outline, a menu): beside the column, centred on the row, so it covers no neighbour above or below;
+ * where the window has no room on the right it goes left, and with room on neither, to whichever side has more.
  */
 export function tipPlace(anchor, size, viewport, { side = "bottom", gap = 6, margin = 8 } = {}) {
+  const clampTop = (top) => Math.min(Math.max(margin, top), Math.max(margin, viewport.height - margin - size.height));
+  if (side === "right") {
+    const right = anchor.right + gap;
+    const left = anchor.left - gap - size.width;
+    const roomRight = viewport.width - margin - right;
+    const roomLeft = left - margin;
+    const placed = roomRight >= size.width || roomRight >= roomLeft ? "right" : "left";
+    const x = placed === "right" ? Math.min(right, viewport.width - margin - size.width) : Math.max(margin, left);
+    return { left: Math.round(Math.max(margin, x)), top: Math.round(clampTop((anchor.top + anchor.bottom) / 2 - size.height / 2)), side: placed };
+  }
   const below = anchor.bottom + gap;
   const above = anchor.top - gap - size.height;
   const fitsBelow = below + size.height + margin <= viewport.height;

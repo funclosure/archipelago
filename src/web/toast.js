@@ -2,19 +2,25 @@
 // itself. The page's replacement for alert(): nothing blocks, and an error says what to do next.
 import { toastMs, pushToast, failureKind } from "./toast-model.js";
 import { icon } from "./icons.js";
+import { raise } from "./tip.js";
 import { t } from "./i18n.js";
 
 let root = null;
 let list = []; // { id, text, kind, action, el, timer }
 let seq = 0;
 
+/** The stack: always in the page (its class shows it, popover or not), and raised into the top layer with each
+ *  toast, so a toast shows over a demo or an editor that fills the window (full.js) and over the palette. */
 function ensure() {
-  if (root) return root;
-  root = document.createElement("div");
-  root.className = "toasts";
-  root.setAttribute("role", "region");
-  root.setAttribute("aria-label", t("toast.region"));
-  document.body.append(root);
+  if (!root) {
+    root = document.createElement("div");
+    root.className = "toasts";
+    root.setAttribute("role", "region");
+    root.setAttribute("aria-label", t("toast.region"));
+    root.setAttribute("popover", "manual");
+    document.body.append(root);
+  }
+  raise(root);
   return root;
 }
 

@@ -846,10 +846,26 @@ function drawDraft(ctx, node, dim, hair) {
 }
 
 /**
- * One island, without its name (`drawIslandName`). `hair` is one screen pixel in box units:
- * 1 / (the camera's scale × boxScale(node.radius)).
+ * Inside an island's box, from here to its restore: nothing is drawn where a name lies (`gaps`: world rects, from
+ * `labelLineRects`), so a ring that passes a name breaks around its words, as an engraved line stops at the
+ * lettering. Each gap is clipped out on its own (clips intersect), so two gaps that touch leave no seam.
  */
-export function drawIsland(ctx, node, { dim = false, selected = false, gathered = false, hovered = false, now = 0, hair = 1 } = {}) {
+function clipOutNames(ctx, node, gaps) {
+  const s = boxScale(node.radius);
+  for (const g of gaps) {
+    const p = new Path2D();
+    p.rect(-1e4, -1e4, 2e4, 2e4);
+    p.rect((g.x0 - node.x) / s + CENTRE, (g.y0 - node.y) / s + CENTRE, (g.x1 - g.x0) / s, (g.y1 - g.y0) / s);
+    ctx.clip(p, "evenodd");
+  }
+}
+
+/**
+ * One island, without its name (`drawIslandName`). `hair` is one screen pixel in box units:
+ * 1 / (the camera's scale × boxScale(node.radius)). `gaps` are the names its rings (selection, hover, group) break
+ * around: they reach past the lamps, where a neighbour's name, or the island's own beside or above it, may lie.
+ */
+export function drawIsland(ctx, node, { dim = false, selected = false, gathered = false, hovered = false, now = 0, hair = 1, gaps = null } = {}) {
   if (node.draft) return drawDraft(ctx, node, dim, hair);
   const a = dim ? DIM : 1;
   enterBox(ctx, node);
@@ -860,6 +876,7 @@ export function drawIsland(ctx, node, { dim = false, selected = false, gathered 
   drawCoast(ctx, node, ringPoints(node.seed, COAST), now, hair);
   drawLamps(ctx, node, now, hair);
   if (node.island.harbour) drawAnchor(ctx, node.marks?.total ?? 0, hair);
+  if ((gathered || selected || hovered) && gaps?.length) clipOutNames(ctx, node, gaps); // the rings only: the restore below lifts it
   if (gathered) {
     // Gathered into a group: a dashed lamp ring just outside the halo, so it reads beside a selection too.
     const w = Math.max(1.5, hair * 1.5);

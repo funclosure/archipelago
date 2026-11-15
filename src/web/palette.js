@@ -512,6 +512,24 @@ function watch() {
 // app.js imports this module before its own body has run, so `app` cannot be read yet: ask once the modules have loaded.
 queueMicrotask(watch);
 
+/**
+ * Modal to assistive technology too, as dialog.js makes its dialogs: while the palette is open everything else in
+ * the page is inert, so a screen reader's cursor cannot walk out of it. The toasts and the tooltip stay live, as
+ * beside a dialog; only what this made inert is given back (a dialog under the palette keeps its own).
+ */
+function quietPage(on) {
+  for (const node of document.body.children) {
+    if (node === root || node.tagName === "SCRIPT" || node.classList.contains("toasts") || node.classList.contains("tip")) continue;
+    if (on && !node.inert) {
+      node.inert = true;
+      node.dataset.paletteQuiet = "";
+    } else if (!on && node.dataset.paletteQuiet !== undefined) {
+      node.inert = false;
+      delete node.dataset.paletteQuiet;
+    }
+  }
+}
+
 /** Opens the palette over whatever the reader is doing; focus comes back there when it closes. */
 export function openPalette() {
   if (state.open) return;
@@ -530,6 +548,7 @@ export function openPalette() {
   } catch {
     // no popovers in this browser: it stays in the page, above the dialogs by its z-index
   }
+  quietPage(true);
   fit();
   root.classList.add("arrive"); // the entrance plays for this opening only; the list is rebuilt on every keystroke inside it
   draw();
@@ -550,6 +569,7 @@ export function closePalette({ keepTheme = false } = {}) {
     // never shown as a popover
   }
   root.hidden = true;
+  quietPage(false); // before focus goes back: an inert control cannot take it
   list.replaceChildren();
   const { el: was, region: from } = returnTo ?? {};
   returnTo = null;

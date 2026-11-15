@@ -109,7 +109,7 @@ export default {
     groupGo: "前往",
     groupDomains: "領域",
     groupAppearance: "外觀",
-    groupYou: "你",
+    groupYou: "個人",
     // an island's row
     open: "未知水域",
     openLit: "未知水域 · 已點亮{lit}/{total}",
@@ -137,7 +137,7 @@ export default {
     home: "回到全覽",
     homeAll: "所有島嶼都在視野內",
     homeSelected: "把選取的島嶼置中",
-    sailOut: "駛出，回到{name}",
+    sailOut: "駛出，回到「{name}」",
     collapseOutline: "收合大綱",
     expandOutline: "展開大綱",
     shortcuts: "鍵盤快捷鍵",

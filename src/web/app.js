@@ -8,10 +8,10 @@ import {
 import { seaMembers, lettering, letteringBox, stippleDots, seaSpot, SEA_FONT } from "./sea-model.js";
 import { placeRemoveButton, saveSeaPosition, seaEditing } from "./seas.js";
 import { draftSeas } from "./chart-model.js";
-import { layoutLabels, labelRect } from "./labels.js";
+import { layoutLabels, labelRect, labelLineRects } from "./labels.js";
 import { emptyGroup, pruneGroup } from "./group-model.js";
 import { LONG_PRESS_MS } from "./gesture-model.js";
-import { boxScale, COAST, LAMP_R, STAR, WATER } from "./contour.js";
+import { boxScale, COAST, HALO_R, LAMP_R, STAR, WATER } from "./contour.js";
 import { graticule, roseSpot, headerFade, positionSum, differs } from "./furniture-model.js";
 import { installInteractions } from "./interactions.js";
 import { installCard } from "./card.js";
@@ -686,8 +686,19 @@ function draw(now, tool) {
   drawSeas(sc, Boolean(focusSlug));
   for (const n of app.nodes) drawShoreWater(ctx, n, { dim: dim(n), hair: hair(n) });
   for (const l of app.links) drawStrait(ctx, l, { dim: Boolean(focusSlug) && !(near.has(l.source.slug) && near.has(l.target.slug)), scale: cam.scale });
+  // A ring (selection, hover, group) reaches past the lamps, where names may lie: it breaks around their words.
+  const ringed = (n) => n.slug === focusSlug || n.slug === app.hover || app.group.islands.has(n.slug);
+  const gaps = (n) => {
+    if (!ringed(n)) return null;
+    sc.nameRects ??= app.nodes.flatMap((m) => {
+      const label = sc.labels.get(m.slug);
+      return label ? labelLineRects(m, boxScale(m.radius), label, measureName, 7) : []; // a clear margin round the words, as a chart's lines stop short of its lettering
+    });
+    const r = (HALO_R + 8) * boxScale(n.radius);
+    return sc.nameRects.filter((g) => g.x1 > n.x - r && g.x0 < n.x + r && g.y1 > n.y - r && g.y0 < n.y + r);
+  };
   for (const n of app.nodes) {
-    drawIsland(ctx, n, { dim: dim(n), selected: n.slug === focusSlug, gathered: app.group.islands.has(n.slug), hovered: n.slug === app.hover, now, hair: hair(n) });
+    drawIsland(ctx, n, { dim: dim(n), selected: n.slug === focusSlug, gathered: app.group.islands.has(n.slug), hovered: n.slug === app.hover, now, hair: hair(n), gaps: gaps(n) });
   }
   for (const n of app.nodes) drawIslandName(ctx, n, { lifted: n.slug === focusSlug || n.slug === app.hover, dim: dim(n), label: sc.labels.get(n.slug) });
   if (app.marquee) drawMarquee(ctx, app.marquee, cam.scale);

@@ -7,7 +7,7 @@ export default {
   },
   "zh-TW": {
     title: "快捷鍵",
-    here: "鍵盤目前在這裡",
+    here: "鍵盤焦點在這裡",
     palette: "依名稱尋找任何指令",
   },
 };

@@ -12,7 +12,7 @@ export default {
     region: "通知",
     dismiss: "關閉",
     offline: "連不上伺服器。請檢查連線後再試一次。",
-    busy: "這裡還有回覆正在寫。等它結束後再試一次。",
+    busy: "還有一則回覆正在產生，請等它結束後再試一次。",
     failed: "出了點問題。",
     whatFailed: "{what}失敗。{why}",
   },

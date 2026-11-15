@@ -25,15 +25,15 @@
 /* Paper chart: cream ground, ink lines. Every literal colour token of :root, redefined (tests/web/theme-tokens.test.js). */
 :root[data-theme="chart"] {
   --sea: #EFE5D0; --line-1: #233F5B; --line-07: rgba(35, 63, 91, .7); --line-03: rgba(35, 63, 91, .5);
-  --lamp: #A36E09; --reef: #B33830; --sand-fill: #CEAC64; --grass: #3B793F; --snow: #FFFFFF; --explore: #176F7C;
+  --lamp: #8C5D04; --reef: #B33830; --sand-fill: #CEAC64; --grass: #3B793F; --snow: #FFFFFF; --explore: #176F7C;
   --text: rgba(16, 28, 40, .94); --muted: rgba(16, 28, 40, .7); --text-2: rgba(16, 28, 40, .82);
   --panel: #F9F3E6; --panel-2: #E2D6BE; --line: rgba(35, 63, 91, .2); --open: rgba(35, 63, 91, .5);
   --on-land: #FFFFFF;
   --shadow: rgba(60, 45, 20, .22); --shadow-soft: rgba(60, 45, 20, .16); --shadow-deep: rgba(60, 45, 20, .28);
   --scrim: rgba(60, 45, 20, .18);
-  --lamp-tint: rgba(163, 110, 9, .14); --lamp-ring: rgba(163, 110, 9, .55); --lamp-pulse: rgba(163, 110, 9, .7);
+  --lamp-tint: rgba(140, 93, 4, .14); --lamp-ring: rgba(140, 93, 4, .55); --lamp-pulse: rgba(140, 93, 4, .7);
   --reef-tint: rgba(179, 56, 48, .3);
-  --code-keyword: #7A5208; --code-string: #6E5A1C; --code-type: #233F5B;
+  --code-keyword: #7A5208; --code-string: #6E5A1C; --code-type: #233F5B; --code-number: #36743A;
 }
 :root[data-theme="tide"] {
   /* Tide: Night's blues, darker and calmer, with the chrome a step below the sea and brighter accents (OKLCH, every text and mark ≥ 4:1). */
@@ -68,7 +68,7 @@
   --scrim: rgba(19, 46, 80, .14);
   --lamp-tint: rgba(170, 22, 125, .1); --lamp-ring: rgba(170, 22, 125, .5); --lamp-pulse: rgba(170, 22, 125, .65);
   --reef-tint: rgba(182, 50, 43, .28);
-  --code-keyword: #AA167D; --code-string: #7A5A1E; --code-type: #132E50;
+  --code-keyword: #AA167D; --code-string: #7A5A1E; --code-type: #132E50; --code-number: #4F7537;
 }
 /* The scale: one set of steps for space, type, radius, elevation, motion and control size, shared by every theme. None
    of these is a literal colour (the surfaces below are mixed from a theme's own tokens), so no theme block redefines
@@ -130,16 +130,20 @@ kbd { display: inline-block; box-sizing: border-box; min-width: 18px; padding: 0
   background: var(--hover); color: var(--text-2); font: 500 10.5px/16px var(--font-mono); text-align: center; white-space: nowrap; }
 /* An icon takes the text's colour and never shrinks in a row. */
 .ic { flex: none; display: block; }
-/* A tooltip (tip.js): what a control is and its key, after the pointer rests on it. */
-.tip { position: fixed; z-index: var(--z-tip); pointer-events: none; display: flex; align-items: center; gap: var(--sp-2); max-width: 300px; box-sizing: border-box; padding: 4px var(--sp-2);
+/* A tooltip (tip.js): what a control is and its key, after the pointer rests on it. It is a popover in the top layer
+   (over a demo that fills the window), so the popover's own place and box are undone here; tip.js sets left and top.
+   Its words keep a line break they carry (a row's name over its state). */
+.tip { position: fixed; inset: auto; margin: 0; overflow: visible; z-index: var(--z-tip); pointer-events: none; display: flex; align-items: center; gap: var(--sp-2); max-width: 300px; box-sizing: border-box; padding: 4px var(--sp-2);
   background: var(--panel-2); color: var(--text); border: 1px solid var(--line); border-radius: var(--r-sm); box-shadow: var(--e-2); font: var(--fs-sm)/1.4 var(--font-ui); }
+.tip > span:first-child { white-space: pre-line; }
 .tip[hidden] { display: none; }
 .tip.arrive { animation: tip-in var(--t-fast) var(--ease); }
 .tip .tip-keys { display: inline-flex; gap: 3px; flex: none; }
 @keyframes tip-in { from { opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .tip.arrive { animation: none; } }
 /* Toasts (toast.js): one line that something happened or went wrong, at the foot of the page; it leaves by itself. */
-.toasts { position: fixed; left: 50%; bottom: calc(var(--places-h, 0px) + var(--sp-6)); transform: translateX(-50%); z-index: var(--z-tip); display: grid; gap: var(--sp-2); justify-items: center; width: max-content; max-width: calc(100vw - 2 * var(--sp-4)); pointer-events: none; }
+.toasts { position: fixed; inset: auto; margin: 0; padding: 0; border: 0; background: none; color: inherit; overflow: visible; height: auto; /* a popover in the top layer (toast.js): its own place and box undone */
+  left: 50%; bottom: calc(var(--places-h, 0px) + var(--sp-6)); transform: translateX(-50%); z-index: var(--z-tip); display: grid; gap: var(--sp-2); justify-items: center; width: max-content; max-width: calc(100vw - 2 * var(--sp-4)); pointer-events: none; }
 .toast { pointer-events: auto; display: flex; align-items: center; gap: var(--sp-2); box-sizing: border-box; max-width: min(520px, 100%); padding: var(--sp-15) var(--sp-15) var(--sp-15) var(--sp-3);
   background: var(--panel-2); color: var(--text); border: 1px solid var(--line); border-radius: var(--r-md); box-shadow: var(--e-2); font: var(--fs-md)/var(--lh-ui) var(--font-ui); }
 .toast .toast-text { flex: 1; min-width: 0; padding: var(--sp-05) 0; }
@@ -270,6 +274,13 @@ kbd { display: inline-block; box-sizing: border-box; min-width: 18px; padding: 0
   .palette .mi > .detail { grid-column: 2; grid-row: 2; max-width: none; }
   .palette .mi > .cur { grid-column: 3; grid-row: 1 / span 2; }
 }
+/* Forced colours (Windows High Contrast): the system drops every fill and inset shadow, so the place of the keyboard
+   in a list (a menu's focused row, the palette's highlighted one) and what is chosen (a pressed segment, the selected
+   outline row) are marked in the system's own colours. */
+@media (forced-colors: active) {
+  .mi:focus-visible, .palette .mi.on, :is(.outline, .peek) .row.on { outline: 2px solid Highlight; outline-offset: -2px; }
+  .segs > :is(.on, [aria-selected="true"], [aria-pressed="true"]), .lens-switch .seg.on.on.on { forced-color-adjust: none; background: Highlight; color: HighlightText; } /* .on thrice: over the lens's own .seg.judge.on fill */
+}
 #map { position: fixed; inset: 0; display: block; cursor: grab; touch-action: none; -webkit-touch-callout: none; user-select: none; -webkit-user-select: none; }
 #map.dragging { cursor: grabbing; }
 #map.hover { cursor: pointer; }
@@ -317,10 +328,12 @@ body[data-mode="mentor"] .lens { --seg-fill: var(--explore); }
    never under it) and the header is the same height with a pane open as without. Only a map area too narrow for
    even that wraps. */
 .strip { display: flex; flex-wrap: wrap; gap: var(--sp-2) var(--sp-6); min-width: 0; font-size: var(--fs-sm); pointer-events: none; }
-.strip-item { display: flex; flex-direction: column; align-items: flex-start; gap: var(--sp-05); flex: 0 1 auto; min-width: 0; max-width: 100%; cursor: default; }
+.strip-item { display: flex; flex-direction: column; align-items: flex-start; gap: var(--sp-15); flex: 0 1 auto; min-width: 0; max-width: 100%; cursor: default; }
 .strip-item.list { flex: 1 1 max(14ch, var(--label-w, 0px)); max-width: max-content; } /* --label-w: its label's own width (chrome.js), the least it can be */
-/* the label is the cell's button: it opens the card that explains the cell */
-.strip-label { background: none; border: 0; border-radius: var(--r-xs); padding: 0; color: var(--muted); font: inherit; font-size: var(--fs-micro); font-weight: var(--fw-medium); text-transform: uppercase; letter-spacing: var(--track-caps); white-space: nowrap; cursor: pointer; }
+/* The label is the cell's button: it opens the card that explains the cell. Its box, and an island's name's under
+   it (.strip-link), reach 24px for the pointer (padding pulled back by as much, so the words stay where they are),
+   and the cell's gap keeps the two boxes from overlapping. */
+.strip-label { background: none; border: 0; border-radius: var(--r-xs); padding: var(--sp-1) 0; margin: calc(-1 * var(--sp-1)) 0; color: var(--muted); font: inherit; font-size: var(--fs-micro); font-weight: var(--fw-medium); text-transform: uppercase; letter-spacing: var(--track-caps); white-space: nowrap; cursor: pointer; }
 .strip-item:hover .strip-label, .strip-label[aria-expanded="true"] { color: var(--text); }
 .strip-label:active { color: var(--text-2); }
 /* The value is one line. Its box is a little larger than its words (and pulled back by as much), so the focus ring
@@ -328,7 +341,9 @@ body[data-mode="mentor"] .lens { --seg-fill: var(--explore); }
 .strip-value { align-self: stretch; box-sizing: content-box; max-width: 72ch; margin: calc(-1 * var(--sp-1)); padding: var(--sp-1); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .strip-item.none .strip-value { color: var(--muted); }
 /* an island's name in a cell: the way to that island */
-.strip-link { color: inherit; border-radius: var(--r-xs); cursor: pointer; }
+/* inline: the padding takes presses without moving a line (the value's own padding has room for it); a little less
+   above, where the label's box ends, so a press between the two still belongs to the cell (its hint), as before */
+.strip-link { color: inherit; border-radius: var(--r-xs); padding-block: var(--sp-05) var(--sp-1); cursor: pointer; }
 .strip-link:hover { background: var(--hover); box-shadow: 0 0 0 2px var(--hover); }
 .strip-link:active { background: var(--pressed); box-shadow: 0 0 0 2px var(--pressed); }
 /* The hint card: one for the strip, under the cell it explains, inside the map area (chrome.js places it). It
@@ -392,7 +407,7 @@ body:has(.pane.resizing) :is(.chrome, .map-focus, .cta, .board-scrim, .board, .b
 .chip.explored { background: var(--explore); border: 1px solid var(--explore); color: var(--on-accent); }
 .chip.loose { display: inline-flex; align-items: center; gap: var(--sp-1); padding-right: 3px; }
 .loose-mark { box-sizing: border-box; min-width: var(--sp-4); height: var(--sp-4); padding: 0 var(--sp-1); border-radius: var(--r-full); border: 1px solid var(--lamp);
-  background: var(--panel); color: var(--lamp); font: var(--fw-semibold) 10px/1 var(--font-mono); cursor: pointer; }
+  background: var(--panel); color: var(--lamp); font: var(--fw-semibold) var(--fs-micro)/1 var(--font-mono); cursor: pointer; }
 .loose-mark:hover { background: color-mix(in oklab, var(--panel) 86%, var(--text)); }
 .loose-mark.on { background: var(--lamp); color: var(--on-accent); }
 .chips > .loose-mark { align-self: center; }
@@ -732,7 +747,7 @@ body.pane-open .now-playing { --np-room: calc(100vw - var(--outline-w) - var(--p
 .outline .ws .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .outline .ws .ic { color: var(--muted); }
 .outline .sp { flex: 1; }
-.outline .oh > .ib { color: var(--muted); }
+.outline .oh > .ib { flex: none; color: var(--muted); } /* a long domain name is cut, never the icons beside it */
 /* The domain menu (the family's .menu and .mi): under the head, a little wider than a narrow outline, never taller than the window. */
 .outline .menu { top: 40px; left: var(--sp-2); width: max(calc(100% - 2 * var(--sp-2)), 264px); max-width: min(320px, calc(100vw - 2 * var(--sp-2)));
   max-height: calc(100dvh - 40px - var(--sp-2) - var(--places-h, 0px)); overflow-y: auto; overscroll-behavior: contain; }
@@ -955,6 +970,18 @@ body.pane-open:has(.board-hint) .cta-card { margin-bottom: 132px; }
 .cta-card .q { font-family: var(--font-serif); font-size: var(--fs-base); line-height: var(--lh-body); text-wrap: pretty; }
 .cta-card .row { display: flex; flex-wrap: wrap; gap: var(--sp-2); margin-top: var(--sp-1); }
 .cta-card .btn.mentor { --btn-bg: var(--explore); }
+.cta-card .btn > .words { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@media (min-width: 721px) {
+  /* One row, one line: on a narrow map the first button gives way (its label cut with an ellipsis; its whole name is
+     its accessible name) and the second keeps its words. */
+  .cta-card { grid-template-columns: minmax(0, 1fr); } /* the card's width, not its longest label, sets the row's */
+  .cta-card .row { flex-wrap: nowrap; }
+  .cta-card .row .btn { flex: 0 1 auto; min-width: 0; }
+  .cta-card .row .btn:last-child:not(:first-child) { flex: none; }
+  /* The lamp's fill is for the one main action of the view. With a pane open, its own main action leads (Explore it,
+     Send, Approve): the card's buttons step down to outlines (the family's .ghost recipe; hover and pressed follow). */
+  body.pane-open .cta-card .btn:not(.ghost) { --btn-bg: transparent; color: var(--text); border-color: var(--line-strong); }
+}
 
 /* ---- keyboard focus ---- */
 #map:focus, #pane:focus, #outline:focus { outline: none; }
@@ -972,8 +999,17 @@ body[data-focus="outline"] .outline .dash.cur::before { box-shadow: 0 0 0 2px va
 /* The page's map of keys, a dialog like the others (keys.js): every section of where the page is now, in two columns.
    A row is what a key does, with its caps at the right; keys pressed together sit close, alternatives apart. The
    section of the region that has the keyboard is named in the lamp. The foot names the command palette's key. */
-.keys-card { gap: var(--sp-4); }
-.keys-card .cols { columns: 2; column-gap: var(--sp-10); }
+/* Never taller than the window: the sections scroll between the head and the foot, which stay. A soft shade at the
+   edge where more lies (painted with the list, covered once its end is reached), so a cut-off list says so; the
+   foot stands over the list's last padding, opaque, so rows pass under its rule. */
+.keys-card { --keys-top: min(12vh, 96px); --keys-bottom: var(--sp-6); display: flex; flex-direction: column; gap: var(--sp-4); max-height: calc(100dvh - var(--keys-top) - var(--keys-bottom)); }
+.keys-card > :not(.cols) { flex: none; }
+.keys-card .cols { flex: 0 1 auto; columns: 2; column-gap: var(--sp-10); min-height: 0; overflow-y: auto; overscroll-behavior: contain;
+  background:
+    linear-gradient(var(--panel) 30%, transparent) center top / 100% var(--sp-8) no-repeat local,
+    linear-gradient(to top, var(--panel) calc(var(--sp-5) + var(--sp-3)), transparent calc(var(--sp-5) + var(--sp-8))) center bottom / 100% calc(var(--sp-5) + var(--sp-8)) no-repeat local,
+    radial-gradient(farthest-side at 50% 0, var(--shadow-soft), transparent) center top / 100% var(--sp-3) no-repeat scroll,
+    radial-gradient(farthest-side at 50% 100%, var(--shadow-soft), transparent) center bottom var(--sp-5) / 100% var(--sp-3) no-repeat scroll; }
 .keys-card .ksec { break-inside: avoid; padding-bottom: var(--sp-5); }
 .keys-card .ksec > .eyebrow { margin: 0 0 var(--sp-1); padding-bottom: var(--sp-15); border-bottom: 1px solid var(--line); }
 .keys-card .ksec.here > .eyebrow { color: var(--lamp); }
@@ -982,7 +1018,7 @@ body[data-focus="outline"] .outline .dash.cur::before { box-shadow: 0 0 0 2px va
 .keys-card .caps { display: inline-flex; flex: none; align-items: center; gap: var(--sp-15); }
 .keys-card .caps.gesture { font-size: var(--fs-sm); color: var(--muted); }
 .keys-card kbd { min-width: 22px; font-size: var(--fs-xs); line-height: 18px; }
-.keys-foot { display: flex; align-items: center; gap: var(--sp-2); margin-top: calc(-1 * var(--sp-5)); padding-top: var(--sp-3); border-top: 1px solid var(--line); font-size: var(--fs-sm); color: var(--muted); }
+.keys-foot { position: relative; display: flex; align-items: center; gap: var(--sp-2); margin-top: calc(-1 * var(--sp-5)); padding-top: var(--sp-3); border-top: 1px solid var(--line); background: var(--panel); font-size: var(--fs-sm); color: var(--muted); }
 
 /* ---- board ---- */
 .board-scrim { position: fixed; top: 0; bottom: 0; left: var(--outline-w); right: 0; background: var(--scrim); z-index: var(--z-panel); opacity: 0; transition: opacity var(--t-med) var(--ease), left var(--t-med) var(--ease); }
@@ -1342,6 +1378,12 @@ body.empty .outline, body.empty .chrome, body.empty #map-focus, body.empty #boar
 /* Dialogs of the family. The welcome gate and the take-over notice are whole pages: solid water, over everything, no entrance. */
 .hosted { z-index: var(--z-dialog-top); }
 .hosted.welcome { z-index: calc(var(--z-viewer) + 1); background: var(--water); animation: none; }
+@media (min-width: 721px) { .hosted.welcome { padding-top: min(5vh, var(--sp-10)); } } /* the first screen: the card starts higher, so its foot is in a laptop's window */
+.hosted.welcome .dialog-foot > .lead > .btn.quiet { margin-left: calc(-1 * var(--sp-3)); } /* its words on the card's edge, as the other quiet rows' */
+@media (max-width: 720px) {
+  .hosted.welcome .dialog-foot > .lead { order: 1; flex-basis: 100%; } /* a phone: the two ways in on one row, the import under them */
+  .hosted.welcome .dialog-foot > .lead > .btn.quiet { margin-left: calc(-1 * var(--sp-4)); }
+}
 .hosted-card { accent-color: var(--lamp); }
 .hosted-card .lede { margin: 0; font: var(--fs-lg)/1.45 var(--font-serif); }
 .hosted-card .help code { font: var(--fs-xs) var(--font-mono); }
@@ -1568,6 +1610,7 @@ body.empty .outline, body.empty .chrome, body.empty #map-focus, body.empty #boar
   .viewer { z-index: var(--z-viewer); padding: var(--sp-3) var(--sp-3) calc(var(--places-h, 0px) + var(--sp-3)); }
   .new-domain-card .map-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .keys-card .cols { columns: 1; }
+  .keys-card { --keys-top: var(--sp-4); --keys-bottom: calc(var(--places-h, 0px) + var(--sp-6)); } /* the shell's padding here */
 }
 
 
@@ -1583,7 +1626,7 @@ body.empty .outline, body.empty .chrome, body.empty #map-focus, body.empty #boar
 
 /* Chinese: tracked small capitals scatter Han characters, a 10px glyph blurs, and synthetic italic slants them.
    Labels that track Latin are set close and a size up, and italic lines stand upright. */
-:lang(zh) :is(.strip-label, .pill, .msg.system, .reef-title, .outline .menu .ml, .outline .sec, .pane-width, .diagram .cap, .plot .cap, .codeblock .cap, .choices .q, .cta-card .lbl, .keys-card .lbl, .keys-card .sec, .board .card > .cap .kind, .board .editor .ehead .kind, .about-card .lbl, .sketch-card .lbl, .sketch-card .sec, .new-domain-card .lbl, .hosted-card .lbl, .images-card .lbl) { letter-spacing: .02em; }
+:lang(zh) :is(.strip-label, .pill, .msg.system, .outline .menu .ml, .outline .sec, .pane-width, .diagram .cap, .plot .cap, .codeblock .cap, .choices .q, .cta-card .lbl, .keys-card .lbl, .keys-card .sec, .board .card > .cap .kind, .board .editor .ehead .kind, .about-card .lbl, .sketch-card .lbl, .sketch-card .sec, .new-domain-card .lbl, .hosted-card .lbl, .images-card .lbl) { letter-spacing: .02em; }
 :lang(zh) :is(.strip-label, .pill, .outline .sec, .pane-width, .cta-card .lbl, .keys-card .lbl, .keys-card .sec, .about-card .lbl, .sketch-card .lbl, .sketch-card .sec, .new-domain-card .lbl, .hosted-card .lbl) { font-size: 11px; }
 :lang(zh) :is(.stopped, .progress, .thinking) { font-style: normal; }
 

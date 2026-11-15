@@ -57,7 +57,7 @@ export default {
     images: "圖片…",
     imagesHint: "你在這個領域的對話中附上的圖片：佔了多少空間，以及移除舊的圖片。",
     edit: "編輯…",
-    editHint: "重新命名這個領域、修改說明，或刪除它。",
+    editHint: "重新命名這個領域、修改描述，或刪除它。",
     theme: "主題",
     language: "語言",
     about: "關於你",

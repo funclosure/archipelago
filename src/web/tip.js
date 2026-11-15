@@ -9,20 +9,34 @@ let pending = null; // the control the timer is waiting on
 let timer = 0;
 let watch = 0;
 let lastHiddenAt = null;
+let askedAt = -Infinity; // when the pending tip was asked for
 let pressedAt = null; // where the pointer was last pressed: no tip until it has moved away from there
 const noHover = typeof matchMedia === "function" ? matchMedia("(hover: none)") : null;
 
+const words = (s) => String(s ?? "").replace(/\s+/g, " ").trim().toLowerCase();
+
 /**
  * Gives a control its tip: `text` (already translated) and, if it has one, its key (`"b"`, `"⌘K"`, `"⇧J"`).
- * The native `title` goes, so two tooltips never show; a control with no words of its own takes the text as its name.
+ * The native `title` goes, so two tooltips never show. Assistive technology hears what the title used to say: a
+ * control with no words of its own takes the text as its name; one with words takes it as its description
+ * (`aria-description`), unless its name already says it, so nothing is read twice. `describe` is the description
+ * when it should be other than the text (a row whose tip leads with the name it already has); null for none.
  */
-export function tip(el, text, keys) {
+export function tip(el, text, keys, { describe } = {}) {
   if (!el) return el;
   el.dataset.tip = text;
   if (keys) el.dataset.keys = keys;
   else delete el.dataset.keys;
   el.removeAttribute("title");
-  if (!el.getAttribute("aria-label") && !el.textContent.trim()) el.setAttribute("aria-label", text);
+  const named = el.getAttribute("aria-label") ?? el.textContent;
+  if (!words(named)) {
+    el.setAttribute("aria-label", text);
+    el.removeAttribute("aria-description");
+    return el;
+  }
+  const said = describe === undefined ? text : describe;
+  if (said && !words(named).includes(words(said))) el.setAttribute("aria-description", said);
+  else el.removeAttribute("aria-description");
   return el;
 }
 
@@ -31,9 +45,24 @@ function ensure() {
   box = document.createElement("div");
   box.className = "tip";
   box.setAttribute("role", "tooltip");
+  // The top layer, so a tip shows over a demo or an editor that fills the window (full.js) and over the palette.
+  box.setAttribute("popover", "manual");
   box.hidden = true;
   document.body.append(box);
   return box;
+}
+
+/** Puts a popover at the top of the top layer: shown again, it stands over whatever was promoted since (full.js). */
+export function raise(node) {
+  try {
+    if (node.matches(":popover-open")) {
+      if (node.contains(document.activeElement)) return; // hiding it would take the keyboard out of it
+      node.hidePopover();
+    }
+    node.showPopover();
+  } catch {
+    // no popovers in this browser: the z-index keeps it over the page
+  }
 }
 
 function show(el) {
@@ -55,9 +84,17 @@ function show(el) {
     b.append(row);
   }
   b.hidden = false;
+  raise(b);
   b.classList.remove("arrive");
-  const r = el.getBoundingClientRect();
-  const place = tipPlace(r, { width: b.offsetWidth, height: b.offsetHeight }, { width: innerWidth, height: innerHeight }, { side: el.dataset.tipSide || "bottom" });
+  const side = el.dataset.tipSide || "bottom";
+  let r = el.getBoundingClientRect();
+  // Beside a column of rows (the outline, a menu), the tip clears the column's edge, not just the row's.
+  const column = side === "right" ? el.closest("[data-tip-column]") : null;
+  if (column) {
+    const c = column.getBoundingClientRect();
+    r = { left: c.left, right: c.right, top: r.top, bottom: r.bottom };
+  }
+  const place = tipPlace(r, { width: b.offsetWidth, height: b.offsetHeight }, { width: innerWidth, height: innerHeight }, { side });
   b.style.left = `${place.left}px`;
   b.style.top = `${place.top}px`;
   b.dataset.side = place.side;
@@ -77,7 +114,14 @@ function hide() {
   if (!shownFor) return;
   shownFor = null;
   clearInterval(watch);
-  if (box) box.hidden = true;
+  if (box) {
+    try {
+      box.hidePopover();
+    } catch {
+      // not shown as a popover
+    }
+    box.hidden = true;
+  }
   lastHiddenAt = performance.now();
 }
 
@@ -88,6 +132,7 @@ function ask(el) {
   clearTimeout(timer);
   if (shownFor) hide();
   pending = el;
+  askedAt = performance.now();
   timer = setTimeout(() => {
     pending = null;
     show(el);
@@ -110,7 +155,12 @@ document.addEventListener("pointerdown", (e) => {
   pressedAt = { x: e.clientX, y: e.clientY };
   hide();
 }, true);
-document.addEventListener("keydown", hide, true);
+// A key hides the tip, except the one it just asked for: keys.js handles keys on the window, ahead of this listener,
+// and a key that moves focus (a menu's arrows) has already asked for the tip of the control it landed on.
+document.addEventListener("keydown", (e) => {
+  if (pending && askedAt >= e.timeStamp) return;
+  hide();
+}, true);
 document.addEventListener("wheel", hide, { capture: true, passive: true });
 document.addEventListener("focusin", (e) => {
   const el = tipped(e.target);
