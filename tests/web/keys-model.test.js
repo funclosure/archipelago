@@ -54,6 +54,31 @@ test("a pinned hint folds on Escape after a menu and before anything under it ch
   expect(escapeRung({ hint: true, selected: true })).toBe("hint"); // it used to deselect the island and leave the hint up
 });
 
+test("Escape in the header gives the keyboard back to the map before anything under it changes", () => {
+  const all = { hint: true, header: true, turn: true, typing: true, board: true, chart: true, selected: true };
+  expect(escapeRung(all)).toBe("hint"); // a pinned hint is the header's own: it folds first
+  expect(escapeRung({ ...all, hint: false })).toBe("header");
+  expect(escapeRung({ header: true, selected: true })).toBe("header"); // it used to deselect the island first
+  expect(escapeRung({ ...all, hint: false, header: false })).toBe("stop");
+  expect(escapeRung({ header: true, menuOpen: true })).toBe("menu");
+});
+
+test("the map's section names every key the map answers to, each once: c covers the reef and the cartographer", () => {
+  const map = rowsOf(cheatSheet("map")[2]);
+  expect(map).toContainEqual(["c", "Confirm a reef, else open the cartographer"]);
+  expect(map).toContainEqual(["d", "Dispute the reef"]);
+  expect(map).toContainEqual(["s", "Sail to the next island"]);
+  expect(map).toContainEqual(["⌘↵", "Approve the sketch"]);
+  const keys = map.filter(([, label]) => !["double-click water", "⇧ click", "⇧ drag on water", "drag a gathered one"].includes(label)).map(([k]) => k);
+  expect(new Set(keys).size).toBe(keys.length);
+  expect(rowsOf(cheatSheet("outline")[1])).toContainEqual(["⌘↵", "Approve the sketch"]);
+});
+
+test("the pane's section has no s: a single letter never spends a cartographer turn", () => {
+  expect(rowsOf(cheatSheet("pane")[3]).map(([k]) => k)).not.toContain("s");
+  expect(rowsOf(cheatSheet("pane", { chart: true })[3]).map(([k]) => k)).not.toContain("s");
+});
+
 test("unfolded loose ends fold on Escape before the pane closes", () => {
   expect(escapeRung({ loose: true, selected: true })).toBe("loose");
   expect(escapeRung({ loose: true, chart: true, cursor: true })).toBe("loose");

@@ -19,14 +19,16 @@ export function isTyping(target) {
 /**
  * The one thing Escape does this press, top rung first: the innermost thing always goes first. `dialog` is any modal
  * dialog (dialog.js: New domain, About you, Images…, the viewer, the cheat sheet, the hosted build's), which steps
- * back or closes by its own rule; `hint` a strip hint pinned open by a click; `editor` the board's editor, `board`
- * the board itself; `loose` a landmark's loose ends unfolded in the pane; `chart` the cartographer's pane; `group`
- * islands gathered with shift. To add a rung, add its flag here in its place and its act in keys.js's `escape`.
+ * back or closes by its own rule; `hint` a strip hint pinned open by a click; `header` the keyboard on a control in
+ * the header (chrome.js), which gives it back to the map; `editor` the board's editor, `board` the board itself;
+ * `loose` a landmark's loose ends unfolded in the pane; `chart` the cartographer's pane; `group` islands gathered
+ * with shift. To add a rung, add its flag here in its place and its act in keys.js's `escape`.
  */
-export function escapeRung({ dialog = false, menuOpen = false, hint = false, turn = false, typing = false, editor = false, board = false, loose = false, cursor = false, chart = false, group = false, sea = false, selected = false }) {
+export function escapeRung({ dialog = false, menuOpen = false, hint = false, header = false, turn = false, typing = false, editor = false, board = false, loose = false, cursor = false, chart = false, group = false, sea = false, selected = false }) {
   if (dialog) return "dialog";
   if (menuOpen) return "menu";
   if (hint) return "hint"; // a pinned hint card folds before anything under it changes
+  if (header) return "header"; // the header lets go of the keyboard before anything it stands over changes
   if (turn) return "stop"; // a reply is streaming: Escape stops it, wherever focus is
   if (typing) return "blur";
   if (editor) return "editor";
@@ -92,8 +94,10 @@ export const KEY_SECTIONS = {
   },
   outline: {
     title: k("outline"),
-    rows: [["↑ ↓ j k", k("move")], ["↵", k("select")], ["→ ←", k("expandCollapse")], ["Home End", k("firstLast")], ["n", k("newDomain")], ["d", k("domainMenu")]],
+    rows: [["↑ ↓ j k", k("move")], ["↵", k("select")], ["→ ←", k("expandCollapse")], ["Home End", k("firstLast")], ["n", k("newDomain")], ["d", k("domainMenu")], ["⌘↵", k("approveSketch")]],
   },
+  // The bottom card's and the dock's letters (c d s 1 2 g) and h answer from the map only (chrome-model.js:
+  // chromeTarget); ⌘↵ approves a sketch from the outline too.
   map: {
     title: k("map"),
     rows: [
@@ -102,9 +106,11 @@ export const KEY_SECTIONS = {
       ["+ −", k("zoom")],
       ["0", k("home")],
       ["g", k("guideKey")],
-      ["c", k("cartographerKey")],
+      ["c", k("reefOrCartographer")],
+      ["d", k("dispute")],
       ["1 2", k("beginWith")],
       ["s", k("sailNext")],
+      ["⌘↵", k("approveSketch")],
       ["h ← →", k("headerKey")],
       ["Esc", k("deselect")],
       ["Del", k("removeSea")],
@@ -120,7 +126,7 @@ export const KEY_SECTIONS = {
   },
   pane: {
     title: k("pane"),
-    rows: [["↵ /", k("answer")], ["l", k("landfall")], ["n", k("note")], ["1–4", k("pickOption")], ["c", k("confirmReef")], ["d", k("dispute")], ["s", k("sailCloser")], ["g", k("followPointer")], ["r", k("retry")], ["↑ ↓", k("scroll")], ["← →", k("controls")], ["⌘↵", k("send")]],
+    rows: [["↵ /", k("answer")], ["l", k("landfall")], ["n", k("note")], ["1–4", k("pickOption")], ["c", k("confirmReef")], ["d", k("dispute")], ["g", k("followPointer")], ["r", k("retry")], ["↑ ↓", k("scroll")], ["← →", k("controls")], ["⌘↵", k("send")]],
   },
   chart: {
     title: k("cartographer"),
