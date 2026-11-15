@@ -328,10 +328,12 @@ body[data-mode="mentor"] .lens { --seg-fill: var(--explore); }
    never under it) and the header is the same height with a pane open as without. Only a map area too narrow for
    even that wraps. */
 .strip { display: flex; flex-wrap: wrap; gap: var(--sp-2) var(--sp-6); min-width: 0; font-size: var(--fs-sm); pointer-events: none; }
-.strip-item { display: flex; flex-direction: column; align-items: flex-start; gap: var(--sp-05); flex: 0 1 auto; min-width: 0; max-width: 100%; cursor: default; }
+.strip-item { display: flex; flex-direction: column; align-items: flex-start; gap: var(--sp-15); flex: 0 1 auto; min-width: 0; max-width: 100%; cursor: default; }
 .strip-item.list { flex: 1 1 max(14ch, var(--label-w, 0px)); max-width: max-content; } /* --label-w: its label's own width (chrome.js), the least it can be */
-/* the label is the cell's button: it opens the card that explains the cell */
-.strip-label { background: none; border: 0; border-radius: var(--r-xs); padding: 0; color: var(--muted); font: inherit; font-size: var(--fs-micro); font-weight: var(--fw-medium); text-transform: uppercase; letter-spacing: var(--track-caps); white-space: nowrap; cursor: pointer; }
+/* The label is the cell's button: it opens the card that explains the cell. Its box, and an island's name's under
+   it (.strip-link), reach 24px for the pointer (padding pulled back by as much, so the words stay where they are),
+   and the cell's gap keeps the two boxes from overlapping. */
+.strip-label { background: none; border: 0; border-radius: var(--r-xs); padding: var(--sp-1) 0; margin: calc(-1 * var(--sp-1)) 0; color: var(--muted); font: inherit; font-size: var(--fs-micro); font-weight: var(--fw-medium); text-transform: uppercase; letter-spacing: var(--track-caps); white-space: nowrap; cursor: pointer; }
 .strip-item:hover .strip-label, .strip-label[aria-expanded="true"] { color: var(--text); }
 .strip-label:active { color: var(--text-2); }
 /* The value is one line. Its box is a little larger than its words (and pulled back by as much), so the focus ring
@@ -339,7 +341,9 @@ body[data-mode="mentor"] .lens { --seg-fill: var(--explore); }
 .strip-value { align-self: stretch; box-sizing: content-box; max-width: 72ch; margin: calc(-1 * var(--sp-1)); padding: var(--sp-1); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .strip-item.none .strip-value { color: var(--muted); }
 /* an island's name in a cell: the way to that island */
-.strip-link { color: inherit; border-radius: var(--r-xs); cursor: pointer; }
+/* inline: the padding takes presses without moving a line (the value's own padding has room for it); a little less
+   above, where the label's box ends, so a press between the two still belongs to the cell (its hint), as before */
+.strip-link { color: inherit; border-radius: var(--r-xs); padding-block: var(--sp-05) var(--sp-1); cursor: pointer; }
 .strip-link:hover { background: var(--hover); box-shadow: 0 0 0 2px var(--hover); }
 .strip-link:active { background: var(--pressed); box-shadow: 0 0 0 2px var(--pressed); }
 /* The hint card: one for the strip, under the cell it explains, inside the map area (chrome.js places it). It
@@ -403,7 +407,7 @@ body:has(.pane.resizing) :is(.chrome, .map-focus, .cta, .board-scrim, .board, .b
 .chip.explored { background: var(--explore); border: 1px solid var(--explore); color: var(--on-accent); }
 .chip.loose { display: inline-flex; align-items: center; gap: var(--sp-1); padding-right: 3px; }
 .loose-mark { box-sizing: border-box; min-width: var(--sp-4); height: var(--sp-4); padding: 0 var(--sp-1); border-radius: var(--r-full); border: 1px solid var(--lamp);
-  background: var(--panel); color: var(--lamp); font: var(--fw-semibold) 10px/1 var(--font-mono); cursor: pointer; }
+  background: var(--panel); color: var(--lamp); font: var(--fw-semibold) var(--fs-micro)/1 var(--font-mono); cursor: pointer; }
 .loose-mark:hover { background: color-mix(in oklab, var(--panel) 86%, var(--text)); }
 .loose-mark.on { background: var(--lamp); color: var(--on-accent); }
 .chips > .loose-mark { align-self: center; }
@@ -743,7 +747,7 @@ body.pane-open .now-playing { --np-room: calc(100vw - var(--outline-w) - var(--p
 .outline .ws .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .outline .ws .ic { color: var(--muted); }
 .outline .sp { flex: 1; }
-.outline .oh > .ib { color: var(--muted); }
+.outline .oh > .ib { flex: none; color: var(--muted); } /* a long domain name is cut, never the icons beside it */
 /* The domain menu (the family's .menu and .mi): under the head, a little wider than a narrow outline, never taller than the window. */
 .outline .menu { top: 40px; left: var(--sp-2); width: max(calc(100% - 2 * var(--sp-2)), 264px); max-width: min(320px, calc(100vw - 2 * var(--sp-2)));
   max-height: calc(100dvh - 40px - var(--sp-2) - var(--places-h, 0px)); overflow-y: auto; overscroll-behavior: contain; }
@@ -1622,7 +1626,7 @@ body.empty .outline, body.empty .chrome, body.empty #map-focus, body.empty #boar
 
 /* Chinese: tracked small capitals scatter Han characters, a 10px glyph blurs, and synthetic italic slants them.
    Labels that track Latin are set close and a size up, and italic lines stand upright. */
-:lang(zh) :is(.strip-label, .pill, .msg.system, .reef-title, .outline .menu .ml, .outline .sec, .pane-width, .diagram .cap, .plot .cap, .codeblock .cap, .choices .q, .cta-card .lbl, .keys-card .lbl, .keys-card .sec, .board .card > .cap .kind, .board .editor .ehead .kind, .about-card .lbl, .sketch-card .lbl, .sketch-card .sec, .new-domain-card .lbl, .hosted-card .lbl, .images-card .lbl) { letter-spacing: .02em; }
+:lang(zh) :is(.strip-label, .pill, .msg.system, .outline .menu .ml, .outline .sec, .pane-width, .diagram .cap, .plot .cap, .codeblock .cap, .choices .q, .cta-card .lbl, .keys-card .lbl, .keys-card .sec, .board .card > .cap .kind, .board .editor .ehead .kind, .about-card .lbl, .sketch-card .lbl, .sketch-card .sec, .new-domain-card .lbl, .hosted-card .lbl, .images-card .lbl) { letter-spacing: .02em; }
 :lang(zh) :is(.strip-label, .pill, .outline .sec, .pane-width, .cta-card .lbl, .keys-card .lbl, .keys-card .sec, .about-card .lbl, .sketch-card .lbl, .sketch-card .sec, .new-domain-card .lbl, .hosted-card .lbl) { font-size: 11px; }
 :lang(zh) :is(.stopped, .progress, .thinking) { font-style: normal; }
 
