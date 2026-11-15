@@ -4,8 +4,11 @@
 // (transport.js), never by an <img src> on /api/image: on the hosted build that path lives in a worker.
 import { app, api, refresh } from "./app.js";
 import { request } from "./transport.js";
-import { registerRegion, region, setRegion } from "./keys.js";
+import { showDialog, redraw, focusFirst, focusCard, dialogHead, dialogFoot } from "./dialog.js";
+import { toast } from "./toast.js";
 import { t } from "./i18n.js";
+import { icon } from "./icons.js";
+import { tip } from "./tip.js";
 import { IMAGE_BYTES_MAX, PRUNE_AGES, QUALITY, QUALITY_LOW, admit, fitWithin, formatBytes, isStorageFull, keepAsIs, thumbBox } from "./image-model.js";
 
 function el(tag, className, text) {
@@ -238,11 +241,13 @@ export function trayEl(tray) {
     fig.append(img);
     if (item.status === "preparing" || item.status === "uploading") fig.append(el("span", "tray-state", t(item.status === "preparing" ? "images.preparing" : "images.uploading")));
     if (item.status === "failed") {
-      fig.title = item.error;
+      tip(fig, item.error);
       fig.append(el("span", "tray-state", t("images.failed")));
     }
-    const x = button("×", () => tray.remove(item.key), "tray-x");
+    const x = button(null, () => tray.remove(item.key), "tray-x");
+    x.dataset.fk = `tray-x-${item.key}`;
     x.setAttribute("aria-label", t("images.trayRemove", { name: item.name || t("images.alt") }));
+    x.append(icon("close", { size: 10 }));
     fig.append(x);
     box.append(fig);
   }
@@ -252,31 +257,15 @@ export function trayEl(tray) {
   return box;
 }
 
-/** A paper clip, as SVG nodes. */
-function clipIcon() {
-  const ns = "http://www.w3.org/2000/svg";
-  const svg = document.createElementNS(ns, "svg");
-  svg.setAttribute("viewBox", "0 0 20 20");
-  svg.setAttribute("aria-hidden", "true");
-  const path = document.createElementNS(ns, "path");
-  path.setAttribute("d", "M13.5 6.5 7.8 12.2a1.6 1.6 0 0 0 2.3 2.3l6-6a3.2 3.2 0 0 0-4.5-4.5l-6.2 6.2a4.8 4.8 0 0 0 6.8 6.8l5-5");
-  path.setAttribute("fill", "none");
-  path.setAttribute("stroke", "currentColor");
-  path.setAttribute("stroke-width", "1.5");
-  path.setAttribute("stroke-linecap", "round");
-  path.setAttribute("stroke-linejoin", "round");
-  svg.append(path);
-  return svg;
-}
-
 /** The attach button beside Send: a file picker for images (a phone offers its camera too). */
 export function attachButton(tray, disabled = false) {
-  const b = el("button", "btn ghost attach");
+  const b = el("button", "btn quiet icon attach");
   b.type = "button";
-  b.title = t("images.attach");
+  b.dataset.fk = "attach";
   b.setAttribute("aria-label", t("images.attach"));
+  tip(b, t("images.attach"));
   b.disabled = disabled;
-  b.append(clipIcon());
+  b.append(icon("clip"));
   b.addEventListener("click", () => {
     const input = el("input");
     input.type = "file";
@@ -352,22 +341,44 @@ export function messageImagesEl(images) {
 }
 
 // ---- the viewer ----
+// A dialog of the family (dialog.js), as a lightbox: the picture is the content, so the card sits in the middle of a
+// stronger veil and focus rests on the card, not on a button. Remove image is the door at the foot's left; the
+// question that follows has the safe answer focused, and Escape there goes back to the picture.
 
-const viewer = { image: null, confirming: false, removing: false, error: null, opener: "pane" };
+const viewer = { image: null, confirming: false, removing: false, error: null };
 let viewerRoot = null;
+let viewerImg = null; // the picture's element, kept across redraws of the card so it is never fetched or painted twice
 
 export function openViewer(image) {
   if (!viewerRoot) return;
-  Object.assign(viewer, { image, confirming: false, removing: false, error: null, opener: region() });
+  Object.assign(viewer, { image, confirming: false, removing: false, error: null });
+  viewerImg = el("img");
+  viewerImg.alt = t("images.alt");
+  const img = viewerImg;
+  imageUrl(image.id).then((url) => (img.src = url), () => (img.alt = t("images.unreadable")));
   renderViewer();
-  viewerRoot.querySelector(".viewer-close")?.focus();
+  focusFirst(viewerRoot);
+}
+
+/** A request to leave: Escape on the remove question goes back to the picture; anything else closes the viewer. */
+function leaveViewer(why = "escape") {
+  if (viewer.removing) return;
+  if (why === "escape" && viewer.confirming) return stopRemoving();
+  closeViewer();
 }
 
 function closeViewer() {
   if (!viewer.image) return;
-  viewer.image = null;
+  Object.assign(viewer, { image: null, confirming: false });
+  viewerImg = null;
   renderViewer();
-  setRegion(viewer.opener);
+}
+
+function stopRemoving() {
+  viewer.confirming = false;
+  viewer.error = null;
+  renderViewer();
+  viewerRoot.querySelector('[data-key="remove-image"]')?.focus(); // back on the door it came through
 }
 
 async function removeShown() {
@@ -378,84 +389,110 @@ async function removeShown() {
   try {
     await post("/api/images/remove", { domain: app.domain, ids: [image.id] });
     urls.delete(image.id);
+    viewer.removing = false;
     closeViewer();
+    // The thumbnail that opened the viewer is about to go with its image, so the pane itself keeps the keyboard.
+    document.getElementById("pane")?.focus({ preventScroll: true });
     void refresh(); // the thread comes back with the mark where the image was
   } catch (error) {
     viewer.removing = false;
     viewer.error = error.message;
     renderViewer();
+    focusFirst(viewerRoot);
   }
 }
 
 function renderViewer() {
+  redraw(viewerRoot, drawViewer);
+}
+
+function drawViewer() {
   viewerRoot.hidden = !viewer.image;
+  showDialog(viewerRoot, Boolean(viewer.image), { close: leaveViewer });
   viewerRoot.replaceChildren();
   if (!viewer.image) return;
-  const scrim = el("div", "viewer-scrim");
-  scrim.addEventListener("click", closeViewer);
-  const card = el("div", "viewer-card");
-  const img = el("img");
-  img.alt = t("images.alt");
-  imageUrl(viewer.image.id).then((url) => (img.src = url), () => (img.alt = t("images.unreadable")));
-  const bar = el("div", "viewer-bar");
-  bar.append(el("span", "viewer-size", t("images.size", { width: viewer.image.width, height: viewer.image.height })));
-  const actions = el("span", "viewer-actions");
+  const card = el("div", "dialog-card viewer-card");
+  const head = dialogHead(t("images.alt"), leaveViewer, { id: "viewer-title" });
+  head.firstChild.after(el("span", "viewer-size", t("images.size", { width: viewer.image.width, height: viewer.image.height })));
+  card.append(head, viewerImg);
   if (viewer.confirming) {
-    bar.append(el("span", "viewer-confirm", t("images.confirmRemove")));
-    const yes = button(t("images.remove"), () => void removeShown(), "btn");
+    const yes = button(viewer.removing ? t("images.removing") : t("images.remove"), () => void removeShown(), "btn danger");
+    yes.dataset.key = "remove-confirm";
     yes.disabled = viewer.removing;
-    actions.append(yes, button(t("images.keep"), () => {
-      viewer.confirming = false;
-      renderViewer();
-    }, "btn ghost"));
+    const keep = button(t("images.keep"), stopRemoving, "btn ghost");
+    keep.dataset.key = "keep";
+    keep.dataset.autofocus = "";
+    keep.disabled = viewer.removing;
+    // The question sits in the foot, where the door was: asking it changes the card's height by nothing.
+    const ask = el("span", "ask", viewer.error ?? t("images.confirmRemove"));
+    if (viewer.error) ask.classList.add("error");
+    card.append(dialogFoot([ask], [keep, yes]));
   } else {
-    actions.append(button(t("images.removeImage"), () => {
+    const door = button(t("images.removeImage"), () => {
       viewer.confirming = true;
       renderViewer();
-      viewerRoot.querySelector(".viewer-actions .btn")?.focus();
-    }, "btn ghost"));
+      focusFirst(viewerRoot); // Keep it: the safe answer has the keyboard
+    }, "btn ghost danger");
+    door.dataset.key = "remove-image";
+    card.append(dialogFoot([door], []));
   }
-  actions.append(button(t("images.close"), closeViewer, "btn ghost viewer-close"));
-  bar.append(actions);
-  card.append(img, bar);
-  if (viewer.error) card.append(el("div", "error", viewer.error));
-  viewerRoot.append(scrim, card);
+  viewerRoot.setAttribute("aria-labelledby", "viewer-title");
+  viewerRoot.append(card);
 }
 
 // ---- Images… in the domain menu ----
+// A dialog of the family: what the domain's images take, and a row per way to remove old ones. A row asks first (the
+// safe answer focused; Escape goes back to the rows), and what was removed is said in a toast.
 
-const sheet = { open: false, usage: null, error: null, asking: null, pruning: false, done: null, opener: "outline" };
+const sheet = { open: false, usage: null, error: null, asking: null, pruning: false };
 let sheetRoot = null;
 let sheetGen = 0;
 
 export function openImagesSheet() {
   if (!sheetRoot) return;
-  Object.assign(sheet, { open: true, usage: null, error: null, asking: null, pruning: false, done: null, opener: region() });
+  Object.assign(sheet, { open: true, usage: null, error: null, asking: null, pruning: false });
   void loadUsage();
+}
+
+/** A request to leave: Escape on the question goes back to the rows; anything else closes the sheet. */
+function leaveSheet(why = "escape") {
+  if (sheet.pruning) return;
+  if (why === "escape" && sheet.asking) return stopAsking();
+  closeSheet();
 }
 
 function closeSheet() {
   if (!sheet.open) return;
-  sheet.open = false;
+  Object.assign(sheet, { open: false, asking: null });
   sheetGen++;
   renderSheet();
-  setRegion(sheet.opener);
+}
+
+const optionKey = (days) => `older:${days ?? "all"}`;
+
+function stopAsking() {
+  const key = optionKey(sheet.asking.days);
+  sheet.asking = null;
+  sheet.error = null;
+  renderSheet();
+  sheetRoot.querySelector(`[data-key="${key}"]`)?.focus(); // back on the row that asked
 }
 
 async function loadUsage() {
   const gen = ++sheetGen;
+  sheet.error = null;
   renderSheet();
+  if (!sheet.usage) focusCard(sheetRoot); // nothing to act on until the usage is read
   try {
     const usage = await api(`/api/images/usage?domain=${encodeURIComponent(app.domain)}&older=${PRUNE_AGES.join(",")}`);
     if (gen !== sheetGen || !sheet.open) return;
     sheet.usage = usage;
-    sheet.error = null;
   } catch (error) {
     if (gen !== sheetGen || !sheet.open) return;
     sheet.error = t("images.readFailed", { error: error.message });
   }
   renderSheet();
-  sheetRoot.querySelector("button:not([disabled])")?.focus();
+  focusFirst(sheetRoot);
 }
 
 async function prune(days) {
@@ -464,7 +501,7 @@ async function prune(days) {
   renderSheet();
   try {
     const result = await post("/api/images/prune", { domain: app.domain, olderThanDays: days });
-    sheet.done = t("images.done", { count: result.removed, size: formatBytes(result.bytes) });
+    toast(t("images.done", { count: result.removed, size: formatBytes(result.bytes) }));
     sheet.asking = null;
     sheet.pruning = false;
     void refresh(); // the threads come back with a mark where each image was
@@ -473,65 +510,73 @@ async function prune(days) {
     sheet.pruning = false;
     sheet.error = error.message;
     renderSheet();
+    focusFirst(sheetRoot);
   }
 }
 
 function renderSheet() {
+  redraw(sheetRoot, drawSheet);
+}
+
+function drawSheet() {
   sheetRoot.hidden = !sheet.open;
+  showDialog(sheetRoot, sheet.open, { close: leaveSheet });
   sheetRoot.replaceChildren();
   if (!sheet.open) return;
-  const card = el("div", "images-card");
-  card.append(el("div", "lbl", t("images.sheetTitle")));
+  const card = el("div", "dialog-card images-card");
+  card.append(dialogHead(t("images.sheetTitle"), leaveSheet, { id: "images-title" }));
+  sheetRoot.setAttribute("aria-labelledby", "images-title");
   const name = app.snapshot?.domain.name ?? app.domain;
   const u = sheet.usage;
-  if (!u && !sheet.error) card.append(el("p", "help", t("images.reading")));
+  if (!u && !sheet.error) card.append(el("p", "help muted", t("images.reading")));
   if (u) {
     card.append(el("p", "help", u.count ? t("images.usage", { count: u.count, size: formatBytes(u.bytes), name }) : t("images.none", { name })));
+    if (!u.count) card.append(el("p", "help muted", t("images.noneHint"))); // nothing to do here yet: say what the place is for
     if (u.removed) card.append(el("p", "help muted", t("images.removedEarlier", { count: u.removed })));
     if (u.count) {
       const options = [...PRUNE_AGES.map((days) => ({ days, label: t("images.olderThan", { n: days }), ...u.older[String(days)] })), { days: null, label: t("images.all"), count: u.count, bytes: u.bytes }];
       const list = el("div", "images-options");
+      list.append(el("div", "eyebrow", t("images.removeLabel")));
       for (const o of options) {
         const b = button("", () => {
           sheet.asking = o;
-          sheet.done = null;
+          sheet.error = null;
           renderSheet();
-          sheetRoot.querySelector(".images-confirm .btn")?.focus();
+          focusFirst(sheetRoot); // Cancel: the safe answer has the keyboard
         }, `mi images-option${sheet.asking?.days === o.days ? " on" : ""}`);
-        b.append(el("span", null, o.label), el("span", "cur", o.count ? t("images.optionCount", { count: o.count, size: formatBytes(o.bytes) }) : t("images.optionNone")));
+        b.dataset.key = optionKey(o.days);
+        b.append(el("span", "grow", o.label), el("span", "cur", o.count ? t("images.optionCount", { count: o.count, size: formatBytes(o.bytes) }) : t("images.optionNone")));
         b.disabled = !o.count || sheet.pruning;
         list.append(b);
       }
       card.append(list);
     }
-    if (sheet.asking) {
-      const ask = el("div", "images-confirm");
-      ask.append(el("p", null, t(sheet.asking.days === null ? "images.confirmAll" : "images.confirmOlder", { count: sheet.asking.count, n: sheet.asking.days ?? 0, name })));
-      const row = el("div", "row");
-      const yes = button(sheet.pruning ? t("images.removing") : t("images.remove"), () => void prune(sheet.asking.days), "btn");
-      yes.disabled = sheet.pruning;
-      row.append(yes, button(t("images.cancel"), () => {
-        sheet.asking = null;
-        renderSheet();
-      }, "btn ghost"));
-      ask.append(row);
-      card.append(ask);
-    }
   }
-  if (sheet.done) card.append(el("p", "images-done", sheet.done));
-  if (sheet.error) card.append(el("div", "error", sheet.error));
-  const foot = el("div", "row");
-  foot.append(button(t("images.close"), closeSheet, "btn ghost"));
-  card.append(foot);
+  if (u && sheet.asking) {
+    card.append(el("p", "confirm", t(sheet.asking.days === null ? "images.confirmAll" : "images.confirmOlder", { count: sheet.asking.count, n: sheet.asking.days ?? 0, name })));
+    if (sheet.error) card.append(el("p", "error", sheet.error));
+    const yes = button(sheet.pruning ? t("images.removing") : t("images.remove"), () => void prune(sheet.asking.days), "btn danger");
+    yes.dataset.key = "remove-confirm";
+    yes.disabled = sheet.pruning;
+    const no = button(t("images.cancel"), stopAsking, "btn ghost");
+    no.dataset.key = "cancel";
+    no.dataset.autofocus = "";
+    no.disabled = sheet.pruning;
+    card.append(dialogFoot([], [no, yes]));
+  } else if (sheet.error) {
+    // The usage could not be read: say so, and offer the one thing to do.
+    card.append(el("p", "error", sheet.error));
+    const retry = button(t("images.retry"), () => void loadUsage(), "btn");
+    retry.dataset.key = "retry";
+    retry.dataset.autofocus = "";
+    card.append(dialogFoot([], [retry]));
+  }
   sheetRoot.append(card);
 }
 
 export function installImages() {
   viewerRoot = document.getElementById("viewer");
   sheetRoot = document.getElementById("images-sheet");
-  // Both are modal for page keys (keys.js): Escape closes them, and their buttons keep the browser's Tab.
-  registerRegion("viewer", { isOpen: () => Boolean(viewer.image), close: closeViewer });
-  registerRegion("imagesSheet", { isOpen: () => sheet.open, close: () => (sheet.asking && !sheet.pruning ? ((sheet.asking = null), renderSheet()) : closeSheet()) });
   renderViewer();
   renderSheet();
 }

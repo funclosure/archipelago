@@ -57,7 +57,7 @@ export async function streamPost(url, body, onEvent, signal) {
     } catch {
       // not JSON; keep the status message
     }
-    throw new Error(message);
+    throw Object.assign(new Error(message), { status: res.status }); // the status lets the pane say a 409 in plain words
   }
   const reader = res.body.getReader();
   const decoder = new TextDecoder();

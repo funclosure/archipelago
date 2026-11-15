@@ -1,10 +1,13 @@
-// Code fences in the log: shiki tokens → one span per token, coloured by --code-<slot> in styles.css.
+// Code fences in the log and on the board: shiki tokens → one span per token, coloured by --code-<slot> in styles.css.
 // The highlighter arrives by dynamic import of the server's bundle and its oniguruma wasm
 // (/vendor/onig.wasm), so building it is async; until it lands, and for languages it lacks, the
 // block is plain text under the same caption. A failed load warns and leaves the page plain.
 import { LANGS, contourTheme, resolveLang, labelOf, spansOf } from "./code-model.js";
 import { t } from "./i18n.js";
 import { pinButton } from "./pin.js";
+import { icon } from "./icons.js";
+import { tip } from "./tip.js";
+import { watchMore } from "./wide.js";
 
 const CACHE_MAX = 64;
 const COPIED_MS = 1500;
@@ -94,41 +97,56 @@ function tokenize(lang, text, closed) {
   return lines;
 }
 
-function copyButton(text) {
+/** Copy for a block of code: one quiet icon that turns to a tick for a moment once the text is on the clipboard. */
+export function copyButton(text) {
   const b = document.createElement("button");
   b.type = "button";
-  b.className = "copy";
-  b.textContent = t("code.copy");
+  b.className = "btn sm quiet icon copy";
   let timer = 0;
+  const draw = (done) => {
+    b.replaceChildren(icon(done ? "check" : "copy", { size: 14 }));
+    b.setAttribute("aria-label", t(done ? "code.copied" : "code.copy"));
+    tip(b, t(done ? "code.copied" : "code.copy"));
+  };
+  draw(false);
   b.addEventListener("click", () => {
     navigator.clipboard.writeText(text).then(() => {
-      b.textContent = t("code.copied");
+      draw(true);
       clearTimeout(timer);
-      timer = setTimeout(() => (b.textContent = t("code.copy")), COPIED_MS);
+      timer = setTimeout(() => draw(false), COPIED_MS);
     }).catch(() => {});
   });
   return b;
 }
 
-/** A code fence as a block: caption (label, Copy), then pre > code with a span per token. */
-export function codeElement(tag, text, closed, { pin = null, lang = null } = {}) {
+/** Whether this browser lets the page write to the clipboard (not over plain http to another host). */
+export const canCopy = () => typeof navigator !== "undefined" && Boolean(navigator.clipboard);
+
+/**
+ * A code fence as a block: caption (label, Pin, Copy), then pre > code with a span per token. `cap: false` leaves
+ * the caption out, for a board card, whose own caption names the language and carries Copy (`copyButton`).
+ */
+export function codeElement(tag, text, closed, { pin = null, lang = null, cap: captioned = true } = {}) {
   const box = document.createElement("div");
   box.className = "codeblock";
-  const cap = document.createElement("div");
-  cap.className = "cap";
-  const label = document.createElement("span");
-  label.textContent = labelOf(tag);
-  cap.append(label);
-  const acts = document.createElement("span");
-  acts.className = "acts";
-  if (pin) acts.append(pinButton(pin, { kind: "code", body: text, lang }));
-  if (typeof navigator !== "undefined" && navigator.clipboard) acts.append(copyButton(text));
-  cap.append(acts);
-  box.append(cap);
+  if (captioned) {
+    const cap = document.createElement("div");
+    cap.className = "cap";
+    const label = document.createElement("span");
+    label.textContent = labelOf(tag);
+    cap.append(label);
+    const acts = document.createElement("span");
+    acts.className = "acts";
+    if (pin) acts.append(pinButton(pin, { kind: "code", body: text, lang }));
+    if (canCopy()) acts.append(copyButton(text));
+    cap.append(acts);
+    box.append(cap);
+  }
   const pre = document.createElement("pre");
   const code = document.createElement("code");
   fillCode(code, tag, text, closed);
   pre.append(code);
+  if (closed) watchMore(pre); // a long line scrolls the block sideways; the side that hides something fades
   box.append(pre);
   return box;
 }

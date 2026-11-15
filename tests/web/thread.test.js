@@ -1,5 +1,5 @@
 import { test, expect } from "bun:test";
-import { sentences, leadSplit, cjkPunctuation, questionRuns, threadItems, proposalFromBody, landmarkFromSystem, exploredFromSystem, inlineSegments, mdBlocks, logItems, texLite, askFor, roundOf, systemText } from "../../src/web/thread.js";
+import { sentences, leadSplit, cjkPunctuation, questionRuns, threadItems, proposalFromBody, landmarkFromSystem, exploredFromSystem, inlineSegments, mdBlocks, logItems, texLite, askFor, roundOf, systemText, quoteRange, quoteSpans, evidenceMarks } from "../../src/web/thread.js";
 
 const proposal = { target: "island:caching", claim: "never stale", consequence: "stale prices", evidence: "q", confidence: 0.7, rationale: "r", status: "pending" };
 
@@ -238,4 +238,100 @@ test("loose-end lines read as plain words; any other line passes through", () =>
   expect(systemText("loose end: thought useState returns two functions")).toBe("noted to come back to: thought useState returns two functions");
   expect(systemText("loose end closed: thought useState returns two functions")).toBe("cleared up: thought useState returns two functions");
   expect(systemText("loose ends are fun")).toBe("loose ends are fun");
+});
+
+test("quoteRange finds a quote in the words as drawn, forgiving spacing, markdown marks and full-width punctuation", () => {
+  const text = "Where the first grid arrow ends up. The rest of the plane follows.";
+  const [a, b] = quoteRange(text, "the first grid arrow ends up");
+  expect(text.slice(a, b)).toBe("the first grid arrow ends up");
+  // a line break or doubled space where the persona wrote one space
+  const broken = "it is one move,\nthen  another";
+  const [c, d] = quoteRange(broken, "one move, then another");
+  expect(broken.slice(c, d)).toBe("one move,\nthen  another");
+  // the reader's **bold** is gone from what is drawn; the page's full-width comma stands for the stored one
+  expect(quoteRange("the first column", "the **first** column")).toEqual([0, 16]);
+  expect(quoteRange("快取命中率高，資料庫就輕鬆", "命中率高,資料庫")).toEqual([2, 10]);
+  expect(quoteRange(text, "something never said")).toBeNull();
+  expect(quoteRange(text, "   ")).toBeNull();
+});
+
+test("quoteSpans cuts a quote over the text nodes it runs through", () => {
+  // "always **get** confused" is three text nodes on the page
+  expect(quoteSpans(["I always ", "get", " confused about order"], "always get confused")).toEqual([
+    { chunk: 0, start: 2, end: 9 },
+    { chunk: 1, start: 0, end: 3 },
+    { chunk: 2, start: 0, end: 9 },
+  ]);
+  expect(quoteSpans(["one move", "then another"], "move then")).toEqual([{ chunk: 0, start: 4, end: 8 }, { chunk: 1, start: 0, end: 4 }]);
+  expect(quoteSpans(["nothing here"], "elsewhere")).toEqual([]);
+});
+
+const EVIDENCE_ISLAND = {
+  landmarks: {
+    items: [
+      { slug: "columns", name: "Columns", lit: true, evidence: "where the first grid arrow ends up", messageId: 2, exploredAt: null, exploredEvidence: null, exploredMessageId: null },
+      { slug: "points", name: "Points", lit: true, evidence: "a paraphrase the reader never typed", messageId: 2, exploredAt: null, exploredEvidence: null, exploredMessageId: null },
+      { slug: "numbers", name: "Numbers", lit: true, evidence: "different numbers, a different move", messageId: null, exploredAt: null, exploredEvidence: null, exploredMessageId: null },
+    ],
+  },
+  looseEnds: [{ id: 9, kind: "confused", landmark: "points", note: "Unsure which goes first", evidence: "which one goes first", messageId: 5, author: "judge" }],
+};
+
+test("evidenceMarks ties each lit landmark, reef and loose end to the reader's own words", () => {
+  const messages = [
+    { id: 1, role: "judge", kind: "text", body: "What does the first column tell you?" },
+    { id: 2, role: "you", kind: "text", body: "It says where the first grid arrow ends up." },
+    { id: 3, role: "judge", kind: "system", body: "landmark lit: Columns" },
+    { id: 4, role: "judge", kind: "system", body: "landmark lit: Points" },
+    { id: 5, role: "you", kind: "text", body: "Different numbers, a different move. I forget which one goes first though." },
+    { id: 6, role: "judge", kind: "system", body: "landmark lit: Numbers" },
+    { id: 7, role: "judge", kind: "system", body: "loose end: Unsure which goes first" },
+    { id: 8, role: "you", kind: "text", body: "", images: [{ id: 1 }] },
+    { id: 9, role: "you", kind: "text", body: "Every matrix has two directions that stay put." },
+    { id: 10, role: "judge", kind: "reef_proposal", body: JSON.stringify({ claim: "c", consequence: "k", evidence: "Every matrix has two directions", status: "pending" }) },
+  ];
+  const { byMessage, byLine } = evidenceMarks(messages, EVIDENCE_ISLAND);
+  // by the message id the landmark names; a quote that is not in the message draws nothing
+  expect(byMessage.get(2)).toEqual([{ quote: "where the first grid arrow ends up", kind: "lit", key: "columns" }]);
+  // without a message id (lit from the terminal), the reader's words just before the line; the loose end after the lamp
+  expect(byMessage.get(5)).toEqual([
+    { quote: "different numbers, a different move", kind: "lit", key: "numbers" },
+    { quote: "which one goes first", kind: "loose", key: "loose:9" },
+  ]);
+  expect(byMessage.get(9)).toEqual([{ quote: "Every matrix has two directions", kind: "reef", key: "reef:10" }]);
+  expect(byMessage.has(8)).toBe(false); // images alone are never evidence
+  // every line keeps its quote, marked in a message or not
+  expect(byLine.get(4)).toEqual({ key: "points", slug: "points", quote: "a paraphrase the reader never typed" });
+  expect(byLine.get(7)).toEqual({ key: "loose:9", slug: "points", quote: "which one goes first" });
+  expect(byLine.get(10)).toEqual({ key: "reef:10", slug: null, quote: "Every matrix has two directions" });
+  // a disputed reef no longer marks the reader's words
+  const disputed = [...messages.slice(0, 9), { ...messages[9], body: JSON.stringify({ claim: "c", consequence: "k", evidence: "Every matrix has two directions", status: "disputed" }) }];
+  expect(evidenceMarks(disputed, EVIDENCE_ISLAND).byMessage.has(9)).toBe(false);
+  expect(evidenceMarks(messages, null).byMessage.size).toBe(0);
+});
+
+test("the mentor's explored line marks its own evidence, by the mentor's message id", () => {
+  const island = { landmarks: { items: [{ slug: "columns", name: "Columns", lit: true, evidence: "judge's quote", messageId: 40, exploredAt: "2026-11-01", exploredEvidence: "like a landing spot", exploredMessageId: 2 }] } };
+  const messages = [
+    { id: 1, role: "mentor", kind: "text", body: "Think of a column." },
+    { id: 2, role: "you", kind: "text", body: "So a column is like a landing spot?" },
+    { id: 3, role: "mentor", kind: "system", body: "landmark explored: Columns" },
+  ];
+  expect(evidenceMarks(messages, island).byMessage.get(2)).toEqual([{ quote: "like a landing spot", kind: "explored", key: "columns" }]);
+});
+
+test("logItems carries the evidence on the lines and the marks on the reader's message", () => {
+  const messages = [
+    { id: 2, role: "you", kind: "text", body: "It says where the first grid arrow ends up." },
+    { id: 3, role: "judge", kind: "system", body: "landmark lit: Columns" },
+    { id: 4, role: "judge", kind: "system", body: "landmark lit: Unknown since renamed" },
+    { id: 5, role: "you", kind: "text", body: "I forget which one goes first though." },
+    { id: 7, role: "judge", kind: "system", body: "loose end: Unsure which goes first" },
+  ];
+  const items = logItems(messages, EVIDENCE_ISLAND);
+  expect(items[0].marks).toEqual([{ quote: "where the first grid arrow ends up", kind: "lit", key: "columns" }]);
+  expect(items[1].lit).toEqual([{ name: "Columns", slug: "columns", quote: "where the first grid arrow ends up" }, { name: "Unknown since renamed", slug: null, quote: null }]);
+  expect(items[1].names).toEqual(["Columns", "Unknown since renamed"]);
+  expect(items[3].evidence).toEqual({ key: "loose:9", slug: "points", quote: "which one goes first" });
+  expect(logItems(messages, null)[0].marks).toBeUndefined();
 });

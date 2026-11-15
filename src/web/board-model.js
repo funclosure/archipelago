@@ -43,6 +43,31 @@ export function withoutRemoving(cards, removingId) {
   return removingId === null ? cards : cards.filter((c) => c.id !== removingId);
 }
 
+/**
+ * Every card after `id` moved to sit before `before` (null: the end), ordered as the server will order them
+ * (`moveCard` in boardRepository.ts). A card waiting out its undo is among them, so its Undo line stands in the same
+ * row before and after the server answers.
+ */
+export function afterMove(cards, id, before) {
+  const moving = cards.find((c) => c.id === id);
+  if (!moving || before === id) return cards;
+  const rest = cards.filter((c) => c !== moving);
+  const at = before === null ? -1 : rest.findIndex((c) => c.id === before);
+  rest.splice(at < 0 ? rest.length : at, 0, moving);
+  return rest;
+}
+
+/**
+ * Tab inside the open editor stays among its own controls: the stop to move to when Tab (or ⇧Tab, `back`) would
+ * leave them, or null when the browser's own order is right. `index` is the focused stop's place among `count`
+ * stops (-1 when focus is on none of them, such as the editor's own box).
+ */
+export function tabWrap(count, index, back) {
+  if (count === 0) return null;
+  if (back) return index <= 0 ? count - 1 : null;
+  return index === count - 1 ? 0 : null;
+}
+
 /** An editor over an existing card. */
 export function startEdit(card) {
   return { id: card.id, kind: card.kind, body: card.body, lang: card.kind === "code" ? card.lang ?? PLAIN : null };
@@ -75,13 +100,28 @@ export function writeOf(editor) {
   return editor.id === null ? { op: "add", kind: editor.kind, ...base } : { op: "update", id: editor.id, ...base };
 }
 
-/** The card id the cursor moves to on `key`, or null when it stays. */
-export function moveCard(ids, cursor, key) {
+/** The cards that stand after and before `id` (null at an end): where the cursor goes on from once `id` is removed. */
+export function neighbours(ids, id) {
+  const i = ids.indexOf(id);
+  if (i < 0) return null;
+  return { next: ids[i + 1] ?? null, prev: i > 0 ? ids[i - 1] : null };
+}
+
+/**
+ * The card id the cursor moves to on `key`, or null when it stays. With no cursor, j/k start at the first card, or,
+ * when the cursor's card was just removed (`near`, from `neighbours`), at the card that stood after it (j) or before
+ * it (k), so the keyboard goes on from where it was.
+ */
+export function moveCard(ids, cursor, key, near = null) {
   if (ids.length === 0) return null;
   const down = key === "ArrowDown" || key === "j";
   const up = key === "ArrowUp" || key === "k";
   const i = ids.indexOf(cursor);
   if (i < 0) {
+    if ((down || up) && near) {
+      const at = (down ? [near.next, near.prev] : [near.prev, near.next]).find((id) => id !== null && ids.includes(id));
+      if (at !== undefined) return at;
+    }
     if (down || up || key === "Home") return ids[0];
     return key === "End" ? ids[ids.length - 1] : null;
   }
@@ -105,6 +145,18 @@ export const KIND_LABELS = { diagram: t("boardModel.kindDiagram"), note: t("boar
 
 export function kindLabel(kind) {
   return KIND_LABELS[kind] ?? kind;
+}
+
+/** Each card kind as a button names it: sentence case, where a caption's small capitals take the plain word. */
+export const KIND_NAMES = { diagram: t("boardModel.nameDiagram"), note: t("boardModel.nameNote"), code: t("boardModel.nameCode"), demo: t("boardModel.nameDemo") };
+
+export function kindName(kind) {
+  return KIND_NAMES[kind] ?? kind;
+}
+
+/** The key that adds a card of `kind` (from `KIND_KEYS`, so a button's hint and the key cannot drift apart). */
+export function keyOfKind(kind) {
+  return Object.keys(KIND_KEYS).find((key) => KIND_KEYS[key] === kind) ?? null;
 }
 
 export function authorLabel(author) {

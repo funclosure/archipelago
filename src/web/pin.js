@@ -1,6 +1,9 @@
 // "Pin to board" on a persona's fence (a diagram, code, or a demo): the reader keeps it as their own board card,
 // marked as pinned from that reply. `pin` comes from card.js: { add(card) → Promise, has(body) → bool }.
 import { t } from "./i18n.js";
+import { icon } from "./icons.js";
+import { tip } from "./tip.js";
+import { toastError } from "./toast.js";
 
 const buttons = new Set(); // every pin button made, so a board change can redraw them where they stand
 
@@ -18,13 +21,16 @@ export function syncPins() {
 export function pinButton(pin, card) {
   const b = document.createElement("button");
   b.type = "button";
-  b.className = "pin";
+  b.className = "btn sm quiet pin";
   const entry = { b, busy: false, left: false, draw: () => {} };
   entry.draw = () => {
     const on = pin.has(card.body);
-    b.textContent = t(on ? "pin.pinned" : "pin.pin");
+    // On the board it is a statement, not a command: a tick and the words, and nothing to press.
+    b.replaceChildren(...(on ? [icon("check", { size: 12 })] : []), t(on ? "pin.pinned" : "pin.pin"));
     b.disabled = on;
-    b.title = on ? "" : t("pin.title");
+    b.classList.toggle("on", on);
+    if (on) delete b.dataset.tip;
+    else tip(b, t("pin.title"));
   };
   entry.draw();
   b.addEventListener("click", () => {
@@ -39,7 +45,7 @@ export function pinButton(pin, card) {
       (error) => {
         entry.busy = false;
         entry.draw();
-        b.title = String(error && error.message ? error.message : error);
+        toastError(error, t("pin.what"));
       },
     );
   });

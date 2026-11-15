@@ -105,17 +105,19 @@ test("snapshot counts each island's thread", () => {
   expect(snap.islands.map((i) => [i.slug, i.messages])).toEqual([["caching", 2], ["queues", 0], ["databases", 0]]);
 });
 
-test("snapshot carries each island's landmarks with lit state, evidence, when each was explored, and their terms", () => {
+test("snapshot carries each island's landmarks with lit state, the evidence and the message it quotes in either lens, and their terms", () => {
   setLandmarks(db, domainId, caching, [{ slug: "hit-ratio", name: "Hit ratio", terms: ["hit ratio", "命中率"] }, { slug: "invalidation", name: "Invalidation" }]);
-  unlockLandmark(db, caching, "hit-ratio", "most reads never reach the database", null);
-  const explored = exploreLandmark(db, caching, "invalidation", "like NSCache", null).landmark.exploredAt;
+  const said = addMessage(db, { domainId, islandId: caching, role: "you", kind: "text", body: "I think most reads never reach the database." });
+  const asked = addMessage(db, { domainId, islandId: caching, role: "you", kind: "text", body: "So it is like NSCache?", mode: "mentor" });
+  unlockLandmark(db, caching, "hit-ratio", "most reads never reach the database", said.id);
+  const explored = exploreLandmark(db, caching, "invalidation", "like NSCache", asked.id).landmark.exploredAt;
   const snap = buildSnapshot(db, "sd", null);
   const c = snap.islands.find((i) => i.slug === "caching")!;
   expect(c.landmarks).toEqual({
     total: 2, unlocked: 1, explored: 1,
     items: [
-      { slug: "hit-ratio", name: "Hit ratio", lit: true, evidence: "most reads never reach the database", exploredAt: null, terms: ["hit ratio", "命中率"] },
-      { slug: "invalidation", name: "Invalidation", lit: false, evidence: null, exploredAt: explored, terms: [] },
+      { slug: "hit-ratio", name: "Hit ratio", lit: true, evidence: "most reads never reach the database", messageId: said.id, exploredAt: null, exploredEvidence: null, exploredMessageId: null, terms: ["hit ratio", "命中率"] },
+      { slug: "invalidation", name: "Invalidation", lit: false, evidence: null, messageId: null, exploredAt: explored, exploredEvidence: "like NSCache", exploredMessageId: asked.id, terms: [] },
     ],
   });
   expect(snap.islands.find((i) => i.slug === "queues")!.landmarks).toEqual({ total: 0, unlocked: 0, explored: 0, items: [] });

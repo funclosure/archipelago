@@ -8,6 +8,10 @@ export default {
     kindNote: "note",
     kindCode: "code",
     kindDemo: "demo",
+    nameDiagram: "Diagram",
+    nameNote: "Note",
+    nameCode: "Code",
+    nameDemo: "Demo",
     pinnedFrom: "you · from {author}",
   },
   "zh-TW": {
@@ -18,6 +22,10 @@ export default {
     kindNote: "筆記",
     kindCode: "程式碼",
     kindDemo: "互動示範",
+    nameDiagram: "圖表",
+    nameNote: "筆記",
+    nameCode: "程式碼",
+    nameDemo: "互動示範",
     pinnedFrom: "你 · 取自{author}",
   },
 };

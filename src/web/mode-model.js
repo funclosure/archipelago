@@ -46,6 +46,7 @@ export function headPill(island, lens) {
     return explored ? { cls: "pill explore", text: t("modeModel.pillExplored", { explored, total }) } : { cls: "pill open", text: t("modeModel.pillOpen") };
   }
   const v = island.verdict;
-  if (v) return { cls: `pill${v.state === "reef" ? " reef" : ""}`, text: t("modeModel.pillVerdict", { state: stateLabel(v.state), pct: pct(v.confidence) }) };
+  // The state is the pill's class, so it wears that state's own mark (the outline's): a sandbar is never the settled green.
+  if (v) return { cls: `pill ${v.state}`, text: t("modeModel.pillVerdict", { state: stateLabel(v.state), pct: pct(v.confidence) }) };
   return { cls: "pill open", text: t(island.children?.total ? "modeModel.pillOpenIslets" : "modeModel.pillOpen") };
 }

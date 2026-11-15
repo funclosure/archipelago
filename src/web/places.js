@@ -5,10 +5,9 @@
 import { app, reframe, frameSelection } from "./app.js";
 import { isChartOpen, isGuideOpen } from "./chart.js";
 import { boardOpen, boardCount, openBoard, closeBoard } from "./board.js";
-import { nextPlace, settle, tabsEnabled, PLACES } from "./places-model.js";
+import { nextPlace, settle, tabsEnabled, keyboardUp, keyboardRoom, takesKeyboard, PLACES, NARROW } from "./places-model.js";
 import { t } from "./i18n.js";
 
-const NARROW = "(max-width: 720px)";
 let bar = null;
 let place = null; // null until the first snapshot says whether an island is open
 
@@ -54,7 +53,8 @@ function draw() {
   for (const b of bar.children) {
     const name = b.dataset.place;
     b.disabled = !enabled[name];
-    b.setAttribute("aria-current", String(name === place));
+    if (name === place) b.setAttribute("aria-current", "page");
+    else b.removeAttribute("aria-current");
     b.querySelector(".lbl").textContent = label(name);
   }
 }
@@ -67,6 +67,7 @@ function show(next) {
   if (place === "board" && !boardOpen()) openBoard();
   if (place !== "board" && boardOpen()) closeBoard();
   draw();
+  syncCard();
   if (place === "map" && was !== "map") {
     // The map was under something: refit it to the room it has now, on the island still selected.
     requestAnimationFrame(() => {
@@ -81,6 +82,45 @@ function on(event) {
   show(nextPlace(place, event, has()));
 }
 
+const root = document.documentElement;
+
+/**
+ * The bottom card's height, for the stylesheet (--cta-h): on a phone the card spans the screen over the bar, and
+ * the dock stands on its right end instead of hiding behind it.
+ */
+function syncCard() {
+  const card = narrow() ? document.querySelector("#cta:not([hidden]) .cta-card") : null;
+  const h = card ? card.offsetHeight : 0; // 0 too while another place is showing (the card is not drawn there)
+  const value = h ? `${h + 8}px` : "";
+  if (root.style.getPropertyValue("--cta-h") !== value) root.style.setProperty("--cta-h", value);
+}
+
+let tallest = 0; // the tallest the visible window has been at this width: what it is with no keyboard
+let widthWas = 0;
+
+/**
+ * A phone's keyboard: while one is up (places-model.js decides), `body.keyboard` takes the bar away and --vvt,
+ * --vvh and --kb-h tell the stylesheet what is left of the window, so the pane, the board and a dialog end where
+ * the keyboard begins and the conversation keeps every line it can. A browser may shrink the layout for the
+ * keyboard or lay the keyboard over it (and pan the page under it): the visual viewport says which, either way.
+ */
+function syncKeyboard() {
+  const vv = window.visualViewport;
+  const layout = window.innerHeight;
+  if (window.innerWidth !== widthWas) [widthWas, tallest] = [window.innerWidth, 0]; // the phone was turned: another window altogether
+  const visual = vv ? vv.height : layout;
+  const zoomed = Boolean(vv) && Math.abs(vv.scale - 1) > 0.01;
+  if (!zoomed) tallest = Math.max(tallest, visual, layout);
+  const at = document.activeElement;
+  const typing = Boolean(at) && takesKeyboard({ tag: at.tagName, type: at.type, editable: at.isContentEditable });
+  const room = keyboardRoom({ up: narrow() && keyboardUp({ typing, visual, tallest, zoomed }), layout, visualTop: vv ? vv.offsetTop : 0, visual });
+  document.body.classList.toggle("keyboard", room !== null);
+  for (const [name, value] of [["--vvt", room?.top], ["--vvh", room?.height], ["--kb-h", room?.under]]) {
+    const next = room ? `${value}px` : "";
+    if (root.style.getPropertyValue(name) !== next) root.style.setProperty(name, next);
+  }
+}
+
 export function installPlaces() {
   bar = document.createElement("nav");
   bar.id = "places";
@@ -93,7 +133,11 @@ export function installPlaces() {
     const lbl = document.createElement("span");
     lbl.className = "lbl";
     b.append(icon(name), lbl);
-    b.addEventListener("click", () => on({ type: "tab", place: name }));
+    b.addEventListener("click", () => {
+      // The tab of the place already showing, as on any phone, goes back to its start: the map to home (or to the selected island).
+      if (name === "map" && place === "map" && narrow()) return void frameSelection();
+      on({ type: "tab", place: name });
+    });
     bar.append(b);
   }
   document.body.append(bar);
@@ -112,7 +156,19 @@ export function installPlaces() {
     if (place !== null) show(settle(place, has()));
   });
   matchMedia(NARROW).addEventListener("change", start);
-  document.addEventListener("select", (e) => on({ type: "select", slug: e.detail }));
+  new ResizeObserver(syncCard).observe(document.getElementById("cta")); // the card came, went, or its buttons wrapped
+  matchMedia(NARROW).addEventListener("change", syncCard);
+  window.visualViewport?.addEventListener("resize", syncKeyboard);
+  window.visualViewport?.addEventListener("scroll", syncKeyboard);
+  window.addEventListener("resize", syncKeyboard);
+  // Focus moves in two steps when a redraw builds the field again (out, then in): look once both have happened.
+  const soon = () => requestAnimationFrame(syncKeyboard);
+  document.addEventListener("focusin", soon);
+  document.addEventListener("focusout", soon);
+  syncKeyboard();
+  // The page's own pick (interactions.js dispatches it at the document), never a text field's native `select`, which
+  // bubbles here too when its selection moves (a caret put after words given back to the box) and would leave the pane.
+  document.addEventListener("select", (e) => e.target === document && on({ type: "select", slug: e.detail }));
   document.addEventListener("board", (e) => {
     if (e.detail.open !== undefined) on({ type: "board", open: e.detail.open });
     else draw(); // its cards changed: the count on the tab

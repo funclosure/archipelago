@@ -33,7 +33,7 @@ export function applyTheme(id, { persist = true } = {}) {
   const tokens = readTokens();
   const palette = {};
   for (const [k, name] of Object.entries(PALETTE_TOKENS)) palette[k] = tokens[name];
-  setPalette(palette);
+  setPalette(palette, { paper: !theme.dark }); // a light theme is paper: the map takes its engraving and furniture there
   applyMermaidTheme(mermaidVariables(tokens, theme.dark));
   document.dispatchEvent(new CustomEvent("theme", { detail: { id: theme.id } }));
 }
