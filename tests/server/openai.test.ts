@@ -7,7 +7,7 @@ import { upsertDomain } from "../../src/core/repositories/domainRepository.ts";
 import { upsertIsland } from "../../src/core/repositories/islandRepository.ts";
 import { addMessage } from "../../src/core/repositories/messageRepository.ts";
 import { setLandmarks } from "../../src/core/repositories/landmarkRepository.ts";
-import { chatBodyFor, chatEffort, chatSettingsFromEnv, createChatRunner, isGemini, portableSchema } from "../../src/server/judge/openai.ts";
+import { chatBodyFor, chatEffort, chatSettingsFromEnv, createChatRunner, describeChatError, isGemini, portableSchema } from "../../src/server/judge/openai.ts";
 import { inputSchemaFor } from "../../src/server/judge/tool-specs.ts";
 import { createRunner, judgeModel, parseJudgeKind, type JudgeEvent } from "../../src/server/judge/runner.ts";
 import { runTool } from "../../src/server/judge/tools.ts";
@@ -177,6 +177,13 @@ test("HTTP failures become one actionable sentence naming the server", async () 
   await expect((await run([{ status: 503 }])).reply).rejects.toThrow("overloaded");
   await expect((await run([{ throws: new TypeError("fetch failed") }])).reply).rejects.toThrow("Cannot reach generativelanguage.googleapis.com");
   await expect((await run([{ chunks: [{ error: { message: "quota" } }] }])).reply).rejects.toThrow("quota");
+});
+
+test("an unreachable server names the base URL only where the reader set one", () => {
+  const local = describeChatError(new TypeError("fetch failed"), "m", "generativelanguage.googleapis.com") as Error;
+  expect(local.message).toBe("Cannot reach generativelanguage.googleapis.com. Check the connection and the base URL, then send again.");
+  const hosted = describeChatError(new TypeError("fetch failed"), "m", "generativelanguage.googleapis.com", true) as Error;
+  expect(hosted.message).toBe("Cannot reach generativelanguage.googleapis.com. Check the connection, then send again.");
 });
 
 test("portableSchema drops what Gemini's endpoint refuses and keeps the meaning", () => {
