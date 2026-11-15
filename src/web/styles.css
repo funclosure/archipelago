@@ -25,15 +25,15 @@
 /* Paper chart: cream ground, ink lines. Every literal colour token of :root, redefined (tests/web/theme-tokens.test.js). */
 :root[data-theme="chart"] {
   --sea: #EFE5D0; --line-1: #233F5B; --line-07: rgba(35, 63, 91, .7); --line-03: rgba(35, 63, 91, .5);
-  --lamp: #A36E09; --reef: #B33830; --sand-fill: #CEAC64; --grass: #3B793F; --snow: #FFFFFF; --explore: #176F7C;
+  --lamp: #8C5D04; --reef: #B33830; --sand-fill: #CEAC64; --grass: #3B793F; --snow: #FFFFFF; --explore: #176F7C;
   --text: rgba(16, 28, 40, .94); --muted: rgba(16, 28, 40, .7); --text-2: rgba(16, 28, 40, .82);
   --panel: #F9F3E6; --panel-2: #E2D6BE; --line: rgba(35, 63, 91, .2); --open: rgba(35, 63, 91, .5);
   --on-land: #FFFFFF;
   --shadow: rgba(60, 45, 20, .22); --shadow-soft: rgba(60, 45, 20, .16); --shadow-deep: rgba(60, 45, 20, .28);
   --scrim: rgba(60, 45, 20, .18);
-  --lamp-tint: rgba(163, 110, 9, .14); --lamp-ring: rgba(163, 110, 9, .55); --lamp-pulse: rgba(163, 110, 9, .7);
+  --lamp-tint: rgba(140, 93, 4, .14); --lamp-ring: rgba(140, 93, 4, .55); --lamp-pulse: rgba(140, 93, 4, .7);
   --reef-tint: rgba(179, 56, 48, .3);
-  --code-keyword: #7A5208; --code-string: #6E5A1C; --code-type: #233F5B;
+  --code-keyword: #7A5208; --code-string: #6E5A1C; --code-type: #233F5B; --code-number: #36743A;
 }
 :root[data-theme="tide"] {
   /* Tide: Night's blues, darker and calmer, with the chrome a step below the sea and brighter accents (OKLCH, every text and mark ≥ 4:1). */
@@ -68,7 +68,7 @@
   --scrim: rgba(19, 46, 80, .14);
   --lamp-tint: rgba(170, 22, 125, .1); --lamp-ring: rgba(170, 22, 125, .5); --lamp-pulse: rgba(170, 22, 125, .65);
   --reef-tint: rgba(182, 50, 43, .28);
-  --code-keyword: #AA167D; --code-string: #7A5A1E; --code-type: #132E50;
+  --code-keyword: #AA167D; --code-string: #7A5A1E; --code-type: #132E50; --code-number: #4F7537;
 }
 /* The scale: one set of steps for space, type, radius, elevation, motion and control size, shared by every theme. None
    of these is a literal colour (the surfaces below are mixed from a theme's own tokens), so no theme block redefines
