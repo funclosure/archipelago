@@ -274,6 +274,13 @@ kbd { display: inline-block; box-sizing: border-box; min-width: 18px; padding: 0
   .palette .mi > .detail { grid-column: 2; grid-row: 2; max-width: none; }
   .palette .mi > .cur { grid-column: 3; grid-row: 1 / span 2; }
 }
+/* Forced colours (Windows High Contrast): the system drops every fill and inset shadow, so the place of the keyboard
+   in a list (a menu's focused row, the palette's highlighted one) and what is chosen (a pressed segment, the selected
+   outline row) are marked in the system's own colours. */
+@media (forced-colors: active) {
+  .mi:focus-visible, .palette .mi.on, :is(.outline, .peek) .row.on { outline: 2px solid Highlight; outline-offset: -2px; }
+  .segs > :is(.on, [aria-selected="true"], [aria-pressed="true"]), .lens-switch .seg.on.on.on { forced-color-adjust: none; background: Highlight; color: HighlightText; } /* .on thrice: over the lens's own .seg.judge.on fill */
+}
 #map { position: fixed; inset: 0; display: block; cursor: grab; touch-action: none; -webkit-touch-callout: none; user-select: none; -webkit-user-select: none; }
 #map.dragging { cursor: grabbing; }
 #map.hover { cursor: pointer; }
