@@ -87,10 +87,10 @@ test("a row's tip says what the dot and count mean in the lens, after the whole 
   // a name the row cuts short leads the tip; one that reads in full is not said twice
   const plain = (s) => s.replaceAll("\u2060", "").replaceAll("\u00A0", " ");
   const named = rowTip(node("Vectors: arrows you can add", { state: "settled", landmarks: lm(3) }), "judge", true);
-  expect(plain(named)).toBe("Vectors: arrows you can add · Settled · 3 of 3 landmarks lit");
-  expect(named.startsWith("Vectors: arrows you can add · ")).toBe(true); // the name may wrap, and the line may break after it
-  expect(named.slice("Vectors: arrows you can add · ".length)).not.toMatch(/ /); // what the dot means stays on one line
-  expect(plain(rowTip(node("Vectors: arrows you can add"), "mentor", true))).toBe("Vectors: arrows you can add · Not yet explored");
+  expect(plain(named)).toBe("Vectors: arrows you can add\nSettled · 3 of 3 landmarks lit");
+  expect(named.startsWith("Vectors: arrows you can add\n")).toBe(true); // the name has its own line (the tip keeps line breaks), and may wrap
+  expect(named.slice("Vectors: arrows you can add\n".length)).not.toMatch(/ /); // what the dot means stays on one line
+  expect(plain(rowTip(node("Vectors: arrows you can add"), "mentor", true))).toBe("Vectors: arrows you can add\nNot yet explored");
 });
 
 test("the cursor starts from the selected row, else appears on the harbour or the first row without moving on", () => {

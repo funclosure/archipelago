@@ -130,16 +130,20 @@ kbd { display: inline-block; box-sizing: border-box; min-width: 18px; padding: 0
   background: var(--hover); color: var(--text-2); font: 500 10.5px/16px var(--font-mono); text-align: center; white-space: nowrap; }
 /* An icon takes the text's colour and never shrinks in a row. */
 .ic { flex: none; display: block; }
-/* A tooltip (tip.js): what a control is and its key, after the pointer rests on it. */
-.tip { position: fixed; z-index: var(--z-tip); pointer-events: none; display: flex; align-items: center; gap: var(--sp-2); max-width: 300px; box-sizing: border-box; padding: 4px var(--sp-2);
+/* A tooltip (tip.js): what a control is and its key, after the pointer rests on it. It is a popover in the top layer
+   (over a demo that fills the window), so the popover's own place and box are undone here; tip.js sets left and top.
+   Its words keep a line break they carry (a row's name over its state). */
+.tip { position: fixed; inset: auto; margin: 0; overflow: visible; z-index: var(--z-tip); pointer-events: none; display: flex; align-items: center; gap: var(--sp-2); max-width: 300px; box-sizing: border-box; padding: 4px var(--sp-2);
   background: var(--panel-2); color: var(--text); border: 1px solid var(--line); border-radius: var(--r-sm); box-shadow: var(--e-2); font: var(--fs-sm)/1.4 var(--font-ui); }
+.tip > span:first-child { white-space: pre-line; }
 .tip[hidden] { display: none; }
 .tip.arrive { animation: tip-in var(--t-fast) var(--ease); }
 .tip .tip-keys { display: inline-flex; gap: 3px; flex: none; }
 @keyframes tip-in { from { opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .tip.arrive { animation: none; } }
 /* Toasts (toast.js): one line that something happened or went wrong, at the foot of the page; it leaves by itself. */
-.toasts { position: fixed; left: 50%; bottom: calc(var(--places-h, 0px) + var(--sp-6)); transform: translateX(-50%); z-index: var(--z-tip); display: grid; gap: var(--sp-2); justify-items: center; width: max-content; max-width: calc(100vw - 2 * var(--sp-4)); pointer-events: none; }
+.toasts { position: fixed; inset: auto; margin: 0; padding: 0; border: 0; background: none; color: inherit; overflow: visible; height: auto; /* a popover in the top layer (toast.js): its own place and box undone */
+  left: 50%; bottom: calc(var(--places-h, 0px) + var(--sp-6)); transform: translateX(-50%); z-index: var(--z-tip); display: grid; gap: var(--sp-2); justify-items: center; width: max-content; max-width: calc(100vw - 2 * var(--sp-4)); pointer-events: none; }
 .toast { pointer-events: auto; display: flex; align-items: center; gap: var(--sp-2); box-sizing: border-box; max-width: min(520px, 100%); padding: var(--sp-15) var(--sp-15) var(--sp-15) var(--sp-3);
   background: var(--panel-2); color: var(--text); border: 1px solid var(--line); border-radius: var(--r-md); box-shadow: var(--e-2); font: var(--fs-md)/var(--lh-ui) var(--font-ui); }
 .toast .toast-text { flex: 1; min-width: 0; padding: var(--sp-05) 0; }

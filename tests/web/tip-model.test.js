@@ -21,6 +21,24 @@ describe("tipPlace", () => {
   test("a tip wider than the window still starts at the margin", () => {
     expect(tipPlace({ left: 10, right: 30, top: 100, bottom: 130 }, { width: 2000, height: 28 }, viewport).left).toBe(8);
   });
+  test("asked to the right, it sits past the control's right edge, centred on it, and covers no neighbour above or below", () => {
+    // a row of the outline: 232 wide, 28 tall
+    expect(tipPlace({ left: 0, right: 232, top: 200, bottom: 228 }, size, viewport, { side: "right" })).toEqual({ left: 238, top: 200, side: "right" });
+  });
+  test("to the right flips to the left when the window has no room there", () => {
+    const row = { left: 800, right: 950, top: 200, bottom: 228 };
+    expect(tipPlace(row, size, viewport, { side: "right" })).toEqual({ left: 800 - 6 - 120, top: 200, side: "left" });
+  });
+  test("with room on neither side it goes where there is more, kept inside the window", () => {
+    const wide = { left: 60, right: 940, top: 200, bottom: 228 };
+    const place = tipPlace(wide, size, viewport, { side: "right" });
+    expect(place.side).toBe("right");
+    expect(place.left).toBe(1000 - 8 - 120);
+  });
+  test("to the right stays inside the window at the top and the foot", () => {
+    expect(tipPlace({ left: 0, right: 232, top: 0, bottom: 10 }, { width: 120, height: 60 }, viewport, { side: "right" }).top).toBe(8);
+    expect(tipPlace({ left: 0, right: 232, top: 590, bottom: 600 }, { width: 120, height: 60 }, viewport, { side: "right" }).top).toBe(600 - 8 - 60);
+  });
 });
 
 describe("tipDelay", () => {

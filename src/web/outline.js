@@ -127,10 +127,13 @@ function button(label, onClick, className) {
   return b;
 }
 
-/** A tip on something in a column of rows goes above it: below, it would lie over the row the pointer moves to next. */
-function tipAbove(node, text) {
-  tip(node, text);
-  node.dataset.tipSide = "top";
+/**
+ * A tip on something in a column of rows (the outline, the domain menu) goes beside the column, centred on the row:
+ * above or below, it would lie over the rows the pointer moves to next. The column is the nearest `data-tip-column`.
+ */
+function tipBeside(node, text, options) {
+  tip(node, text, undefined, options);
+  node.dataset.tipSide = "right";
 }
 
 /** Selects an island; if it lives at another scale, the map changes scale first. */
@@ -179,7 +182,7 @@ function rowEl(row, marks, on, ids) {
   if (node.harbour) {
     const anchor = el("span", "anchor");
     anchor.append(icon("anchor", { size: 12 }));
-    tipAbove(anchor, t("outline.harbour"));
+    tipBeside(anchor, t("outline.harbour"));
     r.append(anchor);
   }
   if (marks.count) r.append(el("span", "n", marks.count)); // an untouched island shows no count: open water is not a score
@@ -214,9 +217,10 @@ function drawList(ul, outline, ids) {
     const name = li.querySelector(".name");
     return name.scrollWidth > name.clientWidth;
   });
+  // A screen reader has the whole name already: it hears only what the dot and count mean.
   [...ul.children].forEach((li, i) => {
     const text = rowTip(rows[i].node, app.mode, cut[i]);
-    if (li.firstChild.dataset.tip !== text) tipAbove(li.firstChild, text);
+    if (li.firstChild.dataset.tip !== text) tipBeside(li.firstChild, text, { describe: rowTip(rows[i].node, app.mode, false) });
   });
 }
 
@@ -433,10 +437,7 @@ function miEl(k, { cls, iconName, label, desc, value, radio = false, on = false,
     b.append(caps);
   }
   if (opens) b.append(icon(open ? "chevron-down" : "chevron-right", { size: 12 }));
-  if (hint) {
-    tipAbove(b, hint);
-    b.setAttribute("aria-description", hint); // a screen reader hears what the tip shows
-  }
+  if (hint) tipBeside(b, hint); // a screen reader hears what the tip shows, as its description (tip.js)
   return b;
 }
 
@@ -449,7 +450,7 @@ function domainEl(row) {
   edit.tabIndex = -1;
   edit.setAttribute("aria-label", t("outline.editNamed", { name: row.name }));
   edit.append(icon("pencil", { size: 14 }));
-  tipAbove(edit, t("outline.editDomain"));
+  tipBeside(edit, t("outline.editDomain"));
   wrap.append(item, edit);
   return wrap;
 }
@@ -484,6 +485,7 @@ function menuEl() {
   menu.addEventListener("animationend", () => menu.classList.remove("arrive"), { once: true });
   menu.setAttribute("role", "menu");
   menu.setAttribute("aria-label", t("outline.menu"));
+  menu.dataset.tipColumn = ""; // its rows' tips stand beside it (tipBeside)
   menu.addEventListener("focusin", (e) => {
     const k = e.target instanceof Element ? e.target.closest(".mi")?.dataset.k : null;
     if (k) state.menuFocus = k; // a click moves the keyboard's place too
@@ -521,7 +523,7 @@ function drawMenu(menu) {
       for (const item of list.querySelectorAll(".mi")) { // a name the row cuts short is whole in its tip
         const words = item.querySelector(".grow:not(.two)");
         if (!words) continue;
-        if (words.scrollWidth > words.clientWidth) tipAbove(item, words.textContent);
+        if (words.scrollWidth > words.clientWidth) tipBeside(item, words.textContent);
         else delete item.dataset.tip;
       }
       continue;
@@ -866,6 +868,7 @@ const outlineHandler = {
 
 export function installOutline() {
   root = document.getElementById("outline");
+  root.dataset.tipColumn = ""; // its rows' tips stand beside it (tipBeside)
   parts = build();
   load();
   registerRegion("outline", outlineHandler);
