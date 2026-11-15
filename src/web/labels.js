@@ -63,6 +63,23 @@ export function labelRect(node, s, label) {
   return rectFor(node, s, label.width, label.height, label.place);
 }
 
+/**
+ * Each line of a laid-out label as its own box in world units, as wide as that line and padded by `pad` box units
+ * (above the first line and below the last; the lines in between meet edge to edge, never overlapping): where a
+ * selection or hover ring drawn across the name breaks, as an engraved line stops at the lettering, so a name is
+ * never struck through. A hidden label has none.
+ */
+export function labelLineRects(node, s, label, measure, pad = 3) {
+  if (label.hidden) return [];
+  const x = node.x + (label.cx - CENTRE) * s;
+  const last = label.lines.length - 1;
+  return label.lines.map((line, i) => {
+    const half = measure(line) / 2 + pad;
+    const top = node.y + (label.top + i * LINE_H - CENTRE) * s;
+    return { x0: x - half * s, x1: x + half * s, y0: top - (i === 0 ? pad : 0) * s, y1: top + (LINE_H + (i === last ? pad : 0)) * s };
+  });
+}
+
 const overlaps = (a, b) => a.x0 < b.x1 && b.x0 < a.x1 && a.y0 < b.y1 && b.y0 < a.y1;
 
 function crossesDisc(r, cx, cy, radius) {

@@ -1,5 +1,5 @@
 import { test, expect } from "bun:test";
-import { layoutLabels, labelRect, wrapName, LINE_H, DRAFT_H, WRAP, ABOVE_GAP } from "../../src/web/labels.js";
+import { layoutLabels, labelRect, labelLineRects, wrapName, LINE_H, DRAFT_H, WRAP, ABOVE_GAP } from "../../src/web/labels.js";
 import { CENTRE, LAMP_R, LAMP_OFF, COAST, STAR, NAME_Y } from "../../src/web/contour.js";
 
 /** Ten box units a character: easy to reason about. */
@@ -90,4 +90,22 @@ test("a name keeps off what the caller says to avoid (a sea's lettering), and la
   // labelRect follows the island's scale
   const big = labelRect({ ...a, x: 100, y: 50 }, 2, below.get("a"));
   expect(big).toEqual({ x0: 50, x1: 150, y0: 50 + (NAME_Y - CENTRE) * 2, y1: 50 + (NAME_Y - CENTRE + LINE_H) * 2 });
+});
+
+test("labelLineRects: each line of a name as its own box, padded, so a ring breaks only where the words are", () => {
+  const a = node("a", 0, 0, "JavaScript & TypeScript for Swift Developers");
+  const label = layoutLabels([a], { measure, scale }).get("a");
+  expect(label.lines).toEqual(["JavaScript &", "TypeScript for Swift", "Developers"]);
+  const rects = labelLineRects(a, 1, label, measure, 3);
+  expect(rects).toHaveLength(3);
+  // centred on the label, each as wide as its own line (a short line leaves the water beside it open)
+  expect(rects[0]).toEqual({ x0: -63, x1: 63, y0: NAME_Y - CENTRE - 3, y1: NAME_Y - CENTRE + LINE_H });
+  expect(rects[2]).toEqual({ x0: -53, x1: 53, y0: NAME_Y - CENTRE + 2 * LINE_H, y1: NAME_Y - CENTRE + 3 * LINE_H + 3 });
+  // lines meet without overlapping, so a clip made of them leaves no seam
+  expect(rects[0].y1).toBe(rects[1].y0);
+  // the island's place and box scale carry through
+  const far = labelLineRects({ ...a, x: 100, y: 50 }, 2, label, measure, 3);
+  expect(far[1].x0).toBe(100 - (100 + 3) * 2);
+  // a hidden name leaves no gap
+  expect(labelLineRects(a, 1, { ...label, hidden: true }, measure)).toEqual([]);
 });
