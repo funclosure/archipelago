@@ -839,7 +839,7 @@ async function boot() {
   app.sim.setCenter(WORLD / 2, WORLD / 2);
   resize();
   window.addEventListener("resize", resize);
-  installChrome(); // before the keys: its listener sees a key ahead of the page's
+  installChrome(); // registers the chrome's keys, which keys.js calls in its own order
   installInteractions(canvas);
   installTheme(); // first: the canvas palette and mermaid read the stamped theme's tokens
   // What a frame cannot see has changed: the palette, a font arriving, a canvas the browser emptied while the tab was away.

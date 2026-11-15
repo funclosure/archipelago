@@ -183,9 +183,10 @@ function gather() {
     const up = path.at(-2) ?? null;
     add("go", { id: "sail-out", name: t("palette.sailOut", { name: up?.name ?? s.domain.name }), keywords: t("palette.kwSailOut"), icon: "arrow-up", run: () => setScale(up?.slug ?? null) });
   }
+  // The dock's keys open these from the bare map only: beside an island's pane the dock is away, and there c confirms a reef.
   for (const item of s ? dockItems(s) : []) {
-    if (item.action === "guide") add("go", { id: "guide", name: item.label, keywords: t("palette.kwGuide"), icon: "compass", keys: shortcut("map", "guideKey"), where: "map", run: () => openGuide() });
-    else add("go", { id: "chart", name: item.label, keywords: t("palette.kwChart"), icon: "pen", keys: shortcut("map", "cartographerKey"), where: "map", run: () => openChart() });
+    if (item.action === "guide") add("go", { id: "guide", name: item.label, keywords: t("palette.kwGuide"), icon: "compass", keys: island ? null : shortcut("map", "guideKey"), where: "map", run: () => openGuide() });
+    else add("go", { id: "chart", name: item.label, keywords: t("palette.kwChart"), icon: "pen", keys: island ? null : shortcut("map", "reefOrCartographer"), where: "map", run: () => openChart() });
   }
   if (!matchMedia(NARROW).matches) {
     const railed = document.getElementById("outline")?.classList.contains("rail");

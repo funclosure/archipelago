@@ -232,7 +232,8 @@ export function installCard() {
         b.click();
         return true;
       };
-      if (e.key === "s") return click(".head [data-fk='sail']"); // sail closer, or in
+      // No letter for Sail closer or Sail in: a single key must never spend a cartographer turn, and on the map `s`
+      // sails to the next island (the bottom card's). The button is reached with ← →.
       if (e.key === "g") return click(".log .sail-go"); // follow the persona's pointer
       if (thread.inFlight) return false;
       switch (e.key) {
@@ -465,8 +466,10 @@ async function runTurn(slug, message, askId, sent = []) {
   remodel();
   // Focus the answer only if the reader is still where they sent from; Tab away mid-turn is a choice.
   if (region() !== regionAtSend) return;
-  // The opening turn renders the box disabled until the refetched thread arrives: focus it then.
-  if (!focusAnswer()) thread.focusPending = true;
+  // The opening turn's box comes only with the refetched thread (the briefing and its start button stand until then):
+  // the render that brings it focuses it, so the keyboard lands in the box and not on a start button about to go.
+  if (pane.querySelector("#answer:not(:disabled)")) focusAnswer();
+  else thread.focusPending = true;
 }
 
 /** Runs a failed turn again: the words given back to the box if there are any, else the thread as it stands. */
@@ -745,8 +748,8 @@ function headEl(island) {
   sub.append(standing);
   const links = el("span", "links");
   const sail = island.hasChildren
-    ? tip(button(t("card.sailIn"), () => setScale(island.slug), "btn quiet md"), t("card.sailInTip"), "s")
-    : tip(button(t("card.sailCloser"), () => void sailCloser(island), "btn quiet md"), t("card.sailCloserTip"), "s");
+    ? tip(button(t("card.sailIn"), () => setScale(island.slug), "btn quiet md"), t("card.sailInTip"))
+    : tip(button(t("card.sailCloser"), () => void sailCloser(island), "btn quiet md"), t("card.sailCloserTip"));
   sail.dataset.fk = "sail";
   const noteToggle = button(t("card.noteToggle"), () => {
     noteOpen = !noteOpen;

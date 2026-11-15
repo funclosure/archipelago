@@ -112,7 +112,18 @@ describe("chromeTarget", () => {
 
   test("the card comes first: beside a pane its c confirms a reef and there is no dock", () => {
     expect(chromeTarget("c", { cta: ["c", "d"], dock: [], region: "map" })).toEqual({ where: "cta", key: "c" });
-    expect(chromeTarget("c", { cta: ["⌘↵", "c"], dock: ["g", "c"], region: "outline" })).toEqual({ where: "cta", key: "c" });
+    expect(chromeTarget("c", { cta: ["⌘↵", "c"], dock: ["g", "c"], region: "map" })).toEqual({ where: "cta", key: "c" });
+  });
+
+  test("a letter answers from the map only: the outline's c never confirms a reef, the pane's s never sails", () => {
+    for (const region of ["outline", "pane"]) {
+      expect(chromeTarget("c", { cta: ["c", "d"], dock: [], region })).toBeNull();
+      expect(chromeTarget("d", { cta: ["c", "d"], dock: [], region })).toBeNull();
+      expect(chromeTarget("s", { cta: ["s"], dock: [], region })).toBeNull();
+      expect(chromeTarget("1", { ...bare, region })).toBeNull();
+      expect(chromeTarget("g", { ...bare, region })).toBeNull();
+      expect(chromeTarget(HEADER_KEY, { ...bare, region })).toBeNull();
+    }
   });
 
   test("nothing answers while the board is open: those letters add its cards", () => {

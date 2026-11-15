@@ -2,6 +2,7 @@ import { app } from "./app.js";
 import { ctaView, ctaAction } from "./cta-model.js";
 import { tip } from "./tip.js";
 import { t } from "./i18n.js";
+import { landIn } from "./keys.js";
 // The call-to-action card at the bottom of the map: actions about the map, never knowledge questions. card.js hands
 // it a model each render. The card is drawn from that model's view (cta-model.js) and drawn again only when the view
 // changes, so a snapshot that changes nothing leaves it alone: a focused button keeps its focus and a press in
@@ -21,9 +22,15 @@ let current = null; // the newest model: what a button pressed now acts on
 let drawn = ""; // the view the card on the page was drawn from, as JSON
 let kind = null; // which card that is
 
-function press(id) {
+/** The buttons that bring up a pane (a lens on the island to begin at, the cartographer, the Keeper after the mentor): the keyboard follows them there. */
+const OPENS_PANE = new Set(["mentor", "keeper", "read", "handoff"]);
+
+/** `keyed`: pressed by a key (its letter, or Enter or Space on it), so the keyboard goes on to the pane's answer box. */
+function press(id, keyed) {
   const act = current && ctaAction(current, id);
-  if (act) current[act[0]]?.(...act.slice(1));
+  if (!act) return;
+  current[act[0]]?.(...act.slice(1));
+  if (OPENS_PANE.has(id)) landIn("pane", { answer: keyed });
 }
 
 function buttonEl(b) {
@@ -34,7 +41,7 @@ function buttonEl(b) {
   if (b.key) node.dataset.key = b.key;
   node.disabled = Boolean(b.disabled);
   if (b.tip) tip(node, b.tip, b.key);
-  node.addEventListener("click", () => press(b.id));
+  node.addEventListener("click", (e) => press(b.id, e.detail === 0)); // a click with no pointer behind it came from a key
   return node;
 }
 

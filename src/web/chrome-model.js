@@ -62,11 +62,12 @@ export function keyName({ key, metaKey = false, ctrlKey = false, altKey = false 
  * Which control over the map a key presses, as `{ where: "cta" | "dock" | "header", key }`, or null. `cta` and
  * `dock` are the keys their enabled, visible buttons carry. The bottom card comes first (its `c` confirms a reef
  * where the dock's `c` is not on the page); nothing answers while the board is open, which has these letters for
- * its own cards; and `⌘↵` approves from the map or the outline only, since in the pane it sends.
+ * its own cards. A letter answers only from the map, whose section of the cheat sheet lists them (the outline's
+ * `c` or `d` must never confirm a reef); `⌘↵` approves from the map or the outline, since in the pane it sends.
  */
 export function chromeTarget(name, { cta = [], dock = [], board = false, region = "map", header = true } = {}) {
   if (!name || board) return null;
-  if (name === "⌘↵" && region === "pane") return null;
+  if (name === "⌘↵" ? region === "pane" : region !== "map") return null;
   if (cta.includes(name)) return { where: "cta", key: name };
   if (dock.includes(name)) return { where: "dock", key: name };
   if (name === HEADER_KEY && header) return { where: "header", key: name };
