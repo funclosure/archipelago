@@ -366,10 +366,9 @@ export function installKeys() {
     c?.addEventListener("mousedown", () => setRegion(name));
   }
   document.getElementById("board")?.addEventListener("mousedown", () => setRegion("map")); // the loop registered the canvas; the board is the map's container only while open
-  document.addEventListener("mousedown", () => {
-    pressing = true;
-    setTimeout(() => (pressing = false), 0); // the press's own focus change runs before this; a click's work, later, does not
-  }, true);
+  // The press's own focus change happens between these two; the click's work (which may remove its button) after both.
+  document.addEventListener("mousedown", () => (pressing = true), true);
+  window.addEventListener("mouseup", () => (pressing = false), true);
   // The control that had the keyboard went away. After the work that removed it, which may have focused another.
   document.addEventListener("focusout", (e) => {
     if (!pressing && !e.relatedTarget) queueMicrotask(catchFall);
