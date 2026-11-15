@@ -74,8 +74,48 @@ export function inlineSegments(text) {
 }
 
 /**
+ * One table row's cells, trimmed: the outer pipes are dropped, `\|` is a pipe inside a cell, and a pipe inside a
+ * `code` span stays in it (GitHub splits there, but a model writing `a || b` in a cell means the code). A backtick
+ * with no partner later in the row is plain text.
+ */
+export function tableCells(line) {
+  let s = line.trim();
+  if (s.startsWith("|")) s = s.slice(1);
+  if (s.endsWith("|") && !s.endsWith("\\|")) s = s.slice(0, -1);
+  const cells = [];
+  let cell = "";
+  for (let i = 0; i < s.length; i++) {
+    const ch = s[i];
+    if (ch === "\\" && s[i + 1] === "|") {
+      cell += "|";
+      i++;
+    } else if (ch === "`" && s.indexOf("`", i + 1) > i) {
+      const end = s.indexOf("`", i + 1);
+      cell += s.slice(i, end + 1);
+      i = end;
+    } else if (ch === "|") {
+      cells.push(cell.trim());
+      cell = "";
+    } else cell += ch;
+  }
+  cells.push(cell.trim());
+  return cells;
+}
+
+/** A line with a pipe that is not escaped: a table row's only sign. */
+const hasPipe = (line) => /(^|[^\\])\|/.test(line);
+
+/** The alignments a delimiter row (`|---|:--:|--:|`) sets, one per column (`left`, `center`, `right`, or null), or null when the line is not one. */
+export function tableAlign(line) {
+  if (!hasPipe(line) || !/^\s*\|?\s*:?-+:?\s*(\|\s*:?-+:?\s*)*\|?\s*$/.test(line)) return null;
+  return tableCells(line).map((c) => (c.startsWith(":") && c.endsWith(":") ? "center" : c.endsWith(":") ? "right" : c.startsWith(":") ? "left" : null));
+}
+
+/**
  * Block markdown, line by line, forgiving of half-written input: paragraphs (single newlines kept as
- * line breaks), #–### headings, -, *, or + bullets, 1. or 1) items, ``` fences (unclosed at the end still counts).
+ * line breaks), #–### headings, -, *, or + bullets, 1. or 1) items, ``` fences (unclosed at the end still counts),
+ * and tables (a row of cells, a delimiter row with as many, then rows while each line has a pipe; a row is cut or
+ * filled to the header's width, as GitHub does).
  * Prose lines get inline TeX as plain text (`texLite`) and full-width punctuation beside Chinese (`cjkPunctuation`); fences stay as written.
  */
 export function mdBlocks(text) {
@@ -96,7 +136,14 @@ export function mdBlocks(text) {
     if (list) blocks.push(list);
     list = null;
   };
-  for (const raw of String(text).split("\n")) {
+  const lines = String(text).split("\n");
+  const cellsOf = (row, width) => {
+    const cells = tableCells(row).slice(0, width);
+    while (cells.length < width) cells.push("");
+    return cells.map((c) => inlineSegments(prose(c)));
+  };
+  for (let i = 0; i < lines.length; i++) {
+    const raw = lines[i];
     const line = raw.trimEnd();
     if (fence) {
       if (/^\s*```/.test(line)) {
@@ -112,6 +159,20 @@ export function mdBlocks(text) {
       flushList();
       flushQuote();
       fence = { type: "code", lang: f[1].toLowerCase(), text: "", closed: false };
+      continue;
+    }
+    // A table: this line is its header when the next is a delimiter row with as many cells. It may follow a
+    // paragraph's lines directly; it ends at a blank line, a fence, or a line with no pipe.
+    const align = hasPipe(line) && i + 1 < lines.length ? tableAlign(lines[i + 1]) : null;
+    if (align && align.length === tableCells(line).length) {
+      flushPara();
+      flushList();
+      flushQuote();
+      const table = { type: "table", align, head: cellsOf(line, align.length), rows: [] };
+      i += 2;
+      for (; i < lines.length && lines[i].trim() && hasPipe(lines[i]) && !/^\s*```/.test(lines[i]); i++) table.rows.push(cellsOf(lines[i], align.length));
+      i--;
+      blocks.push(table);
       continue;
     }
     const q = line.match(/^\s*>\s?(.*)$/);

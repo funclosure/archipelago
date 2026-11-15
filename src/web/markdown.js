@@ -8,7 +8,7 @@ import { PLOT_LANGS } from "./plot-model.js";
 import { demoElement } from "./demo.js";
 import { DEMO_LANG } from "./demo-model.js";
 import { pinButton } from "./pin.js";
-import { watchWide } from "./wide.js";
+import { watchWide, watchMore } from "./wide.js";
 import { resolveLang } from "./code-model.js";
 import { t } from "./i18n.js";
 import { tip } from "./tip.js";
@@ -193,6 +193,35 @@ function appendLead(p, raw, onQuestion, terms) {
   p.append(first, after);
 }
 
+/**
+ * A table (from `mdBlocks`) in its own box, which scrolls sideways when the table is wider than the column and fades
+ * on the side that hides something (`watchMore`). A column's alignment is `data-align`, never an inline style.
+ */
+function tableElement(b, terms) {
+  const row = (cells, tag) => {
+    const tr = document.createElement("tr");
+    cells.forEach((segments, i) => {
+      const cell = document.createElement(tag);
+      if (tag === "th") cell.scope = "col";
+      if (b.align[i]) cell.dataset.align = b.align[i];
+      appendInline(cell, segments, terms);
+      tr.append(cell);
+    });
+    return tr;
+  };
+  const head = document.createElement("thead");
+  head.append(row(b.head, "th"));
+  const body = document.createElement("tbody");
+  for (const cells of b.rows) body.append(row(cells, "td"));
+  const table = document.createElement("table");
+  table.append(head, body);
+  const box = document.createElement("div");
+  box.className = "md-table";
+  box.append(table);
+  watchMore(box);
+  return box;
+}
+
 /** One parsed block (from `mdBlocks`) as its element, or null for a block that draws nothing. */
 function blockEl(b, { onQuestion = null, lead = false, terms = null, pin = null } = {}) {
   if (b.type === "p") {
@@ -233,6 +262,7 @@ function blockEl(b, { onQuestion = null, lead = false, terms = null, pin = null 
     }
     return list;
   }
+  if (b.type === "table") return tableElement(b, terms);
   if (b.type === "code" && b.lang === "mermaid" && b.closed) {
     return diagramElement(b.text, { pin });
   }

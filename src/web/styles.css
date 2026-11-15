@@ -508,9 +508,24 @@ pre, code, kbd { font-family: var(--font-mono); }
 :lang(zh) .log .msg { line-height: 1.9; letter-spacing: .02em; }
 :lang(zh) .msg:is(.judge, .mentor, .cartographer) :is(p, li, blockquote, h1, h2, h3) { max-width: 34em; }
 /* The blocks in a reply (code, a diagram, a plot, a demo) keep the paragraphs' distance; the first and last sit flush. */
-.log .msg > :is(.codeblock, .diagram, .plot, .demo) { margin: var(--sp-4) 0; }
-.log .msg > :is(.codeblock, .diagram, .plot, .demo):first-child { margin-top: 0; }
-.log .msg > :is(.codeblock, .diagram, .plot, .demo):last-child { margin-bottom: 0; }
+.log .msg > :is(.codeblock, .diagram, .plot, .demo, .md-table) { margin: var(--sp-4) 0; }
+.log .msg > :is(.codeblock, .diagram, .plot, .demo, .md-table):first-child { margin-top: 0; }
+.log .msg > :is(.codeblock, .diagram, .plot, .demo, .md-table):last-child { margin-bottom: 0; }
+/* A table in a reply, a reader's message or a note (`tableElement` in markdown.js): no box, hairline rules between
+   rows and a firmer one under the header, which is quieter than the cells; the first column sits on the text's own
+   edge. Wider than the column, it scrolls sideways and fades on the hidden side, like a code block. Cells wrap at
+   word boundaries only (the reply's `overflow-wrap: anywhere` would let a column shrink to one letter), and no
+   column is narrower than 10ch: a table that must scroll anyway would otherwise squeeze every column to its longest
+   word, and a cell out of sight, one word a line, would leave tall gaps in the rows on view. */
+.md-table { margin: 0 0 var(--sp-2); max-width: 100%; overflow-x: auto; }
+.md-table table { border-collapse: collapse; font-size: var(--fs-base); line-height: var(--lh-body); }
+.md-table :is(th, td) { padding: var(--sp-15) var(--sp-4) var(--sp-15) 0; text-align: start; vertical-align: top; border-bottom: 1px solid var(--line); overflow-wrap: normal; min-width: 10ch; }
+.md-table :is(th, td):last-child { padding-right: 0; }
+.md-table th { font-weight: var(--fw-semibold); color: var(--muted); border-bottom-color: var(--line-strong); }
+.md-table tbody tr:last-child td { border-bottom: 0; }
+.md-table [data-align="center"] { text-align: center; }
+.md-table [data-align="right"] { text-align: end; }
+.md-table code { overflow-wrap: normal; }
 .msg.you { align-self: flex-end; box-sizing: border-box; max-width: min(85%, 60ch); padding: var(--sp-2) var(--sp-4); background: var(--panel-2); border-radius: var(--r-lg) var(--r-lg) var(--r-xs) var(--r-lg); overflow-wrap: anywhere; }
 /* The reader's own words that something rests on (`renderMarkdown(…, { marks })`): underlined in the lamp's colour
    where a landmark was lit from them (the mentor's teal where one was explored), ringed in the reef's where a reef
@@ -867,9 +882,9 @@ body.outline-resizing :is(.outline, .chrome, .map-focus, .board-scrim, .board, .
    side that hides something fades out, and an arrow there moves it along. */
 .diagram.fit > .holder > svg { max-width: 100%; }
 /* (the same fade for a block of code whose long line scrolls it) */
-:is(.diagram > .holder, .codeblock pre)[data-more="end"] { -webkit-mask-image: linear-gradient(to right, black calc(100% - var(--sp-12)), transparent); mask-image: linear-gradient(to right, black calc(100% - var(--sp-12)), transparent); }
-:is(.diagram > .holder, .codeblock pre)[data-more="start"] { -webkit-mask-image: linear-gradient(to left, black calc(100% - var(--sp-12)), transparent); mask-image: linear-gradient(to left, black calc(100% - var(--sp-12)), transparent); }
-:is(.diagram > .holder, .codeblock pre)[data-more="both"] { -webkit-mask-image: linear-gradient(to right, transparent, black var(--sp-12), black calc(100% - var(--sp-12)), transparent); mask-image: linear-gradient(to right, transparent, black var(--sp-12), black calc(100% - var(--sp-12)), transparent); }
+:is(.diagram > .holder, .codeblock pre, .md-table)[data-more="end"] { -webkit-mask-image: linear-gradient(to right, black calc(100% - var(--sp-12)), transparent); mask-image: linear-gradient(to right, black calc(100% - var(--sp-12)), transparent); }
+:is(.diagram > .holder, .codeblock pre, .md-table)[data-more="start"] { -webkit-mask-image: linear-gradient(to left, black calc(100% - var(--sp-12)), transparent); mask-image: linear-gradient(to left, black calc(100% - var(--sp-12)), transparent); }
+:is(.diagram > .holder, .codeblock pre, .md-table)[data-more="both"] { -webkit-mask-image: linear-gradient(to right, transparent, black var(--sp-12), black calc(100% - var(--sp-12)), transparent); mask-image: linear-gradient(to right, transparent, black var(--sp-12), black calc(100% - var(--sp-12)), transparent); }
 .diagram > .wide-go { --btn-bg: var(--panel); position: absolute; top: calc(50% + var(--go-shift, 11px)); margin-top: calc(var(--h-sm) / -2); display: none; color: var(--text); border-color: var(--line-strong); border-radius: var(--r-full); box-shadow: var(--e-1); }
 .diagram > .wide-go.start { left: var(--sp-2); }
 .diagram > .wide-go.end { right: var(--sp-2); }

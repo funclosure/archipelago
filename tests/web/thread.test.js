@@ -151,6 +151,61 @@ test("mdBlocks parses blockquotes and keeps raw paragraph lines", () => {
 });
 
 {
+  const txt = (text) => [{ type: "text", text }];
+  test("mdBlocks parses a table: header, alignment, rows with inline marks, then a paragraph after a blank line", () => {
+    // The note the mentor pinned on a vim island (2026-11-15), which drew as raw pipes before tables were parsed.
+    const note = [
+      "| key | lowercase: at the cursor | UPPERCASE: at the line edge |",
+      "|---|---|---|",
+      "| i / I | **i**nsert before the cursor | **I**nsert at the start of the text (`^`) |",
+      "| a / A | **a**ppend after the cursor | **A**ppend at the end of the line (`$`) |",
+      "",
+      "Same pattern outside Insert mode: `C` = `c$`.",
+    ].join("\n");
+    const [table, p] = mdBlocks(note);
+    expect(table.type).toBe("table");
+    expect(table.align).toEqual([null, null, null]);
+    expect(table.head).toEqual([txt("key"), txt("lowercase: at the cursor"), txt("UPPERCASE: at the line edge")]);
+    expect(table.rows).toHaveLength(2);
+    expect(table.rows[0][1]).toEqual([{ type: "strong", text: "i" }, { type: "text", text: "nsert before the cursor" }]);
+    expect(table.rows[1][2]).toEqual([{ type: "strong", text: "A" }, { type: "text", text: "ppend at the end of the line (" }, { type: "code", text: "$" }, { type: "text", text: ")" }]);
+    expect(p.type).toBe("p");
+  });
+
+  test("mdBlocks reads alignment, rows without outer pipes, and cuts or fills a row to the header's width", () => {
+    const [table] = mdBlocks("name | cost | note\n:--- | ---: | :-:\nscan | O(n) | slow | extra\nseek | O(log n)");
+    expect(table.align).toEqual(["left", "right", "center"]);
+    expect(table.rows).toEqual([
+      [txt("scan"), txt("O(n)"), txt("slow")],
+      [txt("seek"), txt("O(log n)"), []],
+    ]);
+  });
+
+  test("mdBlocks keeps an escaped pipe and a pipe inside code in their cell", () => {
+    const [table] = mdBlocks("| op | means |\n|---|---|\n| `a || b` | either \\| both |");
+    expect(table.rows[0]).toEqual([[{ type: "code", text: "a || b" }], txt("either | both")]);
+  });
+
+  test("mdBlocks lets a table follow a paragraph's line and end at a line with no pipe", () => {
+    expect(mdBlocks("The keys:\n| k | v |\n|-|-|\n| x | y |\nThat is all.").map((b) => b.type)).toEqual(["p", "table", "p"]);
+  });
+
+  test("mdBlocks leaves pipes as text without a matching delimiter row", () => {
+    // Prose with a pipe, a delimiter of another width, and a delimiter that has not arrived yet (a reply still streaming).
+    expect(mdBlocks("a | b\nnext line").map((b) => b.type)).toEqual(["p"]);
+    expect(mdBlocks("| a | b | c |\n|---|---|").map((b) => b.type)).toEqual(["p"]);
+    expect(mdBlocks("| a | b |").map((b) => b.type)).toEqual(["p"]);
+    expect(mdBlocks("```\n| a | b |\n|---|---|\n```").map((b) => b.type)).toEqual(["code"]);
+    expect(mdBlocks("> | a | b |\n> |---|---|").map((b) => b.type)).toEqual(["quote"]);
+  });
+
+  test("mdBlocks gives a table's cells the prose treatment: full-width punctuation beside Chinese", () => {
+    const [table] = mdBlocks("| 鍵 | 作用 |\n|---|---|\n| i | 插入(游標前) |");
+    expect(table.rows[0][1]).toEqual(txt("插入（游標前）"));
+  });
+}
+
+{
   const m = (role, kind, body) => ({ role, kind, body });
   test("roundOf counts every reader answer when nothing is charted", () => {
     expect(roundOf([m("you", "text", "a"), m("judge", "text", "q"), m("you", "text", "b")])).toBe(2);
