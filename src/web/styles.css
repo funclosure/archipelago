@@ -1374,6 +1374,12 @@ body.empty .outline, body.empty .chrome, body.empty #map-focus, body.empty #boar
 /* Dialogs of the family. The welcome gate and the take-over notice are whole pages: solid water, over everything, no entrance. */
 .hosted { z-index: var(--z-dialog-top); }
 .hosted.welcome { z-index: calc(var(--z-viewer) + 1); background: var(--water); animation: none; }
+@media (min-width: 721px) { .hosted.welcome { padding-top: min(5vh, var(--sp-10)); } } /* the first screen: the card starts higher, so its foot is in a laptop's window */
+.hosted.welcome .dialog-foot > .lead > .btn.quiet { margin-left: calc(-1 * var(--sp-3)); } /* its words on the card's edge, as the other quiet rows' */
+@media (max-width: 720px) {
+  .hosted.welcome .dialog-foot > .lead { order: 1; flex-basis: 100%; } /* a phone: the two ways in on one row, the import under them */
+  .hosted.welcome .dialog-foot > .lead > .btn.quiet { margin-left: calc(-1 * var(--sp-4)); }
+}
 .hosted-card { accent-color: var(--lamp); }
 .hosted-card .lede { margin: 0; font: var(--fs-lg)/1.45 var(--font-serif); }
 .hosted-card .help code { font: var(--fs-xs) var(--font-mono); }

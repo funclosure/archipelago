@@ -454,8 +454,11 @@ function renderKey(card) {
   main.disabled = state.saving;
   const lead = [];
   const actions = [];
-  if (welcome) actions.push(button(t("hosted.tryWithout"), () => void saveKey({ stub: true }), "btn ghost", "try-without"));
-  else if (!simple) {
+  if (welcome) {
+    // The other way in, at the foot's left, so the gate stays one screen tall: a copy of charts made elsewhere.
+    if (provider) lead.push(button(t("hosted.importDatabase"), importDatabase, "btn quiet", "import"));
+    actions.push(button(t("hosted.tryWithout"), () => void saveKey({ stub: true }), "btn ghost", "try-without"));
+  } else if (!simple) {
     // The token is the only handle on credit that was paid for: no button here throws it away.
     const holdsCredit = provider?.proxy && state.credit?.purchased;
     if (keyHint && !holdsCredit) lead.push(button(t("hosted.forgetKey"), () => void forgetKey(), "btn ghost danger", "forget"));
@@ -480,7 +483,6 @@ function renderKey(card) {
       get.append(before, link, after);
       card.append(get);
     }
-    card.append(row(button(t("hosted.importDatabase"), importDatabase, "btn quiet md", "import")));
   }
   if (welcome) {
     // The landing page names every way to use Archipelago; Claude Code is the one this card cannot offer.
@@ -490,7 +492,8 @@ function renderKey(card) {
     const [before, after = ""] = t("hosted.claudeCode").split("{link}");
     other.append(before, link, after);
     card.append(other);
-    if (provider) card.append(noticeEl(provider));
+    // Where the key goes and what a turn costs, folded as in Your key: the gate fits a laptop's window.
+    if (provider) card.append(moreEl(provider));
     card.append(legalEl());
     return;
   }
@@ -507,7 +510,11 @@ function renderKey(card) {
     card.append(row(button(t("hosted.ownKey"), () => ((state.switching = true), own ? pickProvider(own.id) : render()), "btn quiet md", "own-key")));
   }
   else if (provider?.proxy && !state.tokenField) card.append(row(reveal("hosted.haveToken", { tokenField: true })));
-  // The long explanations are there for whoever wants them, folded.
+  card.append(moreEl(provider), legalEl());
+}
+
+/** The long explanations, there for whoever wants them, folded under "How it works". */
+function moreEl(provider) {
   const more = el("details", "more");
   more.open = state.moreOpen; // kept in the state: a redraw builds the element again
   more.addEventListener("toggle", () => (state.moreOpen = more.open));
@@ -516,7 +523,7 @@ function renderKey(card) {
   else if (provider) more.append(noticeEl(provider));
   // On our own server there is no stub to fall back to: forgetting its token starts a new free account.
   if (!provider?.proxy) more.append(el("p", "help", t("hosted.stubHelp")));
-  card.append(more, legalEl());
+  return more;
 }
 
 const SUPPORT = "support@archipelago.school";
