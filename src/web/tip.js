@@ -9,6 +9,7 @@ let pending = null; // the control the timer is waiting on
 let timer = 0;
 let watch = 0;
 let lastHiddenAt = null;
+let askedAt = -Infinity; // when the pending tip was asked for
 let pressedAt = null; // where the pointer was last pressed: no tip until it has moved away from there
 const noHover = typeof matchMedia === "function" ? matchMedia("(hover: none)") : null;
 
@@ -131,6 +132,7 @@ function ask(el) {
   clearTimeout(timer);
   if (shownFor) hide();
   pending = el;
+  askedAt = performance.now();
   timer = setTimeout(() => {
     pending = null;
     show(el);
@@ -153,7 +155,12 @@ document.addEventListener("pointerdown", (e) => {
   pressedAt = { x: e.clientX, y: e.clientY };
   hide();
 }, true);
-document.addEventListener("keydown", hide, true);
+// A key hides the tip, except the one it just asked for: keys.js handles keys on the window, ahead of this listener,
+// and a key that moves focus (a menu's arrows) has already asked for the tip of the control it landed on.
+document.addEventListener("keydown", (e) => {
+  if (pending && askedAt >= e.timeStamp) return;
+  hide();
+}, true);
 document.addEventListener("wheel", hide, { capture: true, passive: true });
 document.addEventListener("focusin", (e) => {
   const el = tipped(e.target);
