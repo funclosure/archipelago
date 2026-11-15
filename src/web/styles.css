@@ -983,8 +983,17 @@ body[data-focus="outline"] .outline .dash.cur::before { box-shadow: 0 0 0 2px va
 /* The page's map of keys, a dialog like the others (keys.js): every section of where the page is now, in two columns.
    A row is what a key does, with its caps at the right; keys pressed together sit close, alternatives apart. The
    section of the region that has the keyboard is named in the lamp. The foot names the command palette's key. */
-.keys-card { gap: var(--sp-4); }
-.keys-card .cols { columns: 2; column-gap: var(--sp-10); }
+/* Never taller than the window: the sections scroll between the head and the foot, which stay. A soft shade at the
+   edge where more lies (painted with the list, covered once its end is reached), so a cut-off list says so; the
+   foot stands over the list's last padding, opaque, so rows pass under its rule. */
+.keys-card { --keys-top: min(12vh, 96px); --keys-bottom: var(--sp-6); display: flex; flex-direction: column; gap: var(--sp-4); max-height: calc(100dvh - var(--keys-top) - var(--keys-bottom)); }
+.keys-card > :not(.cols) { flex: none; }
+.keys-card .cols { flex: 0 1 auto; columns: 2; column-gap: var(--sp-10); min-height: 0; overflow-y: auto; overscroll-behavior: contain;
+  background:
+    linear-gradient(var(--panel) 30%, transparent) center top / 100% var(--sp-8) no-repeat local,
+    linear-gradient(to top, var(--panel) calc(var(--sp-5) + var(--sp-3)), transparent calc(var(--sp-5) + var(--sp-8))) center bottom / 100% calc(var(--sp-5) + var(--sp-8)) no-repeat local,
+    radial-gradient(farthest-side at 50% 0, var(--shadow-soft), transparent) center top / 100% var(--sp-3) no-repeat scroll,
+    radial-gradient(farthest-side at 50% 100%, var(--shadow-soft), transparent) center bottom var(--sp-5) / 100% var(--sp-3) no-repeat scroll; }
 .keys-card .ksec { break-inside: avoid; padding-bottom: var(--sp-5); }
 .keys-card .ksec > .eyebrow { margin: 0 0 var(--sp-1); padding-bottom: var(--sp-15); border-bottom: 1px solid var(--line); }
 .keys-card .ksec.here > .eyebrow { color: var(--lamp); }
@@ -993,7 +1002,7 @@ body[data-focus="outline"] .outline .dash.cur::before { box-shadow: 0 0 0 2px va
 .keys-card .caps { display: inline-flex; flex: none; align-items: center; gap: var(--sp-15); }
 .keys-card .caps.gesture { font-size: var(--fs-sm); color: var(--muted); }
 .keys-card kbd { min-width: 22px; font-size: var(--fs-xs); line-height: 18px; }
-.keys-foot { display: flex; align-items: center; gap: var(--sp-2); margin-top: calc(-1 * var(--sp-5)); padding-top: var(--sp-3); border-top: 1px solid var(--line); font-size: var(--fs-sm); color: var(--muted); }
+.keys-foot { position: relative; display: flex; align-items: center; gap: var(--sp-2); margin-top: calc(-1 * var(--sp-5)); padding-top: var(--sp-3); border-top: 1px solid var(--line); background: var(--panel); font-size: var(--fs-sm); color: var(--muted); }
 
 /* ---- board ---- */
 .board-scrim { position: fixed; top: 0; bottom: 0; left: var(--outline-w); right: 0; background: var(--scrim); z-index: var(--z-panel); opacity: 0; transition: opacity var(--t-med) var(--ease), left var(--t-med) var(--ease); }
@@ -1579,6 +1588,7 @@ body.empty .outline, body.empty .chrome, body.empty #map-focus, body.empty #boar
   .viewer { z-index: var(--z-viewer); padding: var(--sp-3) var(--sp-3) calc(var(--places-h, 0px) + var(--sp-3)); }
   .new-domain-card .map-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .keys-card .cols { columns: 1; }
+  .keys-card { --keys-top: var(--sp-4); --keys-bottom: calc(var(--places-h, 0px) + var(--sp-6)); } /* the shell's padding here */
 }
 
 
