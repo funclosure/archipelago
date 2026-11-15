@@ -435,7 +435,7 @@ async function persistPlacement() {
     if (gen === app.placementGen) for (const n of nodes) app.placing.delete(n.slug);
     app.placementInFlight = false;
   } catch (error) {
-    console.error("placement not saved, retrying in 5s", error);
+    if (error?.code !== "moved") console.error("placement not saved, retrying in 5s", error); // hosted: the database went to another tab, which places them itself
     setTimeout(() => {
       app.placementInFlight = false;
     }, 5000);
@@ -714,11 +714,11 @@ function drawSketchingHere(now, tool) {
 
 const RETRY_MS = 3000;
 
-/** Hosted: another tab holds the database. Not a failure to explain: the header offers to move it here (hosted.js). */
+/** Hosted: another tab holds the database. Not a failure to explain: a page offers to move it here (hosted.js). */
 function elsewhere(error) {
   if (error?.code !== "another-tab") return false;
   clearNote();
-  anotherTab(document.getElementById("breadcrumb"));
+  anotherTab();
   return true;
 }
 

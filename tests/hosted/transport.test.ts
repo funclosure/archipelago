@@ -21,23 +21,35 @@ let context: () => ApiContext | Promise<ApiContext> = () => ctx;
 /** The worker's own /hosted/ routes, as `worker.ts` passes them: here a stand-in per test. */
 let hosted = async (_req: Request): Promise<Response> => new Response("none", { status: 404 });
 
+/** How many workers the page has started, and how many it ended. */
+const workers = { started: 0, ended: 0 };
+
 class FakeWorker extends EventTarget {
   private onMessage = createHandler(() => context(), (message: WorkerMessage) => {
     queueMicrotask(() => this.dispatchEvent(new MessageEvent("message", { data: structuredClone(message) })));
   }, (req) => hosted(req));
+  constructor() {
+    super();
+    workers.started++;
+  }
   postMessage(message: PageMessage) {
     void this.onMessage(structuredClone(message));
+  }
+  terminate() {
+    workers.ended++;
   }
 }
 
 let request: (path: string, init?: RequestInit) => Promise<Response>;
+let release: (reason: string, options?: { final?: boolean }) => void;
+let holdsDatabase: () => boolean;
 let streamPost: (url: string, body: unknown, onEvent: (e: { type: string; data: any }) => void, signal?: AbortSignal) => Promise<void>;
 
 beforeAll(async () => {
   (globalThis as any).ARCHIPELAGO_HOSTED = true;
   (globalThis as any).Worker = FakeWorker;
   // @ts-ignore: plain JS modules of the page
-  ({ request } = await import("../../src/web/transport.js"));
+  ({ request, release, holdsDatabase } = await import("../../src/web/transport.js"));
   // @ts-ignore
   ({ streamPost } = await import("../../src/web/stream.js"));
 });
@@ -155,3 +167,21 @@ test("an image goes up as base64 and comes back through the worker as bytes, wit
   expect(res.headers.get("content-type")).toBe("image/png");
   expect(new Uint8Array(await res.arrayBuffer())).toEqual(png);
 });
+
+test("a page that lets its worker go starts another for its next request, unless another tab took the database", async () => {
+  await request("/api/domains");
+  expect(holdsDatabase()).toBe(true); // its worker has answered: it holds the database
+  const before = { ...workers };
+  release("left the page"); // a reload or the back-forward cache: a page restored from it starts a new worker
+  expect(workers.ended).toBe(before.ended + 1);
+  expect(holdsDatabase()).toBe(false);
+  expect((await request("/api/domains")).status).toBe(200);
+  expect(workers.started).toBe(before.started + 1);
+  // Another tab took the database over: the next poll must not start a worker that takes the lock back.
+  release("Archipelago moved to another tab", { final: true });
+  const error = await request("/api/version?domain=sd").catch((e: any) => e);
+  expect(error.message).toBe("Archipelago moved to another tab");
+  expect(error.code).toBe("moved");
+  expect(workers.started).toBe(before.started + 1);
+  expect(holdsDatabase()).toBe(false);
+}); // last in this file: the page module stays released for good after it

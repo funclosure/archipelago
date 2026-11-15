@@ -1,10 +1,11 @@
 // What only the hosted build shows: the welcome screen (a key, Try without a key, or an import), Your key, export
 // and import of the database, and the hand-over when another tab holds the database. The worker keeps the keys,
 // one per provider (`src/hosted/settings.ts`); this page sends a key once and reads back only its last four characters.
-// Its dialogs are of the family (dialog.js): the shared shell, head, fields and foot. The welcome gate and the
-// take-over notice are whole pages with no way out but their own buttons; Your key and the import question close on
-// Escape, the close button and a press on the veil.
-import { request, release } from "./transport.js";
+// Its dialogs are of the family (dialog.js): the shared shell, head, fields and foot. The welcome gate, the hand-over
+// (another tab has the database: Use it here) and the take-over notice (it moved to another tab) are whole pages with
+// no way out but their own buttons; Your key and the import question close on Escape, the close button and a press
+// on the veil.
+import { request, release, holdsDatabase } from "./transport.js";
 import { t } from "./i18n.js";
 import { amountOf, PAID_CHECKS_MS } from "./credit-model.js";
 import { toast, toastError } from "./toast.js";
@@ -12,8 +13,8 @@ import { showDialog, redraw, focusFirst, dialogHead, dialogFoot, labelled } from
 
 export const isHosted = () => globalThis.ARCHIPELAGO_HOSTED === true;
 
-/** `open`: null, "welcome" (no way out but a choice), "key" (Your key), "import" (the replace warning), "elsewhere". */
-const state = { open: null, view: null, provider: null, key: "", model: null, remember: true, saving: false, error: null, file: null, credit: null, buying: false, thanks: null, switching: false, tokenField: false, moreOpen: false, buyError: null };
+/** `open`: null, "welcome" (no way out but a choice), "key" (Your key), "import" (the replace warning), "elsewhere" (it moved to another tab), "another" (another tab has it: Use it here). */
+const state = { open: null, taking: false, view: null, provider: null, key: "", model: null, remember: true, saving: false, error: null, file: null, credit: null, buying: false, thanks: null, switching: false, tokenField: false, moreOpen: false, buyError: null };
 let root = null;
 let started = null; // resolves the welcome gate
 
@@ -51,16 +52,52 @@ function persist() {
   void navigator.storage?.persist?.().catch(() => {});
 }
 
+/**
+ * The tabs of this site speak over one channel, so that exactly one of them holds the `archipelago-db` lock:
+ * "who" (a tab starting asks whether another is using the database), "here" (the tab that is answers), "takeover"
+ * (a tab asks for it: every other tab lets its worker go for good and says where Archipelago went), "released" (the
+ * tab that held it has let go, so the asking tab reloads at once). A page never hears its own messages.
+ */
+let channel = null;
+/** How long "Use it here" waits for the tab that holds the database to say it let go; a tab that never answers (closed, or frozen in the background) holds nothing a reload cannot wait out. */
+const TAKEOVER_WAIT_MS = 1500;
+
 export function installHosted() {
   root = document.getElementById("hosted");
-  // A tab that asks to take over gets the database: this one lets its worker go and says where Archipelago went.
-  if (isHosted() && typeof BroadcastChannel === "function") {
-    new BroadcastChannel("archipelago").addEventListener("message", (event) => {
-      if (event.data !== "takeover") return;
-      release(t("hosted.movedReason"));
-      open("elsewhere");
-    });
-  }
+  if (!isHosted() || typeof BroadcastChannel !== "function") return;
+  channel = new BroadcastChannel("archipelago");
+  channel.addEventListener("message", (event) => {
+    if (event.data === "who" && holdsDatabase()) channel.postMessage("here");
+    else if (event.data === "takeover") {
+      const held = holdsDatabase();
+      // For good: a poll after this must not start a worker that takes the lock back from the tab that asked.
+      release(t("hosted.movedReason"), { final: true });
+      if (held) channel.postMessage("released");
+      if (state.open !== "another") open("elsewhere"); // a tab that never had it keeps saying it is open elsewhere
+    }
+  });
+}
+
+/**
+ * Rejects as soon as another tab says it is using the database, so this one shows the hand-over at once instead of
+ * waiting out its worker's wait for the lock (which it stops: this tab holds nothing until the reader moves it here).
+ * Never settles when no tab answers. `done()` stops listening once the database has answered here.
+ */
+function heldElsewhere() {
+  let done = () => {};
+  const answered = new Promise((_, reject) => {
+    if (!channel) return;
+    const hear = (event) => {
+      if (event.data !== "here") return;
+      done();
+      reject(Object.assign(new Error(t("hosted.openElsewhere")), { code: "another-tab" }));
+      release(t("hosted.openElsewhere"), { final: true }); // until the reader moves it here, which reloads
+    };
+    done = () => channel.removeEventListener("message", hear);
+    channel.addEventListener("message", hear);
+    channel.postMessage("who");
+  });
+  return { answered, done: () => done() };
 }
 
 /**
@@ -70,7 +107,12 @@ export function installHosted() {
 export async function welcomeGate() {
   if (!isHosted()) return;
   root ??= document.getElementById("hosted");
-  state.view = await (await call("/hosted/settings")).json();
+  const elsewhere = heldElsewhere();
+  try {
+    state.view = await (await Promise.race([call("/hosted/settings"), elsewhere.answered])).json();
+  } finally {
+    elsewhere.done();
+  }
   if (backFromCheckout()) setTimeout(thank, 0);
   if (state.view.key || state.view.stub || state.view.free) return; // free: our own server answers, no key to ask for
   open("welcome");
@@ -183,7 +225,7 @@ function close() {
 
 /** A request to leave (Escape, the close button, a press on the veil). The welcome gate and the take-over notice have no way out but their own buttons. */
 function leave() {
-  if (state.saving || state.open === "welcome" || state.open === "elsewhere") return;
+  if (state.saving || state.open === "welcome" || state.open === "elsewhere" || state.open === "another") return;
   if (state.open === "import" && state.from === "welcome") return open("welcome"); // back to the gate it came from
   close();
 }
@@ -298,16 +340,29 @@ async function replaceWith(file) {
   }
 }
 
-/** Shown in place of the map when another tab holds the database: one button moves it here. */
-export function anotherTab(nav) {
-  const take = el("button", "crumb start", t("hosted.useItHere"));
-  take.type = "button";
-  take.addEventListener("click", () => {
-    take.disabled = true;
-    new BroadcastChannel("archipelago").postMessage("takeover");
-    setTimeout(() => location.reload(), 400); // the other tab's worker ends at once; its lock goes with it
+/** Shown in place of the map when another tab holds the database: a page like the moved notice, whose one button moves it here. */
+export function anotherTab() {
+  open("another");
+}
+
+/**
+ * "Use it here": asks the tab that holds the database to let it go, and reloads once it has (or once it has had
+ * time to; a tab that never answers holds nothing a reload cannot wait out). This page's own worker goes first.
+ */
+function takeOver() {
+  if (state.taking) return;
+  state.taking = true;
+  render();
+  release(t("hosted.movedReason"), { final: true }); // nothing here may start a worker before the reload
+  const go = () => location.reload();
+  const timer = setTimeout(go, TAKEOVER_WAIT_MS);
+  channel?.addEventListener("message", (event) => {
+    if (event.data !== "released") return;
+    clearTimeout(timer);
+    go();
   });
-  nav.replaceChildren(t("hosted.openElsewhere"), take);
+  if (channel) channel.postMessage("takeover");
+  else go();
 }
 
 function render() {
@@ -317,7 +372,7 @@ function render() {
 
 function draw() {
   root.hidden = state.open === null;
-  root.classList.toggle("welcome", state.open === "welcome" || state.open === "elsewhere"); // nothing behind it yet, or nothing to use
+  root.classList.toggle("welcome", state.open === "welcome" || state.open === "elsewhere" || state.open === "another"); // nothing behind it yet, or nothing to use
   // ⌘↵ is the key form's main action; the import question, which replaces everything, is never on a shortcut.
   showDialog(root, state.open !== null, { close: leave, submit: state.open === "welcome" || state.open === "key" ? () => root.querySelector("form.fields")?.requestSubmit() : null });
   root.replaceChildren();
@@ -329,6 +384,11 @@ function draw() {
   else if (state.open === "elsewhere") {
     card.append(dialogHead("Archipelago", null, { id: "hosted-title" }), el("p", "help", t("hosted.movedHelp")));
     card.append(dialogFoot([], [button(t("hosted.reload"), () => location.reload(), "btn", "reload")]));
+  } else if (state.open === "another") {
+    card.append(dialogHead("Archipelago", null, { id: "hosted-title" }), el("p", "help", t("hosted.openElsewhere")));
+    const take = button(state.taking ? t("hosted.movingHere") : t("hosted.useItHere"), takeOver, "btn", "use-here");
+    take.disabled = state.taking;
+    card.append(dialogFoot([], [take]));
   }
   root.append(card);
 }
