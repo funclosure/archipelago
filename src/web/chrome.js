@@ -13,7 +13,7 @@ import { select } from "./interactions.js";
 import { openChart, openGuide } from "./chart.js";
 import { boardOpen } from "./board.js";
 import { ctaKeys, pressCtaKey } from "./cta.js";
-import { registerRegion, region, setRegion } from "./keys.js";
+import { landIn, registerRegion, region, setRegion } from "./keys.js";
 import { isTyping } from "./keys-model.js";
 import { icon } from "./icons.js";
 import { tip } from "./tip.js";
@@ -161,6 +161,11 @@ function linkEl(item, part) {
     // The pane opens and the strip moves under a pointer that has not moved: no cell that lands there may take that for a rest.
     hint.still = { x: e.clientX, y: e.clientY };
     void select(part.slug);
+  });
+  a.addEventListener("keydown", (e) => {
+    if ((e.key !== "Enter" && e.key !== " ") || e.metaKey || e.ctrlKey || e.altKey) return;
+    e.preventDefault(); // not a native button: Enter and Space press it here (keys.js leaves a focused control its own press)
+    a.click();
   });
   a.addEventListener("pointerenter", () => light(a, true));
   a.addEventListener("pointerleave", () => light(a, false));
@@ -344,7 +349,12 @@ function dockItem({ action, label, pending, key }) {
   const line = el("span", "dock-label");
   line.append(el("span", "words", label), el("kbd", null, key));
   b.append(line, dockIcon(action));
-  b.addEventListener("click", () => (action === "guide" ? openGuide() : openChart()));
+  b.addEventListener("click", (e) => {
+    if (action === "guide") openGuide();
+    else openChart();
+    // The dock steps aside for the pane it opened: the keyboard goes there, to the answer box after a key (detail 0).
+    landIn("pane", { answer: e.detail === 0 });
+  });
   return b;
 }
 
@@ -448,57 +458,31 @@ function chromeKey(e) {
   return focusHeader();
 }
 
-const CONTROLS = ".chrome.top :is(button, [role='button']), #dock button, #cta button, .now-playing button, .map-note button";
-
 /**
- * Keys that belong to a control over the map before they belong to the page: this listener is on the window ahead
- * of keys.js's. Escape lets a pinned hint go, or takes the keyboard out of the header; the arrows walk the header;
- * and Enter or Space on a focused control presses it, where the map would otherwise take Enter for itself.
+ * The header's own keys, offered by keys.js before any region's (the map under the header would pan): ← → Home End
+ * walk its controls and ↑ ↓ do nothing there. Enter and Space press the focused control (keys.js leaves them to it),
+ * and Escape is a rung of keys.js's ladder (`header`: the keyboard goes back to the map). Returns whether it took the key.
  */
-function onKeydown(e) {
-  if (e.isComposing || e.keyCode === 229) return;
-  const inHeader = e.target instanceof Element && Boolean(e.target.closest(".chrome.top"));
-  const take = () => {
-    e.preventDefault();
-    e.stopImmediatePropagation();
-  };
-  if (hint.key !== null && !hint.pinned) closeHint(); // a card that only hovers goes at the first key, like a tooltip
-  if (e.key === "Escape") {
-    if (hint.key !== null) {
-      take(); // a pinned card is the first thing Escape lets go
-      closeHint();
-    } else if (inHeader) {
-      take(); // then the header gives the keyboard back to the map
-      setRegion("map");
-      document.getElementById("map")?.focus({ preventScroll: true });
-    }
-    return;
-  }
-  if (e.metaKey || e.ctrlKey || e.altKey) return;
-  if (inHeader) {
-    const stops = headerStops();
-    const next = roveTo(stops.length, stops.indexOf(e.target.closest("button, [role='button']")), e.key);
-    if (next !== null) {
-      take();
-      stops[next]?.focus({ preventScroll: true });
-      return;
-    }
-  }
-  if (e.key === "Enter" || e.key === " ") {
-    const control = e.target instanceof Element ? e.target.closest(CONTROLS) : null;
-    if (!control) return;
-    e.stopImmediatePropagation(); // the press is the control's own
-    if (control.tagName !== "BUTTON") {
-      e.preventDefault(); // a name in the strip is not a native button: press it here
-      control.click();
-    }
-  }
+function headerKey(e) {
+  const stop = e.target instanceof Element ? e.target.closest(".chrome.top :is(button, [role='button'])") : null;
+  if (!stop) return false;
+  if (e.key === "ArrowUp" || e.key === "ArrowDown") return true;
+  const stops = headerStops();
+  const next = roveTo(stops.length, stops.indexOf(stop), e.key);
+  if (next === null) return false;
+  stops[next]?.focus({ preventScroll: true });
+  return true;
 }
 
-/** Once, before keys.js installs its own listener: the header's keys, the hint card's manners, and what follows a change of selection. */
+/** Once: the chrome's keys (keys.js calls them in its order; this module has no key listener), the hint card's manners, and what follows a change of selection. */
 export function installChrome() {
-  window.addEventListener("keydown", onKeydown, { capture: true });
-  registerRegion("chrome", { onKey: chromeKey });
+  registerRegion("chrome", {
+    onKey: chromeKey,
+    headerKey,
+    anyKey: () => hint.key !== null && !hint.pinned && closeHint(), // a card that only hovers goes at the first key, like a tooltip
+    hintPinned: () => hint.key !== null && hint.pinned, // Escape's `hint` rung: a pinned card folds before anything under it changes
+    closeHint,
+  });
   // A press anywhere but a cell or the card lets a pinned hint go.
   document.addEventListener("pointerdown", (e) => {
     if (hint.key !== null && !(e.target instanceof Element && e.target.closest(".strip-item, .strip-hint"))) closeHint();
