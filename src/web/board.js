@@ -383,8 +383,21 @@ function setStatus(text, bad = false) {
   editorStatus.classList.toggle("bad", bad);
 }
 
+/** A card's button whose key (`x`, `↵`, `⇧J`, `⇧K`) acts on the cursor's card: its tip names the key only on that card. */
+function cursorKeys(b, keys) {
+  b.dataset.cursorKeys = keys;
+  return b;
+}
+
 function paintCursor() {
-  for (const c of board.querySelectorAll(".card")) c.classList.toggle("cur", Number(c.dataset.id) === state.cursor);
+  for (const c of board.querySelectorAll(".card")) {
+    const cur = Number(c.dataset.id) === state.cursor;
+    c.classList.toggle("cur", cur);
+    for (const b of c.querySelectorAll(":scope > .cap [data-cursor-keys]")) {
+      if (cur) b.dataset.keys = b.dataset.cursorKeys;
+      else delete b.dataset.keys;
+    }
+  }
 }
 
 /** The first card cannot go up, the last cannot go down: set on the cards as they stand, kept elements included. */
@@ -437,11 +450,12 @@ function cardEl(card) {
   else if (card.kind === "code" && canCopy()) tools.append(copyButton(card.body));
   const acts = el("span", "acts");
   // Which arrow is live depends on where the card stands, which changes without the card changing: paintMoves sets it.
+  // Their keys act on the cursor's card, so only that card's tips name them (paintCursor).
   acts.append(
-    iconButton("arrow-up", t("board.moveUp"), () => void step(card.id, -1), "sm quiet move up", "⇧K"),
-    iconButton("arrow-down", t("board.moveDown"), () => void step(card.id, 1), "sm quiet move down", "⇧J"),
-    iconButton("pencil", t("board.edit"), () => edit(card), "sm quiet edit", "↵"),
-    iconButton("trash", t("board.remove"), () => void remove(card.id), "sm quiet remove", "x"),
+    cursorKeys(iconButton("arrow-up", t("board.moveUp"), () => void step(card.id, -1), "sm quiet move up"), "⇧K"),
+    cursorKeys(iconButton("arrow-down", t("board.moveDown"), () => void step(card.id, 1), "sm quiet move down"), "⇧J"),
+    cursorKeys(iconButton("pencil", t("board.edit"), () => edit(card), "sm quiet edit"), "↵"),
+    cursorKeys(iconButton("trash", t("board.remove"), () => void remove(card.id), "sm quiet remove"), "x"),
   );
   if (tools.childElementCount) ctl.append(tools);
   ctl.append(acts);

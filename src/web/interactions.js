@@ -297,6 +297,7 @@ export function installInteractions(canvas) {
     let best = null;
     let bestD = Infinity;
     for (const n of app.nodes) {
+      if (n.draft) continue; // a pending sketch's island is not on the map yet: nothing to select
       const d = Math.hypot(n.x - c.x, n.y - c.y);
       if (d < bestD) {
         best = n;
