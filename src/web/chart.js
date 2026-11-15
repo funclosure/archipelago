@@ -71,6 +71,10 @@ export function installChart({ render, sail: sailWith, grip }) {
     logGen++; // a diagram in a reply is drawn again in the new colours
     if (chart.open) rerender();
   });
+  // The server is back (app.js's poll): a thread that could not be read for want of it is read again, unasked.
+  document.addEventListener("reconnected", () => {
+    if (chart.open && chart.loadError) retryLoad();
+  });
 }
 
 export const isChartOpen = () => chart.open;
@@ -81,10 +85,53 @@ export const chartTurning = () => chart.inFlight && turnAbort !== null;
 /** The tool in flight while the cartographer works at the map's scale (null while it thinks), or undefined when it is not working there. */
 export const chartWorkingHere = () => (!guiding() && chart.inFlight && (chart.scale ?? null) === (app.scale ?? null) ? chart.progress : undefined);
 
+/**
+ * Words typed and not yet sent, by thread: the cartographer's per scale, the guide's per domain. Closing the pane or
+ * moving to another scale keeps them, and the same thread's box opens on them again. Memory only, as card.js keeps
+ * an island's.
+ */
+const drafts = new Map();
+const draftKey = (mode, scale) => `${app.domain}/${mode}/${mode === "guide" ? "" : scale ?? ""}`;
+
+/** Keeps the open thread's unsent words before the pane closes or moves to another thread. */
+function stashDraft() {
+  if (!chart.open) return;
+  const key = draftKey(chart.mode, chart.scale);
+  if (chart.draft.trim()) drafts.set(key, chart.draft);
+  else drafts.delete(key);
+}
+
 function reset(scale, mode = chart.mode) {
   turnGen += 1; // a stream from an earlier scale is no longer ours
   tray.clear(); // the draft's images go with its words
-  Object.assign(chart, { mode, scale: mode === "guide" ? null : scale, version: null, messages: [], sketch: null, pointers: [], loaded: false, loadError: null, draft: "", live: "", progress: null, inFlight: false, error: null, stopped: false, deciding: false });
+  stashDraft();
+  const at = mode === "guide" ? null : scale;
+  Object.assign(chart, { mode, scale: at, version: null, messages: [], sketch: null, pointers: [], loaded: false, loadError: null, draft: drafts.get(draftKey(mode, at)) ?? "", live: "", progress: null, inFlight: false, error: null, stopped: false, deciding: false });
+}
+
+/** Which of the two is open in this tab, per domain, so a reload brings it back as it brings back an island's pane. */
+const OPEN_KEY = () => `chart:${app.domain}`;
+function rememberOpen(mode) {
+  try {
+    if (mode) sessionStorage.setItem(OPEN_KEY(), mode);
+    else sessionStorage.removeItem(OPEN_KEY());
+  } catch {
+    /* storage unavailable: a reload shows the map */
+  }
+}
+
+/** After a reload: opens the guide or the cartographer again if it was open, unless an island's pane came back instead. */
+export function reopenChart() {
+  let mode = null;
+  try {
+    mode = sessionStorage.getItem(OPEN_KEY());
+  } catch {
+    return;
+  }
+  if (!mode) return;
+  if (app.selected) return rememberOpen(null); // the island was picked after it: the island's pane is the one open
+  if (mode === "guide") openGuide();
+  else openChart();
 }
 
 /**
@@ -95,6 +142,7 @@ export function openChart(scale = app.scale ?? null, { start = false, message = 
   if (mode === "guide") scale = null;
   if (!chart.open || chart.mode !== mode || chart.scale !== scale) reset(scale, mode);
   chart.open = true;
+  rememberOpen(mode);
   if (app.selected) void select(null); // the island pane closes; its listeners repaint the pane as the cartographer's
   else rerender();
   frameSelection(); // the pane's width is settled: refit the map beside it
@@ -110,7 +158,9 @@ export function openGuide({ start = false } = {}) {
 export function closeChart() {
   if (!chart.open) return;
   turnAbort?.abort();
+  stashDraft();
   chart.open = false;
+  rememberOpen(null);
   reset(null, "cartographer");
   rerender();
   frameSelection();
@@ -160,18 +210,21 @@ async function runTurn(message, sent = []) {
   if (chart.inFlight || !chart.open) return;
   const gen = ++turnGen;
   const scale = chart.scale;
+  const mode = chart.mode;
   const mine = () => chart.open && chart.scale === scale && gen === turnGen;
   Object.assign(chart, { inFlight: true, live: "", progress: null, error: null, stopped: false });
   const abort = new AbortController();
   turnAbort = abort;
   const images = sent.map((item) => item.image);
   const said = Boolean(message) || images.length > 0;
-  if (said) chart.messages = [...chart.messages, { id: `local-${Date.now()}`, role: "you", kind: "text", body: message ?? "", images: images.map((i) => ({ ...i, removed: false })) }];
+  const local = said ? { id: `local-${Date.now()}`, role: "you", kind: "text", body: message ?? "", images: images.map((i) => ({ ...i, removed: false })) } : null;
+  if (local) chart.messages = [...chart.messages, local];
   rerender();
   if (said) {
     follow.follow(); // sending is a request to watch the reply arrive
     follow.toEnd();
   }
+  let unsent = false; // the request never reached the server, or it refused it: nothing there changed
   try {
     const body = { domain: app.domain, mode: chart.mode, ...(scale && !guiding() ? { island: scale } : {}), ...(message ? { message } : {}), ...(images.length ? { images: images.map((i) => i.id) } : {}) };
     await streamPost("/api/probe", body, (e) => {
@@ -189,14 +242,25 @@ async function runTurn(message, sent = []) {
     }, abort.signal);
   } catch (error) {
     if (turnAbort === abort) turnAbort = null;
-    if (!mine()) return;
     // Refused or stopped before the stream opened: the server stored nothing, so the words go back in the box.
     const back = Boolean(message) && !error.midStream;
+    unsent = !error.aborted && !error.midStream;
+    if (!mine()) {
+      // The pane closed or moved on; the words still go back to the box they were written in.
+      if (!back) return;
+      if (chart.open && chart.mode === mode && chart.scale === scale) {
+        chart.draft = withRestored(chart.draft, message);
+        rerender();
+      } else drafts.set(draftKey(mode, scale), withRestored(drafts.get(draftKey(mode, scale)) ?? "", message));
+      return;
+    }
     if (error.aborted) chart.stopped = true;
     else {
       const words = failureWords(error);
-      chart.error = back && words === t("paneParts.offline") ? t("paneParts.offlineKept") : words;
+      chart.error = said && unsent && words === t("paneParts.offline") ? t("paneParts.offlineKept") : words;
     }
+    // A message the server never took leaves the log: it is in the box again, and one notice says so.
+    if (unsent && local) chart.messages = chart.messages.filter((m) => m !== local);
     if (back) chart.draft = withRestored(chart.draft, message);
     if (sent.length && !error.midStream) tray.restore(sent);
   }
@@ -204,10 +268,11 @@ async function runTurn(message, sent = []) {
   if (!mine()) return;
   if (liveFrame) cancelAnimationFrame(liveFrame);
   liveFrame = 0;
-  Object.assign(chart, { inFlight: false, live: "", progress: null, version: null }); // the reply and any sketch come back with the refetch
+  Object.assign(chart, { inFlight: false, live: "", progress: null });
+  if (!unsent) chart.version = null; // the reply and any sketch come back with the refetch; a turn never taken changed nothing
   document.dispatchEvent(new Event("turn")); // the pane's foot re-reads the model and, on the free start, the credit left
   rerender();
-  void refresh(); // a proposed sketch draws as drafts on the map in the same beat
+  if (!unsent) void refresh().catch(() => {}); // a proposed sketch draws as drafts on the map in the same beat
   focusChartAnswer();
 }
 
@@ -565,6 +630,8 @@ export function chartSend({ approve = true } = {}) {
 export function dropChart() {
   if (!chart.open) return;
   turnAbort?.abort();
+  stashDraft();
   chart.open = false;
+  rememberOpen(null);
   reset(null, "cartographer");
 }
