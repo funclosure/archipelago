@@ -166,7 +166,9 @@ export function installPlaces() {
   document.addEventListener("focusin", soon);
   document.addEventListener("focusout", soon);
   syncKeyboard();
-  document.addEventListener("select", (e) => on({ type: "select", slug: e.detail }));
+  // The page's own pick (interactions.js dispatches it at the document), never a text field's native `select`, which
+  // bubbles here too when its selection moves (a caret put after words given back to the box) and would leave the pane.
+  document.addEventListener("select", (e) => e.target === document && on({ type: "select", slug: e.detail }));
   document.addEventListener("board", (e) => {
     if (e.detail.open !== undefined) on({ type: "board", open: e.detail.open });
     else draw(); // its cards changed: the count on the tab
