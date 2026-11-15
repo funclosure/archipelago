@@ -333,8 +333,9 @@ async function remove(id) {
   await flushRemove();
   if (state.editor && state.editor.id === id) state.editor = null;
   if (state.cursor === id) {
-    state.near = neighbours(shownCards().map((c) => c.id), id); // j/k go on from the row it leaves
-    state.cursor = null;
+    // The cursor goes on to the card after it (before it, when it was the last), so x and u work again at once.
+    const near = neighbours(shownCards().map((c) => c.id), id);
+    state.cursor = near?.next ?? near?.prev ?? null;
   }
   state.removing = { id, kind: card.kind, title: card.title ?? null, slug: state.slug, timer: setTimeout(() => void flushRemove(), UNDO_MS) };
   render();

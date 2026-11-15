@@ -21,7 +21,7 @@ import { installImages } from "./images.js";
 import { installKeys } from "./keys.js";
 import { installBoard } from "./board.js";
 import { installTheme } from "./theme.js";
-import { openChart, chartWorkingHere } from "./chart.js";
+import { openChart, chartWorkingHere, reopenChart } from "./chart.js";
 import { thinkingLine } from "./progress-model.js";
 import { language, t } from "./i18n.js";
 import { request } from "./transport.js";
@@ -210,8 +210,12 @@ async function poll() {
   polling = true;
   try {
     const { version } = await api(`/api/version?domain=${encodeURIComponent(app.domain)}`);
+    const back = !app.connected;
     app.connected = true;
     if (version !== app.version) await refresh();
+    else if (back && app.snapshot) for (const fn of app.listeners) fn(app.snapshot); // what failed while it was away (a board) reads again
+    // The server is back: whatever could not be read for want of it reads again by itself (the pane's thread).
+    if (back) document.dispatchEvent(new Event("reconnected"));
   } catch {
     app.connected = false;
   } finally {
@@ -431,7 +435,7 @@ async function persistPlacement() {
     if (gen === app.placementGen) for (const n of nodes) app.placing.delete(n.slug);
     app.placementInFlight = false;
   } catch (error) {
-    console.error("placement not saved, retrying in 5s", error);
+    if (error?.code !== "moved") console.error("placement not saved, retrying in 5s", error); // hosted: the database went to another tab, which places them itself
     setTimeout(() => {
       app.placementInFlight = false;
     }, 5000);
@@ -721,11 +725,11 @@ function drawSketchingHere(now, tool) {
 
 const RETRY_MS = 3000;
 
-/** Hosted: another tab holds the database. Not a failure to explain: the header offers to move it here (hosted.js). */
+/** Hosted: another tab holds the database. Not a failure to explain: a page offers to move it here (hosted.js). */
 function elsewhere(error) {
   if (error?.code !== "another-tab") return false;
   clearNote();
-  anotherTab(document.getElementById("breadcrumb"));
+  anotherTab();
   return true;
 }
 
@@ -877,7 +881,7 @@ async function boot() {
     url.searchParams.delete("chart");
     history.replaceState(null, "", url);
     openChart(null, { start: true });
-  }
+  } else if (app.snapshot) reopenChart(); // a reload with the guide or the cartographer open brings it back
   // A link from the gallery page (/?map=<slug>): New domain opens on the shared maps with that one picked out.
   const shared = sharedMap();
   if (shared) openNewDomain({ map: shared });

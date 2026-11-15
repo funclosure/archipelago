@@ -249,7 +249,8 @@ export function describeChatError(error: unknown, model: string, host: string, h
     if (error.status >= 500) return say(`${host} is overloaded or down. Wait a moment and send again.`);
     return say(`${host} refused the request (HTTP ${error.status}): ${error.body.slice(0, 200)}`);
   }
-  if (error instanceof TypeError) return say(`Cannot reach ${host}. Check the connection and the base URL, then send again.`);
+  // In the browser there is no base URL to check: the provider is one of Your key's, at its own address.
+  if (error instanceof TypeError) return say(`Cannot reach ${host}. Check the connection${hosted ? "" : " and the base URL"}, then send again.`);
   return error;
 }
 

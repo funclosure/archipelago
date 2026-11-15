@@ -1,4 +1,4 @@
-import { app, api, setScale, frameSelection, setMode } from "./app.js";
+import { app, api, refresh, setScale, frameSelection, setMode } from "./app.js";
 import { streamPost } from "./stream.js";
 import { logItems, askFor, roundOf, systemText } from "./thread.js";
 import { landmarkLit, allExplored, startIsland } from "./view-model.js";
@@ -81,6 +81,33 @@ const thread = {
   stoppedImages: null, // ids an early stop gave back to the tray, until the refetch shows whether the server kept them
 };
 
+/**
+ * Words typed in a thread's box and not yet sent, by thread (`domain/island/lens`): `{ draft, dispute }`. Looking at
+ * another island, switching the lens, or closing the pane puts them here, and the thread's box opens on them again.
+ * A sent message leaves its box empty, and an empty box keeps nothing. Memory only, as the board's drafts are.
+ */
+const drafts = new Map();
+const draftKey = (slug, mode) => `${app.domain}/${slug}/${mode}`;
+
+/** Keeps the shown thread's unsent words before the pane moves to another thread. */
+function stashDraft() {
+  if (thread.slug === null) return;
+  const key = draftKey(thread.slug, thread.mode);
+  if (thread.draft.trim() || thread.disputeDraft.trim()) drafts.set(key, { draft: thread.draft, dispute: thread.disputeDraft });
+  else drafts.delete(key);
+}
+
+/** Words that never reached the server, from a turn the reader has since moved away from: back in that thread's box. */
+function giveBack(slug, mode, message) {
+  if (thread.slug === slug && thread.mode === mode) {
+    thread.draft = withRestored(thread.draft, message);
+    render();
+    return;
+  }
+  const kept = drafts.get(draftKey(slug, mode));
+  drafts.set(draftKey(slug, mode), { draft: withRestored(kept?.draft ?? "", message), dispute: kept?.dispute ?? "" });
+}
+
 /** Where a reading belongs, for the now-playing bar: the island's name, and how to come back to the reply from
  *  anywhere (its lens, its scale, its island, then the reply in view). */
 function readingOf(slug, mode) {
@@ -131,6 +158,10 @@ export function installCard() {
   remodel();
   document.addEventListener("settings", remodel);
   document.addEventListener("turn", remodel); // a cartographer turn ended (chart.js)
+  // The server is back (app.js's poll): a thread that could not be read for want of it is read again, unasked.
+  document.addEventListener("reconnected", () => {
+    if (thread.loadError) retryLoad();
+  });
   pane.addEventListener("mouseover", (e) => lightLandmark(e, true));
   pane.addEventListener("mouseout", (e) => lightLandmark(e, false));
   // A demo that grows (its frame finds its height, a console line lands) keeps a followed log at its end.
@@ -268,9 +299,11 @@ function resetThread(slug, mode = app.mode) {
   takeDemoSteps(); // what a demo printed belongs to the thread it was used beside
   tray.clear(); // the draft's images go with its words; sent ahead, they are deleted (never attached)
   turnGen += 1; // a stream still running from an earlier visit to this island is no longer ours
+  stashDraft(); // the words in the box stay with the thread they were written in
+  const kept = slug === null ? null : drafts.get(draftKey(slug, mode));
   Object.assign(thread, {
-    slug, mode, version: null, messages: [], asks: [], pointers: [], loaded: false, draft: "", live: "", progress: null, inFlight: false, error: null, loadError: null,
-    disputeDraft: "", stopped: false, stoppedDraft: null, litSeen: null, focusPending: false, answering: false, stay: false, speakNext: false, stoppedImages: null,
+    slug, mode, version: null, messages: [], asks: [], pointers: [], loaded: false, draft: kept?.draft ?? "", live: "", progress: null, inFlight: false, error: null, loadError: null,
+    disputeDraft: kept?.dispute ?? "", stopped: false, stoppedDraft: null, litSeen: null, focusPending: false, answering: false, stay: false, speakNext: false, stoppedImages: null,
   });
   noteOpen = false;
 }
@@ -297,7 +330,7 @@ async function loadThread(slug) {
     // A question carried here by a mentor's "sail to": into the answer box once the thread has begun; before that the
     // briefing offers to start with it.
     if (carry && carry.slug === slug && mode === "mentor" && messages.length > 0) {
-      thread.draft = carry.question;
+      thread.draft = withRestored(thread.draft, carry.question); // above any words kept from an earlier visit
       thread.focusPending = true;
       carry = null;
     }
@@ -356,12 +389,14 @@ async function runTurn(slug, message, askId, sent = []) {
   turnAbort = abort;
   const images = sent.map((item) => item.image);
   const said = Boolean(message) || images.length > 0;
-  if (said) thread.messages = [...thread.messages, { id: `local-${Date.now()}`, role: "you", kind: "text", body: message ?? "", images: images.map((i) => ({ ...i, removed: false })) }];
+  const local = said ? { id: `local-${Date.now()}`, role: "you", kind: "text", body: message ?? "", images: images.map((i) => ({ ...i, removed: false })) } : null;
+  if (local) thread.messages = [...thread.messages, local];
   render();
   if (said) {
     follow.follow(); // sending is a request to watch the reply arrive
     follow.toEnd();
   }
+  let unsent = false; // the request never reached the server, or it refused it: nothing there changed
   try {
     // What the reader did in a demo goes along with their words, so the mentor answers what actually happened.
     const demoSteps = said && mode === "mentor" ? takeDemoSteps() : [];
@@ -380,7 +415,12 @@ async function runTurn(slug, message, askId, sent = []) {
     }, abort.signal);
   } catch (error) {
     if (turnAbort === abort) turnAbort = null;
-    if (!mine()) return; // the reader moved on; nothing here is theirs
+    unsent = !error.aborted && !error.midStream;
+    if (!mine()) {
+      // The reader moved on; nothing on screen is this turn's. Words that never arrived still go back to their box.
+      if (unsent && message) giveBack(slug, mode, message);
+      return;
+    }
     if (error.aborted) {
       // The reader stopped it. The server keeps no reply. Stopped mid-stream, their message is stored and comes
       // back with the refetch; stopped before the stream opened, it may never have arrived, so the words go back
@@ -394,14 +434,17 @@ async function runTurn(slug, message, askId, sent = []) {
         tray.restore(sent);
         thread.stoppedImages = images.map((i) => i.id);
       }
-    } else {
-      // Refused or never sent: the server stored nothing, so the words (and images) go back in the box.
-      // Broken mid-stream: the server may have stored them, and the refetch will show it.
-      const back = Boolean(message) && !error.midStream;
+    } else if (unsent) {
+      // Refused or never sent: the server stored nothing. The message leaves the log (it was never sent), and its
+      // words and images go back in the box, once; one notice says so, with Try again.
       const words = failureWords(error);
-      thread.error = back && words === t("paneParts.offline") ? t("paneParts.offlineKept") : words;
-      if (back) thread.draft = withRestored(thread.draft, message);
-      if (sent.length && !error.midStream) tray.restore(sent);
+      thread.error = said && words === t("paneParts.offline") ? t("paneParts.offlineKept") : words;
+      if (local) thread.messages = thread.messages.filter((m) => m !== local);
+      if (message) thread.draft = withRestored(thread.draft, message);
+      if (sent.length) tray.restore(sent);
+    } else {
+      // Broken mid-stream: the server may have stored the message, and the refetch will show it.
+      thread.error = failureWords(error);
     }
   }
   if (turnAbort === abort) turnAbort = null;
@@ -411,7 +454,13 @@ async function runTurn(slug, message, askId, sent = []) {
   thread.inFlight = false;
   thread.live = "";
   thread.progress = null;
-  thread.version = null; // the stored reply and any system lines come back with the refetch
+  // The stored reply and any system lines come back with the refetch, and the snapshot with them: the verdict, a
+  // lit landmark or a reef in the head and on the map land as the turn ends, not on the next poll. A turn the
+  // server never took changed nothing there, so nothing is read again (and a server that is away says so once).
+  if (!unsent) {
+    thread.version = null;
+    void refresh().catch(() => {}); // the poll notices a server that is away
+  }
   render();
   remodel();
   // Focus the answer only if the reader is still where they sent from; Tab away mid-turn is a choice.

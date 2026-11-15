@@ -16,6 +16,7 @@ import { mapIcon } from "./map-icon.js";
 import { GALLERY_INDEX, GALLERY_PATH, galleryFor } from "./gallery-model.js";
 import { showDialog, redraw, rememberFocus, focusFirst, dialogHead, dialogFoot, discardFoot, withKey, labelled } from "./dialog.js";
 import { isDirty, leaveStep } from "./dialog-model.js";
+import { menuMove } from "./outline-model.js";
 import { icon } from "./icons.js";
 import { toast } from "./toast.js";
 
@@ -229,9 +230,24 @@ function galleryView(card) {
   card.append(dialogHead(t("newDomain.galleryTitle"), state.first ? null : leave, { id: "new-domain-title" }), el("p", "help", t("newDomain.galleryHelp")));
   const list = el("div", "shared-maps");
   if (!state.maps && !state.error) list.append(el("p", "help", t("newDomain.galleryLoading")));
+  // The list is one stop: ↑ ↓ (j k, Home, End) move between the maps, Enter opens one, Tab goes on past the list.
+  const home = state.maps?.find((e) => e.slug === state.pick)?.slug ?? state.maps?.[0]?.slug;
+  list.addEventListener("focusin", (e) => {
+    const at = e.target.closest?.(".shared-map");
+    if (at) for (const r of list.querySelectorAll(".shared-map")) r.tabIndex = r === at ? 0 : -1;
+  });
+  list.addEventListener("keydown", (e) => {
+    if (e.metaKey || e.ctrlKey || e.altKey || e.isComposing) return;
+    const rows = [...list.querySelectorAll(".shared-map:not(:disabled)")];
+    const to = menuMove(rows.length, rows.indexOf(document.activeElement), e.key);
+    if (to === null) return;
+    e.preventDefault();
+    rows[to].focus();
+  });
   for (const entry of state.maps ?? []) {
     const row = button(undefined, () => void addShared(entry), "shared-map", `map:${entry.slug}`);
     row.dataset.slug = entry.slug;
+    row.tabIndex = entry.slug === home ? 0 : -1;
     row.disabled = state.saving;
     row.classList.toggle("picked", entry.slug === state.pick);
     const meta = t("newDomain.galleryMeta", { islands: entry.islands.length, landmarks: entry.landmarks });
