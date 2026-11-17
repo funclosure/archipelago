@@ -1,6 +1,6 @@
 import type { Database } from "../sql.ts";
 import { ConflictError, NotFoundError } from "../errors.ts";
-import type { Island } from "../types.ts";
+import type { Island, VerdictState } from "../types.ts";
 
 const COLS =
   "id, domain_id as domainId, parent_id as parentId, slug, name, summary, sort_order as sortOrder, x, y, harbour, created_at as createdAt, updated_at as updatedAt";
@@ -187,6 +187,21 @@ function assertNotDescendant(db: Database, island: Island, candidateParentId: nu
     seen.add(current.id);
     current = current.parentId === null ? null : getIslandById(db, current.parentId);
   }
+}
+
+/** An island as a reply may name it: its domain's slug, the scale it sits at (its parent's slug, null at the top), and its latest verdict (null in open water). */
+export type Place = { domain: string; slug: string; name: string; scale: string | null; state: VerdictState | null };
+
+/** Every island in every domain, for the page to link the names a persona's reply gives (`GET /api/places`). Top scale first, in map order. */
+export function listPlaces(db: Database): Place[] {
+  return db
+    .query<Place, []>(
+      `select d.slug as domain, i.slug as slug, i.name as name, p.slug as scale,
+         (select v.state from verdicts v where v.target_type = 'island' and v.target_id = i.id order by v.id desc limit 1) as state
+       from islands i join domains d on d.id = i.domain_id left join islands p on p.id = i.parent_id
+       order by d.slug, i.parent_id is not null, p.sort_order, p.id, i.sort_order, i.id`,
+    )
+    .all();
 }
 
 /** Every island in the domain with the name of the island it sits in (null at the top), top scale first, in map order. */

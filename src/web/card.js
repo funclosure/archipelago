@@ -11,6 +11,7 @@ import { pinFromReply, isPinned, openBoard } from "./board.js";
 import { keyedChildren } from "./keep.js";
 import { takeDemoSteps } from "./demo.js";
 import { landmarkTerms } from "./term-model.js";
+import { mentionsFor } from "./mentions.js";
 import { modelEl, modelSig, refreshJudgeModel } from "./model-label.js";
 import { autoRead, autoReadEl, canSpeak, speak, speakButton } from "./voice.js";
 import { loadHighlighter } from "./code.js";
@@ -137,6 +138,7 @@ const tray = createTray(() => render());
 let looseShown; // which loose ends are unfolded under the chips: a landmark's slug, "" for the island's own, undefined for none
 let looseFor = null; // the island looseShown belongs to: another island starts folded
 let terms = null; // the selected island's landmark words (`landmarkTerms`), marked in the persona's replies
+let mentions = null; // the places a persona's reply may name, linked (`mentionsFor`); `mentions.sig` is in itemSig
 
 /** Hovering a landmark chip lights its words in the thread, and hovering a word lights its chip. */
 function lightLandmark(e, on) {
@@ -555,7 +557,7 @@ function renderLive() {
     live.replaceChildren(thinkingEl(thinkingLine(PERSONA_NAMES[thread.mode], thread.progress)));
   } else if (thread.live) {
     // Block by block: one that has not changed keeps its element, so only the block being written is drawn again.
-    const blocks = markdownBlocks(thread.live, { onQuestion: quoteIntoAnswer, lead: true, terms });
+    const blocks = markdownBlocks(thread.live, { onQuestion: quoteIntoAnswer, lead: true, terms, mentions });
     keyedChildren(live, blocks.map((b, i) => ({ key: i, sig: b.sig, build: b.build })));
     for (const old of live.querySelectorAll(".caret")) old.remove();
     // Descend to the deepest last block (e.g. into a list's last <li>) so the caret
@@ -916,7 +918,7 @@ function itemEl(item, reefPending) {
   if (persona && Number.isInteger(item.id) && canSpeak(item.role)) m.append(speakButton(item.id, item.role, readingOf(thread.slug, thread.mode)));
   if (item.images?.length) m.append(messageImagesEl(item.images));
   // The reader's own words carry the marks: what a lit landmark, a reef or a loose end quoted from them.
-  if (item.text || !item.images?.length) m.append(renderMarkdown(item.text, persona ? { onQuestion: quoteIntoAnswer, lead: true, terms, pin: pinFor(item.role) } : { marks: item.marks }));
+  if (item.text || !item.images?.length) m.append(renderMarkdown(item.text, persona ? { onQuestion: quoteIntoAnswer, lead: true, terms, mentions, pin: pinFor(item.role) } : { marks: item.marks }));
   const ask = persona ? askFor(thread.asks, item.id) : null;
   if (ask) m.append(choicesEl(ask, reefPending));
   if (persona) for (const p of thread.pointers.filter((x) => x.messageId === item.id)) m.append(sailEl(p, p.id === thread.pointers.at(-1)?.id));
@@ -928,7 +930,7 @@ function itemSig(item, reefPending) {
   const persona = item.role === "judge" || item.role === "mentor";
   if (item.kind !== "text" || !persona) return JSON.stringify([logGen, item]);
   const ask = askFor(thread.asks, item.id);
-  return JSON.stringify([logGen, item, termsSig, canSpeak(item.role), ask, ask ? [thread.inFlight, reefPending, pendingAskOf()?.id ?? null] : 0, thread.pointers.filter((x) => x.messageId === item.id), thread.pointers.at(-1)?.id ?? null]);
+  return JSON.stringify([logGen, item, termsSig, mentions?.sig ?? "", canSpeak(item.role), ask, ask ? [thread.inFlight, reefPending, pendingAskOf()?.id ?? null] : 0, thread.pointers.filter((x) => x.messageId === item.id), thread.pointers.at(-1)?.id ?? null]);
 }
 
 /** Whether there is a thread to draw: it has loaded, or it has words in hand, or the island has none to load (the snapshot counts both lenses' messages). */
@@ -1194,6 +1196,7 @@ function render() {
   pane.hidden = false;
   pane.dataset.lens = thread.mode; // the pane's accent is its persona's: the lamp, or the mentor's teal
   terms = landmarkTerms(island.landmarks.items);
+  mentions = mentionsFor(island.slug);
   termsSig = JSON.stringify(island.landmarks.items.map((l) => [l.slug, l.name, l.terms ?? null]));
   // The answer box comes once there is something to answer: not before the first turn (the briefing holds the
   // start button), and not while the thread is still being read.

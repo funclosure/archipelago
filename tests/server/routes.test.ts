@@ -328,6 +328,23 @@ test("the outline lists the whole tree", async () => {
   expect((await get("/api/outline?domain=nope")).status).toBe(404);
 });
 
+test("places list every domain and every island in them, with where each sits and its latest verdict", async () => {
+  const db = openDatabase(join(dir, "test.sqlite"));
+  const other = upsertDomain(db, { slug: "cc", name: "Creative Coding" }).id;
+  const loop = upsertIsland(db, { domainId: other, slug: "draw-loop", name: "The Draw Loop" });
+  upsertIsland(db, { domainId: other, slug: "frames", name: "Frames", parentId: loop.id });
+  db.close();
+  const r = await get("/api/places");
+  expect(r.status).toBe(200);
+  expect(r.json.domains).toEqual([{ slug: "cc", name: "Creative Coding" }, { slug: "sd", name: "System Design" }]);
+  expect(r.json.islands).toEqual([
+    { domain: "cc", slug: "draw-loop", name: "The Draw Loop", scale: null, state: null },
+    { domain: "cc", slug: "frames", name: "Frames", scale: "draw-loop", state: null },
+    { domain: "sd", slug: "caching", name: "Caching", scale: null, state: "settled" },
+    { domain: "sd", slug: "databases", name: "Databases", scale: null, state: null },
+  ]);
+});
+
 test("an ask attaches to the reply, shows in the thread, is picked through probe once", async () => {
   // the stub asks on the second answer
   await probe({ domain: "sd", island: "databases" });

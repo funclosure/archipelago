@@ -438,6 +438,10 @@ body:has(.pane.resizing) :is(.chrome, .map-focus, .cta, .board-scrim, .board, .b
 .msg .term.hot { background: color-mix(in oklab, var(--accent) 18%, transparent); }
 .chip.hot:not(.lit):not(.explored) { border-style: solid; border-color: var(--accent); color: var(--text); }
 .chip.hot:is(.lit, .explored) { box-shadow: 0 0 0 2px color-mix(in oklab, var(--accent) 55%, transparent); }
+/* A place a reply names (`renderMarkdown(…, { mentions })`): the words as written, in their own colour and weight,
+   over a faint solid line that firms on hover. Quiet on purpose: never the accent, never a chip; the tip says where. */
+.msg a.mention { color: inherit; text-decoration: underline solid color-mix(in oklab, currentColor 32%, transparent); text-decoration-thickness: 1px; text-underline-offset: 4px; border-radius: 2px; transition: text-decoration-color var(--t-fast) var(--ease); }
+.msg a.mention:hover { text-decoration-color: currentColor; }
 /* Who answers here, beside the island's name (`lensSwitchEl`): the lens of the pane and the map. */
 .titlebar { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--sp-3); }
 .lens-switch { display: inline-flex; flex: none; gap: var(--sp-05); padding: var(--sp-05); margin-top: 2px; border: 1px solid var(--line); border-radius: var(--r-full); }

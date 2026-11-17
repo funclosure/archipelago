@@ -42,7 +42,9 @@ import palette from "./palette.js";
 import wide from "./wide.js";
 import dialog from "./dialog.js";
 import paneParts from "./pane-parts.js";
+import mentions from "./mentions.js";
 export const TABLES = {
+  mentions,
   toast,
   palette,
   wide,

@@ -13,7 +13,7 @@ import { emptyGroup, pruneGroup } from "./group-model.js";
 import { LONG_PRESS_MS } from "./gesture-model.js";
 import { boxScale, COAST, HALO_R, LAMP_R, STAR, WATER } from "./contour.js";
 import { graticule, roseSpot, headerFade, positionSum, differs } from "./furniture-model.js";
-import { installInteractions } from "./interactions.js";
+import { installInteractions, select } from "./interactions.js";
 import { installCard } from "./card.js";
 import { installOutline } from "./outline.js";
 import { installAbout } from "./learner.js";
@@ -44,6 +44,7 @@ export const app = {
   scale: params.get("scale"),
   snapshot: null,
   outline: null,
+  places: null,     // every domain and island the reader has (GET /api/places): what a reply's names link to (mentions.js)
   nodes: [],
   links: [],
   hover: null,      // slug under the pointer
@@ -143,15 +144,17 @@ export function refresh() {
   const gen = ++refreshGen;
   const run = (async () => {
     const query = `domain=${encodeURIComponent(app.domain)}${app.scale ? `&scale=${encodeURIComponent(app.scale)}` : ""}`;
-    let snapshot, outline;
+    let snapshot, outline, places;
     try {
-      [snapshot, outline] = await Promise.all([api(`/api/snapshot?${query}`), api(`/api/outline?domain=${encodeURIComponent(app.domain)}`)]);
+      // The places only link names in replies: a failed read keeps the last ones rather than failing the map.
+      [snapshot, outline, places] = await Promise.all([api(`/api/snapshot?${query}`), api(`/api/outline?domain=${encodeURIComponent(app.domain)}`), api("/api/places").catch(() => null)]);
     } catch (err) {
       if (gen !== refreshGen) return latestRefresh; // superseded: the winner's outcome is the one that counts
       throw err;
     }
     if (gen !== refreshGen) return latestRefresh; // a later refresh owns the map now: resolve when it has painted
     app.outline = outline;
+    if (places) app.places = places;
     applySnapshot(snapshot);
   })();
   latestRefresh = run;
@@ -795,6 +798,16 @@ async function syncLanguage() {
   }
 }
 
+/** The island a link asked for (`?island=<slug>`, its `scale` beside it), taken off the address once read: the selection is never kept there. */
+function linkedIsland() {
+  const slug = params.get("island");
+  if (!slug) return null;
+  const url = new URL(location.href);
+  url.searchParams.delete("island");
+  history.replaceState(null, "", url);
+  return slug;
+}
+
 /** The shared map a link asked for (`?map=<slug>`), taken off the address so a reload does not ask again. */
 function sharedMap() {
   const slug = params.get("map");
@@ -875,13 +888,16 @@ async function boot() {
     }
   }
   if (app.snapshot) void syncLanguage();
+  // A link to an island (a place a reply named, or Back to the one that was open) opens it.
+  const linked = linkedIsland();
   // A domain made on the page arrives with ?chart=start: open the cartographer and let it sketch.
   if (params.get("chart") === "start") {
     const url = new URL(location.href);
     url.searchParams.delete("chart");
     history.replaceState(null, "", url);
     openChart(null, { start: true });
-  } else if (app.snapshot) reopenChart(); // a reload with the guide or the cartographer open brings it back
+  } else if (linked && app.snapshot?.islands.some((i) => i.slug === linked)) void select(linked);
+  else if (app.snapshot) reopenChart(); // a reload with the guide or the cartographer open brings it back
   // A link from the gallery page (/?map=<slug>): New domain opens on the shared maps with that one picked out.
   const shared = sharedMap();
   if (shared) openNewDomain({ map: shared });

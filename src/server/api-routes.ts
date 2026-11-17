@@ -21,7 +21,7 @@ import { attachGuidePointers, attachPointers, listGuidePointers, listPointers, p
 import { addSeaFrom, removeSea, updateSea } from "../core/repositories/seaRepository.ts";
 import { getLearner, setLearnerNote, setLearnerLanguage } from "../core/repositories/learnerRepository.ts";
 import { createDomain, listDomains, requireDomain, updateDomain, removeDomain } from "../core/repositories/domainRepository.ts";
-import { getIslandById, requireIsland, setIslandPositions } from "../core/repositories/islandRepository.ts";
+import { getIslandById, listPlaces, requireIsland, setIslandPositions } from "../core/repositories/islandRepository.ts";
 import { addVerdict, verdictHistory } from "../core/repositories/verdictRepository.ts";
 import { addComment } from "../core/repositories/commentRepository.ts";
 import { addMessage, getMessage, listGuideMessages, listMessages, listScaleMessages, parseProposal, setReefStatus } from "../core/repositories/messageRepository.ts";
@@ -173,6 +173,11 @@ async function handleApi(req: Request, url: URL, ctx: ApiContext): Promise<Respo
     const slug = slugSchema.parse(q("domain"));
     const scale = q("scale");
     return json(withDb(ctx, (db) => buildSnapshot(db, slug, scale ? slugSchema.parse(scale) : null)));
+  }
+
+  // Every island and domain the reader has, so the page can link a name a reply gives to the place it names.
+  if (route === "GET /api/places") {
+    return json(withDb(ctx, (db) => ({ domains: listDomains(db).map((d) => ({ slug: d.slug, name: d.name })), islands: listPlaces(db) })));
   }
 
   if (route === "GET /api/outline") {
