@@ -347,8 +347,8 @@ export function keepFocus(pane, paint) {
 }
 
 // A text field is not a stop: inside one the arrows are the caret's, so the walk could never leave it. The answer
-// box has its own keys (/ and Enter), the note its own (n).
-const STOPS = "button:not(:disabled), [tabindex='0']";
+// box has its own keys (/ and Enter), the note its own (n). A link a reply makes of a place it names is one.
+const STOPS = "button:not(:disabled), [tabindex='0'], a[href]";
 
 /**
  * ← and →: moves the keyboard to the pane's previous or next control (`stepFocus` says which), so every button in

@@ -15,6 +15,7 @@ import { t } from "./i18n.js";
 import { modelEl, modelSig } from "./model-label.js";
 import { createTray, messageImagesEl } from "./images.js";
 import { keyedChildren } from "./keep.js";
+import { mentionsFor } from "./mentions.js";
 import { icon } from "./icons.js";
 import { tip } from "./tip.js";
 import { toastError } from "./toast.js";
@@ -330,7 +331,7 @@ function renderLive() {
     live.replaceChildren(thinkingEl(thinkingLine(speaker(), chart.progress)));
   } else if (chart.live) {
     // Block by block: one that has not changed keeps its element, so only the block being written is drawn again.
-    keyedChildren(live, markdownBlocks(chart.live, { lead: true }).map((b, i) => ({ key: i, sig: b.sig, build: b.build })));
+    keyedChildren(live, markdownBlocks(chart.live, { lead: true, mentions: mentionsFor(null) }).map((b, i) => ({ key: i, sig: b.sig, build: b.build })));
   } else {
     live.replaceChildren();
   }
@@ -452,7 +453,7 @@ function messageEl(m) {
   }
   const box = el("div", `msg ${m.role === "you" ? "you" : speaker()}`);
   if (m.images?.length) box.append(messageImagesEl(m.images));
-  if (m.body || !m.images?.length) box.append(renderMarkdown(m.body, m.role === "you" ? {} : { lead: true }));
+  if (m.body || !m.images?.length) box.append(renderMarkdown(m.body, m.role === "you" ? {} : { lead: true, mentions: mentionsFor(null) }));
   return box;
 }
 
@@ -486,7 +487,7 @@ function logEntries() {
   const lastPointer = chart.pointers.at(-1)?.id ?? null;
   let placed = false;
   for (const m of chart.messages) {
-    out.push({ key: `m:${m.id}`, sig: JSON.stringify([logGen, m, speaker()]), build: () => messageEl(m) });
+    out.push({ key: `m:${m.id}`, sig: JSON.stringify([logGen, m, speaker(), m.role === "you" ? "" : mentionsFor(null)?.sig ?? ""]), build: () => messageEl(m) });
     for (const p of chart.pointers) {
       if (p.messageId === m.id) out.push({ key: `sail:${p.id}`, sig: JSON.stringify([p, p.id === lastPointer]), build: () => guideSailEl(p, p.id === lastPointer) });
     }
