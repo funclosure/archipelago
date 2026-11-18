@@ -24,9 +24,10 @@ export function isTyping(target) {
  * `loose` a landmark's loose ends unfolded in the pane; `chart` the cartographer's pane; `group` islands gathered
  * with shift. To add a rung, add its flag here in its place and its act in keys.js's `escape`.
  */
-export function escapeRung({ dialog = false, menuOpen = false, hint = false, header = false, turn = false, typing = false, editor = false, board = false, loose = false, cursor = false, chart = false, group = false, sea = false, selected = false }) {
+export function escapeRung({ dialog = false, menuOpen = false, talk = false, hint = false, header = false, turn = false, typing = false, editor = false, board = false, loose = false, cursor = false, chart = false, group = false, sea = false, selected = false }) {
   if (dialog) return "dialog";
   if (menuOpen) return "menu";
+  if (talk) return "talk"; // a recording (or its words on their way) is dropped before anything else lets go
   if (hint) return "hint"; // a pinned hint card folds before anything under it changes
   if (header) return "header"; // the header lets go of the keyboard before anything it stands over changes
   if (turn) return "stop"; // a reply is streaming: Escape stops it, wherever focus is
@@ -126,7 +127,7 @@ export const KEY_SECTIONS = {
   },
   pane: {
     title: k("pane"),
-    rows: [["↵ /", k("answer")], ["l", k("landfall")], ["n", k("note")], ["1–4", k("pickOption")], ["c", k("confirmReef")], ["d", k("dispute")], ["g", k("followPointer")], ["r", k("retry")], ["↑ ↓", k("scroll")], ["← →", k("controls")], ["⌘↵", k("send")]],
+    rows: [["↵ /", k("answer")], ["l", k("landfall")], ["n", k("note")], ["1–4", k("pickOption")], ["c", k("confirmReef")], ["d", k("dispute")], ["g", k("followPointer")], ["r", k("retry")], ["↑ ↓", k("scroll")], ["← →", k("controls")], ["⌘↵", k("send")], ["⌥Space", k("talk"), "talk"]],
   },
   chart: {
     title: k("cartographer"),
@@ -137,20 +138,21 @@ export const KEY_SECTIONS = {
 /** The key the command palette opens with. The sheet names it at its foot; the palette itself wires the key. */
 export const PALETTE_KEY = "⌘K";
 
-const section = (id, here) => {
+const section = (id, here, talk) => {
   const { title, rows } = KEY_SECTIONS[id];
-  return { id, title, here, rows: rows.map(([keys, label, kind]) => (kind === "gesture" ? { keys: [], gesture: keys, label } : { keys: keys.split(" ").map((key) => tipKeys(key)), gesture: null, label })) };
+  const shown = rows.filter(([, , kind]) => kind !== "talk" || talk); // push-to-talk's key only where the page can hear
+  return { id, title, here, rows: shown.map(([keys, label, kind]) => (kind === "gesture" ? { keys: [], gesture: keys, label } : { keys: keys.split(" ").map((key) => tipKeys(key)), gesture: null, label })) };
 };
 
 /**
  * The cheat sheet: every section of where the page is now, in the order of the regions. With `board`, the map's
  * slot holds the board's keys; with `chart`, the pane's holds the cartographer's. `here` marks the section of the
- * region that has the keyboard. Each row is { keys, gesture, label }: `keys` is one entry per alternative, each the
+ * region that has the keyboard; `talk` keeps push-to-talk's row, where the page can hear. Each row is { keys, gesture, label }: `keys` is one entry per alternative, each the
  * caps pressed together as a tooltip splits them ("⇧J ⇧K" → [["⇧", "J"], ["⇧", "K"]]); `gesture` is words or null.
  */
-export function cheatSheet(region, { board = false, chart = false } = {}) {
+export function cheatSheet(region, { board = false, chart = false, talk = false } = {}) {
   const at = REGIONS.includes(region) ? region : "outline";
-  return [section("everywhere", false), section("outline", at === "outline"), section(board ? "board" : "map", at === "map"), section(chart ? "chart" : "pane", at === "pane")];
+  return [section("everywhere", false), section("outline", at === "outline"), section(board ? "board" : "map", at === "map"), section(chart ? "chart" : "pane", at === "pane", talk)];
 }
 
 /**

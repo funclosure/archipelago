@@ -272,7 +272,7 @@ test("a second turn on the same island while one runs is 409, and the lock clear
 });
 
 test("the judge names its model, and each persona reply stores the model that wrote it", async () => {
-  expect((await get("/api/judge")).json).toEqual({ model: null, voices: [] }); // the stub has none, and no voice
+  expect((await get("/api/judge")).json).toEqual({ model: null, voices: [], dictation: true }); // the stub has no model and no voice, but its own ears
   const reply: JudgeRunner = async ({ emit }) => {
     emit({ type: "text", text: "Why?" });
     return "Why?";
@@ -280,7 +280,7 @@ test("the judge names its model, and each persona reply stores the model that wr
   const other = startServer({ port: 0, dbPath: join(dir, "test.sqlite"), staticRoot: dir, runner: reply, model: "gemini-3.8-flash" });
   const otherBase = `http://127.0.0.1:${other.port}`;
   try {
-    expect(await (await fetch(otherBase + "/api/judge")).json()).toEqual({ model: "gemini-3.8-flash", voices: [] });
+    expect(await (await fetch(otherBase + "/api/judge")).json()).toEqual({ model: "gemini-3.8-flash", voices: [], dictation: false });
     const res = await fetch(otherBase + "/api/probe", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ domain: "sd", island: "databases", message: "hi" }) });
     expect(await res.text()).toContain("event: done");
     const messages = (await thread("databases")).messages;
@@ -688,7 +688,7 @@ test("a persona's reply is read aloud through the server's voice, never a cross-
   const other = startServer({ port: 0, dbPath, staticRoot: dir, stub: true, voice });
   const at = (id: number, headers: Record<string, string> = {}) => fetch(`http://127.0.0.1:${other.port}/api/speak?id=${id}`, { headers });
   try {
-    expect(await (await fetch(`http://127.0.0.1:${other.port}/api/judge`)).json()).toEqual({ model: null, voices: [{ role: "mentor", name: "Matilda" }] });
+    expect(await (await fetch(`http://127.0.0.1:${other.port}/api/judge`)).json()).toEqual({ model: null, voices: [{ role: "mentor", name: "Matilda" }], dictation: true });
     const res = await at(mentor, { "sec-fetch-site": "same-origin" });
     expect(res.status).toBe(200);
     expect(res.headers.get("content-type")).toBe("audio/mpeg");
@@ -702,4 +702,50 @@ test("a persona's reply is read aloud through the server's voice, never a cross-
     other.stop(true);
   }
   expect((await fetch(base + `/api/speak?id=${mentor}`)).status).toBe(404); // no key, no voice
+});
+
+test("push-to-talk hears a recording through the server's ears, from this page only, and keeps nothing", async () => {
+  const send = (body: unknown, headers: Record<string, string> = {}, at = base) =>
+    fetch(at + "/api/transcribe", { method: "POST", headers: { "content-type": "application/json", ...headers }, body: JSON.stringify(body) });
+  const clip = Buffer.from(new Uint8Array(3000).fill(7)).toString("base64");
+  // The stub's ears answer in the page's language.
+  const en = await send({ audio: clip, type: "audio/webm;codecs=opus" }, { "sec-fetch-site": "same-origin" });
+  expect(en.status).toBe(200);
+  expect(await en.json()).toEqual({ text: "This is what the stub heard (3 KB of audio).", language: "eng" });
+  expect((await (await send({ audio: clip, type: "audio/mp4", language: "zh-TW" })).json()).text).toBe("這是替身聽到的話（3 KB 的錄音）。");
+  // Another site may not spend the reader's speech credits, by its Origin or by the browser's word.
+  expect((await send({ audio: clip, type: "audio/webm" }, { "sec-fetch-site": "cross-site" })).status).toBe(403);
+  expect((await send({ audio: clip, type: "audio/webm" }, { origin: "https://evil.example" })).status).toBe(403);
+  // A recording is audio, base64, and not empty.
+  expect((await send({ audio: clip, type: "text/html" })).status).toBe(400);
+  expect((await send({ audio: "", type: "audio/webm" })).status).toBe(400);
+  expect((await send({ audio: "not base64!", type: "audio/webm" })).status).toBe(400);
+  // What the transcriber gets: the bytes and the type without its parameters. A failure is the service's sentence.
+  const heard: { size: number; type: string; language: string }[] = [];
+  const dictation = { model: "scribe_v3", transcribe: async (audio: Uint8Array, type: string, language: "en" | "zh-TW") => {
+    heard.push({ size: audio.length, type, language });
+    if (heard.length > 1) throw new Error("the speech service answered 500");
+    return { text: "hello", language: "eng" };
+  } };
+  const other = startServer({ port: 0, dbPath: join(dir, "test.sqlite"), staticRoot: dir, stub: true, dictation });
+  const otherBase = `http://127.0.0.1:${other.port}`;
+  try {
+    expect(await (await send({ audio: clip, type: "audio/ogg; codecs=opus", language: "zh-TW" }, {}, otherBase)).json()).toEqual({ text: "hello", language: "eng" });
+    expect(heard).toEqual([{ size: 3000, type: "audio/ogg", language: "zh-TW" }]);
+    const failed = await send({ audio: clip, type: "audio/webm" }, {}, otherBase);
+    expect(failed.status).toBe(502);
+    expect((await failed.json()).error).toBe("the speech service answered 500");
+  } finally {
+    other.stop(true);
+  }
+  // A server without ears says how to give it some.
+  const deaf = startServer({ port: 0, dbPath: join(dir, "test.sqlite"), staticRoot: dir, stub: true, dictation: null });
+  try {
+    const res = await send({ audio: clip, type: "audio/webm" }, {}, `http://127.0.0.1:${deaf.port}`);
+    expect(res.status).toBe(404);
+    expect((await res.json()).error).toContain("elevenlabs.key");
+    expect((await (await fetch(`http://127.0.0.1:${deaf.port}/api/judge`)).json()).dictation).toBe(false);
+  } finally {
+    deaf.stop(true);
+  }
 });

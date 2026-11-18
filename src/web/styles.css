@@ -664,17 +664,35 @@ button.event:hover { color: var(--text); }
 .composer .send { --btn-bg: var(--accent); }
 .composer .send:disabled { --btn-bg: transparent; opacity: 1; color: var(--muted); border-color: var(--line); }
 .composer .attach { color: var(--muted); }
+/* Push-to-talk's microphone (dictation.js): quiet like attach until it listens. Listening, it is filled with the
+   persona's colour, the clock runs inside it, and a ring breathes with the voice it hears (`--level`, 0–1); while the
+   words are on their way the glyph dims and comes back. The box's edge takes the colour too. A press is the hold, so
+   nothing else may take it: no scrolling, no selection, no long-press menu on a phone. */
+.composer .talk { color: var(--muted); touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+.composer .btn.talk[data-state="on"] { --btn-bg: var(--accent); width: auto; min-width: var(--h-lg); padding: 0 var(--sp-2); gap: var(--sp-1); color: var(--on-accent);
+  box-shadow: 0 0 0 calc(var(--level, 0) * 5px) color-mix(in oklab, var(--accent) 30%, transparent); }
+.composer .talk[data-state="on"]:hover:not(:disabled) { background: color-mix(in oklab, var(--btn-bg) 90%, var(--text)); color: var(--on-accent); }
+.composer .talk .talk-clock { font: var(--fw-medium) var(--fs-xs)/1 var(--font-mono); font-variant-numeric: tabular-nums; }
+.composer .talk .talk-clock:empty { display: none; }
+.composer .talk[data-state="hearing"] { color: var(--accent); }
+.composer .talk[data-state="hearing"] .ic { animation: talk-hearing .8s var(--ease) infinite alternate; }
+@keyframes talk-hearing { from { opacity: 1; } to { opacity: .3; } }
+@media (prefers-reduced-motion: reduce) { .composer .talk[data-state="hearing"] .ic { animation: none; opacity: .5; } }
+.pane .composer.talking, .pane .composer.talking:is(:hover, :has(textarea:focus)) { border-color: var(--accent); }
 /* Under the box: what the keys do, quietly (one line while the box has the keyboard, another while it does not),
    and on the right the model answering. In a narrow pane the hint gives way first, then the model's name. */
 .pane > .foot .meta { display: flex; justify-content: space-between; align-items: center; gap: var(--sp-3); min-height: var(--sp-4); font-size: var(--fs-xs); color: var(--muted); }
 .pane > .foot .meta .hint { flex: 1 1 0; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.pane > .foot .meta .talk-hint { flex: 1 1 0; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; color: var(--text-2); }
+.pane > .foot .meta .talk-hint:empty { display: none; }
+.pane > .foot:has(.talk-hint:not(:empty)) .meta .hint { display: none; } /* while it listens, the line says how to stop */
 .pane > .foot .meta .when-typing { display: none; }
 .pane > .foot:has(#answer:focus) .meta .when-idle { display: none; }
 .pane > .foot:has(#answer:focus) .meta .when-typing { display: inline; }
 /* A key to press means nothing under a thumb: a hint that only names keys goes, and the line with it when that was all it held. */
 @media (hover: none) {
   .pane > .foot .meta .keys-hint { display: none; }
-  .pane > .foot .meta:has(.keys-hint):not(:has(.meta-r)) { display: none; }
+  .pane > .foot .meta:has(.keys-hint):not(:has(.meta-r)):not(:has(.talk-hint:not(:empty))) { display: none; }
 }
 .pane > .foot .meta .model.buy { cursor: pointer; text-decoration: underline dotted; text-underline-offset: 3px; }
 .pane > .foot .meta .model.buy:hover, .pane > .foot .meta .model.buy:focus-visible { color: var(--text); }

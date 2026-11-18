@@ -10,8 +10,9 @@ import { ArchipelagoError, ConflictError, NotFoundError } from "../core/errors.t
 import {
   boardPostInputSchema, looseEndDismissSchema, commentInputSchema, domainCreateSchema, domainUpdateSchema, domainRemoveSchema, seaWriteSchema, focusInputSchema, learnerInputSchema, modeSchema, positionsInputSchema, probeInputSchema,
   imagePruneSchema, imageRemoveSchema, imageUploadSchema,
-  reefAnswerInputSchema, sketchDecisionSchema, slugSchema,
+  reefAnswerInputSchema, sketchDecisionSchema, slugSchema, transcribeInputSchema,
 } from "../core/validators.ts";
+import { audioType, TALK_BYTES_MAX } from "../core/dictation.ts";
 import { attachAsks, listAsks, pickAsk, requireAsk } from "../core/repositories/askRepository.ts";
 import { addImage, attachImages, compactDatabase, imageUsage, pruneImages, readImage, removeImages, withImages } from "../core/repositories/imageRepository.ts";
 import { fromBase64 } from "../core/images.ts";
@@ -44,6 +45,16 @@ export type ApiContext = {
   allowedHosts?: readonly string[];
   /** The personas' voices (`src/server/voice.ts`); absent in the hosted build and without a key. */
   voice?: Voice | null;
+  /** Push-to-talk's ears (`src/server/dictation.ts`); absent in the hosted build and without a key. */
+  dictation?: Dictation | null;
+};
+
+/** Hears the reader's recorded answer as words. The recording is held for this call only and never kept. */
+export type Dictation = {
+  model: string;
+  /** `type` is the recording's media type without parameters; `language` is the page's, which only the stub answers in
+   *  (the service hears the language itself, and an answer may mix two). */
+  transcribe(audio: Uint8Array, type: string, language: "en" | "zh-TW"): Promise<{ text: string; language: string | null }>;
 };
 
 /** Reads a persona's reply aloud: an audio/mpeg response that streams as it is made. */
@@ -144,7 +155,30 @@ async function handleApi(req: Request, url: URL, ctx: ApiContext): Promise<Respo
   if (route === "GET /api/domains") return json({ domains: withDb(ctx, listDomains) });
 
   if (route === "GET /api/judge") {
-    return json({ model: (await ctx.model?.()) ?? null, voices: (ctx.voice?.roles() ?? []).map((role) => ({ role, name: ctx.voice!.name(role) })) });
+    return json({
+      model: (await ctx.model?.()) ?? null,
+      voices: (ctx.voice?.roles() ?? []).map((role) => ({ role, name: ctx.voice!.name(role) })),
+      dictation: Boolean(ctx.dictation),
+    });
+  }
+
+  if (route === "POST /api/transcribe") {
+    // Each recording spends the reader's speech credits: a page on another site must not send one (the POST guard
+    // already wants JSON from this origin; the browser's own word on where the request came from is checked as well).
+    const site = req.headers.get("sec-fetch-site");
+    if (site !== null && site !== "same-origin" && site !== "none") return json({ error: "cross-site requests are not allowed" }, 403);
+    const dictation = ctx.dictation;
+    if (!dictation) return json({ error: "no push-to-talk: put an ElevenLabs key in ~/.archipelago/elevenlabs.key" }, 404);
+    const input = transcribeInputSchema.parse(await req.json());
+    const type = audioType(input.type);
+    if (!type) throw new ArchipelagoError(`a recording must be audio (WebM, Ogg or MP4), not ${input.type || "unnamed"}`);
+    const audio = fromBase64(input.audio);
+    if (audio.length > TALK_BYTES_MAX) return json({ error: `the recording is over ${Math.round(TALK_BYTES_MAX / 1024)} KB` }, 413);
+    try {
+      return json(await dictation.transcribe(audio, type, input.language ?? "en"));
+    } catch (error) {
+      return json({ error: error instanceof Error ? error.message : String(error) }, 502);
+    }
   }
 
   if (route === "GET /api/speak") {

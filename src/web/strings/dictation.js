@@ -1,0 +1,31 @@
+// Strings for dictation.js (push-to-talk). Keys are camelCase; keep en and zh-TW in step (tests/web/strings.test.js).
+export default {
+  en: {
+    talk: "Talk",
+    talkTip: "Hold to talk; let go and the words go in the box. A tap starts, the next one stops.",
+    stop: "Stop talking",
+    holding: "Listening… let go to stop",
+    latched: "Listening… press the mic or {key} again to stop · Esc drops it",
+    latchedTouch: "Listening… tap the mic again to stop",
+    hearing: "Writing down what you said…",
+    nothing: "Nothing heard in that recording.",
+    what: "Push-to-talk",
+    blocked: "The microphone is blocked for this page. Allow it in the browser's site settings, then try again.",
+    noMic: "No microphone found.",
+    noMicWhy: "The microphone did not open: {why}",
+  },
+  "zh-TW": {
+    talk: "說話",
+    talkTip: "按住說話，放開後文字會放進輸入框。輕按一下開始，再按一下停止。",
+    stop: "停止說話",
+    holding: "正在聽……放開即停止",
+    latched: "正在聽……再按一次麥克風或 {key} 停止 · Esc 放棄",
+    latchedTouch: "正在聽……再點一下麥克風停止",
+    hearing: "正在寫下你說的話……",
+    nothing: "這段錄音裡沒有聽到話。",
+    what: "按住說話",
+    blocked: "這個頁面的麥克風被封鎖了。請在瀏覽器的網站設定裡允許，再試一次。",
+    noMic: "找不到麥克風。",
+    noMicWhy: "麥克風沒有開啟：{why}",
+  },
+};

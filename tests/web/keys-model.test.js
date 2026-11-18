@@ -160,10 +160,21 @@ test("every section's rows are [keys, words] with nothing empty, so a new key is
     for (const [keys, label, kind] of section.rows) {
       expect(keys.trim().length).toBeGreaterThan(0);
       expect(label.trim().length).toBeGreaterThan(0);
-      expect([undefined, "gesture"]).toContain(kind);
+      expect([undefined, "gesture", "talk"]).toContain(kind);
     }
   }
   expect(PALETTE_KEY).toBe("⌘K");
+});
+
+test("push-to-talk's key shows only where the page can hear, and Escape drops a recording before anything else lets go", () => {
+  const pane = (flags) => rowsOf(cheatSheet("pane", flags)[3]);
+  expect(pane({}).map(([k]) => k)).not.toContain("⌥Space");
+  expect(pane({ talk: true })).toContainEqual(["⌥Space", "Hold to talk (a tap starts, the next stops)"]);
+  expect(cheatSheet("pane", { talk: true })[3].rows.find((r) => r.label.startsWith("Hold to talk")).keys).toEqual([["⌥", "Space"]]);
+  expect(rowsOf(cheatSheet("pane", { chart: true, talk: true })[3]).map(([k]) => k)).not.toContain("⌥Space"); // the cartographer's pane
+  expect(escapeRung({ talk: true, turn: true, typing: true, hint: true, selected: true })).toBe("talk");
+  expect(escapeRung({ dialog: true, talk: true })).toBe("dialog");
+  expect(escapeRung({ menuOpen: true, talk: true })).toBe("menu");
 });
 
 test("escapeRung has editor and board rungs between blur and cursor", () => {

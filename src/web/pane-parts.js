@@ -8,6 +8,7 @@ import { isImeKey, isTyping } from "./keys-model.js";
 import { failureKind } from "./toast-model.js";
 import { canSend, enterSends, followsAfterScroll, stepFocus } from "./pane-model.js";
 import { attachButton, pastedImages, trayEl } from "./images.js";
+import { canTalk, talkBusy, talkButton } from "./dictation.js";
 
 const STICK_PX = 40; // within this of the bottom, a scroll by the reader still means "follow"
 const noHover = typeof matchMedia === "function" ? matchMedia("(hover: none)") : null; // a touch screen: its keyboard has no Shift-Enter
@@ -52,7 +53,8 @@ export function syncSend(form, tray = null) {
   const ta = form?.querySelector("#answer");
   const send = form?.querySelector(".send");
   if (!ta || !send) return;
-  send.disabled = !canSend({ text: ta.value, images: tray ? tray.ready().length : 0, busy: tray ? tray.busy() : false, disabled: ta.disabled });
+  const busy = (tray ? tray.busy() : false) || talkBusy(form.dataset.talk); // an image uploading, or spoken words on their way
+  send.disabled = !canSend({ text: ta.value, images: tray ? tray.ready().length : 0, busy, disabled: ta.disabled });
 }
 
 /** Puts `value` in the answer box when the page changed the draft itself (a quoted question, words given back). */
@@ -65,15 +67,17 @@ export function syncAnswer(form, value, tray = null) {
 }
 
 /**
- * The answer box as one composer: the draft's images, the words, attach, and the one action (Send; Stop while a
- * reply streams; Dispute while a reef waits), in a single bordered box that takes the focus ring as a whole.
- * `action` is "send", "stop" or "dispute"; `tray` (images.js) is left out where a message is words only. The
- * callbacks: `onInput(value)` on every edit, `onSubmit(trimmed)`, `onStop()`, and `onCompose(on)` around an input
- * method's composition, whose Enter is never a send.
+ * The answer box as one composer: the draft's images, the words, attach, the microphone, and the one action (Send;
+ * Stop while a reply streams; Dispute while a reef waits), in a single bordered box that takes the focus ring as a
+ * whole. `action` is "send", "stop" or "dispute"; `tray` (images.js) is left out where a message is words only;
+ * `talk` (`{ key, keep }`, dictation.js) offers push-to-talk where the server can hear, for the Keeper and the
+ * mentor. The callbacks: `onInput(value)` on every edit, `onSubmit(trimmed)`, `onStop()`, and `onCompose(on)`
+ * around an input method's composition, whose Enter is never a send.
  */
-export function composerEl({ value = "", placeholder = "", disabled = false, tray = null, action = "send", actionLabel, actionDisabled = false, onInput, onSubmit, onStop, onCompose }) {
+export function composerEl({ value = "", placeholder = "", disabled = false, tray = null, talk = null, action = "send", actionLabel, actionDisabled = false, onInput, onSubmit, onStop, onCompose }) {
   const form = el("form", "composer");
   form.id = "answer-form";
+  if (talk) form.dataset.talk = talk.key;
   const ta = el("textarea");
   ta.id = "answer";
   ta.rows = 1;
@@ -106,6 +110,8 @@ export function composerEl({ value = "", placeholder = "", disabled = false, tra
   const row = el("div", "composer-row");
   row.append(ta);
   if (tray) row.append(attachButton(tray, disabled || action === "stop"));
+  // The microphone stays while a reply streams, as the box does: the next answer can be spoken meanwhile.
+  if (talk && canTalk()) row.append(talkButton(talk, { disabled, onChange: () => syncSend(form, tray) }));
   if (action === "stop") {
     const stop = button(actionLabel ?? t("paneParts.stop"), () => onStop?.(), "btn ghost stop");
     stop.id = "stop";
@@ -147,7 +153,10 @@ export function footMetaEl({ typing, idle = typing, words = false }, right = [])
   const hint = el("span", words ? "hint" : "hint keys-hint");
   if (idle === typing) hint.textContent = typing;
   else hint.append(el("span", "when-idle", idle), el("span", "when-typing", typing));
-  meta.append(hint);
+  // While the microphone is open, push-to-talk says here how to stop (dictation.js fills it; the hints step aside).
+  const talking = el("span", "talk-hint");
+  talking.setAttribute("aria-live", "polite");
+  meta.append(hint, talking);
   const shown = right.filter(Boolean);
   if (shown.length) {
     const side = el("span", "meta-r");

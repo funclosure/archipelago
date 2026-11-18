@@ -30,13 +30,20 @@ export type VoiceOptions = {
   fetch?: typeof fetch;
 };
 
+/** The ElevenLabs key, or "" without one: ELEVENLABS_API_KEY, else ~/.archipelago/elevenlabs.key. Push-to-talk
+ *  (`dictation.ts`) hears the reader with the same key. */
+export function elevenLabsKey(options: VoiceOptions = {}): string {
+  const env = options.env ?? process.env;
+  const keyFile = join(options.home ?? join(homedir(), ".archipelago"), "elevenlabs.key");
+  return env.ELEVENLABS_API_KEY?.trim() || (existsSync(keyFile) ? readFileSync(keyFile, "utf8").trim() : "");
+}
+
 /** The voices this server has, or null without a key. ARCHIPELAGO_VOICE_MENTOR and ARCHIPELAGO_VOICE_KEEPER name
  *  another voice; `off` silences that persona. */
 export function createVoice(options: VoiceOptions = {}): Voice | null {
   const env = options.env ?? process.env;
   const home = options.home ?? join(homedir(), ".archipelago");
-  const keyFile = join(home, "elevenlabs.key");
-  const key = env.ELEVENLABS_API_KEY?.trim() || (existsSync(keyFile) ? readFileSync(keyFile, "utf8").trim() : "");
+  const key = elevenLabsKey(options);
   if (!key) return null;
   const model = env.ARCHIPELAGO_VOICE_MODEL?.trim() || VOICE_MODEL;
   const voices: Partial<Record<MessageRole, string>> = {};
