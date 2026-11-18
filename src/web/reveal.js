@@ -7,6 +7,8 @@ import { FADE_MS, arrive, revealed } from "./reveal-model.js";
 
 // What is drawn as a picture rather than as words: the whole of it fades with its first new word.
 const PICTURE = ".diagram, .plot, .demo, svg";
+// Words with an animation of their own (the shimmering line of a demo or diagram being built): never wrapped.
+const OWN = ".thinking";
 
 const still = () => typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
 const unseen = () => typeof document !== "undefined" && document.hidden;
@@ -37,6 +39,7 @@ function wrapWords(root, words, now) {
     while (i < words.length && words[i].to <= start) i++;
     if (i >= words.length) break;
     if (words[i].from >= end) continue;
+    if (node.parentElement?.closest(OWN)) continue;
     const picture = node.parentElement?.closest(PICTURE);
     if (picture && root.contains(picture)) {
       if (!pictures.has(picture)) fading(picture, words[i].start - now);

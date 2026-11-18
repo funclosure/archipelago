@@ -18,6 +18,8 @@ import { DEMO_MAX, DEMO_TOKENS, DEMO_MIN_H, demoHeight, fullZoom, logLine, theme
 
 /** Bodies of the demos the reader folded, so a pane rebuild keeps them folded. */
 const folded = new Set();
+/** Bodies of the demos whose printed lines the reader opened; a log starts folded to its count. */
+const openLogs = new Set();
 
 /** Every demo made, so one listener routes each frame's messages; a frame gone from the page is dropped. */
 const demos = new Set();
@@ -109,9 +111,31 @@ export function demoElement(source, { pin = null, preview = false, foldable = tr
   frame.setAttribute("sandbox", "allow-scripts");
   frame.title = t("demo.title");
   frame.style.height = `${DEMO_MIN_H}px`;
+  // What the demo prints: folded to one row that counts the lines, which opens them.
   const out = document.createElement("div");
   out.className = "out";
   out.hidden = true;
+  const lines = document.createElement("div");
+  lines.className = "lines";
+  const logToggle = quiet();
+  logToggle.classList.add("out-toggle");
+  let printed = 0;
+  const drawLog = () => {
+    const open = openLogs.has(source);
+    lines.hidden = !open;
+    logToggle.setAttribute("aria-expanded", String(open));
+    logToggle.textContent = t("demo.logLines", { n: printed });
+    tip(logToggle, t(open ? "demo.logHide" : "demo.logShow"));
+  };
+  logToggle.addEventListener("click", () => {
+    if (openLogs.has(source)) openLogs.delete(source);
+    else openLogs.add(source);
+    drawLog();
+    lines.scrollTop = lines.scrollHeight;
+    grew();
+  });
+  out.append(logToggle, lines);
+  drawLog();
 
   const canFold = foldable && !preview;
   const isFull = () => box.classList.contains("full");
@@ -130,7 +154,10 @@ export function demoElement(source, { pin = null, preview = false, foldable = tr
     err.hidden = true;
     err.textContent = "";
     out.hidden = true;
-    out.replaceChildren();
+    lines.replaceChildren();
+    printed = 0;
+    delete logToggle.dataset.level;
+    drawLog();
     // The frame and its element take the theme's scheme together; if they differ, the browser paints the frame opaque.
     const scheme = isDark() ? "dark" : "light";
     frame.style.colorScheme = scheme;
@@ -199,10 +226,13 @@ export function demoElement(source, { pin = null, preview = false, foldable = tr
         row.className = "line";
         row.dataset.level = line.level; // a class "log" would pick up the pane's .log rule
         row.textContent = line.text;
-        out.append(row);
-        while (out.childElementCount > 50) out.firstChild.remove();
+        lines.append(row);
+        while (lines.childElementCount > 50) lines.firstChild.remove();
+        printed += 1;
+        if (line.level === "warn" || line.level === "error") logToggle.dataset.level = "warn"; // a warning is not hidden behind a bare count
+        drawLog();
         out.hidden = false;
-        out.scrollTop = out.scrollHeight;
+        lines.scrollTop = lines.scrollHeight;
         grew();
       }
     },
