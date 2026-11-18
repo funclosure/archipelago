@@ -513,9 +513,9 @@ pre, code, kbd { font-family: var(--font-mono); }
 :lang(zh) .log .msg { line-height: 1.9; letter-spacing: .02em; }
 :lang(zh) .msg:is(.judge, .mentor, .cartographer) :is(p, li, blockquote, h1, h2, h3) { max-width: 34em; }
 /* The blocks in a reply (code, a diagram, a plot, a demo) keep the paragraphs' distance; the first and last sit flush. */
-.log .msg > :is(.codeblock, .diagram, .plot, .demo, .md-table) { margin: var(--sp-4) 0; }
-.log .msg > :is(.codeblock, .diagram, .plot, .demo, .md-table):first-child { margin-top: 0; }
-.log .msg > :is(.codeblock, .diagram, .plot, .demo, .md-table):last-child { margin-bottom: 0; }
+.log .msg > :is(.codeblock, .diagram, .plot, .demo, .building, .md-table) { margin: var(--sp-4) 0; }
+.log .msg > :is(.codeblock, .diagram, .plot, .demo, .building, .md-table):first-child { margin-top: 0; }
+.log .msg > :is(.codeblock, .diagram, .plot, .demo, .building, .md-table):last-child { margin-bottom: 0; }
 /* A table in a reply, a reader's message or a note (`tableElement` in markdown.js): no box, hairline rules between
    rows and a firmer one under the header, which is quieter than the cells; the first column sits on the text's own
    edge. Wider than the column, it scrolls sideways and fades on the hidden side, like a code block. Cells wrap at
@@ -899,7 +899,7 @@ body.outline-resizing :is(.outline, .chrome, .map-focus, .board-scrim, .board, .
 /* ---- blocks: a diagram, a plot, a demo, a piece of code. In a reply each is one box with one caption row; on a
    board card the card is the box and its caption the row (the board's rules, below), so the block drops its own.
    The buttons of a caption row are the family's small quiet ones (.btn.sm.quiet), the same in both places. ---- */
-.diagram, .plot, .demo, .codeblock { position: relative; margin: var(--sp-15) 0 var(--sp-2); padding: var(--sp-15) var(--sp-3) var(--sp-3); background: var(--water); border: 1px solid var(--line); border-radius: var(--r-md); }
+.diagram, .plot, .demo, .codeblock, .building { position: relative; margin: var(--sp-15) 0 var(--sp-2); padding: var(--sp-15) var(--sp-3) var(--sp-3); background: var(--water); border: 1px solid var(--line); border-radius: var(--r-md); }
 /* the caption row: a small capitals label at the left, the block's actions at the right, their labels ending on the content's edge */
 :is(.diagram, .plot, .codeblock) > .cap, .demo > .bar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-05); min-height: var(--h-sm); margin: 0 calc(-1 * var(--sp-15)) var(--sp-1) 0; }
 :is(.diagram, .plot, .codeblock) > .cap, .demo > .bar > .cap { font: var(--fw-medium) var(--fs-micro)/var(--lh-tight) var(--font-ui); letter-spacing: var(--track-caps); text-transform: uppercase; color: var(--muted); }
@@ -960,11 +960,25 @@ body.outline-resizing :is(.outline, .chrome, .map-focus, .board-scrim, .board, .
 .demo.full > iframe { flex: 1 1 auto; min-height: 0; height: auto !important; }
 .demo.full > .codeblock { flex: 0 1 auto; overflow: auto; }
 .demo.full > .out { flex: 0 0 auto; }
-.demo .out { margin-top: var(--sp-15); max-height: 120px; overflow-y: auto; font: var(--fs-sm)/var(--lh-body) var(--font-mono); color: var(--text-2); border-top: 1px solid var(--line); padding-top: var(--sp-15); }
+/* What the demo printed: folded to one row that counts the lines (a chevron like the caption's), which opens them */
+.demo .out { margin-top: var(--sp-15); border-top: 1px solid var(--line); padding-top: var(--sp-1); }
+.demo .out > .out-toggle { margin-left: calc(-1 * var(--sp-2)); color: var(--muted); font-family: var(--font-mono); }
+.demo .out > .out-toggle::before { content: ""; width: 5px; height: 5px; border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; transform: rotate(-45deg); transition: transform var(--t-fast) var(--ease); }
+.demo .out > .out-toggle[aria-expanded="true"]::before { transform: rotate(45deg) translate(-2px, -2px); }
+.demo .out > .out-toggle:hover { color: var(--text); }
+.demo .out > .out-toggle[data-level="warn"] { color: var(--reef); }
+.demo .out > .lines { max-height: 120px; overflow-y: auto; margin-top: var(--sp-05); font: var(--fs-sm)/var(--lh-body) var(--font-mono); color: var(--text-2); }
 .demo .out .line[data-level="warn"], .demo .out .line[data-level="error"] { color: var(--reef); }
 /* a demo's code is part of the demo: no second box inside it, only a rule under it */
 .demo > .codeblock { margin: 0 0 var(--sp-2); padding: 0 0 var(--sp-2); background: none; border: 0; border-bottom: 1px solid var(--line); border-radius: 0; box-shadow: none; }
 .demo .codeblock pre { max-height: 320px; overflow: auto; }
+/* A diagram, plot or demo still being written (buildingEl in markdown.js): the shimmering line where its caption will
+   be, and the code so far running up through a window of five lines that fades at its top. The window has its height
+   from the first line, so the box does not grow while the code comes. */
+.building > .cap { display: flex; align-items: center; min-height: var(--h-sm); margin-bottom: var(--sp-1); }
+.building > .tail { display: flex; flex-direction: column; justify-content: flex-end; height: 5lh; overflow: hidden; font: var(--fs-xs)/var(--lh-body) var(--font-mono); color: var(--muted);
+  -webkit-mask-image: linear-gradient(to bottom, transparent, black 70%); mask-image: linear-gradient(to bottom, transparent, black 70%); }
+.msg .building > .tail pre { flex: none; margin: 0; padding: 0; background: none; border-radius: 0; overflow: hidden; font: inherit; white-space: pre-wrap; overflow-wrap: anywhere; tab-size: 2; }
 
 /* ---- code blocks ---- */
 :is(.msg, .board) .codeblock pre { margin: 0; padding: 0; background: none; overflow-x: auto; white-space: pre; tab-size: 2; font-size: var(--fs-sm); line-height: var(--lh-body); }
@@ -980,7 +994,7 @@ body.outline-resizing :is(.outline, .chrome, .map-focus, .board-scrim, .board, .
    plate: an ink edge and a hairline rule set just inside it. One box, never a second box inside it: the rule is a
    shadow of the box itself, with the box's own ground between it and the edge. The dark themes keep the plain box:
    there a second light line reads as a double border, not as engraving. ---- */
-:root:is([data-theme="chart"], [data-theme="vellum"]) .msg > :is(.diagram, .plot, .demo:not(.full), .codeblock) { border-color: var(--line-03); box-shadow: inset 0 0 0 3px var(--water), inset 0 0 0 4px var(--line); }
+:root:is([data-theme="chart"], [data-theme="vellum"]) .msg > :is(.diagram, .plot, .demo:not(.full), .codeblock, .building) { border-color: var(--line-03); box-shadow: inset 0 0 0 3px var(--water), inset 0 0 0 4px var(--line); }
 :lang(zh) .demo > .bar > .cap { letter-spacing: .02em; }
 :lang(zh) :is(:is(.diagram, .plot, .codeblock) > .cap, .demo > .bar > .cap) { font-size: var(--fs-xs); }
 

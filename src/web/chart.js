@@ -380,7 +380,8 @@ function renderLive() {
     for (const old of live.querySelectorAll(".caret")) old.remove();
     let tail = live;
     while (tail.lastElementChild && !["CODE", "STRONG", "EM", "BR"].includes(tail.lastElementChild.tagName)) tail = tail.lastElementChild;
-    if (!reveal.settled) tail.append(el("span", "caret"));
+    // A block still being built (a demo, diagram or plot) says so itself; the caret would trail code still fading in.
+    if (!reveal.settled && !tail.closest(".building")) tail.append(el("span", "caret"));
   } else {
     live.replaceChildren();
   }

@@ -13,6 +13,7 @@ import { watchWide, watchMore } from "./wide.js";
 import { resolveLang } from "./code-model.js";
 import { t } from "./i18n.js";
 import { tip } from "./tip.js";
+import { thinkingEl } from "./thinking.js";
 
 const nodeCache = new Map(); // diagram source → parsed SVG node, cloned on repeat appends
 const pending = new Map(); // diagram source → in-flight render promise, shared across frames
@@ -73,6 +74,25 @@ function sourceBlock(text) {
   return pre;
 }
 
+/**
+ * A diagram, plot or demo whose fence is still being written: a box like the one it will become, a shimmering line
+ * saying what is being made, and the source so far running up through a window that fades at its top, the newest
+ * line at its foot. The window keeps its height from the first line, so the box does not grow as the code comes.
+ */
+function buildingEl(label, source) {
+  const box = document.createElement("div");
+  box.className = "building";
+  const cap = document.createElement("div");
+  cap.className = "cap";
+  cap.append(thinkingEl(label));
+  const tail = document.createElement("div");
+  tail.className = "tail";
+  tail.setAttribute("aria-hidden", "true"); // the line above says what is happening; half-written code is not read out
+  tail.append(sourceBlock(source));
+  box.append(cap, tail);
+  return box;
+}
+
 /** A closed mermaid fence: rendered once per source and cached, with the source as the fallback. `cache: false` for a live preview. */
 export function diagramElement(source, { cache = true, pin = null } = {}) {
   const box = document.createElement("div");
@@ -95,7 +115,7 @@ export function diagramElement(source, { cache = true, pin = null } = {}) {
     holder.append(sourceBlock(source));
     return box;
   }
-  holder.textContent = t("markdown.drawingDiagram");
+  holder.replaceChildren(thinkingEl(t("markdown.drawingDiagram")));
   let p = cache ? pending.get(source) : undefined;
   if (!p) {
     p = window.mermaid
@@ -295,19 +315,19 @@ function blockEl(b, { onQuestion = null, lead = false, terms = null, mentions = 
     return diagramElement(b.text, { pin });
   }
   if (b.type === "code" && b.lang === "mermaid") {
-    return sourceBlock(t("markdown.drawingDiagram"));
+    return buildingEl(t("markdown.drawingDiagram"), b.text);
   }
   if (b.type === "code" && PLOT_LANGS.has(b.lang) && b.closed) {
     return plotElement(b.text);
   }
   if (b.type === "code" && PLOT_LANGS.has(b.lang)) {
-    return sourceBlock(t("markdown.drawingPlot"));
+    return buildingEl(t("markdown.drawingPlot"), b.text);
   }
   if (b.type === "code" && b.lang === DEMO_LANG && b.closed) {
     return demoElement(b.text, { pin });
   }
   if (b.type === "code" && b.lang === DEMO_LANG) {
-    return sourceBlock(t("demo.building"));
+    return buildingEl(t("demo.building"), b.text);
   }
   if (b.type === "code") {
     return codeElement(b.lang, b.text, b.closed, { pin: b.closed ? pin : null, lang: resolveLang(b.lang) });
