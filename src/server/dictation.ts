@@ -1,7 +1,8 @@
 // Push-to-talk's other half: the reader's spoken answer as words, on ElevenLabs' speech-to-text (Scribe), for
 // `archipelago serve` only, with the key the voices read (`elevenLabsKey` in voice.ts; the hosted build has no server
 // to keep one on). The recording lives in memory for the one request: it is never written anywhere, and nothing of it
-// is kept once the words are back. The service hears the language itself, so an answer may mix English and Chinese.
+// is kept once the words are back. The service hears the language itself, so an answer may mix English and Chinese;
+// Chinese comes back Simplified and is given back Traditional (`traditional`).
 import { audioExtension } from "../core/dictation.ts";
 import type { Dictation } from "./api-routes.ts";
 import { elevenLabsKey, type VoiceOptions } from "./voice.ts";
@@ -30,11 +31,28 @@ export function createDictation(options: VoiceOptions = {}): Dictation | null {
       if (!res.ok) throw new Error(await refusal(res));
       const body = (await res.json()) as { text?: unknown; language_code?: unknown };
       return {
-        text: typeof body.text === "string" ? body.text.trim() : "",
+        text: await traditional(typeof body.text === "string" ? body.text.trim() : ""),
         language: typeof body.language_code === "string" ? body.language_code : null,
       };
     },
   };
+}
+
+const HAN = /\p{Script=Han}/u;
+const KANA = /[\p{Script=Hiragana}\p{Script=Katakana}]/u;
+let toTraditional: ((text: string) => string) | null = null;
+
+/**
+ * Scribe writes Mandarin in Simplified characters, whatever was said: 快取 and 資料庫 come back as 快取 and 资料库,
+ * 覺得 as 觉得 (heard on 2026-11-18, the Taiwan voice of macOS `say`). The page's Chinese is Traditional, so a
+ * transcript with Han characters and no kana (Japanese keeps its own kanji) is turned into Traditional (Taiwan)
+ * character by character, OpenCC's cn → tw, and never word by word: the reader's words stay theirs (软件 becomes
+ * 軟件, not 軟體). An answer that mixes in English keeps the English as it was. The tables load with the first one.
+ */
+export async function traditional(text: string): Promise<string> {
+  if (!HAN.test(text) || KANA.test(text)) return text;
+  const convert = toTraditional ?? (toTraditional = (await import("opencc-js/cn2t")).Converter({ from: "cn", to: "tw" }));
+  return convert(text);
 }
 
 /**

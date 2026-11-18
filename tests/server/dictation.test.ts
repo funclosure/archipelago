@@ -2,7 +2,7 @@ import { test, expect } from "bun:test";
 import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { DICTATION_MODEL, createDictation, stubDictation } from "../../src/server/dictation.ts";
+import { DICTATION_MODEL, createDictation, stubDictation, traditional } from "../../src/server/dictation.ts";
 import { TALK_BYTES_MAX, TALK_SECONDS_MAX, TALK_BITS_PER_SECOND, audioExtension, audioType } from "../../src/core/dictation.ts";
 
 const home = () => mkdtempSync(join(tmpdir(), "archipelago-dictation-"));
@@ -35,6 +35,22 @@ test("a recording goes to ElevenLabs once, as a file under the key, and comes ba
   expect(file.name).toBe("answer.webm");
   expect(file.type).toBe("audio/webm");
   expect([...new Uint8Array(await file.arrayBuffer())]).toEqual([1, 2, 3, 4]);
+});
+
+test("Chinese comes back Traditional, character by character: the words stay the reader's, English and Japanese as they were", async () => {
+  // What Scribe v3 wrote for the Taiwan voice of macOS `say` on 2026-11-18.
+  expect(await traditional("我觉得快取会记住最近的答案，这样就不用再问资料库一次。")).toBe("我覺得快取會記住最近的答案，這樣就不用再問資料庫一次。");
+  expect(await traditional("我觉得 cache 的 eviction policy 很重要，尤其是 LRU，因为它会先丢掉最久没用的资料。")).toBe("我覺得 cache 的 eviction policy 很重要，尤其是 LRU，因為它會先丟掉最久沒用的資料。");
+  expect(await traditional("这个软件")).toBe("這個軟件"); // the characters change, never the word: 軟件 is what was said
+  expect(await traditional("我覺得這樣很好")).toBe("我覺得這樣很好");
+  expect(await traditional("I think a cache keeps the most recent answers.")).toBe("I think a cache keeps the most recent answers.");
+  expect(await traditional("キャッシュは最近の答えを覚えている。")).toBe("キャッシュは最近の答えを覚えている。");
+  expect(await traditional("")).toBe("");
+});
+
+test("a transcript in Simplified goes back to the page in Traditional", async () => {
+  const d = createDictation({ env: { ELEVENLABS_API_KEY: "k" }, home: home(), fetch: (async () => Response.json({ language_code: "zho", text: "这样就不用再问一次。" })) as unknown as typeof fetch })!;
+  expect(await d.transcribe(new Uint8Array([1]), "audio/webm", "en")).toEqual({ text: "這樣就不用再問一次。", language: "zho" });
 });
 
 test("a refusal is said in ElevenLabs' own words where it gives any, else the key, the service busy, or its status", async () => {
