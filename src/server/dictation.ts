@@ -37,20 +37,29 @@ export function createDictation(options: VoiceOptions = {}): Dictation | null {
   };
 }
 
-/** Why the service said no, in words the page can show: the key, its limit, or its own first complaint. */
+/**
+ * Why the service said no, in its own words where it gave any: a key without the Speech to Text permission, an
+ * exhausted quota, a model it does not know. Without them, the key refused, the service busy, or its status.
+ */
 async function refusal(res: Response): Promise<string> {
+  const said = await reasonOf(res);
+  if (said) return `ElevenLabs said: ${said}`;
   if (res.status === 401) return "the speech service refused the ElevenLabs key";
   if (res.status === 429) return "the speech service is busy: try again in a moment";
-  let detail = "";
+  return `the speech service answered ${res.status}`;
+}
+
+/** ElevenLabs' sentence in an error body: `detail` as a string, as `{ status, message }`, or as a list of `{ msg }`. */
+async function reasonOf(res: Response): Promise<string> {
   try {
-    const body = (await res.json()) as { detail?: unknown };
+    const body = (await res.json()) as { detail?: unknown; message?: unknown };
     const first = Array.isArray(body.detail) ? body.detail[0] : body.detail;
-    const said = typeof first === "string" ? first : (first as { msg?: unknown; message?: unknown } | undefined)?.msg ?? (first as { message?: unknown } | undefined)?.message;
-    if (typeof said === "string") detail = said;
+    const detail = first as { message?: unknown; msg?: unknown } | string | undefined;
+    const said = typeof detail === "string" ? detail : detail?.message ?? detail?.msg ?? body.message;
+    return typeof said === "string" ? said.trim() : "";
   } catch {
-    /* no body worth reading */
+    return ""; // no body worth reading
   }
-  return `the speech service answered ${res.status}${detail ? `: ${detail}` : ""}`;
 }
 
 /** The stub's ears (`serve --stub`): no service and no key, a sentence in the page's language, so the page's half can be tried. */

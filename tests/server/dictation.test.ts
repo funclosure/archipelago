@@ -37,14 +37,20 @@ test("a recording goes to ElevenLabs once, as a file under the key, and comes ba
   expect([...new Uint8Array(await file.arrayBuffer())]).toEqual([1, 2, 3, 4]);
 });
 
-test("a refusal is said in words: the key, the service busy, or its own first complaint", async () => {
+test("a refusal is said in ElevenLabs' own words where it gives any, else the key, the service busy, or its status", async () => {
   const answering = (res: () => Response) => createDictation({ env: { ELEVENLABS_API_KEY: "k" }, home: home(), fetch: (async () => res()) as unknown as typeof fetch })!;
-  const audio = new Uint8Array([1]);
-  await expect(answering(() => new Response("no", { status: 401 })).transcribe(audio, "audio/mp4", "en")).rejects.toThrow("the speech service refused the ElevenLabs key");
-  await expect(answering(() => new Response("slow", { status: 429 })).transcribe(audio, "audio/mp4", "en")).rejects.toThrow("busy");
-  await expect(answering(() => Response.json({ detail: [{ msg: "Invalid model_id" }] }, { status: 422 })).transcribe(audio, "audio/mp4", "en")).rejects.toThrow("the speech service answered 422: Invalid model_id");
-  await expect(answering(() => Response.json({ detail: { message: "quota_exceeded" } }, { status: 400 })).transcribe(audio, "audio/mp4", "en")).rejects.toThrow("400: quota_exceeded");
-  await expect(answering(() => new Response("", { status: 500 })).transcribe(audio, "audio/mp4", "en")).rejects.toThrow(/^the speech service answered 500$/);
+  const refused = (res: () => Response) => answering(res).transcribe(new Uint8Array([1]), "audio/mp4", "en");
+  // A key restricted to Text to Speech: the reason names the missing permission, not just "refused".
+  const missing = "The API key you used is missing the permission speech_to_text to execute this operation.";
+  await expect(refused(() => Response.json({ detail: { status: "missing_permissions", message: missing } }, { status: 401 }))).rejects.toThrow(`ElevenLabs said: ${missing}`);
+  await expect(refused(() => Response.json({ detail: { status: "quota_exceeded", message: "This request exceeds your quota." } }, { status: 401 }))).rejects.toThrow("ElevenLabs said: This request exceeds your quota.");
+  await expect(refused(() => Response.json({ detail: [{ msg: "Invalid model_id" }] }, { status: 422 }))).rejects.toThrow("ElevenLabs said: Invalid model_id");
+  await expect(refused(() => Response.json({ detail: "Bad file" }, { status: 400 }))).rejects.toThrow("ElevenLabs said: Bad file");
+  // No words of its own: what the status means.
+  await expect(refused(() => new Response("no", { status: 401 }))).rejects.toThrow(/^the speech service refused the ElevenLabs key$/);
+  await expect(refused(() => new Response("slow", { status: 429 }))).rejects.toThrow("busy");
+  await expect(refused(() => Response.json({ detail: {} }, { status: 500 }))).rejects.toThrow(/^the speech service answered 500$/);
+  await expect(refused(() => new Response("", { status: 500 }))).rejects.toThrow(/^the speech service answered 500$/);
 });
 
 test("the stub hears in the page's language, without a service", async () => {
