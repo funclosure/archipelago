@@ -73,6 +73,31 @@ export function inlineSegments(text) {
   return out;
 }
 
+const OPENER = /\*\*(?=\S)|`(?=[^`])|(?<![\w*])\*(?=[^\s*])|(?<!\w)_(?=\S)/g;
+
+/**
+ * The mark that closes what a line still being written leaves open at its end (`**`, `*`, `_` or a backtick), or ""
+ * when nothing is open: a reply shown in part draws `**bold wo` as it will once `rds**` arrives, not as asterisks.
+ */
+export function openMark(line) {
+  const text = String(line);
+  let last = 0;
+  let m;
+  INLINE.lastIndex = 0;
+  while ((m = INLINE.exec(text)) !== null) last = m.index + m[0].length;
+  OPENER.lastIndex = last;
+  const open = OPENER.exec(text);
+  if (!open) return "";
+  const mark = open[0];
+  const at = open.index;
+  const closed = text + mark;
+  // Only a mark that the closed line reads as one span from this opener to its end; anything else stays as it is.
+  INLINE.lastIndex = at;
+  const span = INLINE.exec(closed);
+  INLINE.lastIndex = 0;
+  return span && span.index === at && span.index + span[0].length === closed.length ? mark : "";
+}
+
 /**
  * One table row's cells, trimmed: the outer pipes are dropped, `\|` is a pipe inside a cell, and a pipe inside a
  * `code` span stays in it (GitHub splits there, but a model writing `a || b` in a cell means the code). A backtick
@@ -103,7 +128,7 @@ export function tableCells(line) {
 }
 
 /** A line with a pipe that is not escaped: a table row's only sign. */
-const hasPipe = (line) => /(^|[^\\])\|/.test(line);
+export const hasPipe = (line) => /(^|[^\\])\|/.test(line);
 
 /** The alignments a delimiter row (`|---|:--:|--:|`) sets, one per column (`left`, `center`, `right`, or null), or null when the line is not one. */
 export function tableAlign(line) {

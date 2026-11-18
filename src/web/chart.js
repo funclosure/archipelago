@@ -17,6 +17,7 @@ import { createTray, messageImagesEl } from "./images.js";
 import { canTalk, talkBusy } from "./dictation.js";
 import { insertWords } from "./dictation-model.js";
 import { keyedChildren } from "./keep.js";
+import { createReveal } from "./reveal.js";
 import { mentionsFor } from "./mentions.js";
 import { icon } from "./icons.js";
 import { tip } from "./tip.js";
@@ -60,6 +61,11 @@ let rerender = () => {};
 let sail = () => {};
 let gripEl = null;    // the pane's grip is card.js's; the cartographer's pane resizes the same way
 const follow = logFollower();
+// The reply is drawn as it arrives, its new words fading in (reveal.js); once the turn ends it stays as written until
+// the kept one is drawn in its place (load). `heldAfter` is the last load begun before that, which cannot hold it yet.
+const reveal = createReveal(() => renderLive());
+let heldAfter = 0;
+let heldSeq = 0;
 /** The images attached to the draft in this pane's answer box (a syllabus for the cartographer, a screenshot for the guide). */
 const tray = createTray(() => rerender());
 /** The tray images dropped on the pane go to, while this pane shows (card.js owns the drop). */
@@ -121,6 +127,7 @@ function reset(scale, mode = chart.mode) {
   tray.clear(); // the draft's images go with its words
   stashDraft();
   const at = mode === "guide" ? null : scale;
+  reveal.reset();
   Object.assign(chart, { mode, scale: at, version: null, messages: [], sketch: null, pointers: [], loaded: false, loadError: null, draft: drafts.get(draftKey(mode, at)) ?? "", live: "", progress: null, inFlight: false, error: null, stopped: false, deciding: false });
 }
 
@@ -199,6 +206,14 @@ async function load() {
     const mode = chart.mode;
     const { messages, sketch, pointers } = await api(`/api/thread?domain=${encodeURIComponent(app.domain)}&mode=${mode}${mode === "guide" ? "" : scaleQuery()}`);
     if (stale() || chart.mode !== mode) return;
+    if (chart.live && !chart.inFlight && gen > heldAfter) {
+      // The reply on screen as it was written: shown whole first, then the kept one takes its place in the same draw.
+      const turnAt = turnGen;
+      await reveal.shown();
+      if (stale() || chart.mode !== mode || turnGen !== turnAt) return; // a new turn began; the load after it brings this reply
+      reveal.reset();
+      chart.live = "";
+    }
     chart.messages = messages;
     chart.sketch = sketch ?? null;
     chart.pointers = pointers ?? [];
@@ -227,6 +242,12 @@ async function runTurn(message, sent = []) {
   const scale = chart.scale;
   const mode = chart.mode;
   const mine = () => chart.open && chart.scale === scale && gen === turnGen;
+  if (chart.live) {
+    // The last reply is still on screen as it was written: it stays, as a line of the log, until the next load.
+    chart.messages = [...chart.messages, { id: `held-${++heldSeq}`, role: speaker(), kind: "text", body: chart.live }];
+  }
+  reveal.reset();
+  follow.anchorAt(null);
   Object.assign(chart, { inFlight: true, live: "", progress: null, error: null, stopped: false });
   const abort = new AbortController();
   turnAbort = abort;
@@ -247,6 +268,7 @@ async function runTurn(message, sent = []) {
       if (e.type === "text") {
         chart.live += e.data.text;
         chart.progress = null;
+        reveal.update(chart.live);
         scheduleLive();
       } else if (e.type === "progress") {
         chart.progress = e.data.message;
@@ -283,7 +305,14 @@ async function runTurn(message, sent = []) {
   if (!mine()) return;
   if (liveFrame) cancelAnimationFrame(liveFrame);
   liveFrame = 0;
-  Object.assign(chart, { inFlight: false, live: "", progress: null });
+  Object.assign(chart, { inFlight: false, progress: null });
+  if (chart.error || chart.stopped || unsent) {
+    reveal.reset();
+    chart.live = "";
+  } else {
+    heldAfter = loadGen;
+    reveal.end(); // it stays until its last words have faded in and the kept reply is drawn in its place
+  }
   if (!unsent) chart.version = null; // the reply and any sketch come back with the refetch; a turn never taken changed nothing
   document.dispatchEvent(new Event("turn")); // the pane's foot re-reads the model and, on the free start, the credit left
   rerender();
@@ -341,18 +370,27 @@ function renderLive() {
   const progress = pane.querySelector("#progress");
   if (!live || !progress) return;
   const stuck = follow.following;
-  if (chart.inFlight && !chart.live) {
+  const text = reveal.text;
+  if (chart.inFlight && !text) {
     live.replaceChildren(thinkingEl(thinkingLine(speaker(), chart.progress)));
-  } else if (chart.live) {
-    // Block by block: one that has not changed keeps its element, so only the block being written is drawn again.
-    keyedChildren(live, markdownBlocks(chart.live, { lead: true, mentions: mentionsFor(null) }).map((b, i) => ({ key: i, sig: b.sig, build: b.build })));
+  } else if (text) {
+    // Block by block: one that has not changed keeps its element, so only the block being written is drawn again,
+    // and the words it shows for the first time fade in.
+    keyedChildren(live, markdownBlocks(text, { lead: true, mentions: mentionsFor(null) }).map((b, i) => ({ key: i, sig: b.sig, build: reveal.fade(i, b.build) })));
+    for (const old of live.querySelectorAll(".caret")) old.remove();
+    let tail = live;
+    while (tail.lastElementChild && !["CODE", "STRONG", "EM", "BR"].includes(tail.lastElementChild.tagName)) tail = tail.lastElementChild;
+    if (!reveal.settled) tail.append(el("span", "caret"));
   } else {
     live.replaceChildren();
   }
-  live.hidden = !(chart.live || chart.inFlight);
-  progress.textContent = chart.progress && chart.live ? `${thinkingLine(speaker(), chart.progress)}…` : "";
+  live.hidden = !(text || chart.inFlight);
+  progress.textContent = chart.progress && text ? `${thinkingLine(speaker(), chart.progress)}…` : "";
   progress.hidden = !progress.textContent;
-  if (stuck) follow.toEnd();
+  if (stuck) {
+    if (!live.hidden) follow.anchorAt(live); // once the kept reply has taken its place, the anchor stays where it was
+    follow.toEnd();
+  }
 }
 
 export function focusChartAnswer() {
@@ -366,7 +404,7 @@ export function focusChartAnswer() {
 // ---- the pane ----
 
 /** Whether there is a thread to draw: it has loaded, or it has words in hand. */
-const ready = () => chart.loaded || chart.inFlight || chart.messages.length > 0;
+const ready = () => chart.loaded || chart.inFlight || Boolean(chart.live) || chart.messages.length > 0;
 const pendingSummary = () => (chart.sketch ? sketchSummary(chart.sketch.body, app.snapshot?.islands ?? []) : null);
 
 /** Everything the head is drawn from: it is drawn again only when this changes, so its Close button keeps the keyboard. */
@@ -493,7 +531,7 @@ function logEntries() {
     else out.push({ key: "skeleton", sig: "", build: skeletonEl });
     return out;
   }
-  if (chart.messages.length === 0 && !chart.inFlight && app.snapshot) {
+  if (chart.messages.length === 0 && !chart.inFlight && !chart.live && app.snapshot) {
     out.push({ key: "opening", sig: JSON.stringify([chart.mode, chart.scale, app.snapshot.islands.length, scaleName()]), build: openingEl });
   }
   const names = (app.snapshot?.islands ?? []).map((i) => [i.slug, i.name]);
@@ -528,6 +566,7 @@ function logEntries() {
   if (chart.error) out.push({ key: "turn-error", sig: chart.error, build: () => noticeEl(chart.error, { action: { label: t("paneParts.tryAgain"), run: retryTurn, keys: "r" } }) });
   // The words above are the last good ones; only reading them again failed.
   if (chart.loadError) out.push({ key: "stale", sig: chart.loadError, build: () => noticeEl(t("paneParts.refreshFailed", { why: chart.loadError }), { action: { label: t("paneParts.retry"), run: retryLoad, keys: "r" } }) });
+  out.push({ key: "more", sig: "", build: () => follow.moreEl() }); // last: it stands at the foot of the log
   return out;
 }
 

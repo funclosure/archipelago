@@ -12,8 +12,9 @@ import { keyedChildren } from "./keep.js";
 import { takeDemoSteps } from "./demo.js";
 import { landmarkTerms } from "./term-model.js";
 import { mentionsFor } from "./mentions.js";
-import { modelEl, modelSig, refreshJudgeModel } from "./model-label.js";
-import { autoRead, autoReadEl, canSpeak, speak, speakButton } from "./voice.js";
+import { judgeModel, modelEl, modelSig, refreshJudgeModel } from "./model-label.js";
+import { autoRead, autoReadEl, canSpeak, speak, speakButton, speakSlot } from "./voice.js";
+import { createReveal } from "./reveal.js";
 import { loadHighlighter } from "./code.js";
 import { renderCta } from "./cta.js";
 import { acceptDrops, createTray, messageImagesEl } from "./images.js";
@@ -57,6 +58,12 @@ let termsSig = "";       // the selected island's landmark terms, as a string, f
 let composing = false;   // the answer box is mid-composition (an IME): a rebuild now would destroy the word
 let renderHeld = false;  // a render came in while composing; it runs once the word is committed
 let liveFrame = 0;        // pending animation frame for the streaming reply
+// The reply is drawn as it arrives, its new words fading in (reveal.js); what it shows is drawn by renderLive. Once
+// the turn ends the reply stays as written until the kept one is drawn in its place (loadThread): `heldAfter` is the
+// last load begun before that, which cannot hold the reply yet.
+const reveal = createReveal(() => renderLive());
+let heldAfter = 0;
+let heldSeq = 0;
 
 // The one thread the page shows: the selected island's stored messages plus the turn in flight.
 const thread = {
@@ -319,6 +326,7 @@ function resetThread(slug, mode = app.mode) {
   tray.clear(); // the draft's images go with its words; sent ahead, they are deleted (never attached)
   turnGen += 1; // a stream still running from an earlier visit to this island is no longer ours
   stashDraft(); // the words in the box stay with the thread they were written in
+  reveal.reset();
   const kept = slug === null ? null : drafts.get(draftKey(slug, mode));
   Object.assign(thread, {
     slug, mode, version: null, messages: [], asks: [], pointers: [], loaded: false, draft: kept?.draft ?? "", live: "", progress: null, inFlight: false, error: null, loadError: null,
@@ -337,6 +345,14 @@ async function loadThread(slug) {
       `/api/thread?domain=${encodeURIComponent(app.domain)}&island=${encodeURIComponent(slug)}&mode=${encodeURIComponent(mode)}`,
     );
     if (stale()) return;
+    if (thread.live && !thread.inFlight && gen > heldAfter) {
+      // The reply on screen as it was written: shown whole first, then the kept one takes its place in the same draw.
+      const turnAt = turnGen;
+      await reveal.shown();
+      if (stale() || turnGen !== turnAt) return; // a new turn began meanwhile; the load after it brings this reply
+      reveal.reset();
+      thread.live = "";
+    }
     thread.messages = messages;
     thread.asks = asks ?? [];
     thread.pointers = pointers ?? [];
@@ -399,6 +415,13 @@ async function runTurn(slug, message, askId, sent = []) {
   const mode = thread.mode;
   const mine = () => thread.slug === slug && thread.mode === mode && gen === turnGen;
   const regionAtSend = region();
+  if (thread.live) {
+    // The last reply is still on screen as it was written (its kept copy has not come): it stays, as a line of the
+    // log, until the next load brings the kept one.
+    thread.messages = [...thread.messages, { id: `held-${++heldSeq}`, role: personaRole(mode), kind: "text", body: thread.live, model: judgeModel() }];
+  }
+  reveal.reset();
+  follow.anchorAt(null);
   thread.inFlight = true;
   thread.live = "";
   thread.progress = null;
@@ -424,6 +447,7 @@ async function runTurn(slug, message, askId, sent = []) {
       if (e.type === "text") {
         thread.live += e.data.text;
         thread.progress = null;
+        reveal.update(thread.live);
         scheduleLive();
       } else if (e.type === "progress") {
         thread.progress = e.data.message;
@@ -471,8 +495,15 @@ async function runTurn(slug, message, askId, sent = []) {
   cancelLive();
   thread.speakNext = !thread.error && !thread.stopped;
   thread.inFlight = false;
-  thread.live = "";
   thread.progress = null;
+  if (thread.error || thread.stopped || unsent) {
+    // No reply was kept (or one may have been, and the refetch shows it): what was shown of it goes.
+    reveal.reset();
+    thread.live = "";
+  } else {
+    heldAfter = loadGen;
+    reveal.end(); // it stays until its last words have faded in and the kept reply is drawn in its place
+  }
   // The stored reply and any system lines come back with the refetch, and the snapshot with them: the verdict, a
   // lit landmark or a reef in the head and on the map land as the turn ends, not on the next poll. A turn the
   // server never took changed nothing there, so nothing is read again (and a server that is away says so once).
@@ -568,28 +599,38 @@ function renderLive() {
   const log = pane.querySelector(".log");
   if (!live || !progress || !log) return; // no list on screen yet; the full render at the end of the turn shows everything
   const stuck = follow.following;
-  if (thread.inFlight && !thread.live) {
+  const text = reveal.text;
+  if (thread.inFlight && !text) {
     // Nothing has arrived yet: the reply's own line says so, where the words will land.
     live.replaceChildren(thinkingEl(thinkingLine(PERSONA_NAMES[thread.mode], thread.progress)));
-  } else if (thread.live) {
-    // Block by block: one that has not changed keeps its element, so only the block being written is drawn again.
-    const blocks = markdownBlocks(thread.live, { onQuestion: quoteIntoAnswer, lead: true, terms, mentions });
-    keyedChildren(live, blocks.map((b, i) => ({ key: i, sig: b.sig, build: b.build })));
+  } else if (text) {
+    // Block by block: one that has not changed keeps its element, so only the block being written is drawn again,
+    // and the words it shows for the first time fade in. The Listen pill stands where the kept reply will have it, so
+    // nothing moves when that one takes its place.
+    const role = personaRole(thread.mode);
+    const blocks = markdownBlocks(text, { onQuestion: quoteIntoAnswer, lead: true, terms, mentions });
+    keyedChildren(live, [
+      ...(canSpeak(role) ? [{ key: "speak", sig: role, build: () => speakSlot(role) }] : []),
+      ...blocks.map((b, i) => ({ key: i, sig: b.sig, build: reveal.fade(i, b.build) })),
+    ]);
     for (const old of live.querySelectorAll(".caret")) old.remove();
     // Descend to the deepest last block (e.g. into a list's last <li>) so the caret
     // follows the last character rather than landing after the whole block; stop
     // above inline elements so it trails them instead of nesting inside.
     let tail = live;
     while (tail.lastElementChild && !["CODE", "STRONG", "EM", "BR"].includes(tail.lastElementChild.tagName)) tail = tail.lastElementChild;
-    tail.append(el("span", "caret"));
+    if (!reveal.settled) tail.append(el("span", "caret"));
   } else {
     live.replaceChildren();
   }
-  live.hidden = !(thread.live || thread.inFlight);
+  live.hidden = !(text || thread.inFlight);
   // Before any words, the waiting line itself names the step; once words stream, the step goes under them.
-  progress.textContent = thread.progress && thread.live ? `${thinkingLine(PERSONA_NAMES[thread.mode], thread.progress)}…` : "";
+  progress.textContent = thread.progress && text ? `${thinkingLine(PERSONA_NAMES[thread.mode], thread.progress)}…` : "";
   progress.hidden = !progress.textContent;
-  if (stuck) follow.toEnd();
+  if (stuck) {
+    if (!live.hidden) follow.anchorAt(live); // once the kept reply has taken its place, the anchor stays where it was
+    follow.toEnd();
+  }
 }
 
 /** Focuses the answer box if it can take input; returns whether it did. */
@@ -931,7 +972,7 @@ function itemEl(item, reefPending) {
   if (item.kind === "system" || item.kind === "model") return trailEl(item);
   const m = el("div", `msg ${item.role}`);
   const persona = item.role === "judge" || item.role === "mentor";
-  if (persona && Number.isInteger(item.id) && canSpeak(item.role)) m.append(speakButton(item.id, item.role, readingOf(thread.slug, thread.mode)));
+  if (persona && canSpeak(item.role)) m.append(Number.isInteger(item.id) ? speakButton(item.id, item.role, readingOf(thread.slug, thread.mode)) : speakSlot(item.role));
   if (item.images?.length) m.append(messageImagesEl(item.images));
   // The reader's own words carry the marks: what a lit landmark, a reef or a loose end quoted from them.
   if (item.text || !item.images?.length) m.append(renderMarkdown(item.text, persona ? { onQuestion: quoteIntoAnswer, lead: true, terms, mentions, pin: pinFor(item.role) } : { marks: item.marks }));
@@ -950,13 +991,28 @@ function itemSig(item, reefPending) {
 }
 
 /** Whether there is a thread to draw: it has loaded, or it has words in hand, or the island has none to load (the snapshot counts both lenses' messages). */
-const threadReady = (island) => thread.loaded || thread.inFlight || thread.messages.length > 0 || island.messages === 0;
+const threadReady = (island) => thread.loaded || thread.inFlight || Boolean(thread.live) || thread.messages.length > 0 || island.messages === 0;
 
 let itemsFor = { messages: null, island: null, items: [] };
 /** The thread's log items on this island: worked out once per thread and snapshot, since one redraw asks several times (the log, the foot, the map's card). */
 function itemsNow(island) {
   if (itemsFor.messages !== thread.messages || itemsFor.island !== island) itemsFor = { messages: thread.messages, island, items: logItems(thread.messages, island) };
   return itemsFor.items;
+}
+
+/**
+ * The items with the model line the reply being written will have once it is kept ("<model> from here", when the model
+ * answering now is not the one that wrote the reply before), where `logItems` will put it: so nothing moves when the
+ * kept reply takes the live one's place.
+ */
+function withLiveModel(items) {
+  if (!thread.inFlight && !thread.live) return items;
+  const model = judgeModel();
+  const prior = [...thread.messages].reverse().find((m) => m.kind === "text" && m.role !== "you");
+  if (!model || !prior || (prior.model ?? null) === model) return items;
+  let at = items.length;
+  while (at > 0 && items[at - 1].role !== "you" && items[at - 1].kind !== "text") at--;
+  return [...items.slice(0, at), { id: "model-live", role: personaRole(thread.mode), kind: "model", text: model, proposal: null }, ...items.slice(at)];
 }
 
 /** The log's children, in order. A keyed entry (a thread item, a notice) keeps its element until its content changes. */
@@ -974,7 +1030,7 @@ function logEntries(island) {
     build: () => noticeEl(thread.error, items.length ? { action: { label: t("paneParts.tryAgain"), run: () => retryTurn(island.slug), keys: "r" } } : {}),
   });
   const verdictFirst = () => out.push({ key: "verdict-first", sig: JSON.stringify(island.verdict), build: () => verdictEl(island.verdict) });
-  if (items.length === 0 && !thread.inFlight) {
+  if (items.length === 0 && !thread.inFlight && !thread.live) {
     if (thread.mode === "judge" && island.verdict) verdictFirst();
     out.push({ key: "briefing", sig: JSON.stringify([thread.mode, Boolean(island.verdict), carry]), build: () => briefingEl(island) });
     if (thread.error) turnError(); // the start button above is the way to try again
@@ -983,7 +1039,7 @@ function logEntries(island) {
   // a verdict written from the terminal has no system line; show it at the top of the judge's log
   if (thread.mode === "judge" && island.verdict && !items.some((i) => i.kind === "verdict")) verdictFirst();
   const reefPending = Boolean(items.find((i) => i.kind === "reef_proposal" && i.proposal.status === "pending"));
-  for (const item of items) out.push({ key: `${item.kind}:${item.id}`, sig: itemSig(item, reefPending), build: () => itemEl(item, reefPending) });
+  for (const item of withLiveModel(items)) out.push({ key: `${item.kind}:${item.id}`, sig: itemSig(item, reefPending), build: () => itemEl(item, reefPending) });
   // The reply as it streams: kept across redraws, so a diagram or demo in it is not drawn again mid-reply.
   out.push({ key: "live", sig: "", build: () => {
     const live = el("div", `msg ${thread.mode}`);
@@ -1004,6 +1060,7 @@ function logEntries(island) {
     key: "stale", sig: thread.loadError,
     build: () => noticeEl(t("paneParts.refreshFailed", { why: thread.loadError }), { action: { label: t("paneParts.retry"), run: retryLoad, keys: "r" } }),
   });
+  out.push({ key: "more", sig: "", build: () => follow.moreEl() }); // last: it stands at the foot of the log
   return out;
 }
 
@@ -1219,7 +1276,7 @@ function render() {
   termsSig = JSON.stringify(island.landmarks.items.map((l) => [l.slug, l.name, l.terms ?? null]));
   // The answer box comes once there is something to answer: not before the first turn (the briefing holds the
   // start button), and not while the thread is still being read.
-  const answering = threadReady(island) && (thread.messages.length > 0 || thread.inFlight);
+  const answering = threadReady(island) && (thread.messages.length > 0 || thread.inFlight || Boolean(thread.live));
   // Each part is drawn again only when what it is drawn from changed (its sig): a snapshot that changed nothing
   // keeps every button where it is, with the keyboard and a press in flight on it. The log stays in the pane when
   // it is this thread's. Where a part is drawn anew, the keyboard goes back to the same control, and the caret to

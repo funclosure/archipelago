@@ -90,8 +90,9 @@
   --e-1: 0 1px 2px var(--shadow-soft);
   --e-2: 0 8px 24px var(--shadow-soft), 0 1px 3px var(--shadow-soft);
   --e-3: 0 18px 48px var(--shadow-deep), 0 2px 8px var(--shadow-soft);
-  /* motion: feedback under the pointer; something entering or leaving */
+  /* motion: feedback under the pointer; something entering or leaving; a streaming reply's new words fading in */
   --t-fast: 120ms; --t-med: 180ms; --ease: cubic-bezier(.2, 0, 0, 1);
+  --t-fade: 500ms; --ease-fade: cubic-bezier(.33, .1, .67, 1);
   /* control heights */
   --h-sm: 24px; --h-md: 28px; --h-lg: 32px; --h-xl: 40px;
   /* surfaces under the pointer, mixed from the theme's text so they read on the panel and on the sea alike */
@@ -107,7 +108,7 @@
   --z-map: 1; --z-panel: 2; --z-sheet: 3; --z-float: 4; --z-popover: 5; --z-dialog: 6; --z-dialog-top: 7; --z-viewer: 8; --z-tip: 30;
 }
 /* Reduced motion: every tokenised transition and entrance takes no time (looping animations stop where they are declared). */
-@media (prefers-reduced-motion: reduce) { :root { --t-fast: 0ms; --t-med: 0ms; } }
+@media (prefers-reduced-motion: reduce) { :root { --t-fast: 0ms; --t-med: 0ms; --t-fade: 0ms; } }
 html, body { margin: 0; height: 100%; background: var(--water); color: var(--text);
   font: var(--fs-base)/1.5 var(--font-ui); overflow: hidden; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
 
@@ -595,6 +596,19 @@ button.event:hover { color: var(--text); }
 .skeleton i:nth-child(3) { width: 30%; }
 @keyframes skeleton-in { to { opacity: 1; } }
 .progress { font-size: var(--fs-xs); color: var(--muted); font-style: italic; }
+/* The reply being written is never what the browser holds the log still by: when the kept reply goes in above it and it
+   leaves, holding on to it would carry the log down by a whole reply. The page follows it itself (logFollower). */
+#live { overflow-anchor: none; }
+/* A word the streaming reply shows for the first time (reveal.js): it fades in, timed by --fade-at (negative when a redraw
+   picks up a fade already running). Only its opacity moves, so nothing around it shifts. */
+.fresh { animation: fresh-in var(--t-fade) var(--ease-fade) var(--fade-at, 0ms) both; }
+@keyframes fresh-in { from { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .fresh { animation: none; } }
+/* More below: while the log's end is out of sight (a long reply read from its top), a quiet button stands at the foot of
+   the log and goes there. It takes no room: a sticky line of no height, the button drawn above it. */
+.log > .more { position: sticky; bottom: var(--sp-3); z-index: 1; display: flex; justify-content: center; height: 0; margin-top: calc(-1 * var(--sp-4)); pointer-events: none; overflow-anchor: none; }
+.log > .more .more-go { --btn-bg: var(--panel-2); transform: translateY(-100%); gap: var(--sp-15); border: 1px solid var(--line); box-shadow: var(--e-2); color: var(--text-2); pointer-events: auto; }
+.log > .more .more-go:is(:hover, :focus-visible) { color: var(--text); }
 .thinking { color: var(--muted); font-style: italic; display: inline-flex; align-items: baseline; gap: var(--sp-15); }
 /* a band of light sweeps across the words, left to right, while the turn is under way */
 .thinking .words { background: linear-gradient(90deg, var(--muted) 0%, var(--muted) 35%, var(--text) 50%, var(--muted) 65%, var(--muted) 100%);
@@ -730,7 +744,9 @@ button.event:hover { color: var(--text); }
   border-radius: var(--r-full); background: var(--panel-2); color: var(--text-2); font: var(--fw-medium) var(--fs-sm)/1.3 var(--font-text); cursor: pointer; --accent: var(--lamp); }
 .msg.mentor .speak, .now-playing[data-role="mentor"] { --accent: var(--explore); }
 .speak[data-state="idle"] { position: static; margin-left: calc(-1 * var(--sp-2)); background: transparent; border-color: transparent; box-shadow: none; color: var(--muted); }
-.msg:hover > .speak[data-state="idle"], .speak[data-state="idle"]:is(:hover, :focus-visible) { background: var(--panel-2); border-color: var(--line); color: var(--text); }
+.msg:hover > .speak[data-state="idle"]:not(:disabled), .speak[data-state="idle"]:not(:disabled):is(:hover, :focus-visible) { background: var(--panel-2); border-color: var(--line); color: var(--text); }
+/* On a reply still being written the pill stands where it will be, quieter and not yet pressable. */
+.speak:disabled { opacity: .5; cursor: default; }
 .speak .ic, .now-playing .ic { flex: none; display: flex; align-items: center; justify-content: center; gap: 2px; width: 12px; height: 12px; }
 .speak .ic i, .now-playing .ic i { width: 2px; height: 12px; border-radius: 1px; background: currentColor; transform: scaleY(.4); }
 .speak[data-state="idle"] .ic i { display: none; }

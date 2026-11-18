@@ -169,6 +169,24 @@ export function speakButton(id, role, meta = {}) {
   return b;
 }
 
+/**
+ * The Listen pill on a reply still being written: the same pill in the same place, not yet pressable, so when the
+ * kept reply takes its place nothing below moves.
+ */
+export function speakSlot(role) {
+  const b = document.createElement("button");
+  b.type = "button";
+  b.className = "speak";
+  b.disabled = true;
+  b.dataset.state = "idle";
+  const name = nameOf(role);
+  const lbl = document.createElement("span");
+  lbl.className = "lbl";
+  lbl.textContent = name ? t("voice.listenAs", { name }) : t("voice.listen");
+  b.append(barsEl(), lbl);
+  return b;
+}
+
 const SVG = "http://www.w3.org/2000/svg";
 
 /** A skip icon drawn here: a circular arrow with its head at the top and the seconds inside (`back` mirrors it). */
