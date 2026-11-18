@@ -17,7 +17,7 @@ import { createTray, messageImagesEl } from "./images.js";
 import { canTalk, talkBusy } from "./dictation.js";
 import { insertWords } from "./dictation-model.js";
 import { keyedChildren } from "./keep.js";
-import { createPace } from "./pace.js";
+import { createReveal } from "./reveal.js";
 import { mentionsFor } from "./mentions.js";
 import { icon } from "./icons.js";
 import { tip } from "./tip.js";
@@ -61,9 +61,9 @@ let rerender = () => {};
 let sail = () => {};
 let gripEl = null;    // the pane's grip is card.js's; the cartographer's pane resizes the same way
 const follow = logFollower();
-// The reply is let out at the pace it is written (pace.js); once the turn ends it stays as written until the kept one
-// is drawn in its place (load). `heldAfter` is the last load begun before that, which cannot hold the reply yet.
-const pace = createPace(() => renderLive());
+// The reply is drawn as it arrives, its new words fading in (reveal.js); once the turn ends it stays as written until
+// the kept one is drawn in its place (load). `heldAfter` is the last load begun before that, which cannot hold it yet.
+const reveal = createReveal(() => renderLive());
 let heldAfter = 0;
 let heldSeq = 0;
 /** The images attached to the draft in this pane's answer box (a syllabus for the cartographer, a screenshot for the guide). */
@@ -127,7 +127,7 @@ function reset(scale, mode = chart.mode) {
   tray.clear(); // the draft's images go with its words
   stashDraft();
   const at = mode === "guide" ? null : scale;
-  pace.reset();
+  reveal.reset();
   Object.assign(chart, { mode, scale: at, version: null, messages: [], sketch: null, pointers: [], loaded: false, loadError: null, draft: drafts.get(draftKey(mode, at)) ?? "", live: "", progress: null, inFlight: false, error: null, stopped: false, deciding: false });
 }
 
@@ -209,9 +209,9 @@ async function load() {
     if (chart.live && !chart.inFlight && gen > heldAfter) {
       // The reply on screen as it was written: shown whole first, then the kept one takes its place in the same draw.
       const turnAt = turnGen;
-      await pace.shown();
+      await reveal.shown();
       if (stale() || chart.mode !== mode || turnGen !== turnAt) return; // a new turn began; the load after it brings this reply
-      pace.reset();
+      reveal.reset();
       chart.live = "";
     }
     chart.messages = messages;
@@ -246,7 +246,7 @@ async function runTurn(message, sent = []) {
     // The last reply is still on screen as it was written: it stays, as a line of the log, until the next load.
     chart.messages = [...chart.messages, { id: `held-${++heldSeq}`, role: speaker(), kind: "text", body: chart.live }];
   }
-  pace.reset();
+  reveal.reset();
   follow.anchorAt(null);
   Object.assign(chart, { inFlight: true, live: "", progress: null, error: null, stopped: false });
   const abort = new AbortController();
@@ -268,7 +268,7 @@ async function runTurn(message, sent = []) {
       if (e.type === "text") {
         chart.live += e.data.text;
         chart.progress = null;
-        pace.update(chart.live);
+        reveal.update(chart.live);
         scheduleLive();
       } else if (e.type === "progress") {
         chart.progress = e.data.message;
@@ -307,11 +307,11 @@ async function runTurn(message, sent = []) {
   liveFrame = 0;
   Object.assign(chart, { inFlight: false, progress: null });
   if (chart.error || chart.stopped || unsent) {
-    pace.reset();
+    reveal.reset();
     chart.live = "";
   } else {
     heldAfter = loadGen;
-    pace.end(); // the rest is let out quickly; it stays until the kept reply is drawn in its place
+    reveal.end(); // it stays until its last words have faded in and the kept reply is drawn in its place
   }
   if (!unsent) chart.version = null; // the reply and any sketch come back with the refetch; a turn never taken changed nothing
   document.dispatchEvent(new Event("turn")); // the pane's foot re-reads the model and, on the free start, the credit left
@@ -370,16 +370,17 @@ function renderLive() {
   const progress = pane.querySelector("#progress");
   if (!live || !progress) return;
   const stuck = follow.following;
-  const text = pace.text;
+  const text = reveal.text;
   if (chart.inFlight && !text) {
     live.replaceChildren(thinkingEl(thinkingLine(speaker(), chart.progress)));
   } else if (text) {
-    // Block by block: one that has not changed keeps its element, so only the block being written is drawn again.
-    keyedChildren(live, markdownBlocks(text, { lead: true, mentions: mentionsFor(null) }).map((b, i) => ({ key: i, sig: b.sig, build: b.build })));
+    // Block by block: one that has not changed keeps its element, so only the block being written is drawn again,
+    // and the words it shows for the first time fade in.
+    keyedChildren(live, markdownBlocks(text, { lead: true, mentions: mentionsFor(null) }).map((b, i) => ({ key: i, sig: b.sig, build: reveal.fade(i, b.build) })));
     for (const old of live.querySelectorAll(".caret")) old.remove();
     let tail = live;
     while (tail.lastElementChild && !["CODE", "STRONG", "EM", "BR"].includes(tail.lastElementChild.tagName)) tail = tail.lastElementChild;
-    if (!pace.settled) tail.append(el("span", "caret"));
+    if (!reveal.settled) tail.append(el("span", "caret"));
   } else {
     live.replaceChildren();
   }

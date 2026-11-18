@@ -14,7 +14,7 @@ import { landmarkTerms } from "./term-model.js";
 import { mentionsFor } from "./mentions.js";
 import { judgeModel, modelEl, modelSig, refreshJudgeModel } from "./model-label.js";
 import { autoRead, autoReadEl, canSpeak, speak, speakButton, speakSlot } from "./voice.js";
-import { createPace } from "./pace.js";
+import { createReveal } from "./reveal.js";
 import { loadHighlighter } from "./code.js";
 import { renderCta } from "./cta.js";
 import { acceptDrops, createTray, messageImagesEl } from "./images.js";
@@ -58,10 +58,10 @@ let termsSig = "";       // the selected island's landmark terms, as a string, f
 let composing = false;   // the answer box is mid-composition (an IME): a rebuild now would destroy the word
 let renderHeld = false;  // a render came in while composing; it runs once the word is committed
 let liveFrame = 0;        // pending animation frame for the streaming reply
-// The reply is let out at the pace it is written (pace.js), not in the bursts it arrives in; what it shows is drawn
-// by renderLive. Once the turn ends the reply stays as written until the kept one is drawn in its place (loadThread):
-// `heldAfter` is the last load begun before that, which cannot hold the reply yet.
-const pace = createPace(() => renderLive());
+// The reply is drawn as it arrives, its new words fading in (reveal.js); what it shows is drawn by renderLive. Once
+// the turn ends the reply stays as written until the kept one is drawn in its place (loadThread): `heldAfter` is the
+// last load begun before that, which cannot hold the reply yet.
+const reveal = createReveal(() => renderLive());
 let heldAfter = 0;
 let heldSeq = 0;
 
@@ -326,7 +326,7 @@ function resetThread(slug, mode = app.mode) {
   tray.clear(); // the draft's images go with its words; sent ahead, they are deleted (never attached)
   turnGen += 1; // a stream still running from an earlier visit to this island is no longer ours
   stashDraft(); // the words in the box stay with the thread they were written in
-  pace.reset();
+  reveal.reset();
   const kept = slug === null ? null : drafts.get(draftKey(slug, mode));
   Object.assign(thread, {
     slug, mode, version: null, messages: [], asks: [], pointers: [], loaded: false, draft: kept?.draft ?? "", live: "", progress: null, inFlight: false, error: null, loadError: null,
@@ -348,9 +348,9 @@ async function loadThread(slug) {
     if (thread.live && !thread.inFlight && gen > heldAfter) {
       // The reply on screen as it was written: shown whole first, then the kept one takes its place in the same draw.
       const turnAt = turnGen;
-      await pace.shown();
+      await reveal.shown();
       if (stale() || turnGen !== turnAt) return; // a new turn began meanwhile; the load after it brings this reply
-      pace.reset();
+      reveal.reset();
       thread.live = "";
     }
     thread.messages = messages;
@@ -420,7 +420,7 @@ async function runTurn(slug, message, askId, sent = []) {
     // log, until the next load brings the kept one.
     thread.messages = [...thread.messages, { id: `held-${++heldSeq}`, role: personaRole(mode), kind: "text", body: thread.live, model: judgeModel() }];
   }
-  pace.reset();
+  reveal.reset();
   follow.anchorAt(null);
   thread.inFlight = true;
   thread.live = "";
@@ -447,7 +447,7 @@ async function runTurn(slug, message, askId, sent = []) {
       if (e.type === "text") {
         thread.live += e.data.text;
         thread.progress = null;
-        pace.update(thread.live);
+        reveal.update(thread.live);
         scheduleLive();
       } else if (e.type === "progress") {
         thread.progress = e.data.message;
@@ -498,11 +498,11 @@ async function runTurn(slug, message, askId, sent = []) {
   thread.progress = null;
   if (thread.error || thread.stopped || unsent) {
     // No reply was kept (or one may have been, and the refetch shows it): what was shown of it goes.
-    pace.reset();
+    reveal.reset();
     thread.live = "";
   } else {
     heldAfter = loadGen;
-    pace.end(); // the rest is let out quickly; it stays until the kept reply is drawn in its place
+    reveal.end(); // it stays until its last words have faded in and the kept reply is drawn in its place
   }
   // The stored reply and any system lines come back with the refetch, and the snapshot with them: the verdict, a
   // lit landmark or a reef in the head and on the map land as the turn ends, not on the next poll. A turn the
@@ -599,18 +599,19 @@ function renderLive() {
   const log = pane.querySelector(".log");
   if (!live || !progress || !log) return; // no list on screen yet; the full render at the end of the turn shows everything
   const stuck = follow.following;
-  const text = pace.text;
+  const text = reveal.text;
   if (thread.inFlight && !text) {
     // Nothing has arrived yet: the reply's own line says so, where the words will land.
     live.replaceChildren(thinkingEl(thinkingLine(PERSONA_NAMES[thread.mode], thread.progress)));
   } else if (text) {
-    // Block by block: one that has not changed keeps its element, so only the block being written is drawn again.
-    // The Listen pill stands where the kept reply will have it, so nothing moves when that one takes its place.
+    // Block by block: one that has not changed keeps its element, so only the block being written is drawn again,
+    // and the words it shows for the first time fade in. The Listen pill stands where the kept reply will have it, so
+    // nothing moves when that one takes its place.
     const role = personaRole(thread.mode);
     const blocks = markdownBlocks(text, { onQuestion: quoteIntoAnswer, lead: true, terms, mentions });
     keyedChildren(live, [
       ...(canSpeak(role) ? [{ key: "speak", sig: role, build: () => speakSlot(role) }] : []),
-      ...blocks.map((b, i) => ({ key: i, sig: b.sig, build: b.build })),
+      ...blocks.map((b, i) => ({ key: i, sig: b.sig, build: reveal.fade(i, b.build) })),
     ]);
     for (const old of live.querySelectorAll(".caret")) old.remove();
     // Descend to the deepest last block (e.g. into a list's last <li>) so the caret
@@ -618,7 +619,7 @@ function renderLive() {
     // above inline elements so it trails them instead of nesting inside.
     let tail = live;
     while (tail.lastElementChild && !["CODE", "STRONG", "EM", "BR"].includes(tail.lastElementChild.tagName)) tail = tail.lastElementChild;
-    if (!pace.settled) tail.append(el("span", "caret"));
+    if (!reveal.settled) tail.append(el("span", "caret"));
   } else {
     live.replaceChildren();
   }

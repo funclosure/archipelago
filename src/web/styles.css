@@ -90,8 +90,9 @@
   --e-1: 0 1px 2px var(--shadow-soft);
   --e-2: 0 8px 24px var(--shadow-soft), 0 1px 3px var(--shadow-soft);
   --e-3: 0 18px 48px var(--shadow-deep), 0 2px 8px var(--shadow-soft);
-  /* motion: feedback under the pointer; something entering or leaving */
+  /* motion: feedback under the pointer; something entering or leaving; a streaming reply's new words fading in */
   --t-fast: 120ms; --t-med: 180ms; --ease: cubic-bezier(.2, 0, 0, 1);
+  --t-fade: 500ms; --ease-fade: cubic-bezier(.33, .1, .67, 1);
   /* control heights */
   --h-sm: 24px; --h-md: 28px; --h-lg: 32px; --h-xl: 40px;
   /* surfaces under the pointer, mixed from the theme's text so they read on the panel and on the sea alike */
@@ -107,7 +108,7 @@
   --z-map: 1; --z-panel: 2; --z-sheet: 3; --z-float: 4; --z-popover: 5; --z-dialog: 6; --z-dialog-top: 7; --z-viewer: 8; --z-tip: 30;
 }
 /* Reduced motion: every tokenised transition and entrance takes no time (looping animations stop where they are declared). */
-@media (prefers-reduced-motion: reduce) { :root { --t-fast: 0ms; --t-med: 0ms; } }
+@media (prefers-reduced-motion: reduce) { :root { --t-fast: 0ms; --t-med: 0ms; --t-fade: 0ms; } }
 html, body { margin: 0; height: 100%; background: var(--water); color: var(--text);
   font: var(--fs-base)/1.5 var(--font-ui); overflow: hidden; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
 
@@ -598,6 +599,11 @@ button.event:hover { color: var(--text); }
 /* The reply being written is never what the browser holds the log still by: when the kept reply goes in above it and it
    leaves, holding on to it would carry the log down by a whole reply. The page follows it itself (logFollower). */
 #live { overflow-anchor: none; }
+/* A word the streaming reply shows for the first time (reveal.js): it fades in, timed by --fade-at (negative when a redraw
+   picks up a fade already running). Only its opacity moves, so nothing around it shifts. */
+.fresh { animation: fresh-in var(--t-fade) var(--ease-fade) var(--fade-at, 0ms) both; }
+@keyframes fresh-in { from { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .fresh { animation: none; } }
 /* More below: while the log's end is out of sight (a long reply read from its top), a quiet button stands at the foot of
    the log and goes there. It takes no room: a sticky line of no height, the button drawn above it. */
 .log > .more { position: sticky; bottom: var(--sp-3); z-index: 1; display: flex; justify-content: center; height: 0; margin-top: calc(-1 * var(--sp-4)); pointer-events: none; overflow-anchor: none; }
