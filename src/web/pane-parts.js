@@ -11,6 +11,7 @@ import { attachButton, pastedImages, trayEl } from "./images.js";
 import { canTalk, talkBusy, talkButton } from "./dictation.js";
 
 const STICK_PX = 40; // within this of the bottom, a scroll by the reader still means "follow"
+const MORE_PX = 80; // further than this from the end, "More below" shows
 const noHover = typeof matchMedia === "function" ? matchMedia("(hover: none)") : null; // a touch screen: its keyboard has no Shift-Enter
 
 export function el(tag, className, text) {
@@ -265,20 +266,61 @@ export function personaGlyph(who) {
  * tells theirs from the browser's); the page's scrolls (`toEnd`) do not, and whatever grows by itself (a diagram
  * drawn late, an image arriving, a demo's frame finding its height, the head or the answer box taking room) keeps a
  * followed log at its end: every child and the log's own box are watched for a change of size.
+ *
+ * A reply coming in is followed only until its first line reaches the top of the log (`anchorAt`): from there it
+ * grows below the fold and nothing moves under the reader, who is reading it from the top. Scrolling to its end
+ * themselves, they follow its end again until the next turn. While the end is out of sight, "More below" (`moreEl`,
+ * the log's last child) stands at the foot of the log and takes them there.
  */
 export function logFollower() {
   let log = null;
   let following = true;
   let ownTop = -1; // where toEnd last put the log, so its own scroll event is not read as the reader's
   let lastTop = 0; // where the log stood at its last scroll: a scroll up from there is the reader leaving the end
+  let anchor = null; // the furthest down the page itself scrolls this turn: where the reply's first line is at the top
+  let freed = false; // the reader scrolled to the end of the reply themselves: follow its end, not its top
+  let riding = false; // a reply is coming in (or has just come): the log glides after it instead of jumping
+  let glide = 0; // the frame moving the log a step toward where it follows to
+  let more = null; // "More below", the log's last child
   const seen = new Set();
+  const paintMore = () => {
+    if (!more || !log) return;
+    const away = log.scrollHeight - log.clientHeight - log.scrollTop > MORE_PX;
+    if (more.hidden === away) more.hidden = !away;
+  };
+  const still = () => typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
+  /** Where a followed log stands: its end, or no further than the reply's first line at the top, and never back up. */
+  const target = () => {
+    const end = log.scrollHeight - log.clientHeight;
+    return anchor === null ? end : Math.max(log.scrollTop, Math.min(anchor, end));
+  };
+  const step = () => {
+    glide = 0;
+    if (!log || !following) return;
+    const from = log.scrollTop;
+    const to = target();
+    if (to - from < 1) return;
+    // A quarter of the way each frame: a new list or table eases the words up instead of throwing them.
+    log.scrollTop = from + Math.max(1, Math.ceil((to - from) / 4));
+    ownTop = lastTop = log.scrollTop;
+    paintMore();
+    glide = requestAnimationFrame(step);
+  };
   const toEnd = () => {
     if (!log) return;
-    log.scrollTop = log.scrollHeight;
+    if (riding && !still()) {
+      if (!glide) glide = requestAnimationFrame(step);
+      return;
+    }
+    if (glide) cancelAnimationFrame(glide);
+    glide = 0;
+    log.scrollTop = anchor === null ? log.scrollHeight : target();
     ownTop = lastTop = log.scrollTop;
+    paintMore();
   };
   const watcher = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(() => {
     if (following) toEnd();
+    paintMore();
   });
   return {
     get following() {
@@ -287,8 +329,47 @@ export function logFollower() {
     /** The reader asked to watch the end (they sent something). */
     follow() {
       following = true;
+      anchor = null;
+      freed = false;
+      riding = false;
     },
     toEnd,
+    /** "More below": a quiet button at the foot of the log while its end is out of sight; it goes there and follows. */
+    moreEl() {
+      const wrap = el("div", "more");
+      const go = button(null, () => {
+        if (!log) return;
+        following = true;
+        anchor = null;
+        freed = true;
+        log.scrollTo({ top: log.scrollHeight, behavior: still() ? "auto" : "smooth" });
+      }, "btn sm more-go");
+      go.append(icon("arrow-down", { size: 14 }), el("span", null, t("paneParts.moreBelow")));
+      go.dataset.fk = "more";
+      tip(go, t("paneParts.moreBelowTip"));
+      wrap.append(go);
+      wrap.hidden = true;
+      more = wrap;
+      queueMicrotask(paintMore);
+      return wrap;
+    },
+    /**
+     * The reply being written begins at `node`: the log follows it until that line reaches its top, then holds still.
+     * Null starts a new turn with nothing held.
+     */
+    anchorAt(node) {
+      if (!node) {
+        anchor = null;
+        freed = false;
+        riding = false;
+        return;
+      }
+      if (!log || !log.contains(node)) return;
+      riding = true;
+      if (freed) return;
+      const pad = parseFloat(getComputedStyle(log).paddingTop) || 0;
+      anchor = Math.max(0, node.getBoundingClientRect().top - log.getBoundingClientRect().top + log.scrollTop - pad);
+    },
     /** Takes `node` as the log to follow. One it has not seen opens at its latest words; returns whether it is new. */
     adopt(node) {
       if (node === log) return false;
@@ -296,6 +377,9 @@ export function logFollower() {
       seen.clear();
       log = node;
       following = true;
+      anchor = null;
+      freed = false;
+      riding = false;
       ownTop = -1;
       lastTop = node.scrollTop;
       node.addEventListener("scroll", () => {
@@ -306,7 +390,13 @@ export function logFollower() {
         // A scroll the page made itself says nothing about the reader: by the time its event arrives the content
         // may have grown again, and reading that as "scrolled away" would stop the log following.
         if (Math.abs(top - ownTop) < 2) return;
-        following = followsAfterScroll(following, { top, lastTop: from, max: node.scrollHeight - node.clientHeight, stick: STICK_PX });
+        const max = node.scrollHeight - node.clientHeight;
+        following = followsAfterScroll(following, { top, lastTop: from, max, stick: STICK_PX });
+        if (anchor !== null && top > anchor + 1 && max - top < STICK_PX) {
+          anchor = null; // they read down to the end of the reply: from here it is followed to its end
+          freed = true;
+        }
+        paintMore();
       });
       watcher?.observe(node);
       return true;
