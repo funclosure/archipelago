@@ -283,16 +283,20 @@ export function logFollower() {
   let glide = 0; // the frame moving the log a step toward where it follows to
   let more = null; // "More below", the log's last child
   const seen = new Set();
-  const paintMore = () => {
-    if (!more || !log) return;
-    const away = log.scrollHeight - log.clientHeight - log.scrollTop > MORE_PX;
-    if (more.hidden === away) more.hidden = !away;
-  };
   const still = () => typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
   /** Where a followed log stands: its end, or no further than the reply's first line at the top, and never back up. */
   const target = () => {
     const end = log.scrollHeight - log.clientHeight;
     return anchor === null ? end : Math.max(log.scrollTop, Math.min(anchor, end));
+  };
+  // Shown only where the reader would have to go there themselves: they scrolled away, or the log holds at the
+  // reply's first line. While it is still gliding to the end it says nothing (a burst's words are laid out, faint,
+  // a frame before the glide reaches them).
+  const paintMore = () => {
+    if (!more || !log) return;
+    const end = log.scrollHeight - log.clientHeight;
+    const away = end - log.scrollTop > MORE_PX && !(following && end - target() <= MORE_PX);
+    if (more.hidden === away) more.hidden = !away;
   };
   const step = () => {
     glide = 0;
