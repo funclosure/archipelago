@@ -14,6 +14,8 @@ import { systemText } from "./thread.js";
 import { t } from "./i18n.js";
 import { modelEl, modelSig } from "./model-label.js";
 import { createTray, messageImagesEl } from "./images.js";
+import { canTalk, talkBusy } from "./dictation.js";
+import { insertWords } from "./dictation-model.js";
 import { keyedChildren } from "./keep.js";
 import { mentionsFor } from "./mentions.js";
 import { icon } from "./icons.js";
@@ -100,6 +102,18 @@ function stashDraft() {
   const key = draftKey(chart.mode, chart.scale);
   if (chart.draft.trim()) drafts.set(key, chart.draft);
   else drafts.delete(key);
+}
+
+/** Words spoken into the guide's box that came back after it left the page (dictation.js): they wait in its draft. */
+function keepHeard(domain, words) {
+  const add = (text) => insertWords(text, text.length, text.length, words).value;
+  if (chart.open && guiding() && app.domain === domain) {
+    chart.draft = add(chart.draft);
+    rerender();
+    return;
+  }
+  const key = `${domain}/guide/`;
+  drafts.set(key, add(drafts.get(key) ?? ""));
 }
 
 function reset(scale, mode = chart.mode) {
@@ -530,7 +544,7 @@ function logEl(prev = null) {
 
 /** Everything the foot is drawn from but the draft's words, which live in the box. */
 function footSig() {
-  return JSON.stringify([chart.mode, ready(), chart.deciding, chartTurning(), Boolean(chart.sketch), tray.items.map((i) => [i.key, i.status]), tray.notice, modelSig()]);
+  return JSON.stringify([chart.mode, ready(), chart.deciding, chartTurning(), Boolean(chart.sketch), tray.items.map((i) => [i.key, i.status]), tray.notice, canTalk(), modelSig()]);
 }
 
 function footEl() {
@@ -541,6 +555,8 @@ function footEl() {
     placeholder: t(guiding() ? "chart.guidePlaceholder" : chart.sketch ? "chart.placeholderSketch" : "chart.placeholder"),
     disabled: !ready() || chart.deciding,
     tray,
+    // Push-to-talk for the guide (the mentor before an island), never the cartographer's sketching.
+    talk: guiding() ? { key: draftKey("guide", null), keep: ((domain) => (words) => keepHeard(domain, words))(app.domain) } : null,
     action: streaming ? "stop" : "send",
     onInput(value) {
       chart.draft = value;
@@ -551,7 +567,7 @@ function footEl() {
     },
     onStop: () => stopChartTurn(),
     onSubmit(body) {
-      if ((!body && tray.ready().length === 0) || chart.inFlight || tray.busy()) return;
+      if ((!body && tray.ready().length === 0) || chart.inFlight || tray.busy() || (guiding() && talkBusy(draftKey("guide", null)))) return;
       chart.draft = "";
       void runTurn(body, tray.take());
     },
@@ -622,7 +638,7 @@ export function chartSend({ approve = true } = {}) {
   }
   const form = document.getElementById("pane")?.querySelector("#answer-form");
   const ta = document.getElementById("pane")?.querySelector("#answer");
-  if (!form || !ta || chart.inFlight || !canSend({ text: ta.value, images: tray.ready().length, busy: tray.busy(), disabled: ta.disabled })) return false;
+  if (!form || !ta || chart.inFlight || !canSend({ text: ta.value, images: tray.ready().length, busy: tray.busy() || talkBusy(form.dataset.talk), disabled: ta.disabled })) return false;
   form.requestSubmit();
   return true;
 }

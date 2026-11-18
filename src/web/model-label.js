@@ -6,6 +6,7 @@ import { api } from "./app.js";
 import { t } from "./i18n.js";
 import { request } from "./transport.js";
 import { setVoices } from "./voice.js";
+import { setDictation } from "./dictation.js";
 import { creditLabel } from "./credit-model.js";
 import { openYourKey } from "./hosted.js";
 import { tip } from "./tip.js";
@@ -44,9 +45,10 @@ async function readNames() {
 /** Re-reads the model; resolves true when it changed, so the caller knows to redraw. A failed read keeps the last one. */
 export async function refreshJudgeModel() {
   try {
-    const [{ model, voices }, left, named] = await Promise.all([api("/api/judge"), readCredit(), readNames()]);
+    const [{ model, voices, dictation }, left, named] = await Promise.all([api("/api/judge"), readCredit(), readNames()]);
     setVoices(voices);
-    const changed = (model ?? null) !== current || JSON.stringify(left) !== JSON.stringify(credit) || named.get(model) !== names.get(model);
+    const talk = setDictation(dictation);
+    const changed = talk || (model ?? null) !== current || JSON.stringify(left) !== JSON.stringify(credit) || named.get(model) !== names.get(model);
     current = model ?? null;
     credit = left;
     names = named;

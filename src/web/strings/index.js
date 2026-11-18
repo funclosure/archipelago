@@ -43,8 +43,10 @@ import wide from "./wide.js";
 import dialog from "./dialog.js";
 import paneParts from "./pane-parts.js";
 import mentions from "./mentions.js";
+import dictation from "./dictation.js";
 export const TABLES = {
   mentions,
+  dictation,
   toast,
   palette,
   wide,

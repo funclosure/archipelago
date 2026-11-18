@@ -17,6 +17,8 @@ import { autoRead, autoReadEl, canSpeak, speak, speakButton } from "./voice.js";
 import { loadHighlighter } from "./code.js";
 import { renderCta } from "./cta.js";
 import { acceptDrops, createTray, messageImagesEl } from "./images.js";
+import { canTalk, talkBusy } from "./dictation.js";
+import { insertWords } from "./dictation-model.js";
 import { select } from "./interactions.js";
 import { registerRegion, region } from "./keys.js";
 import { icon } from "./icons.js";
@@ -107,6 +109,19 @@ function giveBack(slug, mode, message) {
   }
   const kept = drafts.get(draftKey(slug, mode));
   drafts.set(draftKey(slug, mode), { draft: withRestored(kept?.draft ?? "", message), dispute: kept?.dispute ?? "" });
+}
+
+/** Words spoken for a thread's box that came back after the box left the page (dictation.js): they wait in that
+ *  thread's draft, after what it holds. */
+function keepHeard(slug, mode, words) {
+  const add = (text) => insertWords(text, text.length, text.length, words).value;
+  if (thread.slug === slug && thread.mode === mode) {
+    thread.draft = add(thread.draft);
+    render();
+    return;
+  }
+  const kept = drafts.get(draftKey(slug, mode));
+  drafts.set(draftKey(slug, mode), { draft: add(kept?.draft ?? ""), dispute: kept?.dispute ?? "" });
 }
 
 /** Where a reading belongs, for the now-playing bar: the island's name, and how to come back to the reply from
@@ -212,6 +227,7 @@ export function installCard() {
       const ta = pane.querySelector("#answer");
       if (!form || !ta || thread.inFlight) return false;
       // ⌘↵ sends what Send would: words, or images alone. A dispute may go without words.
+      if (talkBusy(form.dataset.talk)) return false; // spoken words are on their way into the box
       if (!ta.dataset.reef && !canSend({ text: ta.value, images: tray.ready().length, busy: tray.busy(), disabled: ta.disabled })) return false;
       form.requestSubmit();
       return true;
@@ -1061,7 +1077,7 @@ function footSig(island) {
   const reef = pendingReef(island);
   return JSON.stringify([
     island.slug, thread.mode, thread.messages.length === 0, thread.inFlight, turnAbort !== null, thread.answering, reef?.id ?? null, reef ? null : pendingAskOf()?.id ?? null,
-    tray.items.map((i) => [i.key, i.status]), tray.notice, canSpeak(personaRole(thread.mode)), modelSig(),
+    tray.items.map((i) => [i.key, i.status]), tray.notice, canSpeak(personaRole(thread.mode)), canTalk(), modelSig(),
   ]);
 }
 
@@ -1077,11 +1093,13 @@ function footEl(island) {
   const empty = thread.messages.length === 0; // the opening turn is on its way: nothing to answer yet
   const busy = thread.inFlight || thread.answering;
   const streaming = thread.inFlight && turnAbort !== null;
+  const lens = thread.mode; // the thread this box is for, if words spoken into it come back after the lens changed
   const form = composerEl({
     value: draftOf(pending),
     placeholder: pending ? t("card.disputePlaceholder") : ask ? t("card.ownWords") : t(thread.mode === "mentor" ? "card.mentorPlaceholder" : "card.answerPlaceholder"),
     disabled: thread.answering || empty,
     tray: pending ? null : tray, // a dispute is words only
+    talk: { key: draftKey(island.slug, lens), keep: (words) => keepHeard(island.slug, lens, words) },
     action: pending ? "dispute" : streaming ? "stop" : "send",
     actionLabel: pending ? t("card.dispute") : undefined,
     actionDisabled: busy,
@@ -1098,6 +1116,7 @@ function footEl(island) {
     },
     onStop: () => stopTurn(),
     onSubmit(body) {
+      if (talkBusy(draftKey(island.slug, thread.mode))) return; // Send waits for the words being spoken into the box
       if (pending) {
         if (!busy) void answerReef(island.slug, pending.id, "dispute", body || undefined);
         return;

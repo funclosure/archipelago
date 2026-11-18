@@ -1,5 +1,5 @@
 // One keydown listener for the page. Exactly one region (outline, map, pane) has focus; keys go to it.
-// Global keys (Tab, [, ?, /, Escape, Cmd-Enter) are handled here; everything else is the region's. The controls over
+// Global keys (Tab, [, ?, /, Escape, Cmd-Enter, ⌥Space) are handled here; everything else is the region's. The controls over
 // the map (chrome.js: the header, its hint card, the dock, the bottom card) have no key listener of their own: this
 // one offers them their keys at their place in the order below, so no key is ever taken twice.
 // The keyboard is never left on the page itself: when the control that had it goes (removed or hidden by what it
@@ -13,6 +13,7 @@ import { dialogOpen, dialogKeydown, escapeDialog, onFocusReturn, showDialog, dia
 import { tip } from "./tip.js";
 import { t } from "./i18n.js";
 import { isPaletteOpen, openPalette, opensPalette, paletteKey } from "./palette.js";
+import { canTalk, cancelTalk, talking, talkKey } from "./dictation.js";
 
 const handlers = {}; // region name → handler
 let current = "outline";
@@ -140,7 +141,7 @@ function renderSheet() {
   card.append(dialogHead(t("keys.title"), () => toggleSheet(false), { title: true, id: "keys-title" }));
   box.setAttribute("aria-labelledby", "keys-title");
   const cols = el("div", "cols");
-  for (const section of cheatSheet(current, { board: handlers.board?.isOpen?.() ?? false, chart: handlers.pane?.chartOpen?.() ?? false })) {
+  for (const section of cheatSheet(current, { board: handlers.board?.isOpen?.() ?? false, chart: handlers.pane?.chartOpen?.() ?? false, talk: canTalk() })) {
     const sec = el("section", `ksec${section.here ? " here" : ""}`);
     const name = el("h3", "eyebrow", section.title);
     if (section.here) tip(name, t("keys.here"));
@@ -187,6 +188,7 @@ function escape(e) {
   const rung = escapeRung({
     dialog: dialogOpen(), // any modal dialog, the cheat sheet among them: it steps back or closes by its own rule
     menuOpen: handlers.outline?.menuOpen?.() ?? false,
+    talk: talking(),
     hint: handlers.chrome?.hintPinned?.() ?? false,
     header: Boolean(target?.closest(".chrome.top")),
     turn: handlers.pane?.turning?.() ?? false,
@@ -205,6 +207,7 @@ function escape(e) {
   e.stopImmediatePropagation();
   if (rung === "dialog") escapeDialog();
   else if (rung === "menu") handlers.outline?.closeMenu?.();
+  else if (rung === "talk") cancelTalk();
   else if (rung === "hint") handlers.chrome?.closeHint?.();
   else if (rung === "header") setRegion("map"); // the map takes the keyboard back from the header over it
   else if (rung === "loose") handlers.pane?.closeLoose?.();
@@ -275,6 +278,12 @@ function onKeydown(e) {
   if (handlers.outline?.menuOpen?.() && !(e.metaKey || e.ctrlKey || e.altKey)) {
     if (e.key === "Escape") escape(e);
     else handlers.outline.menuKey?.(e);
+    return;
+  }
+  // Push-to-talk (dictation.js): ⌥Space held wherever the pane's answer box offers the microphone, from inside the
+  // box too. By its place (`code`): on a Mac ⌥Space types a no-break space, and its repeats must not type them.
+  if (e.code === "Space" && e.altKey && !e.metaKey && !e.ctrlKey && talkKey(e)) {
+    e.preventDefault();
     return;
   }
   if (e.key === "Tab" && !e.metaKey && !e.ctrlKey && !e.altKey) { // ⌘⇥ and friends stay the browser's

@@ -2,6 +2,7 @@ import { z } from "zod";
 import { ArchipelagoError } from "./errors.ts";
 import { boardKinds, codeLangs, commentKinds, commentTargetTypes, looseEndKinds, messageModes, verdictStates } from "./types.ts";
 import { IMAGE_BYTES_MAX, IMAGES_PER_MESSAGE } from "./images.ts";
+import { TALK_BYTES_MAX } from "./dictation.ts";
 
 export const slugSchema = z
   .string()
@@ -57,6 +58,17 @@ export const imageUploadSchema = z.object({
     .min(1)
     .max(Math.ceil(IMAGE_BYTES_MAX / 3) * 4 + 4, `the image is over ${IMAGE_BYTES_MAX / 1024} KB`)
     .regex(/^[A-Za-z0-9+/]+={0,2}$/, "data is base64"),
+});
+/** POST /api/transcribe: one push-to-talk recording, base64 in JSON (so the cross-site guard holds), with its media
+ *  type and the page's language. */
+export const transcribeInputSchema = z.object({
+  audio: z
+    .string()
+    .min(1, "the recording is empty")
+    .max(Math.ceil(TALK_BYTES_MAX / 3) * 4 + 4, `the recording is over ${Math.round(TALK_BYTES_MAX / 1024)} KB`)
+    .regex(/^[A-Za-z0-9+/]+={0,2}$/, "audio is base64"),
+  type: z.string().max(120),
+  language: z.enum(["en", "zh-TW"]).optional(),
 });
 /** POST /api/images/remove: the reader removes images (Remove image on a thumbnail). */
 export const imageRemoveSchema = z.object({ domain: slugSchema, ids: z.array(z.number().int().positive()).min(1).max(200) });

@@ -24,6 +24,7 @@
     "@anthropic-ai/sdk": "0.123.0",
     "commander": "12.1.0",
     "function-plot": "1.25.3",
+    "opencc-js": "1.4.2",
     "shiki": "3.23.0",
     "zod": "4.5.4"
   },

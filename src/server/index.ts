@@ -2,7 +2,8 @@ import { fileURLToPath } from "node:url";
 import { openDatabase } from "../core/db.ts";
 import { createRunner, defaultJudge, judgeModel, type JudgeKind, type JudgeRunner } from "./judge/runner.ts";
 import { createVoice } from "./voice.ts";
-import type { Voice } from "./api-routes.ts";
+import { createDictation, stubDictation } from "./dictation.ts";
+import type { Dictation, Voice } from "./api-routes.ts";
 import { handleRequest, JUDGE_TURN_TIMEOUT_MS, type ServerContext } from "./routes.ts";
 
 export const DEFAULT_STATIC_ROOT = fileURLToPath(new URL("../web/", import.meta.url));
@@ -24,6 +25,8 @@ export type ServerOptions = {
   allowHosts?: string[];
   /** The personas' voices; by default `createVoice()` (an ElevenLabs key), none for the stub or an injected runner. */
   voice?: Voice | null;
+  /** Push-to-talk's ears; by default `createDictation()` (the same key), the stub's own for the stub, none for an injected runner. */
+  dictation?: Dictation | null;
   /** How long one judge turn may run. Defaults to `ARCHIPELAGO_TURN_TIMEOUT_MS`, else 180 s. */
   turnTimeoutMs?: number;
 };
@@ -48,6 +51,7 @@ export function startServer(options: ServerOptions = {}) {
     model: () => model,
     allowedHosts: options.allowHosts ?? [],
     voice: options.voice !== undefined ? options.voice : options.runner || judge === "stub" ? null : createVoice(),
+    dictation: options.dictation !== undefined ? options.dictation : options.runner ? null : judge === "stub" ? stubDictation() : createDictation(),
   };
   openDatabase(ctx.dbPath).close();
   const server = Bun.serve({
@@ -56,5 +60,5 @@ export function startServer(options: ServerOptions = {}) {
     idleTimeout: 120,
     fetch: (req) => handleRequest(req, ctx),
   });
-  return Object.assign(server, { voice: ctx.voice ?? null });
+  return Object.assign(server, { voice: ctx.voice ?? null, dictation: ctx.dictation ?? null });
 }
