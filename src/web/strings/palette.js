@@ -35,6 +35,7 @@ export default {
     beginMentor: "learn it with the mentor",
     beginKeeper: "test yourself with the Keeper",
     answer: "Write your answer",
+    sailBack: "Sail back to {name}",
     openBoard: "Open the board",
     closeBoard: "Close the board",
     sailIn: "Sail in",
@@ -75,6 +76,7 @@ export default {
     // hidden words
     kwStart: "begin landfall explore",
     kwAnswer: "reply type box",
+    kwSailBack: "back return previous",
     kwLens: "lens mode keeper mentor judge",
     kwHome: "home centre center recentre zoom reset",
     kwSailOut: "up back out parent",
@@ -124,6 +126,7 @@ export default {
     beginMentor: "跟領航員一起學",
     beginKeeper: "讓守塔人考考我",
     answer: "寫下回答",
+    sailBack: "航回{name}",
     openBoard: "打開白板",
     closeBoard: "關閉白板",
     sailIn: "駛入",
@@ -164,6 +167,7 @@ export default {
     // hidden words
     kwStart: "開始 登陸 探索 begin start landfall explore",
     kwAnswer: "回覆 輸入 answer reply",
+    kwSailBack: "返回 上一個 回去 back return",
     kwLens: "視角 模式 守塔人 領航員 lens mode keeper mentor",
     kwHome: "首頁 置中 縮放 重設 home fit centre zoom",
     kwSailOut: "上一層 返回 離開 up back out",

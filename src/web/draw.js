@@ -290,6 +290,90 @@ export function drawPress(ctx, press, scale, progress) {
   ctx.restore();
 }
 
+// ---- a voyage: the boat that sails to an island, and its wake ----
+
+/**
+ * The boat: the little boat of Victor's soloberth (its favicon, also the films' boat), engraved like the chart: hull
+ * and mast in the chart's line, a sail washed with the lamp and edged in it, both opaque over the sea. In a 32-unit
+ * box, the waterline at y 22.5; `HEIGHT` is mast top to keel.
+ */
+const BOAT = {
+  hull: "M5 22.5C12.33 30.5 19.67 30.5 27 22.5Z",
+  mast: "M16 23V3.5",
+  sail: "M16 3.5C22 8.5 21.5 18.5 18.5 22.5L17 22.5V3.5Z",
+  edge: "M16 3.5C22 8.5 21.5 18.5 18.5 22.5",
+};
+const BOAT_MID = 16;
+const BOAT_WATERLINE = 22.5;
+const BOAT_HEIGHT = 25;
+/** The boat's height on screen: this share of an island's radius there, never smaller or larger than these px. */
+export const BOAT_PX = { of: 0.42, min: 21, max: 34 };
+const boatPath = (part) => cachedPath(`boat|${part}`, (p) => p.addPath(new Path2D(BOAT[part])));
+
+/** The wake: the route sailed so far, as a dashed track behind the boat (a ship's track on a chart). `pts` in world units. */
+export function drawWake(ctx, pts, { scale = 1, alpha: a = 1 } = {}) {
+  if (pts.length < 2 || a <= 0) return;
+  const px = 1 / scale;
+  ctx.save();
+  ctx.beginPath();
+  ctx.moveTo(pts[0][0], pts[0][1]);
+  for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i][0], pts[i][1]);
+  ctx.setLineDash([6 * px, 5 * px]);
+  ctx.lineCap = "round";
+  ctx.lineWidth = 1.4 * px;
+  ctx.strokeStyle = alpha(PALETTE.line, ink(0.7, 0.55) * a);
+  ctx.stroke();
+  ctx.restore();
+}
+
+/**
+ * The boat at `at` (world units) with its waterline on the route, facing `dir` (1 right, -1 left), `px` tall on
+ * screen. It rides the swell a little (`now`): a pixel up and down and a slight roll. Two ripple lines lie under it.
+ */
+export function drawBoat(ctx, at, { dir = 1, px = 22, scale = 1, now = 0, alpha: a = 1 } = {}) {
+  if (a <= 0) return;
+  const k = px / BOAT_HEIGHT / scale; // world units per boat unit
+  const line = Math.max(1.5, 1 / (k * scale)); // never under a screen pixel
+  ctx.save();
+  ctx.translate(at.x, at.y + Math.sin(now / 430) / scale);
+  ctx.rotate(Math.sin(now / 610) * 0.04);
+  ctx.scale(k * dir, k);
+  ctx.translate(-BOAT_MID, -BOAT_WATERLINE);
+  ctx.globalAlpha = a;
+  const glow = glowSprite(PALETTE.lamp, ink(0.2, 0.4));
+  ctx.drawImage(glow, BOAT_MID - 24, 15 - 24, 48, 48);
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+  // ripples under the hull, drifting astern
+  ctx.strokeStyle = alpha(PALETTE.line, ink(0.55, 0.45));
+  ctx.lineWidth = line * 0.5;
+  for (let r = 0; r < 2; r++) {
+    ctx.beginPath();
+    for (let x = 2 + r * 3; x <= 30 - r * 3; x += 1) {
+      const y = 29.5 + r * 2.2 + Math.sin((x + r * 5) / 2.1 + now / 260) * 0.5;
+      if (x === 2 + r * 3) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+  }
+  const hull = boatPath("hull");
+  const sail = boatPath("sail");
+  ctx.fillStyle = PALETTE.sea;
+  ctx.fill(hull);
+  ctx.fill(sail);
+  ctx.fillStyle = alpha(PALETTE.line, ink(0.1, 0.16));
+  ctx.fill(hull);
+  ctx.fillStyle = alpha(PALETTE.lamp, ink(0.4, 0.3));
+  ctx.fill(sail);
+  ctx.strokeStyle = PALETTE.line;
+  ctx.lineWidth = line;
+  ctx.stroke(hull);
+  ctx.stroke(boatPath("mast"));
+  ctx.strokeStyle = PALETTE.lamp;
+  ctx.stroke(boatPath("edge"));
+  ctx.restore();
+}
+
 /** Where the three coasts of the sketching chart sit, in px from its centre, with the seeds that shape them. */
 const SKETCH_ISLES = [
   { dx: -92, dy: 6, seed: 7 },

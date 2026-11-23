@@ -91,7 +91,7 @@ const k = (key) => t(`keysModel.${key}`);
 export const KEY_SECTIONS = {
   everywhere: {
     title: k("everywhere"),
-    rows: [["Tab ⇧Tab", k("nextRegion")], ["[", k("outlineKey")], ["/", k("answer")], ["b", k("boardKey")], ["m", k("mode")], ["t", k("theme")], ["?", k("keys")], ["Esc", k("back")]],
+    rows: [["Tab ⇧Tab", k("nextRegion")], ["[", k("outlineKey")], ["⌘[", k("sailBack")], ["/", k("answer")], ["b", k("boardKey")], ["m", k("mode")], ["t", k("theme")], ["?", k("keys")], ["Esc", k("back")]],
   },
   outline: {
     title: k("outline"),

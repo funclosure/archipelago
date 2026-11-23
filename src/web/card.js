@@ -20,12 +20,13 @@ import { renderCta } from "./cta.js";
 import { acceptDrops, createTray, messageImagesEl } from "./images.js";
 import { canTalk, talkBusy } from "./dictation.js";
 import { insertWords } from "./dictation-model.js";
-import { select } from "./interactions.js";
+import { backTarget, sail, sailBack, select } from "./interactions.js";
 import { registerRegion, region } from "./keys.js";
 import { icon } from "./icons.js";
 import { tip } from "./tip.js";
 import { toastError } from "./toast.js";
 import { canSend, withRestored, withoutStored } from "./pane-model.js";
+import { shortcut } from "./palette-model.js";
 import { button, composerEl, el, eventEl, failedEl, failureWords, footMetaEl, fromWordsEl, keepFocus, logFollower, noticeEl, personaGlyph, roveFocus, skeletonEl, syncAnswer } from "./pane-parts.js";
 import { chartKey, chartSend, chartTray, chartTurning, closeChart, decideSketch, dropChart, focusChartAnswer, installChart, isChartOpen, openChart, renderChart, stopChartTurn } from "./chart.js";
 
@@ -768,11 +769,21 @@ function noteForm(island) {
 /** The judge's round on this island, 0 before the first answer; the mentor has no rounds. */
 const roundNow = () => (thread.mode === "judge" ? roundOf(thread.messages) : 0);
 
+/** The way back after a "Sail to": "← <the island it left>", above the name. ⌘[ follows it too (keys.js). */
+function backEl(back) {
+  const b = button(null, () => void sailBack(), "btn quiet sm back");
+  b.append(icon("arrow-left", { size: 14 }), el("span", null, back.name));
+  b.dataset.fk = "back";
+  b.setAttribute("aria-label", t("card.sailBack", { name: back.name }));
+  tip(b, t("card.sailBack", { name: back.name }), shortcut("everywhere", "sailBack"));
+  return b;
+}
+
 /** Everything the head is drawn from, as a string: it is drawn again only when this changes, so a snapshot that changed nothing here keeps its buttons (and the keyboard on them). */
 function headSig(island) {
   return JSON.stringify([
     island.slug, island.name, island.summary, island.harbour, island.verdict, island.hasChildren, island.children, island.landmarks, island.looseEnds,
-    thread.mode, roundNow(), noteOpen, looseFor === island.slug ? looseShown ?? null : null,
+    thread.mode, roundNow(), noteOpen, looseFor === island.slug ? looseShown ?? null : null, backTarget(),
   ]);
 }
 
@@ -782,6 +793,8 @@ function headSig(island) {
  */
 function headEl(island) {
   const head = el("div", "head");
+  const back = backTarget();
+  if (back) head.append(backEl(back));
   const titlebar = el("div", "titlebar");
   titlebar.append(el("h2", null, island.name), lensSwitchEl());
   head.append(titlebar);
@@ -945,20 +958,18 @@ function sailEl(pointer, latest) {
   return box;
 }
 
-/** Sails to the pointer's island in the same lens, changing scale first when it lives elsewhere. */
+/** Sails to the pointer's island in the same lens, changing scale first when it lives elsewhere; a boat makes the crossing. */
 async function sailTo(pointer) {
   const from = app.snapshot?.islands.find((i) => i.slug === thread.slug)?.name ?? "";
   carry = thread.mode === "mentor" && pointer.question ? { slug: pointer.island.slug, question: pointer.question, from } : null;
-  if (pointer.island.scale !== app.scale) await setScale(pointer.island.scale);
-  await select(pointer.island.slug);
+  await sail(pointer.island.slug, pointer.island.scale);
 }
 
 /** Sails from the guide's card: the lens it suggests (or the reader's pick), and in the mentor's, the question it carries. */
 async function sailFromGuide(pointer, lens) {
   setMode(lens);
   carry = lens === "mentor" && pointer.question ? { slug: pointer.island.slug, question: pointer.question, from: t("card.fromGuide") } : null;
-  if (pointer.island.scale !== app.scale) await setScale(pointer.island.scale);
-  await select(pointer.island.slug);
+  await sail(pointer.island.slug, pointer.island.scale);
 }
 
 /** What a persona reply's fences pin with: the reader's card, marked as pinned from this persona's reply. */
@@ -1222,7 +1233,7 @@ function ctaModel(island) {
       if (p) void answerReef(island.slug, p.id, "confirm");
     },
     onDispute: () => focusAnswer(),
-    onSail: (slug) => void select(slug),
+    onSail: (slug) => void sail(slug),
     onStay: () => {
       thread.stay = true;
       render();

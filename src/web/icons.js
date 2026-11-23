@@ -13,6 +13,7 @@ export const ICONS = {
   "arrow-up": "M8 12.5v-9M4 7l4-4 4 4",
   "arrow-down": "M8 3.5v9M4 9l4 4 4-4",
   "arrow-right": "M3.5 8h9M9 4l4 4-4 4",
+  "arrow-left": "M12.5 8h-9M7 4 3 8l4 4",
   search: "M7 12A5 5 0 1 0 7 2a5 5 0 0 0 0 10zM10.6 10.6 14 14",
   pencil: "M11.2 2.3a1.6 1.6 0 0 1 2.3 2.3L5.6 12.5 2.5 13.5l1-3.1zM9.8 3.7l2.5 2.5",
   trash: "M3 4.5h10M6.5 4.5V3h3v1.5M4.5 4.5l.6 8.5h5.8l.6-8.5M6.8 7v3.8M9.2 7v3.8",

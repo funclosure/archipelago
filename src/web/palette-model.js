@@ -27,6 +27,18 @@ export function isPaletteKey(e, mac = isMac()) {
   return mac ? Boolean(e.metaKey) && !e.ctrlKey : Boolean(e.ctrlKey) && !e.metaKey;
 }
 
+/**
+ * ⌘[ on a Mac, Ctrl+[ elsewhere: back the way the last "Sail to" came (keys.js, `sailBack`). Read by the key's place
+ * too, where the layout types a letter of its own there (ü on a German board); a layout that types other ASCII
+ * there (Dvorak's /) keeps it. Nothing else held with it.
+ */
+export function isSailBackKey(e, mac = isMac()) {
+  const key = String(e.key ?? "");
+  const bracket = key === "[" || (e.code === "BracketLeft" && !/^[\x20-\x7e]$/.test(key));
+  if (!bracket || e.altKey || e.shiftKey) return false;
+  return mac ? Boolean(e.metaKey) && !e.ctrlKey : Boolean(e.ctrlKey) && !e.metaKey;
+}
+
 /** The opening key as a hint for `tip()` or a row of `kbd`: "⌘K" or "Ctrl K". */
 export function paletteKeys(mac = isMac()) {
   return mac ? "⌘K" : "Ctrl K";

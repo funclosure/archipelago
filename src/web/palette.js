@@ -3,7 +3,7 @@
 // teaches the keys. This file gathers the commands from the modules that own them (it never copies what they do) and
 // draws the element; what is listed, in what order, and where the highlight goes are palette-model.js's (pure).
 import { app, setScale, setMode, toggleMode, frameSelection } from "./app.js";
-import { select } from "./interactions.js";
+import { backTarget, sailBack, select } from "./interactions.js";
 import { region, setRegion, toggleSheet } from "./keys.js";
 import { boardOpen, closeBoard, openBoard } from "./board.js";
 import { openNote, sailCloser } from "./card.js";
@@ -124,6 +124,13 @@ function gather() {
       add("here", {
         id: `start:${mode}`, name: t(mode === "mentor" ? "palette.startMentor" : "palette.startKeeper"), detail: here ? start.textContent : null, keywords: t("palette.kwStart"),
         icon: lensIcon(mode), keys: here ? shortcut("pane", "landfall") : null, where: "pane", run: () => startWith(mode),
+      });
+    }
+    const back = backTarget();
+    if (back) {
+      add("here", {
+        id: "back", name: t("palette.sailBack", { name: back.name }), keywords: t("palette.kwSailBack"), icon: "arrow-left", keys: shortcut("everywhere", "sailBack"),
+        run: () => sailBack(),
       });
     }
     if (pane?.querySelector("#answer:not(:disabled)")) {
