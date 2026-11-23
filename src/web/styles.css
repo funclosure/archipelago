@@ -445,6 +445,9 @@ body:has(.pane.resizing) :is(.chrome, .map-focus, .cta, .board-scrim, .board, .b
 .msg a.mention:hover { text-decoration-color: currentColor; }
 /* Who answers here, beside the island's name (`lensSwitchEl`): the lens of the pane and the map. */
 .titlebar { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--sp-3); }
+/* The way back after a "Sail to" (card.js: backEl): "← <the island left>" over the name, its arrow on the name's edge. */
+.pane > .head > .back { justify-self: start; max-width: 100%; gap: var(--sp-1); margin: calc(-1 * var(--sp-1)) 0 calc(-1 * var(--sp-05)) calc(-1 * var(--sp-2)); }
+.pane > .head > .back > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .lens-switch { display: inline-flex; flex: none; gap: var(--sp-05); padding: var(--sp-05); margin-top: 2px; border: 1px solid var(--line); border-radius: var(--r-full); }
 .lens-switch .seg { box-sizing: border-box; min-height: calc(var(--h-sm) - 2px); padding: 0 var(--sp-3); background: transparent; border: 0; border-radius: var(--r-full); font: var(--fw-medium) var(--fs-sm)/1 var(--font-ui); color: var(--muted); cursor: pointer; white-space: nowrap; }
 .lens-switch .seg:hover { color: var(--text); }

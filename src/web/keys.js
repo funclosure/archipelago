@@ -1,11 +1,11 @@
 // One keydown listener for the page. Exactly one region (outline, map, pane) has focus; keys go to it.
-// Global keys (Tab, [, ?, /, Escape, Cmd-Enter, ⌥Space) are handled here; everything else is the region's. The controls over
+// Global keys (Tab, [, ⌘[, ?, /, Escape, Cmd-Enter, ⌥Space) are handled here; everything else is the region's. The controls over
 // the map (chrome.js: the header, its hint card, the dock, the bottom card) have no key listener of their own: this
 // one offers them their keys at their place in the order below, so no key is ever taken twice.
 // The keyboard is never left on the page itself: when the control that had it goes (removed or hidden by what it
 // did), its region takes it back (catchFall), and focus that lands in a region by any means makes it the region.
 import { app, toggleMode } from "./app.js";
-import { select } from "./interactions.js";
+import { backTarget, sailBack, select } from "./interactions.js";
 import { REGIONS, nextRegion, isTyping, escapeRung, cheatSheet, isImeKey, PALETTE_KEY } from "./keys-model.js";
 import { cycleTheme } from "./theme.js";
 import { exitFull } from "./full.js";
@@ -13,6 +13,7 @@ import { dialogOpen, dialogKeydown, escapeDialog, onFocusReturn, showDialog, dia
 import { tip } from "./tip.js";
 import { t } from "./i18n.js";
 import { isPaletteOpen, openPalette, opensPalette, paletteKey } from "./palette.js";
+import { isSailBackKey } from "./palette-model.js";
 import { canTalk, cancelTalk, talking, talkKey } from "./dictation.js";
 
 const handlers = {}; // region name → handler
@@ -270,6 +271,14 @@ function onKeydown(e) {
     e.preventDefault();
     if (handlers.outline?.menuOpen?.()) handlers.outline.closeMenu?.();
     openPalette();
+    return;
+  }
+  // ⌘[ (Ctrl+[ off a Mac) sails back the way the last "Sail to" came, from anywhere on the page, a text field
+  // included, as the pane's "← <name>" does. With no way back from here it stays the browser's own (Back).
+  if (isSailBackKey(e) && backTarget()) {
+    e.preventDefault();
+    if (handlers.outline?.menuOpen?.()) handlers.outline.closeMenu?.();
+    void sailBack();
     return;
   }
   // The outline's domain menu owns the plain keys while it is open (outline.js: menuKey): nothing reaches the list

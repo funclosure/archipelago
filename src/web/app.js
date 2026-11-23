@@ -71,6 +71,7 @@ export const app = {
   covered: { left: 0, right: 0, top: 0, bottom: 0, words: 0 }, // what covers the map's edges, as `insets()` last read it: the frame loop never reads the DOM
   rose: null,                // where the compass rose stands at this scale ({ x, y, r } in world units), or null; paper themes draw it
   voyage: null,              // a boat crossing to the island a "Sail to" picked (`sail` in interactions.js): { to, from, scale, start, … }; see `beginVoyage`
+  trail: [],                 // the way back: the crossings "Sail to" made, oldest first ({ from: { slug, scale }, to }; voyage-model.js), followed by `sailBack`
 };
 
 export async function api(path, init) {

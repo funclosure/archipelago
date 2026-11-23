@@ -20,12 +20,13 @@ import { renderCta } from "./cta.js";
 import { acceptDrops, createTray, messageImagesEl } from "./images.js";
 import { canTalk, talkBusy } from "./dictation.js";
 import { insertWords } from "./dictation-model.js";
-import { sail, select } from "./interactions.js";
+import { backTarget, sail, sailBack, select } from "./interactions.js";
 import { registerRegion, region } from "./keys.js";
 import { icon } from "./icons.js";
 import { tip } from "./tip.js";
 import { toastError } from "./toast.js";
 import { canSend, withRestored, withoutStored } from "./pane-model.js";
+import { shortcut } from "./palette-model.js";
 import { button, composerEl, el, eventEl, failedEl, failureWords, footMetaEl, fromWordsEl, keepFocus, logFollower, noticeEl, personaGlyph, roveFocus, skeletonEl, syncAnswer } from "./pane-parts.js";
 import { chartKey, chartSend, chartTray, chartTurning, closeChart, decideSketch, dropChart, focusChartAnswer, installChart, isChartOpen, openChart, renderChart, stopChartTurn } from "./chart.js";
 
@@ -768,11 +769,21 @@ function noteForm(island) {
 /** The judge's round on this island, 0 before the first answer; the mentor has no rounds. */
 const roundNow = () => (thread.mode === "judge" ? roundOf(thread.messages) : 0);
 
+/** The way back after a "Sail to": "← <the island it left>", above the name. ⌘[ follows it too (keys.js). */
+function backEl(back) {
+  const b = button(null, () => void sailBack(), "btn quiet sm back");
+  b.append(icon("arrow-left", { size: 14 }), el("span", null, back.name));
+  b.dataset.fk = "back";
+  b.setAttribute("aria-label", t("card.sailBack", { name: back.name }));
+  tip(b, t("card.sailBack", { name: back.name }), shortcut("everywhere", "sailBack"));
+  return b;
+}
+
 /** Everything the head is drawn from, as a string: it is drawn again only when this changes, so a snapshot that changed nothing here keeps its buttons (and the keyboard on them). */
 function headSig(island) {
   return JSON.stringify([
     island.slug, island.name, island.summary, island.harbour, island.verdict, island.hasChildren, island.children, island.landmarks, island.looseEnds,
-    thread.mode, roundNow(), noteOpen, looseFor === island.slug ? looseShown ?? null : null,
+    thread.mode, roundNow(), noteOpen, looseFor === island.slug ? looseShown ?? null : null, backTarget(),
   ]);
 }
 
@@ -782,6 +793,8 @@ function headSig(island) {
  */
 function headEl(island) {
   const head = el("div", "head");
+  const back = backTarget();
+  if (back) head.append(backEl(back));
   const titlebar = el("div", "titlebar");
   titlebar.append(el("h2", null, island.name), lensSwitchEl());
   head.append(titlebar);

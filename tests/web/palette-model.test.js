@@ -3,13 +3,32 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import {
   GROUPS, NEARBY_MAX, RESULTS_MAX, TIER,
-  flatIslands, fold, isMac, isPaletteKey, islandCommand, islandWords, keysShown, markRuns, matchCommand, matchWord, mergeRanges,
+  flatIslands, fold, isMac, isPaletteKey, isSailBackKey, islandCommand, islandWords, keysShown, markRuns, matchCommand, matchWord, mergeRanges,
   moveActive, nearbyIslands, paletteKeys, paletteSections, queryWords, shortcut,
 } from "../../src/web/palette-model.js";
 import { KEY_SECTIONS } from "../../src/web/keys-model.js";
 import { useLanguage } from "../../src/web/i18n.js";
 
 const key = (over) => ({ key: "k", code: "KeyK", metaKey: false, ctrlKey: false, altKey: false, shiftKey: false, ...over });
+
+describe("the key that sails back", () => {
+  const bracket = (over) => key({ key: "[", code: "BracketLeft", ...over });
+  test("⌘[ on a Mac, Ctrl+[ elsewhere, and nothing else held", () => {
+    expect(isSailBackKey(bracket({ metaKey: true }), true)).toBe(true);
+    expect(isSailBackKey(bracket({ ctrlKey: true }), true)).toBe(false);
+    expect(isSailBackKey(bracket({ ctrlKey: true }), false)).toBe(true);
+    expect(isSailBackKey(bracket({ metaKey: true }), false)).toBe(false);
+    expect(isSailBackKey(bracket({ metaKey: true, shiftKey: true }), true)).toBe(false);
+    expect(isSailBackKey(bracket({ metaKey: true, altKey: true }), true)).toBe(false);
+    expect(isSailBackKey(bracket({}), true)).toBe(false); // a bare [ is the outline's
+  });
+
+  test("by the key's place where the layout types a letter of its own there, never another ASCII key", () => {
+    expect(isSailBackKey(bracket({ key: "ü", metaKey: true }), true)).toBe(true); // German
+    expect(isSailBackKey(bracket({ key: "/", metaKey: true }), true)).toBe(false); // Dvorak: ⌘/ stays itself
+    expect(isSailBackKey(key({ key: "[", code: "Minus", metaKey: true }), true)).toBe(true); // Dvorak's own [
+  });
+});
 
 describe("the key that opens the palette", () => {
   test("⌘K on a Mac, Ctrl+K elsewhere, and nothing else held", () => {

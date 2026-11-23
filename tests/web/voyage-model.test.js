@@ -1,6 +1,7 @@
 import { test, expect } from "bun:test";
 import {
   voyageRoute, pointAt, wakeTo, offshorePoint, sailMs, voyageAt, voyageBounds, fitScale, cameraAt,
+  sailed, trailAfter, wayBack, islandIn, TRAIL_MAX,
   SHORE, CLEAR, OFFSHORE, SAIL_MS, CAMERA_LAG, HOLD_MS, FADE_MS, WAKE_MS,
 } from "../../src/web/voyage-model.js";
 
@@ -138,4 +139,41 @@ test("a route keeps clear of the names on the map as well as the islands", () =>
   for (const [x, y] of route.pts) expect(x > name.x0 && x < name.x1 && y > name.y0 && y < name.y1).toBe(false);
   const p = offshorePoint(isle(0, 0), [isle(0, 0)], [{ x0: -200, y0: 0, x1: 0, y1: 200 }]); // the lower left is lettered
   expect(p.x > -200 && p.x < 0 && p.y > 0 && p.y < 200).toBe(false);
+});
+
+test("the way back leads to the island each crossing left, newest first", () => {
+  const a = { slug: "a", scale: null };
+  const b = { slug: "b", scale: null };
+  let trail = sailed([], a, "b");
+  expect(wayBack(trail, "b")).toEqual(a);
+  expect(wayBack(trail, "a")).toBeNull(); // only where the last crossing landed
+  expect(wayBack(trail, null)).toBeNull();
+  trail = sailed(trail, b, "c");
+  expect(wayBack(trail, "c")).toEqual(b);
+  trail = trail.slice(0, -1); // back to b
+  expect(wayBack(trail, "b")).toEqual(a);
+  expect(wayBack([], "b")).toBeNull();
+});
+
+test("the way back holds where its last crossing landed or with no island open, and goes with any other pick", () => {
+  const trail = sailed([], { slug: "a", scale: null }, "b");
+  expect(trailAfter(trail, "b")).toBe(trail);
+  expect(trailAfter(trail, null)).toBe(trail); // the pane closed for a look at the map
+  expect(trailAfter(trail, "z")).toEqual([]);
+  expect(trailAfter([], "z")).toEqual([]);
+});
+
+test("the way back remembers the last few crossings", () => {
+  let trail = [];
+  for (let i = 0; i < TRAIL_MAX + 3; i++) trail = sailed(trail, { slug: `i${i}`, scale: null }, `i${i + 1}`);
+  expect(trail.length).toBe(TRAIL_MAX);
+  expect(trail.at(-1).to).toBe(`i${TRAIL_MAX + 3}`);
+});
+
+test("an island is found anywhere in the outline's tree", () => {
+  const tree = [{ slug: "a", name: "A", scale: null, children: [{ slug: "a1", name: "A one", scale: "a", children: [] }] }, { slug: "b", name: "B", scale: null, children: [] }];
+  expect(islandIn(tree, "a1").name).toBe("A one");
+  expect(islandIn(tree, "b").name).toBe("B");
+  expect(islandIn(tree, "x")).toBeNull();
+  expect(islandIn(undefined, "a")).toBeNull();
 });

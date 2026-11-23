@@ -3,6 +3,7 @@ import { openSeaEditor, removeSeaById, saveSeaPosition, seaEditing } from "./sea
 import { registerRegion } from "./keys.js";
 import { LONG_PRESS_MS, pinchStep, pressAction, slopFor } from "./gesture-model.js";
 import { boxBetween, emptyGroup, gatherBox, groupOffsets, groupSize, moveGroup, toggleMember } from "./group-model.js";
+import { islandIn, sailed, trailAfter, wayBack } from "./voyage-model.js";
 
 
 let focusQueue = Promise.resolve();
@@ -13,6 +14,7 @@ export async function select(slug) {
   document.dispatchEvent(new CustomEvent("select", { detail: slug }));
   if (slug === app.selected) return;
   app.selected = slug;
+  app.trail = trailAfter(app.trail, slug); // a pick made any other way than a crossing leaves the way back behind
   for (const fn of app.listeners) fn(app.snapshot);
   frameSelection(); // the listeners have opened or closed the pane, so its width is settled
   // Serialise focus writes so the server always ends on the latest selection.
@@ -30,15 +32,42 @@ export async function select(slug) {
  * Follows a "Sail to" (a persona's or the guide's card, the bottom card's next island): changes to the island's
  * scale when it lives elsewhere, then selects it, and a boat crosses the map to it (`beginVoyage` in app.js) from
  * the island the reader was on, else from the scale's harbour, else in from open sea. A click on the map or the
- * outline selects without a crossing: only the words "Sail to" set a boat off.
+ * outline selects without a crossing: only the words "Sail to" set a boat off. Leaving an island, the crossing goes
+ * on the way back (`app.trail`), which the pane's "← <name>" and ⌘[ follow (`sailBack`).
  */
 export async function sail(slug, scale = app.scale) {
+  const left = app.selected ? { slug: app.selected, scale: app.scale ?? null } : null;
   if (scale !== app.scale) await setScale(scale);
   if (slug === app.selected) return select(slug);
+  if (left) app.trail = sailed(app.trail, left, slug);
+  setOff(slug);
+  return select(slug);
+}
+
+/** Where the way back leads from the island selected: `{ slug, name, scale }`, or null (no crossing landed here, or the island is gone). */
+export function backTarget() {
+  const back = wayBack(app.trail, app.selected);
+  if (!back) return null;
+  const island = (back.scale === (app.scale ?? null) ? app.snapshot?.islands.find((i) => i.slug === back.slug) : null) ?? islandIn(app.outline?.islands, back.slug);
+  return island ? { slug: back.slug, name: island.name, scale: back.scale } : null;
+}
+
+/** Sails back to the island the last crossing left, by boat as it came, and takes that crossing off the way back. False when there is none. */
+export async function sailBack() {
+  const back = backTarget();
+  if (!back) return false;
+  app.trail = app.trail.slice(0, -1);
+  if (back.scale !== (app.scale ?? null)) await setScale(back.scale);
+  setOff(back.slug);
+  await select(back.slug);
+  return true;
+}
+
+/** Records a crossing to `slug` for `frameSelection` to start: from the island selected, else the harbour, else open sea. */
+function setOff(slug) {
   const harbour = app.snapshot?.harbour;
   const from = app.selected ?? (harbour && harbour !== slug ? harbour : null);
   app.voyage = { to: slug, from, scale: app.scale, start: null };
-  return select(slug);
 }
 
 /** The live node for a slug; snapshot refreshes rebuild app.nodes, so never hold a node across events. */

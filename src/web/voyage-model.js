@@ -216,3 +216,40 @@ export function cameraAt(c, { f0, s0, f1, s1, fit }) {
   const back = fit < middle ? (fit / middle) ** Math.sin(Math.PI * c) : 1;
   return { focus: { x: f0.x + (f1.x - f0.x) * c, y: f0.y + (f1.y - f0.y) * c }, scale: even * back };
 }
+
+// ---- the way back ----
+
+/** How many crossings the way back remembers. */
+export const TRAIL_MAX = 8;
+
+/**
+ * The way back: the crossings the reader made by "Sail to", oldest first, each `{ from: { slug, scale }, to }` (the
+ * island left and the slug of the one landed on). `sailed` adds one; `trailAfter` keeps the trail while the reader
+ * stands where its last crossing landed (or on no island at all, the pane closed) and drops it when they pick an
+ * island any other way, since they are then charting their own course; `wayBack` is where the way back leads from
+ * `selected`, or null. Going back takes the last crossing off (`trail.slice(0, -1)`), so A → B → C leads back to B,
+ * then to A.
+ */
+export function sailed(trail, from, to) {
+  return [...trail, { from, to }].slice(-TRAIL_MAX);
+}
+
+export function trailAfter(trail, selected) {
+  if (selected === null || trail.length === 0) return trail;
+  return trail.at(-1).to === selected ? trail : [];
+}
+
+export function wayBack(trail, selected) {
+  const last = trail.at(-1);
+  return last && selected !== null && last.to === selected ? last.from : null;
+}
+
+/** An island anywhere in the outline's tree (`GET /api/outline`'s `islands`), by slug: `{ slug, name, scale, … }`, or null. */
+export function islandIn(tree, slug) {
+  for (const node of tree ?? []) {
+    if (node.slug === slug) return node;
+    const inner = islandIn(node.children, slug);
+    if (inner) return inner;
+  }
+  return null;
+}
