@@ -20,7 +20,7 @@ import { renderCta } from "./cta.js";
 import { acceptDrops, createTray, messageImagesEl } from "./images.js";
 import { canTalk, talkBusy } from "./dictation.js";
 import { insertWords } from "./dictation-model.js";
-import { select } from "./interactions.js";
+import { sail, select } from "./interactions.js";
 import { registerRegion, region } from "./keys.js";
 import { icon } from "./icons.js";
 import { tip } from "./tip.js";
@@ -945,20 +945,18 @@ function sailEl(pointer, latest) {
   return box;
 }
 
-/** Sails to the pointer's island in the same lens, changing scale first when it lives elsewhere. */
+/** Sails to the pointer's island in the same lens, changing scale first when it lives elsewhere; a boat makes the crossing. */
 async function sailTo(pointer) {
   const from = app.snapshot?.islands.find((i) => i.slug === thread.slug)?.name ?? "";
   carry = thread.mode === "mentor" && pointer.question ? { slug: pointer.island.slug, question: pointer.question, from } : null;
-  if (pointer.island.scale !== app.scale) await setScale(pointer.island.scale);
-  await select(pointer.island.slug);
+  await sail(pointer.island.slug, pointer.island.scale);
 }
 
 /** Sails from the guide's card: the lens it suggests (or the reader's pick), and in the mentor's, the question it carries. */
 async function sailFromGuide(pointer, lens) {
   setMode(lens);
   carry = lens === "mentor" && pointer.question ? { slug: pointer.island.slug, question: pointer.question, from: t("card.fromGuide") } : null;
-  if (pointer.island.scale !== app.scale) await setScale(pointer.island.scale);
-  await select(pointer.island.slug);
+  await sail(pointer.island.slug, pointer.island.scale);
 }
 
 /** What a persona reply's fences pin with: the reader's card, marked as pinned from this persona's reply. */
@@ -1222,7 +1220,7 @@ function ctaModel(island) {
       if (p) void answerReef(island.slug, p.id, "confirm");
     },
     onDispute: () => focusAnswer(),
-    onSail: (slug) => void select(slug),
+    onSail: (slug) => void sail(slug),
     onStay: () => {
       thread.stay = true;
       render();

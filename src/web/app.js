@@ -3,8 +3,9 @@ import { createSimulation } from "./layout.js";
 import { createCamera } from "./camera.js";
 import {
   clear, drawIsland, drawIslandName, drawShoreWater, drawStrait, drawSeaWater, drawSeaName, drawMarquee, drawPress, drawSketching,
-  drawGraticule, drawRose, drawVignette, stipplePaths, isAnimating, NAME_FONT,
+  drawGraticule, drawRose, drawVignette, drawWake, drawBoat, stipplePaths, isAnimating, NAME_FONT, BOAT_PX,
 } from "./draw.js";
+import { voyageRoute, offshorePoint, voyageAt, voyageBounds, fitScale, cameraAt, pointAt, wakeTo, sailMs } from "./voyage-model.js";
 import { seaMembers, lettering, letteringBox, stippleDots, seaSpot, SEA_FONT } from "./sea-model.js";
 import { placeRemoveButton, saveSeaPosition, seaEditing } from "./seas.js";
 import { draftSeas } from "./chart-model.js";
@@ -69,6 +70,7 @@ export const app = {
   seaSets: new Map(),        // id → each placed sea's lettering as last laid out, for hit-testing
   covered: { left: 0, right: 0, top: 0, bottom: 0, words: 0 }, // what covers the map's edges, as `insets()` last read it: the frame loop never reads the DOM
   rose: null,                // where the compass rose stands at this scale ({ x, y, r } in world units), or null; paper themes draw it
+  voyage: null,              // a boat crossing to the island a "Sail to" picked (`sail` in interactions.js): { to, from, scale, start, … }; see `beginVoyage`
 };
 
 export async function api(path, init) {
@@ -406,7 +408,79 @@ export function frameSelection() {
   const aw = Math.max(1, w - ins.left - ins.right);
   const ah = Math.max(1, h - ins.top - ins.bottom);
   const whole = 0.94 * Math.min(aw / (2 * SELECT_HALF_W * node.radius), ah / (2 * SELECT_HALF_H * node.radius));
-  glide(app.camera.centreOn(node, w, h, ins, Math.min(app.camera.closer(open), whole)));
+  const target = app.camera.centreOn(node, w, h, ins, Math.min(app.camera.closer(open), whole));
+  const v = app.voyage;
+  if (v?.to === node.slug && v.start === null && beginVoyage(v, node, target, ins)) return;
+  if (v?.to === node.slug && v.start !== null && app.camera.following(v.camera)) {
+    // What covers the map changed mid-crossing (the bottom card came): the camera keeps with the boat into the new area.
+    v.ins = ins;
+    v.path.s1 = target.scale;
+    return;
+  }
+  glide(target);
+}
+
+/** A share of an island's radius on screen, within limits: how tall the boat is drawn. */
+function boatPx(radius, scale) {
+  return Math.max(BOAT_PX.min, Math.min(BOAT_PX.max, radius * scale * BOAT_PX.of));
+}
+
+/**
+ * Sets a requested voyage off toward `node`, the island just selected: the boat leaves the island it was asked to
+ * sail from (else comes in from open sea), crosses to `node` through open water, and the camera follows it from
+ * where it stands now to `target`, the selection's framing, drawing back at the middle when the whole crossing would
+ * not otherwise be in view. False (and the voyage is dropped) when there is nothing to show it on: reduced motion,
+ * a phone showing the pane, an island still finding its place, a map not yet sized.
+ */
+function beginVoyage(v, node, target, ins) {
+  const { w, h } = app.size;
+  const fromNode = v.from ? app.nodes.find((n) => n.slug === v.from) : null;
+  const settled = (n) => n && n.placed && !n.draft;
+  const unseen = phone?.matches && document.body.dataset.place !== "map"; // a phone shows the pane, not the map
+  if (stillMotion?.matches || unseen || !w || !settled(node) || (fromNode && !settled(fromNode))) {
+    app.voyage = null;
+    return false;
+  }
+  const isle = (n) => ({ x: n.x, y: n.y, r: n.radius });
+  // Every name on the map is kept clear too, the two islands' own as well, with room above for the boat's sail.
+  const { labels } = layout();
+  const pad = node.radius * 0.2;
+  const names = app.nodes.flatMap((n) => {
+    const label = labels.get(n.slug);
+    if (!label || label.hidden) return [];
+    const r = labelRect(n, boxScale(n.radius), label);
+    return [{ x0: r.x0 - pad, y0: r.y0 - pad * 2, x1: r.x1 + pad, y1: r.y1 + pad }];
+  });
+  const others = [...app.nodes.filter((n) => n !== node && n !== fromNode && !n.draft).map(isle), ...names];
+  const to = isle(node);
+  const from = fromNode ? isle(fromNode) : { ...offshorePoint(to, app.nodes.filter((n) => !n.draft).map(isle), names), r: 0 };
+  const side = ((fromNode?.seed ?? 0) ^ node.seed) & 1 ? 1 : -1; // the side a strait between them would bow to
+  const route = voyageRoute(from, to, others, side);
+  const cam = app.camera.state;
+  const aw = Math.max(1, w - ins.left - ins.right);
+  const ah = Math.max(1, h - ins.top - ins.bottom);
+  const f0 = app.camera.toWorld(ins.left + aw / 2, ins.top + ah / 2);
+  const fit = fitScale(voyageBounds(route, from, to), aw, ah);
+  const ms = sailMs(route.total * Math.min(Math.sqrt(cam.scale * target.scale), fit));
+  v.route = route;
+  v.radius = node.radius;
+  v.ins = ins;
+  v.path = { f0, s0: cam.scale, f1: { x: node.x, y: node.y }, s1: target.scale, fit };
+  v.start = performance.now();
+  v.ms = ms;
+  v.camera = (now) => {
+    const at = cameraAt(voyageAt(v, now).camera, v.path);
+    return app.camera.centreOn(at.focus, app.size.w, app.size.h, v.ins, at.scale);
+  };
+  app.camera.follow(v.camera, v.start + ms + 200);
+  return true;
+}
+
+/** Drops a voyage that is over, or whose island is no longer the one selected at this scale (the reader went elsewhere). */
+function endVoyage(now) {
+  const v = app.voyage;
+  if (!v) return;
+  if (v.start === null || v.scale !== app.scale || app.selected !== v.to || voyageAt(v, now).done) app.voyage = null;
 }
 
 /** Nodes the page still has to place and save (no stored coordinates). Drafts are laid out but never saved. */
@@ -648,16 +722,17 @@ function frame(now) {
   if (!moving && app.placing.size > 0 && !app.placementInFlight) void persistPlacement();
   if (!moving && app.placing.size === 0 && !app.placementInFlight) placeSuggestedSeas(app.nodes[0]?.radius ?? 62);
   if (roseDue && !moving && app.placing.size === 0 && app.snapshot) placeRose();
+  endVoyage(now);
   const gliding = app.camera.tick(now);
   const tool = sketchingTool();
   const still = Boolean(stillMotion?.matches);
-  const motion = moving || gliding || app.press !== null || (tool !== undefined && !still) || app.nodes.some((n) => isAnimating(n, now));
+  const motion = moving || gliding || app.press !== null || app.voyage !== null || (tool !== undefined && !still) || app.nodes.some((n) => isAnimating(n, now));
   const cam = app.camera.state;
   const c = app.covered;
   const from = [
     cam.x, cam.y, cam.scale, app.size.w, app.size.h, app.size.dpr, c.left, c.right, c.top, c.bottom, c.words,
     app.nodes, app.seas, app.snapshot, positionSum(app.nodes, app.seas), app.selected, app.hover, app.hoverSea, app.selectedSea,
-    app.group, app.marquee, app.rose, tool, seaEditing(),
+    app.group, app.marquee, app.rose, tool, seaEditing(), app.voyage,
   ];
   if (!motion && !lively && !stale && !differs(from, drawn)) return;
   lively = motion;
@@ -693,6 +768,10 @@ function draw(now, tool) {
   drawSeas(sc, Boolean(focusSlug));
   for (const n of app.nodes) drawShoreWater(ctx, n, { dim: dim(n), hair: hair(n) });
   for (const l of app.links) drawStrait(ctx, l, { dim: Boolean(focusSlug) && !(near.has(l.source.slug) && near.has(l.target.slug)), scale: cam.scale });
+  const voyage = app.voyage ? voyageAt(app.voyage, now) : null;
+  const boatSize = voyage ? boatPx(app.voyage.radius, cam.scale) : 0;
+  // The wake runs to the boat's stern, under the islands it leaves and reaches.
+  if (voyage) drawWake(ctx, wakeTo(app.voyage.route, app.voyage.route.total * voyage.boat - (boatSize * 0.45) / cam.scale), { scale: cam.scale, alpha: voyage.wakeAlpha });
   // A ring (selection, hover, group) reaches past the lamps, where names may lie: it breaks around their words.
   const ringed = (n) => n.slug === focusSlug || n.slug === app.hover || app.group.islands.has(n.slug);
   const gaps = (n) => {
@@ -708,6 +787,10 @@ function draw(now, tool) {
     drawIsland(ctx, n, { dim: dim(n), selected: n.slug === focusSlug, gathered: app.group.islands.has(n.slug), hovered: n.slug === app.hover, now, hair: hair(n), gaps: gaps(n) });
   }
   for (const n of app.nodes) drawIslandName(ctx, n, { lifted: n.slug === focusSlug || n.slug === app.hover, dim: dim(n), label: sc.labels.get(n.slug) });
+  if (voyage) {
+    const v = app.voyage;
+    drawBoat(ctx, pointAt(v.route, v.route.total * voyage.boat), { dir: v.route.dir, px: boatSize, scale: cam.scale, now, alpha: voyage.boatAlpha });
+  }
   if (app.marquee) drawMarquee(ctx, app.marquee, cam.scale);
   if (app.press) drawPress(ctx, app.press, cam.scale, Math.min(1, (now - app.press.start) / LONG_PRESS_MS));
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0); // screen px from here: what stays put however the map is panned

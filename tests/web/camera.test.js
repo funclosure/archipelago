@@ -193,3 +193,19 @@ test("from a home nearer than the fit the reader can still pinch out to the whol
   cam.zoomAt(195, 400, 0.0001);
   expect(cam.state.scale).toBeCloseTo(fit * 0.6); // half of home is already further out than the fit
 });
+
+test("follow moves the camera with a framing until its time is up, and a pan ends it", () => {
+  const cam = createCamera();
+  const at = (now) => ({ x: now, y: -now, scale: 1 + now / 1000 });
+  cam.follow(at, 500);
+  expect(cam.following(at)).toBe(true);
+  expect(cam.tick(100)).toBe(true);
+  expect(cam.state).toEqual({ x: 100, y: -100, scale: 1.1 });
+  cam.tick(500);
+  expect(cam.state.x).toBe(500);
+  expect(cam.following(at)).toBe(false);
+  expect(cam.tick(600)).toBe(false);
+  cam.follow(at, 900);
+  cam.panBy(5, 5);
+  expect(cam.following(at)).toBe(false);
+});

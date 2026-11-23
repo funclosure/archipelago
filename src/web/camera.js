@@ -140,8 +140,24 @@ export function createCamera() {
       }
       anim = { from: { ...cam }, to: target, start: performance.now(), ms, home: target === home };
     },
+    /**
+     * Follows a moving framing: `at(now)` gives the camera's place each frame until `until` (a time on the same
+     * clock). The reader's pan or zoom ends it, as it ends a glide. A voyage's camera goes with its boat this way.
+     */
+    follow(at, until) {
+      anim = { at, until, home: false };
+    },
+    /** True while the camera is following `at`. */
+    following(at) {
+      return Boolean(anim && anim.at === at);
+    },
     tick(now) {
       if (!anim) return false;
+      if (anim.at) {
+        Object.assign(cam, anim.at(now));
+        if (now >= anim.until) anim = null;
+        return true;
+      }
       const t = Math.min(1, (now - anim.start) / anim.ms);
       const e = 1 - Math.pow(1 - t, 3);
       cam.x = anim.from.x + (anim.to.x - anim.from.x) * e;

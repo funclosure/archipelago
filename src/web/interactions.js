@@ -26,6 +26,21 @@ export async function select(slug) {
   await focusQueue;
 }
 
+/**
+ * Follows a "Sail to" (a persona's or the guide's card, the bottom card's next island): changes to the island's
+ * scale when it lives elsewhere, then selects it, and a boat crosses the map to it (`beginVoyage` in app.js) from
+ * the island the reader was on, else from the scale's harbour, else in from open sea. A click on the map or the
+ * outline selects without a crossing: only the words "Sail to" set a boat off.
+ */
+export async function sail(slug, scale = app.scale) {
+  if (scale !== app.scale) await setScale(scale);
+  if (slug === app.selected) return select(slug);
+  const harbour = app.snapshot?.harbour;
+  const from = app.selected ?? (harbour && harbour !== slug ? harbour : null);
+  app.voyage = { to: slug, from, scale: app.scale, start: null };
+  return select(slug);
+}
+
 /** The live node for a slug; snapshot refreshes rebuild app.nodes, so never hold a node across events. */
 function nodeBySlug(slug) {
   return app.nodes.find((n) => n.slug === slug) ?? null;
