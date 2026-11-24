@@ -1,11 +1,12 @@
 // Phones (max-width 720px): one place at a time, and a bar at the bottom that moves between them. The islands'
 // list is the outline taking the screen, the map keeps the selection while the pane steps aside, the island is
 // the pane, the board is the board. places-model.js decides; this module stamps `body[data-place]` (styles.css
-// shows and hides by it), draws the bar, and keeps the board in step. On a wider screen it does nothing.
+// shows and hides by it), draws the bar, and keeps the board in step. On a wider screen it does nothing. It also
+// says whether the page runs to the screen's edges (the viewport's `viewport-fit`), which only the phone's layout pads.
 import { app, reframe, frameSelection } from "./app.js";
 import { isChartOpen, isGuideOpen } from "./chart.js";
 import { boardOpen, boardCount, openBoard, closeBoard } from "./board.js";
-import { nextPlace, settle, tabsEnabled, keyboardUp, keyboardRoom, takesKeyboard, PLACES, NARROW } from "./places-model.js";
+import { nextPlace, settle, tabsEnabled, keyboardUp, keyboardRoom, takesKeyboard, viewportContent, PLACES, NARROW, COVER } from "./places-model.js";
 import { t } from "./i18n.js";
 
 let bar = null;
@@ -121,7 +122,17 @@ function syncKeyboard() {
   }
 }
 
+/** The page to the screen's edges while the phone is upright, inside the safe area on its side (viewportContent). */
+function syncCover() {
+  const meta = document.querySelector('meta[name="viewport"]');
+  if (!meta) return;
+  const next = viewportContent(meta.content, matchMedia(COVER).matches);
+  if (meta.content !== next) meta.content = next;
+}
+
 export function installPlaces() {
+  syncCover();
+  matchMedia(COVER).addEventListener("change", syncCover);
   bar = document.createElement("nav");
   bar.id = "places";
   bar.className = "places";

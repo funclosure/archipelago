@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { nextPlace, settle, tabsEnabled, homeFloor, homeFocus, keyboardUp, keyboardRoom, takesKeyboard, NAME_BOX, NAME_MIN_PX, KEYBOARD_MIN } from "../../src/web/places-model.js";
+import { nextPlace, settle, tabsEnabled, homeFloor, homeFocus, keyboardUp, keyboardRoom, takesKeyboard, viewportContent, NAME_BOX, NAME_MIN_PX, KEYBOARD_MIN } from "../../src/web/places-model.js";
 import { boxScale } from "../../src/web/contour.js";
 import { islandRadius } from "../../src/web/view-model.js";
 import { NAME_FONT } from "../../src/web/draw.js";
@@ -102,4 +102,15 @@ test("only a field that takes words raises a keyboard", () => {
   expect(takesKeyboard({ tag: "INPUT", type: "Checkbox" })).toBe(false);
   expect(takesKeyboard({ tag: "BUTTON" })).toBe(false);
   expect(takesKeyboard({ tag: "DIV", editable: true })).toBe(true);
+});
+
+// ---- the screen's edges ----
+
+test("the viewport covers the screen to its edges only when asked, and keeps everything else it says", () => {
+  const base = "width=device-width, initial-scale=1";
+  expect(viewportContent(base, true)).toBe(`${base}, viewport-fit=cover`);
+  expect(viewportContent(`${base}, viewport-fit=cover`, false)).toBe(base);
+  expect(viewportContent(`${base}, viewport-fit=cover`, true)).toBe(`${base}, viewport-fit=cover`); // never twice
+  expect(viewportContent("viewport-fit=contain,width=device-width", true)).toBe("width=device-width, viewport-fit=cover");
+  expect(viewportContent("", false)).toBe("");
 });
