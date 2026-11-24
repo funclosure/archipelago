@@ -9,6 +9,23 @@ export const PLACES = ["islands", "map", "island", "board"];
 /** The width at which the page is a phone's: the same query styles.css switches at. */
 export const NARROW = "(max-width: 720px)";
 
+// ---- the screen's edges ----
+
+/**
+ * The viewport meta's content with the page drawn to the screen's edges (`viewport-fit=cover`) or inside the safe
+ * area. Only a phone's layout is drawn for the whole screen: its bar pads the home indicator through
+ * `env(safe-area-inset-bottom)`, which an installed app on iOS reports only under `cover` (the bar sat under the
+ * indicator without it). The wide layout, which an iPhone shows on its side, is not: there the rounded corners and
+ * the camera's housing would cover the outline and the pane, so it keeps the safe area. Upright (COVER) stands for
+ * the phone's layout because it does not move when the meta does: the width would, by the housing's inset.
+ */
+export const COVER = "(orientation: portrait)";
+
+export function viewportContent(content, cover) {
+  const rest = String(content ?? "").split(",").map((p) => p.trim()).filter((p) => p && !/^viewport-fit\s*=/i.test(p));
+  return [...rest, ...(cover ? ["viewport-fit=cover"] : [])].join(", ");
+}
+
 // ---- the map at home ----
 
 /** An island's name is drawn this many box units tall (draw.js, NAME_FONT). */

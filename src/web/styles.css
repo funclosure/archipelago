@@ -1501,6 +1501,9 @@ body.empty .outline, body.empty .chrome, body.empty #map-focus, body.empty #boar
     --h-touch: calc(var(--h-xl) + var(--sp-1)); --fs-micro: var(--fs-sm); --fs-xs: var(--fs-sm); }
   :root:has(.now-playing:not([hidden])) { --np-h: calc(var(--h-xl) + var(--sp-3)); }
   :root:has(body.keyboard) { --bar-h: 0px; --np-h: 0px; }
+  /* An installed app on iOS paints the band behind the status bar in the page's own background, not in what stands
+     at the top: the island's pane and the islands' list start in --panel, the map and the board in the water. */
+  :root:has(> body:is([data-place="island"], [data-place="islands"])), body:is([data-place="island"], [data-place="islands"]) { background: var(--panel); }
   /* The family's small buttons are a size up (32), and the one a place or a dialog turns on is a thumb's (40). */
   .btn:is(.sm, .md) { min-height: var(--h-lg); }
   .btn.icon:is(.sm, .md) { width: var(--h-lg); }
