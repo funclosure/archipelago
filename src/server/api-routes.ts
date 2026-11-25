@@ -443,6 +443,14 @@ async function handleApi(req: Request, url: URL, ctx: ApiContext): Promise<Respo
 
   if (route === "POST /api/probe") {
     const input = probeInputSchema.parse(await req.json());
+    // The page that asks says its language, and every persona's context reads it from the learner row: write it
+    // first, so the turn never starts on another device's language, nor before this page's own report has landed.
+    if (input.language) {
+      const language = input.language;
+      withDb(ctx, (db) => {
+        if (getLearner(db).language !== language) setLearnerLanguage(db, language);
+      });
+    }
     if (input.mode === "cartographer") return chartTurn(ctx, input);
     if (input.mode === "guide") return guideTurn(ctx, input);
     const mode = input.mode;

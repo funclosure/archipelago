@@ -290,6 +290,38 @@ test("the judge names its model, and each persona reply stores the model that wr
   }
 });
 
+test("a turn is written in the language of the page that asked, whatever another page reported last", async () => {
+  const { buildChartContext, renderChartContext } = await import("../../src/server/judge/chart.ts");
+  const dbPath = join(dir, "test.sqlite");
+  const seen: string[] = [];
+  // What every context builder does as a turn starts: read the page's language from the learner row.
+  const runner: JudgeRunner = async ({ domain, mode }) => {
+    const db = openDatabase(dbPath);
+    try {
+      seen.push(mode === "cartographer" ? renderChartContext(buildChartContext(db, domain)).trimEnd().split("\n").at(-1)! : String(db.query<{ language: string }, []>("select language from learner").get()!.language));
+    } finally {
+      db.close();
+    }
+    return "ok";
+  };
+  const other = startServer({ port: 0, dbPath, staticRoot: dir, runner });
+  const send = async (body: object) => (await fetch(`http://127.0.0.1:${other.port}/api/probe`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) })).text();
+  try {
+    expect((await post("/api/learner", { language: "en" })).status).toBe(200); // a phone in English opened the map
+    // A new domain's opening on a Chinese page, before that page's own report has landed.
+    expect(await send({ domain: "sd", mode: "cartographer", language: "zh-TW" })).toContain("event: done");
+    expect(seen.at(-1)).toContain("No reader message yet: write this reply in Traditional Chinese");
+    expect(await send({ domain: "sd", island: "databases", mode: "mentor", message: "hi", language: "en" })).toContain("event: done");
+    expect(seen.at(-1)).toBe("en");
+    // A request that does not say (an older page, the terminal) leaves the language as it was.
+    expect(await send({ domain: "sd", island: "databases", message: "hi again" })).toContain("event: done");
+    expect(seen.at(-1)).toBe("en");
+    expect((await post("/api/probe", { domain: "sd", mode: "guide", language: "fr" })).status).toBe(400);
+  } finally {
+    other.stop(true);
+  }
+});
+
 test("a turn that never answers times out, releases the island, and stores nothing", async () => {
   let aborted = false;
   const hung: JudgeRunner = ({ signal }) =>
