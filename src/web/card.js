@@ -3,7 +3,7 @@ import { streamPost } from "./stream.js";
 import { logItems, askFor, roundOf, systemText } from "./thread.js";
 import { landmarkLit, allExplored, startIsland } from "./view-model.js";
 import { MODES, MODE_LABELS, MODE_HINTS, PERSONA_NAMES, headPill, stateLabel } from "./mode-model.js";
-import { t } from "./i18n.js";
+import { language, t } from "./i18n.js";
 import { thinkingLine } from "./progress-model.js";
 import { thinkingEl } from "./thinking.js";
 import { renderMarkdown, markdownBlocks } from "./markdown.js";
@@ -443,7 +443,7 @@ async function runTurn(slug, message, askId, sent = []) {
   try {
     // What the reader did in a demo goes along with their words, so the mentor answers what actually happened.
     const demoSteps = said && mode === "mentor" ? takeDemoSteps() : [];
-    await streamPost("/api/probe", { domain: app.domain, island: slug, mode, ...(message ? { message } : {}), ...(askId ? { askId } : {}), ...(images.length ? { images: images.map((i) => i.id) } : {}), ...(demoSteps.length ? { demoSteps } : {}) }, (e) => {
+    await streamPost("/api/probe", { domain: app.domain, island: slug, mode, language: language(), ...(message ? { message } : {}), ...(askId ? { askId } : {}), ...(images.length ? { images: images.map((i) => i.id) } : {}), ...(demoSteps.length ? { demoSteps } : {}) }, (e) => {
       if (!mine()) return;
       if (e.type === "text") {
         thread.live += e.data.text;

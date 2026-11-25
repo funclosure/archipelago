@@ -178,6 +178,9 @@ export const reefProposalInputSchema = z.object({
   rationale: z.string().min(1),
 });
 
+/** The page's languages: the personas are told which one the reader reads in. */
+export const UI_LANGUAGES = ["en", "zh-TW"] as const;
+
 /** The most demo steps one turn carries, and the most characters of each. */
 export const DEMO_STEPS_MAX = 20;
 export const DEMO_STEP_MAX = 160;
@@ -203,6 +206,8 @@ export const probeInputSchema = z
       .max(200)
       .optional()
       .transform((steps) => steps?.map((s) => s.trim().slice(0, DEMO_STEP_MAX)).filter(Boolean).slice(-DEMO_STEPS_MAX)),
+    /** The language of the page that asked: the turn is written in it (the learner row takes it before the turn starts). */
+    language: z.enum(UI_LANGUAGES).optional(),
   })
   .refine((v) => v.mode === "cartographer" || v.mode === "guide" || v.island !== undefined, { message: "island is required", path: ["island"] })
   .refine((v) => v.askId === undefined || !v.images?.length, { message: "a pick from the options carries no images", path: ["images"] })
@@ -321,8 +326,6 @@ export const modeSchema = z.enum(messageModes);
 
 /** The learner note's cap. The mentor's context slices to it as well, so an older, longer row cannot grow the prompt. */
 export const NOTE_MAX = 1000;
-/** The page's languages: the personas are told which one the reader reads in. */
-export const UI_LANGUAGES = ["en", "zh-TW"] as const;
 /** POST /api/learner: the note, the page's language, or both. */
 export const learnerInputSchema = z
   .object({

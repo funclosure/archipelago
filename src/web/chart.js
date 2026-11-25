@@ -11,7 +11,7 @@ import { chartOpening, sketchRows, sketchSummary } from "./chart-model.js";
 import { thinkingLine } from "./progress-model.js";
 import { thinkingEl } from "./thinking.js";
 import { systemText } from "./thread.js";
-import { t } from "./i18n.js";
+import { language, t } from "./i18n.js";
 import { modelEl, modelSig } from "./model-label.js";
 import { createTray, messageImagesEl } from "./images.js";
 import { canTalk, talkBusy } from "./dictation.js";
@@ -262,7 +262,7 @@ async function runTurn(message, sent = []) {
   }
   let unsent = false; // the request never reached the server, or it refused it: nothing there changed
   try {
-    const body = { domain: app.domain, mode: chart.mode, ...(scale && !guiding() ? { island: scale } : {}), ...(message ? { message } : {}), ...(images.length ? { images: images.map((i) => i.id) } : {}) };
+    const body = { domain: app.domain, mode: chart.mode, language: language(), ...(scale && !guiding() ? { island: scale } : {}), ...(message ? { message } : {}), ...(images.length ? { images: images.map((i) => i.id) } : {}) };
     await streamPost("/api/probe", body, (e) => {
       if (!mine()) return;
       if (e.type === "text") {
